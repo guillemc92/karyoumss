@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KaryoFlow - Automatización de Análisis de Cariotipos</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            color: #333;
+            line-height: 1.6;
+            background-color: #f8f9fa;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* Header y Navegación */
+        header {
+            background-color: #fff;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .navbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo h1 {
+            font-size: 1.8rem;
+            color: #1e3a8a;
+            font-weight: 700;
+        }
+        
+        .logo span {
+            color: #3b82f6;
+        }
+        
+        .logo-icon {
+            margin-right: 10px;
+            color: #3b82f6;
+            font-size: 1.8rem;
+        }
+        
+        .nav-links {
+            display: flex;
+            list-style: none;
+        }
+        
+        .nav-links li {
+            margin-left: 30px;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: #4b5563;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: #3b82f6;
+        }
+        
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+        
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .hero h2 {
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .hero-slogan {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 40px;
+            color: #dbeafe;
+            font-style: italic;
+            padding: 15px;
+            border-left: 4px solid #60a5fa;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            background-color: #10b981;
+            color: white;
+            padding: 16px 40px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 50px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+        
+        .cta-button:hover {
+            background-color: #0da271;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(16, 185, 129, 0.4);
+        }
+        
+        .cta-button i {
+            margin-left: 8px;
+        }
+        
+        /* Problem Section */
+        .problem {
+            padding: 80px 0;
+            background-color: white;
+        }
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .section-title h2 {
+            font-size: 2.2rem;
+            color: #1e3a8a;
+            margin-bottom: 15px;
+        }
+        
+        .section-title p {
+            color: #6b7280;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .problem-card {
+            background-color: #f9fafb;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+            border-top: 4px solid #3b82f6;
+            transition: transform 0.3s;
+        }
+        
+        .problem-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .problem-icon {
+            background-color: #dbeafe;
+            color: #1e3a8a;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+        
+        .problem-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 15px;
+            color: #1e3a8a;
+        }
+        
+        /* Solution Section */
+        .solution {
+            padding: 80px 0;
+            background-color: #f0f9ff;
+        }
+        
+        .solution-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+            align-items: center;
+        }
+        
+        @media (max-width: 768px) {
+            .solution-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .solution-text h2 {
+            font-size: 2.2rem;
+            color: #1e3a8a;
+            margin-bottom: 20px;
+        }
+        
+        .solution-text p {
+            margin-bottom: 20px;
+            color: #4b5563;
+        }
+        
+        .solution-features {
+            list-style: none;
+            margin-top: 25px;
+        }
+        
+        .solution-features li {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .solution-features i {
+            color: #10b981;
+            margin-right: 10px;
+            margin-top: 5px;
+        }
+        
+        .solution-visual {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            text-align: center;
+        }
+        
+        .solution-visual img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .solution-visual p {
+            color: #6b7280;
+            font-style: italic;
+        }
+        
+        /* CTA Section */
+        .cta-section {
+            padding: 80px 0;
+            background: linear-gradient(135deg, #0f766e 0%, #10b981 100%);
+            color: white;
+            text-align: center;
+        }
+        
+        .cta-section h2 {
+            font-size: 2.2rem;
+            margin-bottom: 20px;
+        }
+        
+        .cta-section p {
+            max-width: 700px;
+            margin: 0 auto 30px;
+            opacity: 0.9;
+        }
+        
+        .demo-button {
+            background-color: white;
+            color: #0f766e;
+            padding: 16px 40px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 50px;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+        }
+        
+        .demo-button:hover {
+            background-color: #f0fdf4;
+            transform: translateY(-3px);
+            box-shadow: 0 6px 15px rgba(255, 255, 255, 0.3);
+        }
+        
+        /* Footer */
+        footer {
+            background-color: #1e3a8a;
+            color: white;
+            padding: 50px 0 20px;
+        }
+        
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+        
+        .footer-section h3 {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            color: #dbeafe;
+        }
+        
+        .footer-section p, .footer-section a {
+            color: #93c5fd;
+            margin-bottom: 10px;
+            display: block;
+            text-decoration: none;
+        }
+        
+        .footer-section a:hover {
+            color: white;
+        }
+        
+        .copyright {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #3b82f6;
+            color: #93c5fd;
+            font-size: 0.9rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                padding: 15px 0;
+            }
+            
+            .nav-links {
+                margin-top: 20px;
+            }
+            
+            .nav-links li {
+                margin: 0 10px;
+            }
+            
+            .hero h2 {
+                font-size: 2.2rem;
+            }
+            
+            .hero-slogan {
+                font-size: 1.2rem;
+            }
+        }
+        
+        /* Modal para el formulario de demo */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            position: relative;
+        }
+        
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            color: #6b7280;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        
+        .close-modal:hover {
+            color: #1e3a8a;
+        }
+        
+        .modal-content h3 {
+            color: #1e3a8a;
+            margin-bottom: 20px;
+            font-size: 1.8rem;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #4b5563;
+        }
+        
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border 0.3s;
+        }
+        
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .submit-button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+        
+        .submit-button:hover {
+            background-color: #2563eb;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="container">
+            <nav class="navbar">
+                <div class="logo">
+                    <i class="fas fa-dna logo-icon"></i>
+                    <h1>Karyo<span>Flow</span></h1>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="#problema">El Problema</a></li>
+                    <li><a href="#solucion">La Solución</a></li>
+                    <li><a href="#demo">Solicitar Demo</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2>Del Raw al Reporte</h2>
+                <div class="hero-slogan">
+                    Automatizamos el análisis de cariotipos para que los citogenetistas puedan enfocarse en diagnosticar, no en recortar cromosomas.
+                </div>
+                <p>KaryoFlow es una solución de inteligencia artificial que automatiza el proceso de creación de cariotipos, reduciendo el tiempo de análisis manual en un 70% y minimizando errores por fatiga visual.</p>
+                <a href="#demo" class="cta-button">Solicitar Demo Gratuita <i class="fas fa-calendar-alt"></i></a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section id="problema" class="problem">
+        <div class="container">
+            <div class="section-title">
+                <h2>¿Cansado de perder horas recortando cromosomas?</h2>
+                <p>El análisis manual de imágenes de metafase consume tiempo valioso que podría dedicarse a tareas diagnósticas de mayor valor.</p>
+            </div>
+            
+            <div class="problem-grid">
+                <div class="problem-card">
+                    <div class="problem-icon">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <h3>Tiempo Excesivo</h3>
+                    <p>15-30 minutos por caso dedicados exclusivamente a tareas manuales de recorte y clasificación de cromosomas.</p>
+                </div>
+                
+                <div class="problem-card">
+                    <div class="problem-icon">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <h3>Fatiga Visual</h3>
+                    <p>Horas de análisis visual continuo que afectan la concentración y aumentan el riesgo de errores por fatiga.</p>
+                </div>
+                
+                <div class="problem-card">
+                    <div class="problem-icon">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <h3>Variabilidad en Resultados</h3>
+                    <p>Clasificación subjetiva de cromosomas similares que puede variar entre diferentes técnicos, afectando la consistencia.</p>
+                </div>
+                
+                <div class="problem-card">
+                    <div class="problem-icon">
+                        <i class="fas fa-tachometer-alt"></i>
+                    </div>
+                    <h3>Presión por Reducir TAT</h3>
+                    <p>Constante presión para reducir el tiempo de entrega (TAT) de resultados en un entorno de alta carga de trabajo.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Solution Section -->
+    <section id="solucion" class="solution">
+        <div class="container">
+            <div class="section-title">
+                <h2>Nuestra Solución: Asistente Inteligente para Citogenetistas</h2>
+                <p>KaryoFlow genera automáticamente un borrador de cariotipo organizado para que usted solo tenga que validar y corregir.</p>
+            </div>
+            
+            <div class="solution-content">
+                <div class="solution-text">
+                    <h2>Prueba nuestro simulador de automatización</h2>
+                    <p>KaryoFlow utiliza algoritmos avanzados de visión por computadora para identificar, segmentar y clasificar automáticamente los cromosomas en imágenes de metafase.</p>
+                    <p>Nuestra solución genera un borrador completo del cariograma siguiendo la nomenclatura ISCN, listo para su validación y corrección por parte del especialista.</p>
+                    
+                    <ul class="solution-features">
+                        <li><i class="fas fa-check-circle"></i> <strong>Precisión superior al 90%</strong> en condiciones de laboratorio estándar</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Interfaz intuitiva</strong> con herramientas de corrección fáciles de usar</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Generación automática de informe ISCN</strong> que se actualiza en tiempo real</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Control total del experto</strong> sobre el resultado final</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Reducción de tiempo</strong> de 25 a 5 minutos por caso en promedio</li>
+                    </ul>
+                </div>
+                
+                <div class="solution-visual">
+                    <div style="background-color: #e0f2fe; height: 250px; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                        <div style="text-align: center; color: #0369a1;">
+                            <i class="fas fa-chart-bar" style="font-size: 4rem; margin-bottom: 15px;"></i>
+                            <p>Simulador de Procesamiento Automático</p>
+                        </div>
+                    </div>
+                    <p>Visualización interactiva del cariograma generado automáticamente con herramientas de edición intuitivas.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section id="demo" class="cta-section">
+        <div class="container">
+            <h2>¿Listo para transformar su flujo de trabajo de citogenética?</h2>
+            <p>Únase a los laboratorios pioneros que ya están probando KaryoFlow. Solicite una demo gratuita y personalizada para ver cómo podemos optimizar su proceso de análisis de cariotipos.</p>
+            <a href="#" class="demo-button" id="openModal">Solicitar Demo <i class="fas fa-arrow-right"></i></a>
+            <p style="margin-top: 20px; font-size: 0.9rem;">Demo de 15 minutos sin compromiso</p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>KaryoFlow</h3>
+                    <p>Del Raw al Reporte: Automatizamos el análisis de cariotipos para que los citogenetistas puedan enfocarse en diagnosticar.</p>
+                    <p><i class="fas fa-envelope"></i> info@karyoflow.com</p>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>Enlaces Rápidos</h3>
+                    <a href="#problema">El Problema</a>
+                    <a href="#solucion">La Solución</a>
+                    <a href="#demo">Solicitar Demo</a>
+                </div>
+                
+                <div class="footer-section">
+                    <h3>Equipo Fundador</h3>
+                    <p>CEO/Investigación & Producto</p>
+                    <p>CTO/Prompts & Desarrollo</p>
+                    <p>CMO/Validación & Growth</p>
+                </div>
+            </div>
+            
+            <div class="copyright">
+                <p>&copy; 2023 KaryoFlow. Todos los derechos reservados. | Pretotipo para validación de deseabilidad</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal para solicitud de demo -->
+    <div id="demoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal">&times;</span>
+            <h3>Solicitar Demo de KaryoFlow</h3>
+            <p>Complete el formulario para agendar una demostración personalizada de 15 minutos sin compromiso.</p>
+            
+            <form id="demoForm">
+                <div class="form-group">
+                    <label for="name">Nombre Completo *</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Correo Electrónico *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="institution">Institución/Laboratorio *</label>
+                    <input type="text" id="institution" name="institution" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="role">Rol/Posición *</label>
+                    <select id="role" name="role" required>
+                        <option value="">Seleccione su rol</option>
+                        <option value="citogenetista">Citogenetista</option>
+                        <option value="citotecnico">Citotécnico</option>
+                        <option value="director_lab">Director de Laboratorio</option>
+                        <option value="investigador">Investigador</option>
+                        <option value="estudiante">Estudiante/Residente</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="message">¿Qué espera de la demo? (Opcional)</label>
+                    <textarea id="message" name="message" rows="3" placeholder="Ej: Me interesa ver cómo funciona la clasificación automática de cromosomas..."></textarea>
+                </div>
+                
+                <button type="submit" class="submit-button">Agendar Demo <i class="fas fa-calendar-check"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Modal functionality
+        const modal = document.getElementById("demoModal");
+        const openModalBtn = document.getElementById("openModal");
+        const closeModalBtn = document.querySelector(".close-modal");
+        const demoForm = document.getElementById("demoForm");
+        
+        // Open modal
+        openModalBtn.addEventListener("click", function(e) {
+            e.preventDefault();
+            modal.style.display = "flex";
+        });
+        
+        // Close modal
+        closeModalBtn.addEventListener("click", function() {
+            modal.style.display = "none";
+        });
+        
+        // Close modal when clicking outside
+        window.addEventListener("click", function(e) {
+            if (e.target === modal) {
+                modal.style.display = "none";
+            }
+        });
+        
+        // Form submission
+        demoForm.addEventListener("submit", function(e) {
+            e.preventDefault();
+            
+            // Get form values
+            const name = document.getElementById("name").value;
+            const email = document.getElementById("email").value;
+            const institution = document.getElementById("institution").value;
+            const role = document.getElementById("role").value;
+            const message = document.getElementById("message").value;
+            
+            // Simulate form submission
+            console.log("Demo request submitted:", { name, email, institution, role, message });
+            
+            // Show success message
+            alert(`¡Gracias ${name}! Hemos recibido su solicitud de demo para ${institution}. Nos pondremos en contacto con usted en las próximas 48 horas para coordinar la demostración.`);
+            
+            // Reset form and close modal
+            demoForm.reset();
+            modal.style.display = "none";
+            
+            // In a real implementation, you would send this data to your backend
+            // For this pretotype, we'll just log it to the console
+        });
+        
+        // Smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetId = this.getAttribute('href');
+                if (targetId === '#') return;
+                
+                const targetElement = document.querySelector(targetId);
+                if (targetElement) {
+                    window.scrollTo({
+                        top: targetElement.offsetTop - 80,
+                        behavior: 'smooth'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
