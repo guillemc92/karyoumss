@@ -3,2988 +3,810 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Biomed - Cariotipado IA</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Biomed UMSS - Plataforma de Cariotipado IA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root {
-            /* Paleta Azul */
-            --blue-primary: #003770;
-            --blue-light: #e6ebf1;
-            --blue-dark: #002954;
-            --blue-darker: #001327;
-
-            /* Paleta Verde */
-            --green-primary: #1e8868;
-            --green-light: #e9f3f0;
-
-            /* Paleta Roja */
-            --red-primary: #bc000c;
-            --red-light: #f8e6e7;
-
-            /* Paleta Naranja */
-            --orange-primary: #d45100;
-            --orange-light: #fbeee6;
-
-            /* Paleta Gris */
-            --gray-primary: #76777c;
-            --gray-light: #f1f1f2;
-            --gray-dark: #59595d;
-
-            /* Neutros */
-            --white: #ffffff;
-            --off-white: #f8f9fa;
-            --border-subtle: rgba(0, 55, 112, 0.08);
-            --border-light: #00377014;
-            --text-primary: #001327;
-            --text-secondary: #bbbbbf;
-            --text-muted: #76777c;
-
-            /* Sombras */
-            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
-            --shadow-md: 0 2px 8px rgba(0, 55, 112, 0.15);
-            --shadow-lg: 0 4px 12px rgba(0, 55, 112, 0.2);
-
-            /* Espaciado */
-            --space-xs: 4px;
-            --space-sm: 8px;
-            --space-md: 16px;
-            --space-lg: 24px;
-            --space-xl: 32px;
-            --space-2xl: 40px;
-
-            /* Bordes */
-            --radius-sm: 6px;
-            --radius-md: 8px;
-            --radius-lg: 10px;
-            --radius-xl: 12px;
-        }
-
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
+        :root {
+            /* PALETA AZUL - Basada en paleta.txt */
+            --blue-light: #e6ebf1;
+            --blue-light-hover: #d9e1ea;
+            --blue-light-active: #b0c1d3;
+            --blue-primary: #003770;
+            --blue-primary-hover: #003265;
+            --blue-primary-active: #002c5a;
+            --blue-dark: #002954;
+            --blue-dark-hover: #002143;
+            --blue-dark-active: #001932;
+            --blue-darker: #001327;
+
+            /* PALETA VERDE MEJORADA - Basada en paleta.txt */
+            --green-light: #e9f3f0;
+            --green-light-hover: #dde6e8;
+            --green-light-active: #b9dad0;
+            --green-primary: #1e8868;
+            --green-primary-hover: #1b7a5e;
+            --green-primary-active: #186d53;
+            --green-dark: #17664e;
+            --green-dark-hover: #12523e;
+            --green-dark-active: #0d3d2f;
+            --green-darker: #0b3024;
+
+            /* PALETA ROJA - Basada en paleta.txt */
+            --red-light: #f8e6e7;
+            --red-light-hover: #f5d9db;
+            --red-light-active: #eab0b4;
+            --red-primary: #bc000c;
+            --red-primary-hover: #a9000b;
+            --red-primary-active: #96000a;
+            --red-dark: #8d0009;
+            --red-dark-hover: #710007;
+            --red-dark-active: #550005;
+            --red-darker: #420004;
+
+            /* PALETA NARANJA - Basada en paleta.txt */
+            --orange-light: #fbeee6;
+            --orange-light-hover: #f9e5d9;
+            --orange-light-active: #f2c9b0;
+            --orange-primary: #d45100;
+            --orange-primary-hover: #bf4900;
+            --orange-primary-active: #aa4100;
+            --orange-dark: #9f3d00;
+            --orange-dark-hover: #7f3100;
+            --orange-dark-active: #5f2400;
+
+            /* PALETA GRIS - Basada en paleta.txt */
+            --gray-light: #f1f1f2;
+            --gray-light-hover: #eaebeb;
+            --gray-light-active: #d5d5d6;
+            --gray-primary: #76777c;
+            --gray-primary-hover: #6a6b70;
+            --gray-primary-active: #5e5f63;
+            --gray-dark: #59595d;
+            --gray-dark-hover: #47474a;
+            --gray-dark-active: #353638;
+            --gray-darker: #292a2b;
+
+            /* Neutros */
+            --white: #ffffff;
+            --off-white: #f8f9fa;
+            --border-light: #e2e8f0;
+            --text-primary: #001327;
+            --gray-text: #64748b;
+
+            /* Sombras */
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,55,112,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,55,112,0.15);
+
+            /* Bordes */
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+        }
+
         body {
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            font-family: 'Inter', system-ui, sans-serif;
             font-size: 14px;
             line-height: 1.5;
-            color: var(--text-primary);
-            background-color: var(--off-white);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
+            color: #1e293b;
+            background-color: var(--gray-light);
         }
 
-        /* Layout Principal */
-        .app-container {
-            display: flex;
-            min-height: 100vh;
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
         }
 
-        /* Sidebar */
-        .sidebar {
-            width: 240px;
-            background: var(--white);
-            box-shadow: var(--blue-primary)14 2px 0px 8px;
-            display: flex;
-            flex-direction: column;
-            padding: var(--space-lg);
-            position: fixed;
-            height: 100vh;
-            z-index: 100;
-        }
-
-        .sidebar-header {
-            margin-bottom: var(--space-2xl);
-        }
-
-        .logo {
-            font-size: 20px;
-            font-weight: 700;
-            color: var(--blue-primary);
-            line-height: 24px;
-        }
-
-        .logo-subtitle {
-            font-size: 11px;
-            color: var(--text-secondary);
-            margin-top: var(--space-xs);
-        }
-
-        .nav-menu {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-sm);
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px var(--space-md);
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            text-decoration: none;
-        }
-
-        .nav-item:hover {
-            background: var(--blue-light);
-        }
-
-        .nav-item.active {
+        /* ============================================ */
+        /* NAVBAR SUPERIOR */
+        /* ============================================ */
+        .navbar {
             background: var(--blue-primary);
-        }
-
-        .nav-icon {
-            width: 18px;
-            height: 18px;
-            border: 1.5px solid var(--text-secondary);
-            border-radius: 3px;
-            flex-shrink: 0;
-        }
-
-        .nav-item.active .nav-icon {
-            background: rgba(255, 255, 255, 0.9);
-            border-color: transparent;
-        }
-
-        .nav-text {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-secondary);
-        }
-
-        .nav-item.active .nav-text {
-            color: var(--white);
-        }
-
-        .sidebar-footer {
-            background: var(--green-light);
-            border-radius: var(--radius-xl);
-            padding: var(--space-md);
-            margin-top: auto;
-        }
-
-        .ai-status {
-            display: flex;
-            align-items: center;
-            gap: var(--space-sm);
-            margin-bottom: var(--space-sm);
-        }
-
-        .ai-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--green-primary);
-            border-radius: 50%;
-        }
-
-        .ai-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--green-primary);
-        }
-
-        .ai-version {
-            font-size: 11px;
-            color: var(--green-primary);
-            opacity: 0.8;
-        }
-
-        /* Main Content */
-        .main-content {
-            flex: 1;
-            margin-left: 240px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Header */
-        .header {
-            height: 72px;
-            background: var(--white);
-            border-bottom: 1px solid var(--border-light);
+            min-height: 70px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 var(--space-xl);
+            padding: 0 2rem;
+            color: white;
             position: sticky;
             top: 0;
-            z-index: 50;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
-        .header-left {
-            display: flex;
-            align-items: center;
-            gap: var(--space-lg);
-        }
-
-        .header-title h1 {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-primary);
-            line-height: 22px;
-        }
-
-        .header-title p {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }
-
-        .header-divider {
-            width: 1px;
-            height: 32px;
-            background: rgba(0, 55, 112, 0.12);
-        }
-
-        .search-box {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: var(--off-white);
-            border-radius: var(--radius-lg);
-            padding: 10px var(--space-md);
-            width: 320px;
-        }
-
-        .search-icon {
-            color: var(--text-secondary);
-            font-size: 16px;
-        }
-
-        .search-text {
-            color: var(--text-primary);
-            font-size: 14px;
-        }
-
-        .header-right {
-            display: flex;
-            align-items: center;
-            gap: var(--space-md);
-        }
-
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: var(--space-sm);
-            padding: 10px 20px;
-            border-radius: var(--radius-md);
-            font-size: 13px;
+        .nav-brand { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .nav-brand h1 { font-size: 1.3rem; font-weight: 700; }
+        .nav-brand span { color: var(--red-primary); }
+        .login-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: white;
             font-weight: 600;
-            line-height: 16px;
             cursor: pointer;
-            transition: all 0.2s ease;
-            border: none;
-            text-decoration: none;
-        }
-
-        .btn-primary {
-            background: var(--blue-primary);
-            color: var(--white);
-            box-shadow: 0 2px 8px rgba(0, 55, 112, 0.25);
-        }
-
-        .btn-primary:hover {
-            background: var(--blue-dark);
-        }
-
-        .btn-success {
-            background: var(--green-primary);
-            color: var(--white);
-            box-shadow: 0 2px 8px rgba(30, 136, 104, 0.25);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: var(--blue-primary);
-            border: 1.5px solid var(--blue-primary);
-        }
-
-        .btn-outline:hover {
-            background: var(--blue-light);
-        }
-
-        .btn-sm {
-            padding: 8px 14px;
-            font-size: 12px;
-        }
-
-        .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .avatar {
-            width: 40px;
-            height: 40px;
-            background: var(--blue-primary);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--white);
-            font-size: 14px;
-            font-weight: 600;
-        }
-
-        .user-info {
-            line-height: 1.3;
-        }
-
-        .user-name {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .user-role {
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-
-        /* Content Area */
-        .content {
-            flex: 1;
-            padding: var(--space-lg);
-            overflow-y: auto;
-        }
-
-        /* Page Sections */
-        .page-section {
-            display: none;
-        }
-
-        .page-section.active {
-            display: block;
-        }
-
-        /* Dashboard Layout */
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: var(--space-lg);
-            margin-top: var(--space-lg);
-        }
-
-        .dashboard-card {
-            background: var(--white);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-        }
-
-        .card-header {
-            padding: var(--space-lg);
-            border-bottom: 1px solid var(--border-light);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .card-title {
-            font-size: 16px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .card-subtitle {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        .card-body {
-            padding: var(--space-lg);
-        }
-
-        /* Stats Bar */
-        .stats-bar {
-            background: var(--white);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            padding: var(--space-lg) var(--space-xl);
-            display: flex;
-            align-items: center;
-            gap: var(--space-lg);
-        }
-
-        .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .stat-icon {
-            width: 28px;
-            height: 28px;
-            background: var(--green-primary);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--white);
-            font-size: 12px;
-            font-weight: 700;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--green-primary);
-            line-height: 16px;
-        }
-
-        .stat-sublabel {
-            font-size: 10px;
-            color: var(--text-secondary);
-            line-height: 12px;
-        }
-
-        .stat-divider {
-            flex: 1;
-            height: 2px;
-            background: var(--green-primary);
-        }
-
-        /* Results Card */
-        .result-highlight {
-            background: var(--green-light);
-            border: 1.5px solid rgba(30, 136, 104, 0.3);
-            border-radius: var(--radius-xl);
-            padding: var(--space-lg);
-            margin-bottom: var(--space-lg);
-        }
-
-        .result-label {
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--green-primary);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: var(--space-sm);
-        }
-
-        .result-title {
-            font-size: 28px;
-            font-weight: 700;
-            color: var(--green-primary);
-            line-height: 34px;
-            margin-bottom: 12px;
-        }
-
-        .result-description {
-            font-size: 13px;
-            line-height: 1.6;
-            color: var(--text-primary);
-        }
-
-        /* Grid Info */
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-            margin-bottom: var(--space-lg);
-        }
-
-        .info-item {
-            background: var(--off-white);
-            border-radius: var(--radius-md);
-            padding: var(--space-md);
-        }
-
-        .info-label {
-            font-size: 11px;
-            color: var(--text-secondary);
-            margin-bottom: 4px;
-        }
-
-        .info-value {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-primary);
-        }
-
-        /* Validation Table */
-        .validation-table {
-            background: var(--off-white);
-            border-radius: var(--radius-lg);
-            padding: var(--space-md);
-        }
-
-        .validation-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .validation-row:last-child {
-            border-bottom: none;
-        }
-
-        .validation-label {
-            font-size: 13px;
-            color: var(--text-primary);
-        }
-
-        .validation-value {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .validation-value.success {
-            color: var(--green-primary);
-        }
-
-        .validation-value.warning {
-            color: #d32f2f;
-        }
-
-        /* Cariogram Grid */
-        .cariogram-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-        }
-
-        .chromosome-pair {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            background: var(--off-white);
-            border-radius: 6px;
-            padding: 6px;
-        }
-
-        .chromosome {
-            background: var(--blue-primary);
-            border-radius: 4px;
-        }
-
-        .chromosome.large {
-            width: 20px;
-            height: 16px;
-            border-radius: 8px;
-        }
-
-        .chromosome.medium {
-            width: 18px;
-            height: 15px;
-            border-radius: 7px;
-        }
-
-        .chromosome.small {
-            width: 16px;
-            height: 13px;
-            border-radius: 6px;
-        }
-
-        .chromosome.x-chrom {
-            width: 28px;
-            height: 12px;
-            border-radius: 6px;
-        }
-
-        .chromosome.y-chrom {
-            width: 20px;
-            height: 10px;
-            border-radius: 5px;
-        }
-
-        .sex-chromosomes {
-            background: var(--green-light);
-            border: 1.5px solid var(--green-primary);
-            border-radius: 6px;
-            grid-column: span 2;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 4px;
-            padding: 6px;
-        }
-
-        .sex-label {
-            font-size: 10px;
-            font-weight: 600;
-            color: var(--green-primary);
-            margin-left: 4px;
-        }
-
-        /* Filters Bar */
-        .filters-bar {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm);
-            padding: 12px 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: var(--space-lg);
-        }
-
-        .filter-label {
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-primary);
-            margin-right: 8px;
-        }
-
-        .filter-chip {
-            padding: 8px 14px;
-            border-radius: var(--radius-sm);
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .filter-chip.active {
-            background: var(--blue-primary);
-            color: var(--white);
-        }
-
-        .filter-chip:not(.active) {
-            background: var(--off-white);
-            border: 1px solid var(--border-light);
-            color: var(--text-primary);
-        }
-
-        .filter-spacer {
-            flex: 1;
-        }
-
-        /* Data Table */
-        .data-table-container {
-            background: var(--white);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-        }
-
-        .table-header {
-            display: grid;
-            grid-template-columns: 100px 180px 120px 140px 100px 140px 1fr;
-            gap: var(--space-md);
-            padding: var(--space-md) var(--space-lg);
-            background: var(--off-white);
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .table-header-cell {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-secondary);
-        }
-
-        .table-body {
-            max-height: 600px;
-            overflow-y: auto;
-        }
-
-        .table-row {
-            display: grid;
-            grid-template-columns: 100px 180px 120px 140px 100px 140px 1fr;
-            gap: var(--space-md);
-            padding: 20px var(--space-lg);
-            border-bottom: 1px solid rgba(0, 55, 112, 0.06);
-            align-items: center;
-        }
-
-        .table-row:hover {
-            background: var(--off-white);
-        }
-
-        .table-row.alert {
-            background: #fff8f8;
-        }
-
-        .table-cell {
-            font-size: 13px;
-            color: var(--text-primary);
-        }
-
-        .case-id {
-            font-weight: 600;
-            color: var(--blue-primary);
-        }
-
-        .patient-info {
-            line-height: 1.4;
-        }
-
-        .patient-name {
-            font-weight: 500;
-        }
-
-        .patient-meta {
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-
-        .status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .status-badge.review {
-            background: var(--red-light);
-            color: #d32f2f;
-        }
-
-        .status-badge.processing {
-            background: #fff9e6;
-            color: #ffa726;
-        }
-
-        .status-badge.completed {
-            background: var(--green-light);
-            color: var(--green-primary);
-        }
-
-        .status-badge.segmentation {
-            background: #e3f2fd;
-            color: #2196f3;
-        }
-
-        .status-dot {
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-        }
-
-        .status-dot.red {
-            background: #d32f2f;
-        }
-
-        .status-dot.orange {
-            background: #ffa726;
-        }
-
-        .status-dot.green {
-            background: var(--green-primary);
-        }
-
-        .status-dot.blue {
-            background: #2196f3;
-        }
-
-        .progress-bar {
-            margin-bottom: 4px;
-        }
-
-        .progress-label {
-            font-size: 12px;
-            margin-bottom: 4px;
-        }
-
-        .progress-track {
-            height: 4px;
-            background: #e0e0e0;
-            border-radius: 2px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            border-radius: 2px;
-            transition: width 0.3s ease;
-        }
-
-        .progress-fill.blue {
-            background: var(--blue-primary);
-        }
-
-        .progress-fill.orange {
-            background: #ffa726;
-        }
-
-        .progress-fill.green {
-            background: var(--green-primary);
-        }
-
-        .table-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        /* Pagination */
-        .pagination {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: var(--space-md) var(--space-lg);
-            background: var(--off-white);
-            border-top: 1px solid var(--border-light);
-        }
-
-        .pagination-info {
-            font-size: 13px;
-            color: var(--text-primary);
-        }
-
-        .pagination-buttons {
-            display: flex;
-            gap: 8px;
-        }
-
-        .page-btn {
-            padding: 8px 12px;
-            border-radius: var(--radius-sm);
-            font-size: 13px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border: 1px solid rgba(0, 55, 112, 0.15);
-            background: var(--white);
-            color: var(--text-primary);
-        }
-
-        .page-btn.active {
-            background: var(--blue-primary);
-            color: var(--white);
-            border-color: var(--blue-primary);
-        }
-
-        .page-btn:hover:not(.active) {
-            background: var(--off-white);
-        }
-
-        .page-btn.disabled {
-            color: var(--text-secondary);
-            cursor: not-allowed;
-        }
-
-        /* Config Layout */
-        .config-layout {
-            display: grid;
-            grid-template-columns: 280px 1fr;
-            gap: var(--space-lg);
-            margin-top: var(--space-md);
-        }
-
-        .config-sidebar {
-            background: var(--white);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .config-nav {
-            padding: var(--space-lg);
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .config-nav-title {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-secondary);
-            margin-bottom: var(--space-md);
-        }
-
-        .config-nav-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px var(--space-md);
-            border-radius: var(--radius-lg);
-            cursor: pointer;
-            margin-bottom: 8px;
-        }
-
-        .config-nav-item:hover {
-            background: var(--off-white);
-        }
-
-        .config-nav-item.active {
-            background: var(--off-white);
-        }
-
-        .config-nav-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-        }
-
-        .config-nav-icon.blue {
-            background: var(--blue-primary);
-            color: var(--white);
-        }
-
-        .config-nav-icon.green {
-            background: var(--green-light);
-            color: var(--green-primary);
-        }
-
-        .config-nav-icon.yellow {
-            background: #fff9e6;
-            color: #ffa726;
-        }
-
-        .config-nav-icon.light-blue {
-            background: #e3f2fd;
-            color: #2196f3;
-        }
-
-        .config-nav-icon.red {
-            background: var(--red-light);
-            color: #d32f2f;
-        }
-
-        .config-nav-icon.purple {
-            background: #f3e5f5;
-            color: #9c27b0;
-        }
-
-        .config-nav-text {
-            flex: 1;
-        }
-
-        .config-nav-label {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .config-nav-sublabel {
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-
-        .config-version {
-            padding: var(--space-lg);
-            margin-top: auto;
-            border-top: 1px solid var(--border-light);
-        }
-
-        .config-version-title {
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-        }
-
-        .config-version-info {
-            margin-bottom: 4px;
-        }
-
-        .config-version-number {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        .config-version-date {
-            font-size: 11px;
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-        }
-
-        .config-status {
+            transition: all 0.2s;
             display: flex;
             align-items: center;
             gap: 8px;
-            padding: 10px 12px;
-            background: var(--green-light);
-            border-radius: var(--radius-md);
+        }
+        .login-btn:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-1px);
         }
 
-        .config-status-dot {
-            width: 8px;
-            height: 8px;
-            background: var(--green-primary);
-            border-radius: 50%;
+        /* ============================================ */
+        /* HERO SECTION */
+        /* ============================================ */
+        .hero {
+            background: linear-gradient(135deg, var(--blue-primary) 0%, var(--blue-dark) 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
         }
 
-        .config-status-text {
-            font-size: 12px;
-            font-weight: 500;
-            color: var(--green-primary);
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
         }
 
-        .config-content {
-            background: var(--white);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-        }
-
-        .config-content-header {
-            padding: var(--space-lg) var(--space-xl);
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .config-content-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .config-content-subtitle {
-            font-size: 13px;
-            color: var(--text-secondary);
-            margin-top: 4px;
-        }
-
-        .config-content-body {
-            padding: var(--space-xl);
-        }
-
-        /* Profile Section */
-        .profile-section {
-            display: flex;
-            align-items: center;
-            gap: var(--space-lg);
-            margin-bottom: var(--space-xl);
-        }
-
-        .profile-avatar {
-            width: 100px;
-            height: 100px;
-            background: var(--blue-primary);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--white);
-            font-size: 36px;
-            font-weight: 700;
-            flex-shrink: 0;
-        }
-
-        .profile-actions {
-            flex: 1;
-        }
-
-        .profile-label {
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .profile-buttons {
-            display: flex;
-            gap: 12px;
-        }
-
-        /* Form Grid */
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: var(--space-lg);
-            margin-bottom: var(--space-xl);
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-label {
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-        }
-
-        .form-input {
-            padding: 14px var(--space-md);
-            border: 1.5px solid var(--border-light);
-            border-radius: var(--radius-lg);
-            font-size: 14px;
-            color: var(--text-primary);
-            background: var(--white);
-            transition: border-color 0.2s ease;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: var(--blue-primary);
-        }
-
-        .form-input::placeholder {
-            color: var(--text-secondary);
-        }
-
-        /* Security Section */
-        .security-section {
-            background: var(--off-white);
-            border-radius: var(--radius-xl);
-            padding: var(--space-lg);
-            margin-bottom: var(--space-xl);
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        .hero h2 {
+            font-size: 2.8rem;
             margin-bottom: 20px;
+            line-height: 1.2;
         }
 
-        .section-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: var(--radius-md);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
+        .hero p {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
         }
 
-        .section-icon.red {
-            background: var(--red-light);
+        .hero-slogan {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 30px;
+            color: var(--blue-light);
+            font-style: italic;
+            padding: 15px;
+            border-left: 4px solid var(--red-primary);
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
         }
 
-        .section-icon.green {
-            background: var(--green-light);
+        .cta-button {
+            display: inline-block;
+            background-color: var(--green-primary);
+            color: white;
+            padding: 16px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .cta-button:hover {
+            background-color: var(--green-primary-hover);
+            transform: translateY(-3px);
+        }
+
+        /* ============================================ */
+        /* PROBLEM SECTION */
+        /* ============================================ */
+        .problem {
+            padding: 80px 0;
+            background-color: var(--white);
         }
 
         .section-title {
-            font-size: 15px;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        /* Toggle Switch */
-        .toggle-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: var(--space-md);
-            background: var(--off-white);
-            border-radius: var(--radius-lg);
-            margin-bottom: var(--space-md);
-        }
-
-        .toggle-info h4 {
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 2px;
-        }
-
-        .toggle-info p {
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .toggle-switch {
-            width: 48px;
-            height: 26px;
-            background: var(--blue-primary);
-            border-radius: 13px;
-            position: relative;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background: var(--white);
-            border-radius: 50%;
-            top: 3px;
-            right: 3px;
-            transition: transform 0.2s ease;
-        }
-
-        /* New Case Form */
-        .form-section {
-            margin-bottom: var(--space-xl);
-        }
-
-        .form-section-title {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: var(--space-md);
-            padding-bottom: var(--space-sm);
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: var(--space-lg);
-            margin-bottom: var(--space-md);
-        }
-
-        .form-row.three-col {
-            grid-template-columns: repeat(3, 1fr);
-        }
-
-        textarea.form-input {
-            min-height: 120px;
-            resize: vertical;
-            font-family: inherit;
-        }
-
-        /* Checkbox Group */
-        .checkbox-group {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .checkbox {
-            width: 20px;
-            height: 20px;
-            border: 1.5px solid var(--border-light);
-            border-radius: 4px;
-            cursor: pointer;
-        }
-
-        .checkbox-label {
-            font-size: 14px;
-            color: var(--text-primary);
-        }
-
-        /* File Upload */
-        .file-upload {
-            border: 2px dashed var(--border-light);
-            border-radius: var(--radius-xl);
-            padding: var(--space-2xl);
             text-align: center;
-            cursor: pointer;
-            transition: border-color 0.2s ease;
+            margin-bottom: 50px;
         }
 
-        .file-upload:hover {
-            border-color: var(--blue-primary);
-        }
-
-        .file-upload-icon {
-            font-size: 32px;
-            margin-bottom: var(--space-sm);
-        }
-
-        .file-upload-text {
-            font-size: 14px;
-            font-weight: 600;
+        .section-title h2 {
+            font-size: 2.2rem;
             color: var(--blue-primary);
-            margin-bottom: 4px;
+            margin-bottom: 15px;
         }
 
-        .file-upload-hint {
-            font-size: 12px;
-            color: var(--text-secondary);
+        .section-title p {
+            color: var(--gray-text);
+            max-width: 700px;
+            margin: 0 auto;
         }
 
-        /* Report Layout */
-        .report-layout {
+        .problem-grid {
             display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: var(--space-lg);
-            margin-top: var(--space-lg);
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
         }
 
-        .report-main {
-            background: var(--white);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-        }
-
-        .report-sidebar {
-            display: flex;
-            flex-direction: column;
-            gap: var(--space-lg);
-        }
-
-        .report-card {
-            background: var(--white);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-        }
-
-        /* AI Models Grid */
-        .models-layout {
-            display: grid;
-            grid-template-columns: 380px 1fr;
-            gap: var(--space-lg);
-            margin-top: var(--space-md);
-        }
-
-        .models-list {
-            background: var(--white);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            padding: var(--space-lg);
-        }
-
-        .model-item {
-            padding: var(--space-md);
-            border: 1.5px solid var(--border-light);
+        .problem-card {
+            background-color: var(--gray-light);
             border-radius: var(--radius-lg);
-            margin-bottom: var(--space-md);
-            cursor: pointer;
-            transition: all 0.2s ease;
+            padding: 30px;
+            box-shadow: var(--shadow-sm);
+            border-top: 4px solid var(--blue-primary);
+            transition: transform 0.3s;
         }
 
-        .model-item:hover {
-            border-color: var(--blue-primary);
+        .problem-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
         }
 
-        .model-item.active {
-            border-color: var(--blue-primary);
-            background: var(--blue-light);
-        }
-
-        .model-header {
+        .problem-icon {
+            background-color: var(--blue-light);
+            color: var(--blue-primary);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
         }
 
-        .model-name {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-primary);
+        .problem-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: var(--blue-primary);
         }
 
-        .model-status {
-            font-size: 11px;
-            font-weight: 600;
-            padding: 4px 8px;
-            border-radius: 4px;
+        .problem-card p {
+            color: var(--gray-text);
         }
 
-        .model-status.active {
-            background: var(--green-light);
-            color: var(--green-primary);
+        /* ============================================ */
+        /* SOLUTION SECTION */
+        /* ============================================ */
+        .solution {
+            padding: 80px 0;
+            background-color: var(--blue-light);
         }
 
-        .model-meta {
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-bottom: 12px;
-        }
-
-        .model-metrics {
-            display: flex;
-            gap: var(--space-md);
-        }
-
-        .metric {
-            flex: 1;
-        }
-
-        .metric-value {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-primary);
-        }
-
-        .metric-label {
-            font-size: 11px;
-            color: var(--text-secondary);
-        }
-
-        .model-detail {
-            background: var(--white);
-            border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
-        }
-
-        /* Cariogram Editor */
-        .editor-layout {
+        .solution-content {
             display: grid;
-            grid-template-columns: 200px 1fr 280px;
-            gap: var(--space-lg);
-            margin-top: var(--space-md);
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+            align-items: center;
         }
 
-        .editor-panel {
+        .solution-text h2 {
+            font-size: 2rem;
+            color: var(--blue-primary);
+            margin-bottom: 20px;
+        }
+
+        .solution-text p {
+            margin-bottom: 20px;
+            color: var(--gray-text);
+        }
+
+        .solution-features {
+            list-style: none;
+            margin-top: 25px;
+        }
+
+        .solution-features li {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .solution-features i {
+            color: var(--green-primary);
+            margin-top: 3px;
+        }
+
+        .solution-visual {
+            background-color: var(--white);
+            border-radius: var(--radius-xl);
+            padding: 30px;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            border: 1px solid var(--border-light);
+        }
+
+        .demo-placeholder {
+            background: linear-gradient(135deg, var(--blue-light) 0%, var(--white) 100%);
+            height: 250px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        /* ============================================ */
+        /* ROLES SECTION */
+        /* ============================================ */
+        .roles {
+            padding: 80px 0;
+            background-color: var(--white);
+        }
+
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .role-card {
             background: var(--white);
             border-radius: var(--radius-xl);
-            box-shadow: var(--shadow-sm);
-            overflow: hidden;
+            padding: 30px;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+            transition: all 0.3s;
         }
 
-        .editor-toolbar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 12px;
-            background: var(--off-white);
-            border-bottom: 1px solid var(--border-light);
-        }
-
-        .tool-btn {
-            width: 36px;
-            height: 36px;
-            border: none;
-            background: var(--white);
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            transition: all 0.2s ease;
-        }
-
-        .tool-btn:hover {
-            background: var(--blue-light);
-        }
-
-        .editor-canvas {
-            background: #1a1a2e;
-            min-height: 600px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .canvas-placeholder {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 14px;
-        }
-
-        .thumbnails-list {
-            padding: var(--space-md);
-        }
-
-        .thumbnail-item {
-            aspect-ratio: 1;
-            background: var(--off-white);
-            border-radius: var(--radius-md);
-            margin-bottom: var(--space-sm);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .thumbnail-item.active {
-            border: 2px solid var(--blue-primary);
-        }
-
-        /* Login Page */
-        .login-container {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: linear-gradient(135deg, var(--blue-darker) 0%, var(--blue-primary) 100%);
-            padding: var(--space-lg);
-        }
-
-        .login-card {
-            background: var(--white);
-            border-radius: var(--radius-xl);
+        .role-card:hover {
+            transform: translateY(-5px);
             box-shadow: var(--shadow-lg);
+        }
+
+        .role-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--blue-primary), var(--red-primary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .role-card h3 {
+            font-size: 1.3rem;
+            color: var(--blue-primary);
+            margin-bottom: 10px;
+        }
+
+        .role-card .role-desc {
+            color: var(--gray-text);
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: var(--blue-light);
+            color: var(--blue-primary);
+        }
+
+        /* ============================================ */
+        /* CTA SECTION */
+        /* ============================================ */
+        .cta-section {
+            background: linear-gradient(135deg, var(--green-primary) 0%, var(--green-dark) 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+
+        .demo-button {
+            background: white;
+            color: var(--green-primary);
+            padding: 16px 40px;
+            border-radius: 50px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .demo-button:hover {
+            background: var(--green-light);
+            transform: translateY(-3px);
+        }
+
+        /* ============================================ */
+        /* FOOTER */
+        /* ============================================ */
+        footer {
+            background-color: var(--blue-primary);
+            color: white;
+            padding: 50px 0 20px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-section h3 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: var(--blue-light);
+        }
+
+        .footer-section p, .footer-section a {
+            color: #93c5fd;
+            margin-bottom: 10px;
+            display: block;
+            text-decoration: none;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .copyright {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            color: #93c5fd;
+            font-size: 0.8rem;
+        }
+
+        /* ============================================ */
+        /* MODAL DE LOGIN */
+        /* ============================================ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .login-modal {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            width: 90%;
             max-width: 420px;
             overflow: hidden;
+            animation: fadeInModal 0.3s ease;
         }
 
-        .login-header {
+        @keyframes fadeInModal {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-header {
             background: var(--blue-primary);
-            padding: var(--space-2xl);
+            padding: 1.5rem;
             text-align: center;
-            color: var(--white);
+            color: white;
+        }
+        .modal-header h3 { font-size: 1.3rem; margin-bottom: 4px; }
+        .modal-header p { font-size: 0.7rem; opacity: 0.8; }
+
+        .modal-body {
+            padding: 1.5rem;
         }
 
-        .login-logo {
-            font-size: 32px;
-            font-weight: 700;
-            margin-bottom: 4px;
+        .role-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.5rem;
         }
-
-        .login-subtitle {
-            font-size: 13px;
-            opacity: 0.8;
-        }
-
-        .login-body {
-            padding: var(--space-2xl);
-        }
-
-        .login-form .form-group {
-            margin-bottom: var(--space-lg);
-        }
-
-        .login-form .form-label {
-            font-size: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            color: var(--text-primary);
-            margin-bottom: 8px;
-        }
-
-        .login-form .form-input {
-            width: 100%;
-            padding: 14px var(--space-md);
-            border: 1.5px solid var(--border-light);
+        .role-option {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid var(--border-light);
             border-radius: var(--radius-md);
-            font-size: 14px;
-            transition: border-color 0.2s ease;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
         }
+        .role-option.selected {
+            border-color: var(--blue-primary);
+            background: var(--blue-light);
+        }
+        .role-option i { font-size: 1.2rem; display: block; margin-bottom: 5px; }
+        .role-option span { font-size: 0.7rem; font-weight: 600; }
 
-        .login-form .form-input:focus {
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            color: var(--blue-primary);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+        }
+        .form-group input:focus {
             outline: none;
             border-color: var(--blue-primary);
         }
 
-        .login-options {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: var(--space-lg);
-            font-size: 13px;
-        }
-
-        .login-checkbox {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-        }
-
-        .login-checkbox input {
-            width: 18px;
-            height: 18px;
-            accent-color: var(--blue-primary);
-        }
-
-        .login-forgot {
-            color: var(--blue-primary);
-            text-decoration: none;
-            font-weight: 500;
-        }
-
-        .login-forgot:hover {
-            text-decoration: underline;
-        }
-
-        .login-btn {
+        .login-submit {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             background: var(--blue-primary);
-            color: var(--white);
+            color: white;
             border: none;
             border-radius: var(--radius-md);
-            font-size: 15px;
             font-weight: 600;
             cursor: pointer;
-            transition: background 0.2s ease;
-            box-shadow: 0 2px 8px rgba(0, 55, 112, 0.25);
+            margin-top: 1rem;
         }
 
-        .login-btn:hover {
-            background: var(--blue-dark);
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.2rem;
+            color: white;
+            cursor: pointer;
         }
 
-        .login-footer {
-            text-align: center;
-            padding: var(--space-lg) var(--space-2xl);
-            background: var(--off-white);
-            border-top: 1px solid var(--border-light);
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .login-footer a {
-            color: var(--blue-primary);
-            text-decoration: none;
-            font-weight: 500;
+        .alert-error {
+            background: var(--red-light);
+            color: var(--red-primary);
+            padding: 10px;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            margin-bottom: 1rem;
+            display: none;
         }
 
         /* Responsive */
-        @media (max-width: 1200px) {
-            .dashboard-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-
-            .config-layout,
-            .models-layout {
-                grid-template-columns: 1fr;
-            }
-
-            .report-layout {
-                grid-template-columns: 1fr;
-            }
-
-            .editor-layout {
-                grid-template-columns: 160px 1fr 240px;
-            }
-        }
-
-        @media (max-width: 992px) {
-            .sidebar {
-                transform: translateX(-100%);
-                transition: transform 0.3s ease;
-            }
-
-            .sidebar.open {
-                transform: translateX(0);
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .table-header,
-            .table-row {
-                grid-template-columns: 80px 140px 100px 100px 80px 100px 1fr;
-            }
-
-            .editor-layout {
-                grid-template-columns: 1fr;
-            }
-
-            .form-grid,
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .header {
-                flex-direction: column;
-                height: auto;
-                padding: var(--space-md);
-                gap: var(--space-md);
-            }
-
-            .header-left {
-                width: 100%;
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
-            .search-box {
-                width: 100%;
-            }
-
-            .filters-bar {
-                flex-wrap: wrap;
-            }
-
-            .table-header,
-            .table-row {
-                grid-template-columns: 1fr;
-                gap: var(--space-sm);
-            }
-
-            .table-header {
-                display: none;
-            }
-
-            .table-row {
-                padding: var(--space-md);
-                border-bottom: 2px solid var(--border-light);
-            }
-
-            .table-cell {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-            }
-
-            .table-cell::before {
-                content: attr(data-label);
-                font-weight: 600;
-                color: var(--text-secondary);
-            }
-        }
-
-        /* Mobile Menu Toggle */
-        .menu-toggle {
-            display: none;
-            position: fixed;
-            top: var(--space-md);
-            left: var(--space-md);
-            z-index: 101;
-            width: 40px;
-            height: 40px;
-            background: var(--white);
-            border: none;
-            border-radius: var(--radius-md);
-            box-shadow: var(--shadow-md);
-            cursor: pointer;
-            font-size: 18px;
-        }
-
-        @media (max-width: 992px) {
-            .menu-toggle {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
+        @media (max-width: 900px) {
+            .roles-grid { grid-template-columns: 1fr; }
+            .solution-content { grid-template-columns: 1fr; gap: 30px; }
+            .navbar { flex-direction: column; padding: 1rem; text-align: center; }
+            .hero h2 { font-size: 2rem; }
+            .hero-slogan { font-size: 1rem; }
         }
     </style>
 </head>
 <body>
-    <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
 
-    <div class="app-container">
-        <!-- Sidebar -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">Biomed</div>
-                <div class="logo-subtitle">Cariotipado IA</div>
-            </div>
+    <!-- NAVBAR SUPERIOR -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <i class="fas fa-dna fa-lg"></i>
+            <div><strong>BIOMED <span>UMSS</span></strong><div style="font-size: 0.6rem;">INTELLIGENT KARYOTYPING</div></div>
+        </div>
+        <button class="login-btn" id="openLoginBtn"><i class="fas fa-sign-in-alt"></i> Acceder al Sistema</button>
+    </nav>
 
-            <nav class="nav-menu">
-                <a href="#dashboard" class="nav-item active" onclick="showPage('dashboard')">
-                    <div class="nav-icon"></div>
-                    <span class="nav-text">Dashboard</span>
-                </a>
-                <a href="#casos" class="nav-item" onclick="showPage('casos')">
-                    <div class="nav-icon"></div>
-                    <span class="nav-text">Casos</span>
-                </a>
-                <a href="#reportes" class="nav-item" onclick="showPage('reportes')">
-                    <div class="nav-icon"></div>
-                    <span class="nav-text">Reportes</span>
-                </a>
-                <a href="#nuevo-caso" class="nav-item" onclick="showPage('nuevo-caso')">
-                    <div class="nav-icon"></div>
-                    <span class="nav-text">Nuevo Caso</span>
-                </a>
-                <a href="#modelos-ia" class="nav-item" onclick="showPage('modelos-ia')">
-                    <div class="nav-icon"></div>
-                    <span class="nav-text">Modelos IA</span>
-                </a>
-                <a href="#correccion" class="nav-item" onclick="showPage('correccion')">
-                    <div class="nav-icon"></div>
-                    <span class="nav-text">Corrección</span>
-                </a>
-                <a href="#configuracion" class="nav-item" onclick="showPage('configuracion')">
-                    <div class="nav-icon"></div>
-                    <span class="nav-text">Configuración</span>
-                </a>
-            </nav>
-
-            <div class="sidebar-footer">
-                <div class="ai-status">
-                    <div class="ai-dot"></div>
-                    <span class="ai-label">IA Online</span>
+    <!-- HERO SECTION -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2>Del Raw al Reporte</h2>
+                <div class="hero-slogan">
+                    Automatizamos el análisis de cariotipos para que los citogenetistas puedan enfocarse en diagnosticar, no en recortar cromosomas.
                 </div>
-                <div class="ai-version">Modelo v2.4.1 activo</div>
+                <p>Biomed es una solución de inteligencia artificial que automatiza el proceso de creación de cariotipos, reduciendo el tiempo de análisis manual en un 70% y minimizando errores por fatiga visual.</p>
+                <button class="cta-button" id="ctaLoginBtn">Solicitar Demo Gratuita <i class="fas fa-calendar-alt"></i></button>
             </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Header -->
-            <header class="header">
-                <div class="header-left">
-                    <div class="header-title">
-                        <h1 id="page-title">Dashboard</h1>
-                        <p id="page-subtitle">Vista general del sistema</p>
-                    </div>
-                    <div class="header-divider"></div>
-                    <div class="search-box">
-                        <span class="search-icon">🔍</span>
-                        <span class="search-text">Buscar por ID o paciente...</span>
-                    </div>
-                </div>
-                <div class="header-right">
-                    <button class="btn btn-primary">+ Nuevo Caso</button>
-                    <div class="header-divider"></div>
-                    <div class="user-profile">
-                        <div class="avatar">MG</div>
-                        <div class="user-info">
-                            <div class="user-name">Dra. García</div>
-                            <div class="user-role">Citogenética</div>
-                        </div>
-                    </div>
-                </div>
-            </header>
-
-            <!-- Content Area -->
-            <div class="content">
-                <!-- Dashboard Page -->
-                <section id="dashboard" class="page-section active">
-                    <div class="stats-bar">
-                        <div class="stat-item">
-                            <div class="stat-icon">✓</div>
-                            <div>
-                                <div class="stat-label">Segmentación</div>
-                                <div class="stat-sublabel">Completado</div>
-                            </div>
-                        </div>
-                        <div class="stat-divider"></div>
-                        <div class="stat-item">
-                            <div class="stat-icon">✓</div>
-                            <div>
-                                <div class="stat-label">Clasificación</div>
-                                <div class="stat-sublabel">Completado</div>
-                            </div>
-                        </div>
-                        <div class="stat-divider"></div>
-                        <div class="stat-item">
-                            <div class="stat-icon">✓</div>
-                            <div>
-                                <div class="stat-label">Validación</div>
-                                <div class="stat-sublabel">Completado</div>
-                            </div>
-                        </div>
-                        <div class="stat-divider"></div>
-                        <div class="stat-item">
-                            <div class="stat-icon">✓</div>
-                            <div>
-                                <div class="stat-label">Reporte</div>
-                                <div class="stat-sublabel">Finalizado</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="dashboard-grid">
-                        <!-- Recent Cases -->
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div>
-                                    <div class="card-title">Casos Recientes</div>
-                                    <div class="card-subtitle">8 casos actualizados hoy</div>
-                                </div>
-                                <button class="btn btn-sm btn-outline">Ver todos</button>
-                            </div>
-                            <div class="card-body">
-                                <div class="info-item" style="margin-bottom: 12px;">
-                                    <div class="info-label">CB-2026-0442</div>
-                                    <div class="info-value" style="font-size: 13px;">En validación - 75%</div>
-                                    <div class="progress-track" style="margin-top: 6px;">
-                                        <div class="progress-fill blue" style="width: 75%;"></div>
-                                    </div>
-                                </div>
-                                <div class="info-item" style="margin-bottom: 12px;">
-                                    <div class="info-label">CB-2026-0441</div>
-                                    <div class="info-value" style="font-size: 13px;">Clasificación - 50%</div>
-                                    <div class="progress-track" style="margin-top: 6px;">
-                                        <div class="progress-fill orange" style="width: 50%;"></div>
-                                    </div>
-                                </div>
-                                <div class="info-item" style="margin-bottom: 12px;">
-                                    <div class="info-label">CB-2026-0440</div>
-                                    <div class="info-value" style="font-size: 13px;">Completado - 100%</div>
-                                    <div class="progress-track" style="margin-top: 6px;">
-                                        <div class="progress-fill green" style="width: 100%;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Chromosome Viewer -->
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div>
-                                    <div class="card-title">Visor de Cromosomas</div>
-                                    <div class="card-subtitle">Caso CB-2026-0442</div>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div style="background: #1a1a2e; border-radius: 8px; height: 400px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.5);">
-                                    Visualización del cariograma
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Validation Panel -->
-                        <div class="dashboard-card">
-                            <div class="card-header">
-                                <div>
-                                    <div class="card-title">Panel de Validación</div>
-                                    <div class="card-subtitle">Acciones pendientes</div>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="validation-table">
-                                    <div class="validation-row">
-                                        <span class="validation-label">Pares analizados por IA</span>
-                                        <span class="validation-value">23</span>
-                                    </div>
-                                    <div class="validation-row">
-                                        <span class="validation-label">Clasificación automática</span>
-                                        <span class="validation-value success">20 (87%)</span>
-                                    </div>
-                                    <div class="validation-row">
-                                        <span class="validation-label">Requieren validación</span>
-                                        <span class="validation-value warning">3 (13%)</span>
-                                    </div>
-                                </div>
-                                <div style="margin-top: 20px; padding: 16px; background: var(--green-light); border-radius: 10px;">
-                                    <div style="font-size: 12px; font-weight: 600; color: var(--green-primary); margin-bottom: 8px;">Acciones de Validación</div>
-                                    <div style="font-size: 13px; color: var(--text-primary);">3 pares marcados para revisión manual</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Casos Page -->
-                <section id="casos" class="page-section">
-                    <div class="filters-bar">
-                        <span class="filter-label">Filtros:</span>
-                        <div class="filter-chip active">Todos (148)</div>
-                        <div class="filter-chip">⚠ Revisión IA (12)</div>
-                        <div class="filter-chip">En proceso (34)</div>
-                        <div class="filter-chip">✓ Completados (102)</div>
-                        <div class="filter-spacer"></div>
-                        <div class="filter-chip">📅 Últimos 7 días ▼</div>
-                    </div>
-
-                    <div class="data-table-container">
-                        <div class="table-header">
-                            <div class="table-header-cell">ID Caso</div>
-                            <div class="table-header-cell">Paciente</div>
-                            <div class="table-header-cell">Estado</div>
-                            <div class="table-header-cell">Progreso</div>
-                            <div class="table-header-cell">Prioridad</div>
-                            <div class="table-header-cell">Fecha Ingreso</div>
-                            <div class="table-header-cell">Acciones</div>
-                        </div>
-                        <div class="table-body">
-                            <div class="table-row alert">
-                                <div class="table-cell case-id" data-label="ID:">CB-2026-0442</div>
-                                <div class="table-cell patient-info" data-label="Paciente:">
-                                    <div class="patient-name">ANON-442</div>
-                                    <div class="patient-meta">Masculino, 28 años</div>
-                                </div>
-                                <div class="table-cell" data-label="Estado:">
-                                    <span class="status-badge review">
-                                        <span class="status-dot red"></span>
-                                        Revisión IA
-                                    </span>
-                                </div>
-                                <div class="table-cell" data-label="Progreso:">
-                                    <div class="progress-label">75% Validación</div>
-                                    <div class="progress-track">
-                                        <div class="progress-fill blue" style="width: 75%;"></div>
-                                    </div>
-                                </div>
-                                <div class="table-cell" data-label="Prioridad:">🔴 Alta</div>
-                                <div class="table-cell" data-label="Fecha:">10 Abr 2026</div>
-                                <div class="table-cell table-actions" data-label="Acciones:">
-                                    <button class="btn btn-sm btn-primary">Abrir</button>
-                                    <button class="btn btn-sm btn-outline">⋯</button>
-                                </div>
-                            </div>
-
-                            <div class="table-row">
-                                <div class="table-cell case-id" data-label="ID:">CB-2026-0441</div>
-                                <div class="table-cell patient-info" data-label="Paciente:">
-                                    <div class="patient-name">ANON-441</div>
-                                    <div class="patient-meta">Femenino, 35 años</div>
-                                </div>
-                                <div class="table-cell" data-label="Estado:">
-                                    <span class="status-badge processing">
-                                        <span class="status-dot orange"></span>
-                                        Clasificación
-                                    </span>
-                                </div>
-                                <div class="table-cell" data-label="Progreso:">
-                                    <div class="progress-label">50% En proceso</div>
-                                    <div class="progress-track">
-                                        <div class="progress-fill orange" style="width: 50%;"></div>
-                                    </div>
-                                </div>
-                                <div class="table-cell" data-label="Prioridad:">🟡 Media</div>
-                                <div class="table-cell" data-label="Fecha:">09 Abr 2026</div>
-                                <div class="table-cell table-actions" data-label="Acciones:">
-                                    <button class="btn btn-sm btn-primary">Abrir</button>
-                                    <button class="btn btn-sm btn-outline">⋯</button>
-                                </div>
-                            </div>
-
-                            <div class="table-row">
-                                <div class="table-cell case-id" data-label="ID:">CB-2026-0440</div>
-                                <div class="table-cell patient-info" data-label="Paciente:">
-                                    <div class="patient-name">ANON-440</div>
-                                    <div class="patient-meta">Masculino, 42 años</div>
-                                </div>
-                                <div class="table-cell" data-label="Estado:">
-                                    <span class="status-badge completed">
-                                        <span class="status-dot green"></span>
-                                        Completado
-                                    </span>
-                                </div>
-                                <div class="table-cell" data-label="Progreso:">
-                                    <div class="progress-label">100% Finalizado</div>
-                                    <div class="progress-track">
-                                        <div class="progress-fill green" style="width: 100%;"></div>
-                                    </div>
-                                </div>
-                                <div class="table-cell" data-label="Prioridad:">⚪ Normal</div>
-                                <div class="table-cell" data-label="Fecha:">08 Abr 2026</div>
-                                <div class="table-cell table-actions" data-label="Acciones:">
-                                    <button class="btn btn-sm btn-success">Ver</button>
-                                    <button class="btn btn-sm btn-outline">⋯</button>
-                                </div>
-                            </div>
-
-                            <div class="table-row">
-                                <div class="table-cell case-id" data-label="ID:">CB-2026-0439</div>
-                                <div class="table-cell patient-info" data-label="Paciente:">
-                                    <div class="patient-name">ANON-439</div>
-                                    <div class="patient-meta">Femenino, 19 años</div>
-                                </div>
-                                <div class="table-cell" data-label="Estado:">
-                                    <span class="status-badge segmentation">
-                                        <span class="status-dot blue"></span>
-                                        Segmentación
-                                    </span>
-                                </div>
-                                <div class="table-cell" data-label="Progreso:">
-                                    <div class="progress-label">25% Iniciado</div>
-                                    <div class="progress-track">
-                                        <div class="progress-fill blue" style="width: 25%;"></div>
-                                    </div>
-                                </div>
-                                <div class="table-cell" data-label="Prioridad:">⚪ Baja</div>
-                                <div class="table-cell" data-label="Fecha:">08 Abr 2026</div>
-                                <div class="table-cell table-actions" data-label="Acciones:">
-                                    <button class="btn btn-sm btn-primary">Abrir</button>
-                                    <button class="btn btn-sm btn-outline">⋯</button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="pagination">
-                            <div class="pagination-info">Mostrando 1-8 de 148 casos</div>
-                            <div class="pagination-buttons">
-                                <button class="page-btn disabled">← Anterior</button>
-                                <button class="page-btn active">1</button>
-                                <button class="page-btn">2</button>
-                                <button class="page-btn">3</button>
-                                <button class="page-btn disabled">...</button>
-                                <button class="page-btn">19</button>
-                                <button class="page-btn">Siguiente →</button>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Reportes Page -->
-                <section id="reportes" class="page-section">
-                    <div class="report-layout">
-                        <div class="report-main">
-                            <div class="card-header">
-                                <div style="display: flex; align-items: center; gap: 12px;">
-                                    <div style="width: 40px; height: 40px; background: var(--green-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">📋</div>
-                                    <div>
-                                        <div class="card-title">Reporte de Cariotipo</div>
-                                        <div class="card-subtitle">Ref: CB-2026-0442 · Generado el 10 Abr 2026, 15:45</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div class="result-highlight">
-                                    <div class="result-label">Resultado del Análisis</div>
-                                    <div class="result-title">46,XY — Caracter masculino normal</div>
-                                    <div class="result-description">
-                                        No se detectaron anomalías estructurales ni numéricas significativas. El cariotipo muestra complemento cromosómico normal con 46 cromosomas. Se validaron manualmente 3 regiones de baja confianza inicial (pares 4, 12 y 18), confirmándose su clasificación correcta tras revisión del facultativo.
-                                    </div>
-                                </div>
-
-                                <div style="margin-bottom: 24px;">
-                                    <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;">Detalles Técnicos</div>
-                                    <div class="info-grid">
-                                        <div class="info-item">
-                                            <div class="info-label">Método</div>
-                                            <div class="info-value">GTG-Banding a 450-550 bandas</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">Muestra</div>
-                                            <div class="info-value">Sangre periférica — Cultura 72h</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">Células analizadas</div>
-                                            <div class="info-value">20 metafases — 5 completas</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">Resolución promedio</div>
-                                            <div class="info-value">480 bandas ± 45</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="validation-table">
-                                    <div style="font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;">Validación IA + Humana</div>
-                                    <div class="validation-row">
-                                        <span class="validation-label">Pares analizados por IA</span>
-                                        <span class="validation-value">23</span>
-                                    </div>
-                                    <div class="validation-row">
-                                        <span class="validation-label">Clasificación automática exitosa</span>
-                                        <span class="validation-value success">20 (87%)</span>
-                                    </div>
-                                    <div class="validation-row">
-                                        <span class="validation-label">Requirieron validación humana</span>
-                                        <span class="validation-value warning">3 (13%)</span>
-                                    </div>
-                                    <div class="validation-row">
-                                        <span class="validation-label">Correcciones post-validación</span>
-                                        <span class="validation-value">0</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="report-sidebar">
-                            <div class="report-card">
-                                <div class="card-header">
-                                    <div>
-                                        <div class="card-title">Cariograma Final</div>
-                                        <div class="card-subtitle">Representación visual validada</div>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <div class="cariogram-grid">
-                                        <div class="chromosome-pair">
-                                            <div class="chromosome large"></div>
-                                            <div class="chromosome large"></div>
-                                        </div>
-                                        <div class="chromosome-pair">
-                                            <div class="chromosome medium"></div>
-                                            <div class="chromosome medium"></div>
-                                        </div>
-                                        <div class="chromosome-pair">
-                                            <div class="chromosome small"></div>
-                                            <div class="chromosome small"></div>
-                                        </div>
-                                        <div class="chromosome-pair">
-                                            <div class="chromosome small"></div>
-                                            <div class="chromosome small"></div>
-                                        </div>
-                                        <div class="chromosome-pair">
-                                            <div class="chromosome small"></div>
-                                            <div class="chromosome small"></div>
-                                        </div>
-                                        <div class="chromosome-pair">
-                                            <div class="chromosome small"></div>
-                                            <div class="chromosome small"></div>
-                                        </div>
-                                        <div class="chromosome-pair">
-                                            <div class="chromosome small"></div>
-                                            <div class="chromosome small"></div>
-                                        </div>
-                                        <div class="chromosome-pair">
-                                            <div class="chromosome small"></div>
-                                            <div class="chromosome small"></div>
-                                        </div>
-                                        <div class="sex-chromosomes">
-                                            <div class="chromosome x-chrom"></div>
-                                            <div class="chromosome y-chrom"></div>
-                                            <span class="sex-label">XY</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="report-card">
-                                <div class="card-header">
-                                    <div>
-                                        <div class="card-title">Validación Digital</div>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <div style="border: 1.5px solid var(--blue-primary); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
-                                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-                                            <div class="avatar" style="width: 40px; height: 40px; font-size: 14px;">MG</div>
-                                            <div>
-                                                <div style="font-size: 14px; font-weight: 600;">Dra. María García López</div>
-                                                <div style="font-size: 11px; color: var(--text-secondary);">Citogenética Clínica</div>
-                                            </div>
-                                        </div>
-                                        <div style="background: var(--green-light); border-radius: 6px; padding: 12px; margin-bottom: 8px;">
-                                            <div style="font-size: 11px; color: var(--green-primary);">🔒 Firmado digitalmente con certificado médico</div>
-                                        </div>
-                                        <div style="font-size: 11px; color: var(--text-secondary);">10 Abr 2026, 15:45 · Hash: a8f3d2...e4b7</div>
-                                    </div>
-                                    <button class="btn btn-primary" style="width: 100%; margin-bottom: 8px;">📄 Descargar PDF del Reporte</button>
-                                    <button class="btn btn-outline" style="width: 100%;">📤 Enviar a HIS / LIS</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Configuración Page -->
-                <section id="configuracion" class="page-section">
-                    <div class="config-layout">
-                        <div class="config-sidebar">
-                            <div class="config-nav">
-                                <div class="config-nav-title">Configuración</div>
-
-                                <div class="config-nav-item active">
-                                    <div class="config-nav-icon blue">👤</div>
-                                    <div class="config-nav-text">
-                                        <div class="config-nav-label">Perfil de Usuario</div>
-                                        <div class="config-nav-sublabel">Datos personales</div>
-                                    </div>
-                                </div>
-
-                                <div class="config-nav-item">
-                                    <div class="config-nav-icon green">🧠</div>
-                                    <div class="config-nav-text">
-                                        <div class="config-nav-label">Modelo de IA</div>
-                                        <div class="config-nav-sublabel">Ajustes del algoritmo</div>
-                                    </div>
-                                </div>
-
-                                <div class="config-nav-item">
-                                    <div class="config-nav-icon yellow">🔔</div>
-                                    <div class="config-nav-text">
-                                        <div class="config-nav-label">Notificaciones</div>
-                                        <div class="config-nav-sublabel">Alertas y avisos</div>
-                                    </div>
-                                </div>
-
-                                <div class="config-nav-item">
-                                    <div class="config-nav-icon light-blue">🔗</div>
-                                    <div class="config-nav-text">
-                                        <div class="config-nav-label">Integraciones</div>
-                                        <div class="config-nav-sublabel">HIS, LIS, API</div>
-                                    </div>
-                                </div>
-
-                                <div class="config-nav-item">
-                                    <div class="config-nav-icon red">🔒</div>
-                                    <div class="config-nav-text">
-                                        <div class="config-nav-label">Seguridad</div>
-                                        <div class="config-nav-sublabel">Privacidad y acceso</div>
-                                    </div>
-                                </div>
-
-                                <div class="config-nav-item">
-                                    <div class="config-nav-icon purple">👁️</div>
-                                    <div class="config-nav-text">
-                                        <div class="config-nav-label">Visualización</div>
-                                        <div class="config-nav-sublabel">Tema y preferencias</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="config-version">
-                                <div class="config-version-title">Versión del Sistema</div>
-                                <div class="config-version-info">
-                                    <div class="config-version-number">Biomed v2.4.1</div>
-                                    <div class="config-version-date">Build 2026.04.10 · Última actualización hoy</div>
-                                </div>
-                                <div class="config-status">
-                                    <div class="config-status-dot"></div>
-                                    <span class="config-status-text">Todo está actualizado</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="config-content">
-                            <div class="config-content-header">
-                                <div class="config-content-title">Perfil de Usuario</div>
-                                <div class="config-content-subtitle">Actualiza tu información personal y credenciales</div>
-                            </div>
-
-                            <div class="config-content-body">
-                                <div class="profile-section">
-                                    <div class="profile-avatar">MG</div>
-                                    <div class="profile-actions">
-                                        <div class="profile-label">Foto de perfil</div>
-                                        <div class="profile-buttons">
-                                            <button class="btn btn-primary">Subir nueva foto</button>
-                                            <button class="btn btn-outline">Eliminar</button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-grid">
-                                    <div class="form-group">
-                                        <label class="form-label">Nombre completo</label>
-                                        <input type="text" class="form-input" value="María García López">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Correo institucional</label>
-                                        <input type="email" class="form-input" value="mgarcia@umss.bo">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Especialidad</label>
-                                        <input type="text" class="form-input" value="Citogenética Clínica">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Registro profesional</label>
-                                        <input type="text" class="form-input" value="MED-4452-BO">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Teléfono</label>
-                                        <input type="tel" class="form-input" value="+591 2 2154847">
-                                    </div>
-                                    <div class="form-group">
-                                        <label class="form-label">Ubicación</label>
-                                        <input type="text" class="form-input" value="UMSS · Hospital del Norte">
-                                    </div>
-                                </div>
-
-                                <div class="security-section">
-                                    <div class="section-header">
-                                        <div class="section-icon red">🔐</div>
-                                        <div class="section-title">Cambiar contraseña</div>
-                                    </div>
-                                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-                                        <div class="form-group">
-                                            <label class="form-label">Contraseña actual</label>
-                                            <input type="password" class="form-input" value="••••••••••••">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Nueva contraseña</label>
-                                            <input type="password" class="form-input" placeholder="Ingresa nueva contraseña">
-                                        </div>
-                                    </div>
-                                    <button class="btn btn-success" style="margin-top: 16px;">Actualizar contraseña</button>
-                                </div>
-
-                                <div style="border: 1.5px solid var(--border-light); border-radius: 12px; padding: 24px;">
-                                    <div class="section-header">
-                                        <div class="section-icon green">✍️</div>
-                                        <div class="section-title">Preferencias de firma digital</div>
-                                    </div>
-                                    <div style="display: flex; flex-direction: column; gap: 16px;">
-                                        <div class="toggle-item">
-                                            <div class="toggle-info">
-                                                <h4>Requerir PIN para firmar</h4>
-                                                <p>Solicitar autenticación adicional antes de firmar reportes</p>
-                                            </div>
-                                            <div class="toggle-switch"></div>
-                                        </div>
-                                        <div class="toggle-item">
-                                            <div class="toggle-info">
-                                                <h4>Firma automática en reportes</h4>
-                                                <p>Incluir firma digital automáticamente al completar</p>
-                                            </div>
-                                            <div class="toggle-switch"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Nuevo Caso Page -->
-                <section id="nuevo-caso" class="page-section">
-                    <div style="max-width: 900px; margin: 0 auto;">
-                        <div class="dashboard-card" style="margin-bottom: 24px;">
-                            <div class="card-header">
-                                <div>
-                                    <div class="card-title">Crear Nuevo Caso</div>
-                                    <div class="card-subtitle">Ingresa la información del paciente y la muestra</div>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <!-- Información del Paciente -->
-                                <div class="form-section">
-                                    <div class="form-section-title">📋 Información del Paciente</div>
-                                    <div class="form-row three-col">
-                                        <div class="form-group">
-                                            <label class="form-label">ID Paciente *</label>
-                                            <input type="text" class="form-input" placeholder="Ej: ANON-443">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Nombre completo *</label>
-                                            <input type="text" class="form-input" placeholder="Nombre del paciente">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Fecha de nacimiento *</label>
-                                            <input type="date" class="form-input">
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row three-col">
-                                        <div class="form-group">
-                                            <label class="form-label">Género *</label>
-                                            <select class="form-input" style="cursor: pointer;">
-                                                <option>Seleccionar...</option>
-                                                <option>Masculino</option>
-                                                <option>Femenino</option>
-                                                <option>Otro</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Documento de identidad</label>
-                                            <input type="text" class="form-input" placeholder="CI / Pasaporte">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Teléfono de contacto</label>
-                                            <input type="tel" class="form-input" placeholder="+591 XXXXXXXX">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Información de la Muestra -->
-                                <div class="form-section">
-                                    <div class="form-section-title">🧪 Información de la Muestra</div>
-
-                                    <div class="form-row three-col">
-                                        <div class="form-group">
-                                            <label class="form-label">Tipo de muestra *</label>
-                                            <select class="form-input" style="cursor: pointer;">
-                                                <option>Seleccionar...</option>
-                                                <option selected>Sangre periférica</option>
-                                                <option>Médula ósea</option>
-                                                <option>Líquido amniótico</option>
-                                                <option>Vellosidades coriales</option>
-                                            </select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Fecha de recolección *</label>
-                                            <input type="date" class="form-input" value="2026-04-13">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Método de cultivo</label>
-                                            <select class="form-input" style="cursor: pointer;">
-                                                <option>Seleccionar...</option>
-                                                <option selected>Sangre periférica — Cultura 72h</option>
-                                                <option>Médula ósea — Cultura 24h</option>
-                                                <option>Líquido amniótico — Cultura 7 días</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label class="form-label">Médico solicitante *</label>
-                                            <input type="text" class="form-input" placeholder="Nombre del médico">
-                                        </div>
-                                        <div class="form-group">
-                                            <label class="form-label">Servicio/Departamento</label>
-                                            <input type="text" class="form-input" placeholder="Ej: Genética Clínica">
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Historial Clínico -->
-                                <div class="form-section">
-                                    <div class="form-section-title">📖 Historial Clínico</div>
-
-                                    <div class="form-group" style="margin-bottom: 16px;">
-                                        <label class="form-label">Motivo de la consulta / Indicación</label>
-                                        <textarea class="form-input" placeholder="Describa el motivo de la solicitud del estudio citogenético..."></textarea>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label class="form-label">Antecedentes familiares relevantes</label>
-                                        <textarea class="form-input" placeholder="Historial de condiciones genéticas en la familia..."></textarea>
-                                    </div>
-                                </div>
-
-                                <!-- Tipo de Análisis -->
-                                <div class="form-section">
-                                    <div class="form-section-title">🔬 Solicitud de Análisis</div>
-
-                                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
-                                        <div class="checkbox-group">
-                                            <div class="checkbox-item">
-                                                <input type="checkbox" class="checkbox" id="analisis1" checked>
-                                                <label for="analisis1" class="checkbox-label">Cariotipo de alta resolución (GTG-banding 450-550)</label>
-                                            </div>
-                                            <div class="checkbox-item">
-                                                <input type="checkbox" class="checkbox" id="analisis2">
-                                                <label for="analisis2" class="checkbox-label">Análisis de mosaicismo</label>
-                                            </div>
-                                            <div class="checkbox-item">
-                                                <input type="checkbox" class="checkbox" id="analisis3">
-                                                <label for="analisis3" class="checkbox-label">FISH (Fluorescence in situ hybridization)</label>
-                                            </div>
-                                        </div>
-
-                                        <div class="checkbox-group">
-                                            <div class="checkbox-item">
-                                                <input type="checkbox" class="checkbox" id="analisis4">
-                                                <label for="analisis4" class="checkbox-label">Array-CGH (Microarray)</label>
-                                            </div>
-                                            <div class="checkbox-item">
-                                                <input type="checkbox" class="checkbox" id="analisis5">
-                                                <label for="analisis5" class="checkbox-label">Estudio de fragilidad cromosómica</label>
-                                            </div>
-                                            <div class="checkbox-item">
-                                                <input type="checkbox" class="checkbox" id="analisis6">
-                                                <label for="analisis6" class="checkbox-label">Otro (especificar en notas)</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Adjuntar Archivos -->
-                                <div class="form-section">
-                                    <div class="form-section-title">📎 Adjuntar Archivos</div>
-
-                                    <div class="file-upload">
-                                        <div class="file-upload-icon">📤</div>
-                                        <div class="file-upload-text">Arrastra archivos aquí o haz clic para seleccionar</div>
-                                        <div class="file-upload-hint">Imágenes de metafases, reportes previos, documentación (PDF, JPG, PNG - máx. 50MB)</div>
-                                    </div>
-                                </div>
-
-                                <!-- Notas Adicionales -->
-                                <div class="form-section">
-                                    <div class="form-section-title">📝 Notas Adicionales</div>
-
-                                    <div class="form-group">
-                                        <textarea class="form-input" placeholder="Información adicional relevante para el análisis..."></textarea>
-                                    </div>
-                                </div>
-
-                                <!-- Acciones -->
-                                <div style="display: flex; gap: 12px; justify-content: flex-end; padding-top: 24px; border-top: 1px solid var(--border-light);">
-                                    <button class="btn btn-outline">Guardar borrador</button>
-                                    <button class="btn btn-outline">Cancelar</button>
-                                    <button class="btn btn-primary">🚀 Iniciar análisis con IA</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Modelos IA Page -->
-                <section id="modelos-ia" class="page-section">
-                    <div class="models-layout">
-                        <div class="models-list">
-                            <div style="font-size: 14px; font-weight: 700; margin-bottom: 20px;">Modelos Disponibles</div>
-
-                            <div class="model-item active">
-                                <div class="model-header">
-                                    <span class="model-name">CarioNet v2.4</span>
-                                    <span class="model-status active">Activo</span>
-                                </div>
-                                <div class="model-meta">Entrenado: 2026-04-10 · 15k+ casos</div>
-                                <div class="model-metrics">
-                                    <div class="metric">
-                                        <div class="metric-value">97.2%</div>
-                                        <div class="metric-label">Precisión</div>
-                                    </div>
-                                    <div class="metric">
-                                        <div class="metric-value">92ms</div>
-                                        <div class="metric-label">Latencia</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="model-item">
-                                <div class="model-header">
-                                    <span class="model-name">CarioNet v2.3</span>
-                                    <span class="model-status" style="background: var(--gray-light); color: var(--gray-primary);">Anterior</span>
-                                </div>
-                                <div class="model-meta">Entrenado: 2026-01-15 · 12k+ casos</div>
-                                <div class="model-metrics">
-                                    <div class="metric">
-                                        <div class="metric-value">95.8%</div>
-                                        <div class="metric-label">Precisión</div>
-                                    </div>
-                                    <div class="metric">
-                                        <div class="metric-value">110ms</div>
-                                        <div class="metric-label">Latencia</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="model-item">
-                                <div class="model-header">
-                                    <span class="model-name">CarioNet v2.2-beta</span>
-                                    <span class="model-status" style="background: #fff9e6; color: #d45100;">Beta</span>
-                                </div>
-                                <div class="model-meta">Entrenado: 2025-11-20 · 8k+ casos</div>
-                                <div class="model-metrics">
-                                    <div class="metric">
-                                        <div class="metric-value">94.1%</div>
-                                        <div class="metric-label">Precisión</div>
-                                    </div>
-                                    <div class="metric">
-                                        <div class="metric-value">135ms</div>
-                                        <div class="metric-label">Latencia</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style="background: var(--green-light); border-radius: 10px; padding: 16px; margin-top: 24px;">
-                                <div style="font-size: 12px; font-weight: 600; color: var(--green-primary); margin-bottom: 8px;">📊 Rendimiento del sistema</div>
-                                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
-                                    <div class="metric">
-                                        <div class="metric-value" style="font-size: 20px; color: var(--green-primary);">148</div>
-                                        <div class="metric-label">Casos procesados hoy</div>
-                                    </div>
-                                    <div class="metric">
-                                        <div class="metric-value" style="font-size: 20px; color: var(--green-primary);">99.9%</div>
-                                        <div class="metric-label">Uptime</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="model-detail">
-                            <div class="config-content-header">
-                                <div style="display: flex; align-items: center; gap: 16px;">
-                                    <div style="width: 44px; height: 44px; background: var(--green-light); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">🧠</div>
-                                    <div>
-                                        <div class="config-content-title">Configuración del Modelo</div>
-                                        <div class="config-content-subtitle">CarioNet v2.4 - Modelo en producción</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="config-content-body">
-                                <div class="form-section">
-                                    <div class="form-section-title">⚙️ Parámetros de Clasificación</div>
-
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label class="form-label">Umbral de confianza mínima</label>
-                                            <div style="display: flex; align-items: center; gap: 12px;">
-                                                <input type="range" style="flex: 1;" min="0" max="100" value="85">
-                                                <span style="font-weight: 600; min-width: 40px;">85%</span>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label class="form-label">Sensibilidad de detección</label>
-                                            <div style="display: flex; align-items: center; gap: 12px;">
-                                                <input type="range" style="flex: 1;" min="0" max="100" value="92">
-                                                <span style="font-weight: 600; min-width: 40px;">92%</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="form-row">
-                                        <div class="form-group">
-                                            <label class="form-label">Modo de análisis</label>
-                                            <select class="form-input" style="cursor: pointer;">
-                                                <option selected>Rápido (prioriza velocidad)</option>
-                                                <option>Balanceado</option>
-                                                <option>Precisión máxima (más lento)</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label class="form-label">Nivel de logging</label>
-                                            <select class="form-input" style="cursor: pointer;">
-                                                <option>Mínimo</option>
-                                                <option selected>Normal</option>
-                                                <option>Detallado</option>
-                                                <option>Debug</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-section">
-                                    <div class="form-section-title">🎯 Métricas de Precisión</div>
-
-                                    <div class="info-grid">
-                                        <div class="info-item">
-                                            <div class="info-label">Precisión global</div>
-                                            <div class="info-value" style="font-size: 24px; color: var(--green-primary);">97.2%</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">Sensibilidad</div>
-                                            <div class="info-value" style="font-size: 24px; color: var(--green-primary);">96.8%</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">Especificidad</div>
-                                            <div class="info-value" style="font-size: 24px; color: var(--green-primary);">98.1%</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">F1-Score</div>
-                                            <div class="info-value" style="font-size: 24px; color: var(--green-primary);">0.969</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="form-section">
-                                    <div class="form-section-title">📈 Entrenamiento y Validación</div>
-
-                                    <div class="validation-table">
-                                        <div class="validation-row">
-                                            <span class="validation-label">Dataset de entrenamiento</span>
-                                            <span class="validation-value">15,420 casos</span>
-                                        </div>
-                                        <div class="validation-row">
-                                            <span class="validation-label">Dataset de validación</span>
-                                            <span class="validation-value">3,855 casos</span>
-                                        </div>
-                                        <div class="validation-row">
-                                            <span class="validation-label">Epochs de entrenamiento</span>
-                                            <span class="validation-value">250</span>
-                                        </div>
-                                        <div class="validation-row">
-                                            <span class="validation-label">Arquitectura</span>
-                                            <span class="validation-value">ResNet-152 + Attention</span>
-                                        </div>
-                                        <div class="validation-row">
-                                            <span class="validation-label">Última actualización</span>
-                                            <span class="validation-value">10 Abr 2026</span>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div style="display: flex; gap: 12px; justify-content: flex-end; padding-top: 24px; border-top: 1px solid var(--border-light);">
-                                    <button class="btn btn-outline">Restaurar valores por defecto</button>
-                                    <button class="btn btn-primary">Guardar configuración</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Corrección Cariograma Page -->
-                <section id="correccion" class="page-section">
-                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 12px 20px; background: var(--white); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);">
-                        <div class="btn btn-sm btn-outline">🔍 Zoom: 100%</div>
-                        <div class="header-divider"></div>
-                        <div class="btn btn-sm btn-outline">✋ Mover</div>
-                        <div class="btn btn-sm btn-outline">✏️ Anotar</div>
-                        <div class="btn btn-sm btn-outline">📏 Medir</div>
-                        <div class="btn btn-sm btn-outline">✂️ Recortar</div>
-                        <div class="header-divider"></div>
-                        <div class="btn btn-sm btn-primary">↩️ Deshacer</div>
-                        <div class="btn btn-sm btn-primary">↪️ Rehacer</div>
-                        <div class="header-divider"></div>
-                        <div style="font-size: 13px; color: var(--text-secondary);">Caso: CB-2026-0442 · Par 4 seleccionado</div>
-                        <div class="filter-spacer"></div>
-                        <div class="btn btn-success">✓ Guardar correcciones</div>
-                    </div>
-
-                    <div class="editor-layout">
-                        <div class="editor-panel">
-                            <div style="padding: 16px; border-bottom: 1px solid var(--border-light); font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-secondary);">
-                                Thumbnails (20 metafases)
-                            </div>
-                            <div class="thumbnails-list">
-                                <div class="thumbnail-item active">01</div>
-                                <div class="thumbnail-item">02</div>
-                                <div class="thumbnail-item">03</div>
-                                <div class="thumbnail-item">04</div>
-                                <div class="thumbnail-item">05</div>
-                                <div class="thumbnail-item">06</div>
-                                <div class="thumbnail-item">07</div>
-                                <div class="thumbnail-item">08</div>
-                            </div>
-                        </div>
-
-                        <div class="editor-panel">
-                            <div class="editor-toolbar">
-                                <button class="tool-btn">🔍+</button>
-                                <button class="tool-btn">🔍-</button>
-                                <button class="tool-btn">↔️</button>
-                                <button class="tool-btn">↕️</button>
-                                <div style="width: 1px; height: 24px; background: var(--border-light);"></div>
-                                <button class="tool-btn">🎨</button>
-                                <button class="tool-btn">📝</button>
-                                <button class="tool-btn">📐</button>
-                                <div style="width: 1px; height: 24px; background: var(--border-light);"></div>
-                                <button class="tool-btn">🎯</button>
-                                <button class="tool-btn">✓</button>
-                            </div>
-
-                            <div class="editor-canvas">
-                                <div class="canvas-placeholder">
-                                    <div style="text-align: center;">
-                                        <div style="font-size: 48px; margin-bottom: 16px;">🧬</div>
-                                        <div>Visor de Cariograma</div>
-                                        <div style="font-size: 12px; margin-top: 8px; opacity: 0.6;">Metafase 01 de 20 · Resolución 450-550 bandas</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="editor-panel">
-                            <div style="padding: 20px; border-bottom: 1px solid var(--border-light);">
-                                <div style="font-size: 14px; font-weight: 700; margin-bottom: 4px;">Propiedades del Cromosoma</div>
-                                <div style="font-size: 12px; color: var(--text-secondary);">Par 4 - Seleccionado</div>
-                            </div>
-
-                            <div style="padding: 20px;">
-                                <div class="form-group" style="margin-bottom: 16px;">
-                                    <label class="form-label">Clasificación IA</label>
-                                    <div style="padding: 12px; background: #fff9e6; border-radius: 8px; border: 1px solid #ffa726;">
-                                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                                            <span style="font-size: 16px;">⚠️</span>
-                                            <span style="font-weight: 600; color: #d45100;">Baja confianza (72%)</span>
-                                        </div>
-                                        <div style="font-size: 11px; color: var(--text-secondary);">Posible variante estructural detectada</div>
-                                    </div>
-                                </div>
-
-                                <div class="form-group" style="margin-bottom: 16px;">
-                                    <label class="form-label">Clasificación manual</label>
-                                    <select class="form-input" style="cursor: pointer;">
-                                        <option>Seleccionar par...</option>
-                                        <option>Par 1</option>
-                                        <option>Par 2</option>
-                                        <option>Par 3</option>
-                                        <option selected>Par 4</option>
-                                        <option>Par 5</option>
-                                        <option>Par 6-12</option>
-                                        <option>Par 13-15</option>
-                                        <option>Par 16-18</option>
-                                        <option>Par 19-20</option>
-                                        <option>Par 21-22</option>
-                                        <option>Cromosomas sexuales</option>
-                                    </select>
-                                </div>
-
-                                <div class="form-group" style="margin-bottom: 16px;">
-                                    <label class="form-label">Observaciones</label>
-                                    <textarea class="form-input" rows="3" placeholder="Describa las características observadas...">Cromosoma de tamaño normal, bandas GTG bien definidas. Sin evidencia de deleciones o duplicaciones visibles.</textarea>
-                                </div>
-
-                                <div style="background: var(--off-white); border-radius: 10px; padding: 16px; margin-bottom: 16px;">
-                                    <div style="font-size: 12px; font-weight: 600; margin-bottom: 12px;">Medidas (automático)</div>
-
-                                    <div class="info-grid" style="gap: 8px;">
-                                        <div class="info-item">
-                                            <div class="info-label">Longitud</div>
-                                            <div class="info-value">4.2 µm</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">Índice centromérico</div>
-                                            <div class="info-value">0.38</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">Bandas visibles</div>
-                                            <div class="info-value">~480</div>
-                                        </div>
-                                        <div class="info-item">
-                                            <div class="info-label">Calidad de imagen</div>
-                                            <div class="info-value">Buena</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div style="border-top: 1px solid var(--border-light); padding-top: 16px;">
-                                    <div style="font-size: 12px; font-weight: 600; margin-bottom: 12px;">Historial de cambios</div>
-
-                                    <div style="font-size: 11px; color: var(--text-secondary); line-height: 1.6;">
-                                        <div style="margin-bottom: 8px;"><span style="color: var(--text-primary);">[14:32]</span> Clasificación inicial por IA</div>
-                                        <div><span style="color: var(--text-primary);">[--:--]</span> Pendiente de revisión manual</div>
-                                    </div>
-                                </div>
-
-                                <div style="display: flex; gap: 8px; margin-top: 20px;">
-                                    <button class="btn btn-success" style="flex: 1;">✓ Validar corrección</button>
-                                    <button class="btn btn-outline">⚠️ Reportar anomalía</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+        </div>
+    </section>
+
+    <!-- PROBLEM SECTION -->
+    <section id="problema" class="problem">
+        <div class="container">
+            <div class="section-title">
+                <h2>Optimización del Procesamiento Citogenético Manual</h2>
+                <p>El análisis tradicional de metafases demanda recursos excesivos. Nuestra plataforma automatiza el flujo de trabajo para mejorar la eficiencia operativa.</p>
             </div>
-        </main>
+            <div class="problem-grid">
+                <div class="problem-card"><div class="problem-icon"><i class="fas fa-clock"></i></div><h3>Tiempo Excesivo</h3><p>15-30 minutos por caso dedicados exclusivamente a tareas manuales de recorte y clasificación de cromosomas.</p></div>
+                <div class="problem-card"><div class="problem-icon"><i class="fas fa-eye"></i></div><h3>Fatiga Visual</h3><p>Horas de análisis visual continuo que afectan la concentración y aumentan el riesgo de errores por fatiga.</p></div>
+                <div class="problem-card"><div class="problem-icon"><i class="fas fa-exclamation-triangle"></i></div><h3>Variabilidad en Resultados</h3><p>Clasificación subjetiva de cromosomas similares que puede variar entre diferentes técnicos.</p></div>
+                <div class="problem-card"><div class="problem-icon"><i class="fas fa-tachometer-alt"></i></div><h3>Presión por Reducir TAT</h3><p>Constante presión para reducir el tiempo de entrega (TAT) de resultados en un entorno de alta carga de trabajo.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOLUTION SECTION -->
+    <section id="solucion" class="solution">
+        <div class="container">
+            <div class="section-title">
+                <h2>Nuestra Solución: Asistente Inteligente para Citogenetistas</h2>
+                <p>Biomed genera automáticamente un borrador de cariotipo organizado para que usted solo tenga que validar y corregir.</p>
+            </div>
+            <div class="solution-content">
+                <div class="solution-text">
+                    <h2>Automatización inteligente con IA</h2>
+                    <p>Biomed utiliza algoritmos avanzados de visión por computadora para identificar, segmentar y clasificar automáticamente los cromosomas en imágenes de metafase.</p>
+                    <ul class="solution-features">
+                        <li><i class="fas fa-check-circle"></i> <strong>Precisión superior al 97%</strong> en condiciones de laboratorio estándar</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Interfaz intuitiva</strong> con herramientas de corrección fáciles de usar</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Generación automática de informe ISCN</strong> que se actualiza en tiempo real</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Control total del experto</strong> sobre el resultado final</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Reducción de tiempo</strong> de 25 a 5 minutos por caso en promedio</li>
+                    </ul>
+                </div>
+                <div class="solution-visual">
+                    <div class="demo-placeholder">
+                        <div style="text-align: center; color: var(--blue-primary);">
+                            <i class="fas fa-chart-bar" style="font-size: 4rem; margin-bottom: 15px;"></i>
+                            <p style="font-weight: 500;">Simulador de Procesamiento Automático</p>
+                        </div>
+                    </div>
+                    <p>Visualización interactiva del cariograma generado automáticamente con herramientas de edición intuitivas.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ROLES SECTION -->
+    <section class="roles">
+        <div class="container">
+            <div class="section-title">
+                <h2>Roles del Sistema</h2>
+                <p>Tres perfiles diseñados para cada necesidad en el flujo de trabajo citogenético</p>
+            </div>
+            <div class="roles-grid">
+                <div class="role-card">
+                    <div class="role-icon"><i class="fas fa-user-md"></i></div>
+                    <h3>Citogenetista</h3>
+                    <div class="role-desc">Especialista validador encargado de la revisión y aprobación final de los cariotipos generados por IA.</div>
+                    <span class="role-badge">Validación diagnóstica</span>
+                </div>
+                <div class="role-card">
+                    <div class="role-icon"><i class="fas fa-clipboard-list"></i></div>
+                    <h3>Supervisor</h3>
+                    <div class="role-desc">Especialista en control de calidad, auditoría de casos y gestión del rendimiento del equipo.</div>
+                    <span class="role-badge">Control de calidad</span>
+                </div>
+                <div class="role-card">
+                    <div class="role-icon"><i class="fas fa-cogs"></i></div>
+                    <h3>Administrador</h3>
+                    <div class="role-desc">Gestión de usuarios, configuración del sistema, integraciones y mantenimiento técnico.</div>
+                    <span class="role-badge">Configuración técnica</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA SECTION -->
+    <section id="demo" class="cta-section">
+        <div class="container">
+            <h2>¿Listo para transformar su flujo de trabajo de citogenética?</h2>
+            <p style="max-width: 700px; margin: 0 auto 30px;">Únase a los laboratorios pioneros que ya están probando Biomed. Solicite una demo gratuita y personalizada.</p>
+            <button class="demo-button" id="demoLoginBtn">Solicitar Demo <i class="fas fa-arrow-right"></i></button>
+            <p style="margin-top: 20px; font-size: 0.85rem;">Demo de 15 minutos sin compromiso</p>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section"><h3>Biomed UMSS</h3><p>Automatizamos el análisis de cariotipos para que los citogenetistas puedan enfocarse en diagnosticar.</p><p><i class="fas fa-envelope"></i> info@biomed.umss.bo</p></div>
+                <div class="footer-section"><h3>Enlaces Rápidos</h3><a href="#problema">El Problema</a><a href="#solucion">La Solución</a><a href="#demo">Solicitar Demo</a></div>
+                <div class="footer-section"><h3>Equipo Fundador</h3><p>CEO/Investigación & Producto</p><p>CTO/Prompts & Desarrollo</p><p>CMO/Validación & Growth</p></div>
+            </div>
+            <div class="copyright"><p>&copy; 2026 Biomed UMSS. Todos los derechos reservados. | Sistema de Cariotipado Asistido por IA</p></div>
+        </div>
+    </footer>
+
+    <!-- MODAL DE LOGIN -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="login-modal">
+            <div class="modal-header">
+                <span class="close-modal" onclick="closeLoginModal()">&times;</span>
+                <h3><i class="fas fa-dna"></i> BIOMED UMSS</h3>
+                <p>Iniciar Sesión</p>
+            </div>
+            <div class="modal-body">
+                <div id="loginError" class="alert-error">⚠️ Credenciales incorrectas</div>
+                <div class="role-selector" id="roleSelector">
+                    <div class="role-option" data-role="citogenetista"><i class="fas fa-user-md"></i><span>Citogenetista</span></div>
+                    <div class="role-option" data-role="supervisor"><i class="fas fa-clipboard-list"></i><span>Supervisor</span></div>
+                    <div class="role-option" data-role="admin"><i class="fas fa-cogs"></i><span>Administrador</span></div>
+                </div>
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <input type="text" id="loginUser" placeholder="Ingrese su usuario">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="loginPass" placeholder="••••••••">
+                </div>
+                <button class="login-submit" onclick="handleLogin()">Ingresar al Sistema</button>
+            </div>
+        </div>
     </div>
 
     <script>
-        // Navigation
-        function showPage(pageId) {
-            // Hide all pages
-            document.querySelectorAll('.page-section').forEach(section => {
-                section.classList.remove('active');
+        // Credenciales por rol
+        const credentials = {
+            citogenetista: { user: "cito", pass: "cito", redirect: "crudmuestra.html" },
+            supervisor: { user: "super", pass: "super", redirect: "supervisor.html" },
+            admin: { user: "admin", pass: "admin", redirect: "configuracion.html" }
+        };
+
+        let selectedRole = "citogenetista";
+
+        // Selector de rol
+        document.querySelectorAll('.role-option').forEach(opt => {
+            opt.addEventListener('click', function() {
+                document.querySelectorAll('.role-option').forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedRole = this.getAttribute('data-role');
             });
+        });
+        document.querySelector('.role-option').classList.add('selected');
 
-            // Show selected page
-            document.getElementById(pageId).classList.add('active');
+        // Modal functions
+        function openLoginModal() {
+            document.getElementById('loginModal').classList.add('active');
+            document.getElementById('loginError').style.display = 'none';
+            document.getElementById('loginUser').value = '';
+            document.getElementById('loginPass').value = '';
+        }
 
-            // Update nav items
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            event.target.closest('.nav-item').classList.add('active');
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.remove('active');
+        }
 
-            // Update header
-            const titles = {
-                'dashboard': { title: 'Dashboard', subtitle: 'Vista general del sistema' },
-                'casos': { title: 'Casos Clínicos', subtitle: '148 casos en total · 12 requieren atención' },
-                'reportes': { title: 'Reporte de Cariotipo', subtitle: 'CB-2026-0442 · Validado' },
-                'nuevo-caso': { title: 'Crear Nuevo Caso', subtitle: 'Ingresa la información del paciente y la muestra' },
-                'modelos-ia': { title: 'Modelos de IA', subtitle: 'Gestiona y configura los modelos de análisis' },
-                'correccion': { title: 'Corrección de Cariograma', subtitle: 'CB-2026-0442 · Validación manual de cromosomas' },
-                'configuracion': { title: 'Configuración del Sistema', subtitle: 'Personaliza tu experiencia y ajustes del sistema' }
-            };
+        function handleLogin() {
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
+            const cred = credentials[selectedRole];
 
-            document.getElementById('page-title').textContent = titles[pageId].title;
-            document.getElementById('page-subtitle').textContent = titles[pageId].subtitle;
-
-            // Close sidebar on mobile
-            if (window.innerWidth <= 992) {
-                document.getElementById('sidebar').classList.remove('open');
+            if (user === cred.user && pass === cred.pass) {
+                localStorage.setItem('biomed_user', JSON.stringify({ role: selectedRole, name: user }));
+                window.location.href = cred.redirect;
+            } else {
+                document.getElementById('loginError').style.display = 'block';
             }
         }
 
-        // Mobile sidebar toggle
-        function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
-        }
+        // Event listeners
+        document.getElementById('openLoginBtn').addEventListener('click', openLoginModal);
+        document.getElementById('ctaLoginBtn').addEventListener('click', openLoginModal);
+        document.getElementById('demoLoginBtn').addEventListener('click', openLoginModal);
 
-        // Close sidebar when clicking outside on mobile
-        document.addEventListener('click', function(e) {
-            const sidebar = document.getElementById('sidebar');
-            const menuToggle = document.querySelector('.menu-toggle');
-
-            if (window.innerWidth <= 992 &&
-                sidebar.classList.contains('open') &&
-                !sidebar.contains(e.target) &&
-                !menuToggle.contains(e.target)) {
-                sidebar.classList.remove('open');
-            }
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('loginModal').addEventListener('click', function(e) {
+            if (e.target === this) closeLoginModal();
         });
 
-        // Filter chips
-        document.querySelectorAll('.filter-chip').forEach(chip => {
-            chip.addEventListener('click', function() {
-                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-                this.classList.add('active');
-            });
-        });
-
-        // Config nav items
-        document.querySelectorAll('.config-nav-item').forEach(item => {
-            item.addEventListener('click', function() {
-                document.querySelectorAll('.config-nav-item').forEach(i => i.classList.remove('active'));
-                this.classList.add('active');
-            });
+        // Enter key
+        document.getElementById('loginPass').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') handleLogin();
         });
     </script>
 </body>
