@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>BIOMED UMSS | Clasificación y Corrección de Cariotipo</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --umss-blue: #003770;
+            --umss-red: #E30613;
+            --blue-hover: #003265;
+            --blue-light: #e6ebf1;
+            --green-success: #1e8868;
+            --green-light: #e9f3f0;
+            --orange-warning: #d45100;
+            --orange-light: #fbeee6;
+            --gray-bg: #f8f9fa;
+            --gray-text: #64748b;
+            --white: #ffffff;
+            --border-light: #e2e8f0;
+            --dark-workspace: #11181c;
+            --dark-panel: #1a1c23;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,55,112,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,55,112,0.15);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+        }
+
+        body {
+            background: #eef2f5;
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            color: #1a2c3e;
+        }
+
+        /* ============================================ */
+        /* NAVBAR SUPERIOR - ESTILO UMSS */
+        /* ============================================ */
+        .navbar {
+            background: var(--umss-blue);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .nav-brand { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .nav-brand h1 { font-size: 1.3rem; font-weight: 700; }
+        .role-tag { background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.2); }
+        .nav-links { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+        .nav-item { color: #cbd5e1; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; cursor: pointer; padding: 8px 0; }
+        .nav-item.active { color: white; font-weight: 600; border-bottom: 2px solid var(--umss-red); }
+        .nav-item:hover { color: white; }
+        .badge-alert { background: var(--umss-red); color: white; font-size: 0.65rem; padding: 2px 8px; border-radius: 10px; animation: pulse 2s infinite; }
+        .user-info { text-align: right; }
+        .user-name { font-size: 0.8rem; font-weight: 600; }
+        .user-role { font-size: 0.6rem; color: #cbd5e1; }
+
+        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.05); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
+
+        /* ============================================ */
+        /* MAIN DASHBOARD */
+        /* ============================================ */
+        .dashboard {
+            max-width: 1600px;
+            margin: 1.5rem auto;
+            background: var(--gray-bg);
+            border-radius: 28px;
+            box-shadow: var(--shadow-lg);
+            overflow: hidden;
+        }
+
+        /* HEADER INTERNO */
+        .header {
+            background: white;
+            border-bottom: 1px solid var(--border-light);
+            padding: 1rem 1.8rem;
+        }
+
+        .top-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .search-bar {
+            background: var(--gray-bg);
+            border-radius: 40px;
+            padding: 0.5rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 280px;
+        }
+        .search-bar input {
+            border: none;
+            background: transparent;
+            font-size: 0.85rem;
+            outline: none;
+            width: 100%;
+        }
+
+        .action-buttons { display: flex; gap: 12px; align-items: center; }
+        .btn-primary {
+            background: var(--umss-blue);
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-primary:hover { background: var(--blue-hover); }
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--umss-blue), var(--umss-red));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Stepper */
+        .stepper-row { margin-top: 1.2rem; }
+        .steps {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 700px;
+            margin-bottom: 10px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--gray-text);
+        }
+        .step-item { display: flex; align-items: center; gap: 6px; }
+        .step-done { color: var(--green-success); font-weight: 600; }
+        .step-current { color: var(--umss-blue); font-weight: 700; }
+        .progress-container {
+            background: var(--border-light);
+            border-radius: 12px;
+            height: 6px;
+            width: 100%;
+        }
+        .progress-fill {
+            background: var(--green-success);
+            width: 60%;
+            height: 6px;
+            border-radius: 12px;
+        }
+
+        /* ============================================ */
+        /* 3-COLUMN LAYOUT */
+        /* ============================================ */
+        .three-col {
+            display: grid;
+            grid-template-columns: 260px 1fr 340px;
+            gap: 0;
+            background: var(--gray-bg);
+        }
+
+        /* LEFT PANEL */
+        .left-panel {
+            background: white;
+            border-right: 1px solid var(--border-light);
+            padding: 1.2rem;
+        }
+        .panel-title {
+            font-weight: 700;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 1rem;
+            color: var(--umss-blue);
+        }
+        .thumbnail-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .thumb-card {
+            background: var(--gray-bg);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .thumb-card.selected {
+            border-color: var(--umss-blue);
+            background: var(--blue-light);
+            box-shadow: var(--shadow-sm);
+        }
+        .thumb-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--blue-light);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--umss-blue);
+        }
+
+        /* CENTER PANEL - MODO OSCURO CON TOOLBAR SUPERIOR */
+        .center-panel {
+            background: var(--dark-workspace);
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+        }
+        .workspace-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .mode-switch {
+            background: #2a3a44;
+            padding: 4px;
+            border-radius: 40px;
+            display: inline-flex;
+        }
+        .mode-btn {
+            background: transparent;
+            border: none;
+            padding: 6px 18px;
+            border-radius: 32px;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .mode-btn.active {
+            background: var(--umss-blue);
+            color: white;
+        }
+
+        /* TOOLBAR SUPERIOR - Estilo biomed-cariotipado-ia.html */
+        .image-toolbar {
+            background: var(--dark-panel);
+            border-radius: var(--radius-lg);
+            padding: 8px 12px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            border: 1px solid #2a3a44;
+        }
+        .tool-icon {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background: #2a3a44;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            transition: all 0.2s;
+            color: #94a3b8;
+        }
+        .tool-icon:hover {
+            background: var(--umss-blue);
+            color: white;
+            transform: scale(1.05);
+        }
+        .tool-icon.active {
+            background: var(--umss-blue);
+            color: white;
+        }
+        .tool-divider {
+            width: 1px;
+            height: 24px;
+            background: #2a3a44;
+            margin: 0 4px;
+        }
+        .zoom-info {
+            color: #94a3b8;
+            font-size: 0.7rem;
+            margin-left: 8px;
+        }
+
+        .karyotype-viewer {
+            background: #0f171e;
+            border-radius: var(--radius-xl);
+            padding: 1rem;
+            flex: 1;
+        }
+        .chromosome-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 12px 8px;
+            margin-top: 12px;
+        }
+        .chromosome-card {
+            background: #1e2a32;
+            border-radius: var(--radius-md);
+            padding: 12px 4px;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid #2e4a5c;
+            transition: 0.1s linear;
+            position: relative;
+        }
+        .chromosome-card.normal { border-color: #2e4a5c; }
+        .chromosome-card.low-confidence {
+            border-color: var(--umss-red);
+            background: #2f2424;
+        }
+        .chromosome-card.selected {
+            border-color: var(--umss-blue);
+            box-shadow: 0 0 0 2px rgba(0,55,112,0.5);
+            background: #253e4a;
+        }
+        .chromosome-card.validated {
+            border-color: var(--green-success);
+            background: #1a3a2a;
+        }
+        .chromosome-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #cddfe7;
+        }
+        .warning-icon { color: var(--orange-warning); font-size: 0.7rem; display: block; margin-top: 4px; }
+        .validated-icon { color: var(--green-success); font-size: 0.7rem; display: block; margin-top: 4px; }
+        .marker-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: var(--umss-red);
+            color: white;
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-weight: 700;
+        }
+
+        /* RIGHT PANEL */
+        .right-panel {
+            background: white;
+            border-left: 1px solid var(--border-light);
+            padding: 1.2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .alert-box {
+            background: var(--orange-light);
+            border-left: 4px solid var(--orange-warning);
+            padding: 1rem;
+            border-radius: var(--radius-lg);
+        }
+        .property-section {
+            background: var(--gray-bg);
+            border-radius: var(--radius-xl);
+            padding: 1rem;
+        }
+        .comparison {
+            display: flex;
+            gap: 12px;
+            justify-content: space-between;
+            background: white;
+            padding: 12px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-light);
+        }
+        .mock-img {
+            background: var(--blue-light);
+            width: 80px;
+            height: 80px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            text-align: center;
+            color: var(--umss-blue);
+        }
+        .tools-manual {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        .tool-btn {
+            background: white;
+            border: 1px solid var(--border-light);
+            padding: 6px 12px;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .tool-btn:hover {
+            background: var(--blue-light);
+            border-color: var(--umss-blue);
+        }
+        .btn-secondary {
+            background: white;
+            border: 1px solid var(--border-light);
+            padding: 0.6rem 1.4rem;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-secondary:hover {
+            background: var(--gray-bg);
+        }
+        .btn-success {
+            background: var(--green-success);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.4rem;
+            border-radius: 40px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .btn-success:disabled {
+            background: #9ab7ab;
+            cursor: not-allowed;
+        }
+        .warning-text { color: var(--umss-red); font-size: 0.75rem; margin-top: 6px; }
+
+        /* FOOTER */
+        .footer {
+            background: white;
+            border-top: 1px solid var(--border-light);
+            padding: 1rem 1.8rem;
+            display: flex;
+            justify-content: flex-end;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        /* Modal de herramientas */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .tool-modal {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            width: 90%;
+            max-width: 500px;
+            padding: 1.5rem;
+        }
+        .tool-modal h3 { color: var(--umss-blue); margin-bottom: 1rem; }
+        .tool-modal button { margin-top: 1rem; }
+
+        @media (max-width: 1000px) {
+            .three-col { grid-template-columns: 1fr; }
+            .navbar { flex-direction: column; height: auto; padding: 1rem; text-align: center; }
+            .nav-links { justify-content: center; }
+            .chromosome-grid { grid-template-columns: repeat(4, 1fr); }
+            .image-toolbar { justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Control de acceso: Citogenetista y Administrador
+        const userData = JSON.parse(localStorage.getItem('biomed_user'));
+        if (!userData || (userData.role !== 'citogenetista' && userData.role !== 'admin' && userData.role !== 'supervisor')) {
+            alert("Acceso restringido. Inicie sesión para continuar.");
+            window.location.href = "index.html";
+        }
+    </script>
+
+<!-- NAVBAR SUPERIOR ESTILO UMSS -->
+<nav class="navbar">
+    <a href="index.html" class="nav-brand" style="text-decoration: none; color: white;">
+        <i class="fas fa-dna fa-lg"></i>
+        <div><strong>BIOMED UMSS</strong><div style="font-size: 0.6rem;">INTELLIGENT KARYOTYPING</div></div>
+        <span class="role-tag">ESPECIALISTA VALIDADOR</span>
+    </a>
+    <div class="nav-links">
+        <a href="supervisor.html" class="nav-item" id="nav-supervisor"><i class="fas fa-user-shield"></i> Supervisor</a>
+        <a href="crudmuestra.html" class="nav-item" id="nav-mue"><i class="fas fa-flask"></i> Muestras</a>
+        <a href="#" class="nav-item active"><i class="fas fa-chart-line"></i> Clasificación</a>
+        <a href="configuracion.html" class="nav-item" id="nav-config"><i class="fas fa-cog"></i> Configuración</a>
+        <a href="index.html" class="nav-item"><i class="fas fa-sign-out-alt"></i> Salir</a>
+    </div>
+    <div class="user-info">
+        <div class="user-name">Dra. María López</div>
+        <div class="user-role">Garante Clínico</div>
+    </div>
+</nav>
+
+<div class="dashboard">
+    <!-- HEADER INTERNO -->
+    <div class="header">
+        <div class="top-row">
+            <div class="search-bar">
+                <span>🔍</span>
+                <input type="text" placeholder="Buscar por ID o paciente" value="CB-2026-0442 / MARTÍNEZ">
+            </div>
+            <div class="action-buttons">
+                <button class="btn-primary" id="newCaseBtn">+ Nuevo Caso</button>
+                <div class="avatar">ML</div>
+            </div>
+        </div>
+        <div class="stepper-row">
+            <div class="steps">
+                <div class="step-item step-done">✔ Captura</div>
+                <div class="step-item step-done">✔ Segmentación IA</div>
+                <div class="step-item step-current">● Clasificación</div>
+                <div class="step-item">Validación</div>
+                <div class="step-item">Informe</div>
+            </div>
+            <div class="progress-container"><div class="progress-fill" style="width: 60%;"></div></div>
+        </div>
+    </div>
+
+    <!-- 3-COLUMN BODY -->
+    <div class="three-col">
+        <!-- LEFT: Thumbnails -->
+        <div class="left-panel">
+            <div class="panel-title">📸 THUMBNAILS (20 metafases)</div>
+            <div class="thumbnail-list" id="thumbnailList"></div>
+        </div>
+
+        <!-- CENTER: Karyotype workspace con TOOLBAR SUPERIOR -->
+        <div class="center-panel">
+            <div class="workspace-header">
+                <span style="color:white; font-weight:500;">🧬 Clasificación de Cariotipo – Resolución 450–550 bandas</span>
+                <div class="mode-switch" id="modeSwitch">
+                    <button class="mode-btn active" data-mode="ai">Modo IA</button>
+                    <button class="mode-btn" data-mode="manual">Modo Manual</button>
+                </div>
+            </div>
+            
+            <!-- TOOLBAR SUPERIOR - Herramientas de edición de imagen -->
+            <div class="image-toolbar">
+                <button class="tool-icon" id="zoomInBtn" title="Acercar"><i class="fas fa-search-plus"></i></button>
+                <button class="tool-icon" id="zoomOutBtn" title="Alejar"><i class="fas fa-search-minus"></i></button>
+                <button class="tool-icon" id="panBtn" title="Mover"><i class="fas fa-arrows-alt"></i></button>
+                <div class="tool-divider"></div>
+                <button class="tool-icon" id="rotateLeftBtn" title="Rotar izquierda"><i class="fas fa-undo-alt"></i></button>
+                <button class="tool-icon" id="rotateRightBtn" title="Rotar derecha"><i class="fas fa-redo-alt"></i></button>
+                <button class="tool-icon" id="flipBtn" title="Voltear"><i class="fas fa-exchange-alt"></i></button>
+                <div class="tool-divider"></div>
+                <button class="tool-icon" id="brightnessToolBtn" title="Brillo/Contraste"><i class="fas fa-sun"></i></button>
+                <button class="tool-icon" id="contrastToolBtn" title="Contraste"><i class="fas fa-adjust"></i></button>
+                <div class="tool-divider"></div>
+                <button class="tool-icon" id="cutToolBtn" title="Recortar"><i class="fas fa-cut"></i></button>
+                <button class="tool-icon" id="measureToolBtn" title="Medir"><i class="fas fa-ruler"></i></button>
+                <button class="tool-icon" id="annotateBtn" title="Anotar"><i class="fas fa-pen"></i></button>
+                <div class="tool-divider"></div>
+                <button class="tool-icon" id="undoBtn" title="Deshacer"><i class="fas fa-undo"></i></button>
+                <button class="tool-icon" id="redoBtn" title="Rehacer"><i class="fas fa-redo"></i></button>
+                <span class="zoom-info" id="zoomLevel">Zoom: 100%</span>
+            </div>
+
+            <div class="karyotype-viewer">
+                <div class="chromosome-grid" id="chromosomeGrid"></div>
+                <div id="dragFeedback" style="margin-top: 8px; font-size:12px; color:#8aaec0; text-align:center;"></div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Herramientas de Clasificación -->
+        <div class="right-panel" id="rightPanel">
+            <div class="alert-box" id="alertBox">
+                ⚠ <strong>3 cromosomas requieren revisión</strong><br>
+                <ul style="margin-left: 18px; margin-top: 6px;">
+                    <li>Cromosoma 18 – 72%</li>
+                    <li>Cromosoma 5 – 80%</li>
+                    <li>Cromosoma 13 – 84%</li>
+                </ul>
+            </div>
+            <div id="dynamicProperties">
+                <div class="property-section">
+                    <strong>🧬 Cromosoma seleccionado</strong>
+                    <p id="selectedChromosomeInfo">Ninguno seleccionado</p>
+                    <div id="confidenceDetail"></div>
+                    
+                    <!-- Panel de medidas -->
+                    <div style="margin-top: 16px; background: var(--white); border-radius: var(--radius-lg); padding: 12px; border: 1px solid var(--border-light);">
+                        <strong>📏 Medidas (automático)</strong>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+                            <div><span style="font-size: 0.7rem; color: var(--gray-text);">Longitud</span><br><span id="measureLength" style="font-weight: 600;">-- µm</span></div>
+                            <div><span style="font-size: 0.7rem; color: var(--gray-text);">Índice centromérico</span><br><span id="measureCentromeric" style="font-weight: 600;">--</span></div>
+                            <div><span style="font-size: 0.7rem; color: var(--gray-text);">Bandas visibles</span><br><span id="measureBands" style="font-weight: 600;">--</span></div>
+                            <div><span style="font-size: 0.7rem; color: var(--gray-text);">Calidad de imagen</span><br><span id="measureQuality" style="font-weight: 600;">--</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Herramientas de clasificación -->
+                    <div style="margin-top: 16px;">
+                        <strong>🔄 Acciones de clasificación</strong>
+                        <div class="tools-manual" style="margin-top: 8px;">
+                            <button class="tool-btn" id="acceptBtn"><i class="fas fa-check"></i> Aceptar</button>
+                            <button class="tool-btn" id="reclassifyBtn"><i class="fas fa-sync-alt"></i> Reclasificar</button>
+                            <button class="tool-btn" id="markAnomalyBtn"><i class="fas fa-flag"></i> Marcar anomalía (M)</button>
+                        </div>
+                    </div>
+
+                    <!-- Herramientas de resolución de conflictos -->
+                    <div style="margin-top: 16px;">
+                        <strong>⚡ Resolución de conflictos</strong>
+                        <div class="tools-manual" style="margin-top: 8px;">
+                            <button class="tool-btn" id="splitBtn"><i class="fas fa-cut"></i> Separar (touching)</button>
+                            <button class="tool-btn" id="crossBtn"><i class="fas fa-times-circle"></i> Resolver cruce</button>
+                            <button class="tool-btn" id="cleanBtn"><i class="fas fa-brush"></i> Limpiar artefactos</button>
+                        </div>
+                    </div>
+
+                    <div class="comparison" style="margin-top: 16px;">
+                        <div class="mock-img">📷 Cromosoma real</div>
+                        <div class="mock-img">📊 Ideograma ISCN</div>
+                    </div>
+
+                    <!-- Historial de cambios -->
+                    <div style="margin-top: 16px; border-top: 1px solid var(--border-light); padding-top: 12px;">
+                        <strong>📋 Historial de cambios</strong>
+                        <div id="historyLog" style="font-size: 0.7rem; color: var(--gray-text); margin-top: 8px; max-height: 80px; overflow-y: auto;">
+                            <div>[14:32] Clasificación inicial por IA</div>
+                            <div>[--:--] Pendiente de revisión manual</div>
+                        </div>
+                    </div>
+
+                    <div id="manualToolsContainer" style="display: none;">
+                        <hr>
+                        <strong>🛠 Herramientas avanzadas</strong>
+                        <div class="tools-manual">
+                            <button class="tool-btn" id="splitChrom">Dividir cromosoma</button>
+                            <button class="tool-btn" id="mergeFrag">Unir fragmentos</button>
+                            <button class="tool-btn" id="deleteArtifact">Eliminar artefacto</button>
+                        </div>
+                        <div class="warning-text" id="manualFeedback" style="font-size:0.7rem;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER Global Actions -->
+    <div class="footer">
+        <button class="btn-secondary" id="saveCorrectionsBtn">💾 Guardar correcciones</button>
+        <button class="btn-secondary" id="validateBtn">✅ Validar clasificación</button>
+        <button class="btn-success" id="generateReportBtn">📄 Generar informe ISCN</button>
+    </div>
+</div>
+
+<!-- Modal para herramientas de edición -->
+<div id="toolModal" class="modal-overlay" onclick="if(event.target===this) closeModal()">
+    <div class="tool-modal">
+        <h3 id="modalTitle">Herramienta</h3>
+        <p id="modalMessage">Seleccione la acción a realizar</p>
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+            <button class="btn-primary" onclick="confirmAction()">Aplicar</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Ocultar links administrativos si no es admin
+    const currentUser = JSON.parse(localStorage.getItem('biomed_user'));
+    if (currentUser && currentUser.role !== 'admin') {
+        if (document.getElementById('nav-supervisor')) document.getElementById('nav-supervisor').style.display = 'none';
+        if (document.getElementById('nav-config')) document.getElementById('nav-config').style.display = 'none';
+    }
+
+    // --- DATA MODEL ---
+    const lowConfidenceList = [18, 5, 13];
+    const allChromosomes = [];
+    for (let i = 1; i <= 22; i++) allChromosomes.push(i);
+    allChromosomes.push('X', 'Y');
+    
+    let selectedChromosome = null;
+    let manualModeActive = false;
+    let validatedChromosomes = new Set();
+    let lowPendingSet = new Set([18, 5, 13]);
+    let markersList = [];
+    let historyLogs = [];
+    let zoomLevel = 100;
+    let currentAction = null;
+
+    // Medidas por cromosoma (simuladas)
+    const chromosomeMeasures = {
+        4: { length: "4.2 µm", centromeric: "0.38", bands: "~480", quality: "Buena" },
+        12: { length: "3.1 µm", centromeric: "0.42", bands: "~450", quality: "Regular" },
+        18: { length: "2.8 µm", centromeric: "0.35", bands: "~420", quality: "Buena" },
+        default: { length: "3.5 µm", centromeric: "0.40", bands: "~460", quality: "Buena" }
+    };
+
+    function addHistoryLog(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        historyLogs.unshift(`[${timestamp}] ${message}`);
+        if (historyLogs.length > 5) historyLogs.pop();
+        const historyDiv = document.getElementById('historyLog');
+        if (historyDiv) {
+            historyDiv.innerHTML = historyLogs.map(log => `<div>${log}</div>`).join('');
+        }
+    }
+
+    function hasPendingLowConfidence() {
+        for (let c of lowPendingSet) {
+            if (!validatedChromosomes.has(c.toString())) return true;
+        }
+        return false;
+    }
+
+    function updateReportButtonState() {
+        const reportBtn = document.getElementById('generateReportBtn');
+        if (hasPendingLowConfidence()) {
+            reportBtn.disabled = true;
+            const alertDiv = document.getElementById('alertBox');
+            if (alertDiv && !alertDiv.innerHTML.includes("Debe validar")) {
+                const warnSpan = document.createElement('div');
+                warnSpan.id = "dynamicReportWarning";
+                warnSpan.style.marginTop = "8px";
+                warnSpan.style.color = "var(--umss-red)";
+                warnSpan.style.fontWeight = "500";
+                warnSpan.innerText = "⚠ Debe validar los cromosomas pendientes antes de generar el informe";
+                if (!document.getElementById("dynamicReportWarning")) alertDiv.appendChild(warnSpan);
+            }
+        } else {
+            reportBtn.disabled = false;
+            const warnSpan = document.getElementById("dynamicReportWarning");
+            if (warnSpan) warnSpan.remove();
+        }
+    }
+
+    function validateChromosome(chromId) {
+        const idStr = chromId.toString();
+        if (lowPendingSet.has(chromId) || (lowConfidenceList.includes(chromId) && lowPendingSet.has(chromId))) {
+            validatedChromosomes.add(idStr);
+            updateLowConfidencePending();
+            addHistoryLog(`Cromosoma ${chromId} validado y aprobado`);
+        } else {
+            validatedChromosomes.add(idStr);
+            addHistoryLog(`Cromosoma ${chromId} clasificado correctamente`);
+        }
+        updateReportButtonState();
+        refreshRightPanelForChromosome(selectedChromosome);
+    }
+
+    function markAsMarker(chromId) {
+        if (!markersList.includes(chromId)) {
+            markersList.push(chromId);
+            addHistoryLog(`⚠️ Cromosoma ${chromId} marcado como anomalía estructural (M)`);
+            alert(`Cromosoma ${chromId} marcado como anomalía (M). Se incluirá en el grupo de marcadores.`);
+        }
+        renderChromosomeGrid();
+    }
+
+    function updateLowConfidencePending() {
+        lowPendingSet.clear();
+        for (let lc of lowConfidenceList) {
+            if (!validatedChromosomes.has(lc.toString())) {
+                lowPendingSet.add(lc);
+            }
+        }
+        const alertBox = document.getElementById('alertBox');
+        if (lowPendingSet.size > 0) {
+            let listHtml = '';
+            const percentMap = {5:80,13:84,18:72};
+            for (let lc of lowPendingSet) {
+                listHtml += `<li>Cromosoma ${lc} – ${percentMap[lc]}%</li>`;
+            }
+            alertBox.innerHTML = `⚠ <strong>${lowPendingSet.size} cromosomas requieren revisión</strong><br><ul style="margin-left: 18px; margin-top: 6px;">${listHtml}</ul>`;
+        } else {
+            alertBox.innerHTML = `✅ Todos los cromosomas validados. Puede generar informe.`;
+        }
+        renderChromosomeGrid();
+    }
+
+    function updateMeasuresForChromosome(chrom) {
+        const measures = chromosomeMeasures[chrom] || chromosomeMeasures.default;
+        document.getElementById('measureLength').innerText = measures.length;
+        document.getElementById('measureCentromeric').innerText = measures.centromeric;
+        document.getElementById('measureBands').innerText = measures.bands;
+        document.getElementById('measureQuality').innerText = measures.quality;
+    }
+
+    function renderChromosomeGrid() {
+        const grid = document.getElementById('chromosomeGrid');
+        if (!grid) return;
+        grid.innerHTML = '';
+        for (let chrom of allChromosomes) {
+            const isLow = lowConfidenceList.includes(chrom) && !validatedChromosomes.has(chrom.toString());
+            const isValidated = validatedChromosomes.has(chrom.toString());
+            const isMarker = markersList.includes(chrom);
+            const isSelected = (selectedChromosome === chrom);
+            
+            let statusClass = 'normal';
+            if (isLow && !isSelected) statusClass = 'low-confidence';
+            if (isValidated) statusClass = 'validated';
+            
+            const div = document.createElement('div');
+            div.className = `chromosome-card ${statusClass} ${isSelected ? 'selected' : ''}`;
+            div.setAttribute('data-chrom', chrom);
+            
+            let statusIcon = '';
+            if (isLow) statusIcon = '<div class="warning-icon">⚠️ baja confianza</div>';
+            if (isValidated) statusIcon = '<div class="validated-icon">✓ validado</div>';
+            if (isMarker) statusIcon += '<div class="marker-badge">M</div>';
+            
+            div.innerHTML = `<div class="chromosome-label">${chrom}</div>${statusIcon}`;
+            div.addEventListener('click', (e) => {
+                e.stopPropagation();
+                selectedChromosome = chrom;
+                renderChromosomeGrid();
+                refreshRightPanelForChromosome(chrom);
+            });
+            grid.appendChild(div);
+        }
+    }
+
+    function refreshRightPanelForChromosome(chrom) {
+        if (!chrom) {
+            document.getElementById('selectedChromosomeInfo').innerHTML = 'Ninguno seleccionado';
+            document.getElementById('confidenceDetail').innerHTML = '';
+            updateMeasuresForChromosome(null);
+            return;
+        }
+        const isLow = lowConfidenceList.includes(chrom) && !validatedChromosomes.has(chrom.toString());
+        const isValidated = validatedChromosomes.has(chrom.toString());
+        const isMarker = markersList.includes(chrom);
+        const percentMap = {5:80,13:84,18:72};
+        
+        let confidenceText = '';
+        if (isLow) confidenceText = `⚠️ Baja confianza (${percentMap[chrom] || '≤85'}%)`;
+        else if (isValidated) confidenceText = '✅ Validado correctamente';
+        else confidenceText = '✓ Confianza aceptable';
+        
+        const selectedInfoSpan = document.getElementById('selectedChromosomeInfo');
+        selectedInfoSpan.innerHTML = `<strong>Cromosoma ${chrom} seleccionado</strong><br><span style="color:${isLow ? 'var(--umss-red)' : (isValidated ? 'var(--green-success)' : 'var(--gray-text)')}">${confidenceText}</span>`;
+        
+        const detailDiv = document.getElementById('confidenceDetail');
+        if (isLow) {
+            detailDiv.innerHTML = `<div class="warning-text">⚠ Este cromosoma requiere revisión manual. Use las herramientas de clasificación.</div>`;
+        } else if (isMarker) {
+            detailDiv.innerHTML = `<div class="warning-text">🏷️ Este cromosoma ha sido marcado como anomalía estructural (M).</div>`;
+        } else {
+            detailDiv.innerHTML = `<div style="color:var(--green-success);">✓ Cromosoma clasificado correctamente</div>`;
+        }
+        
+        updateMeasuresForChromosome(chrom);
+    }
+
+    // ============================================
+    // TOOLBAR FUNCTIONS (Herramientas de edición de imagen)
+    // ============================================
+    function updateZoomLevel() {
+        document.getElementById('zoomLevel').innerText = `Zoom: ${zoomLevel}%`;
+        document.querySelector('.karyotype-viewer').style.transform = `scale(${zoomLevel / 100})`;
+        document.querySelector('.karyotype-viewer').style.transformOrigin = 'top left';
+        addHistoryLog(`Zoom ajustado a ${zoomLevel}%`);
+    }
+
+    function setupToolbar() {
+        document.getElementById('zoomInBtn').addEventListener('click', () => {
+            if (zoomLevel < 200) {
+                zoomLevel += 10;
+                updateZoomLevel();
+            }
+        });
+        document.getElementById('zoomOutBtn').addEventListener('click', () => {
+            if (zoomLevel > 50) {
+                zoomLevel -= 10;
+                updateZoomLevel();
+            }
+        });
+        document.getElementById('rotateLeftBtn').addEventListener('click', () => {
+            addHistoryLog('Rotación izquierda aplicada a la vista');
+            alert('Rotación izquierda aplicada');
+        });
+        document.getElementById('rotateRightBtn').addEventListener('click', () => {
+            addHistoryLog('Rotación derecha aplicada a la vista');
+            alert('Rotación derecha aplicada');
+        });
+        document.getElementById('flipBtn').addEventListener('click', () => {
+            addHistoryLog('Volteado horizontal aplicado');
+            alert('Volteado horizontal aplicado');
+        });
+        document.getElementById('brightnessToolBtn').addEventListener('click', () => {
+            const value = prompt('Ajustar brillo (0-200):', '100');
+            if (value) {
+                addHistoryLog(`Brillo ajustado a ${value}%`);
+                alert(`Brillo ajustado a ${value}%`);
+            }
+        });
+        document.getElementById('contrastToolBtn').addEventListener('click', () => {
+            const value = prompt('Ajustar contraste (0-200):', '100');
+            if (value) {
+                addHistoryLog(`Contraste ajustado a ${value}%`);
+                alert(`Contraste ajustado a ${value}%`);
+            }
+        });
+        document.getElementById('cutToolBtn').addEventListener('click', () => {
+            addHistoryLog('Herramienta de recorte activada');
+            alert('✂️ Herramienta de recorte activada. Seleccione un área en la imagen.');
+        });
+        document.getElementById('measureToolBtn').addEventListener('click', () => {
+            addHistoryLog('Herramienta de medición activada');
+            alert('📏 Herramienta de medición activada. Haga clic en dos puntos para medir distancia.');
+        });
+        document.getElementById('annotateBtn').addEventListener('click', () => {
+            addHistoryLog('Herramienta de anotación activada');
+            alert('✏️ Herramienta de anotación activada. Haga clic para agregar texto.');
+        });
+        document.getElementById('undoBtn').addEventListener('click', () => {
+            addHistoryLog('Última acción deshecha');
+            alert('↩️ Última acción deshecha');
+        });
+        document.getElementById('redoBtn').addEventListener('click', () => {
+            addHistoryLog('Acción rehecha');
+            alert('↪️ Acción rehecha');
+        });
+        document.getElementById('panBtn').addEventListener('click', () => {
+            addHistoryLog('Modo panorámico activado');
+            alert('✋ Modo panorámico activado. Arrastre para mover la vista.');
+        });
+    }
+
+    // Herramientas de clasificación
+    function setupClassificationTools() {
+        document.getElementById('acceptBtn').addEventListener('click', () => {
+            if (selectedChromosome) {
+                validateChromosome(selectedChromosome);
+                renderChromosomeGrid();
+                refreshRightPanelForChromosome(selectedChromosome);
+                alert(`Clasificación aceptada para cromosoma ${selectedChromosome}.`);
+            } else alert("Seleccione un cromosoma.");
+        });
+        
+        document.getElementById('reclassifyBtn').addEventListener('click', () => {
+            if (selectedChromosome) {
+                showModal('Reclasificar cromosoma', `¿Reclasificar cromosoma ${selectedChromosome}? La IA generará una nueva predicción.`, () => {
+                    addHistoryLog(`Solicitada reclasificación para cromosoma ${selectedChromosome}`);
+                    alert(`Reclasificación solicitada para cromosoma ${selectedChromosome}.`);
+                });
+            } else alert("Seleccione un cromosoma.");
+        });
+        
+        document.getElementById('markAnomalyBtn').addEventListener('click', () => {
+            if (selectedChromosome) {
+                markAsMarker(selectedChromosome);
+                renderChromosomeGrid();
+                refreshRightPanelForChromosome(selectedChromosome);
+            } else alert("Seleccione un cromosoma.");
+        });
+    }
+
+    // Herramientas de resolución de conflictos
+    function setupConflictTools() {
+        document.getElementById('splitBtn').addEventListener('click', () => {
+            if (selectedChromosome) {
+                showModal('Separar cromosomas', `Separar cromosomas que se tocan (touching) en el par ${selectedChromosome}`, () => {
+                    addHistoryLog(`Línea de corte trazada. Cromosomas separados en par ${selectedChromosome}`);
+                    alert(`Línea de corte trazada. Cromosomas separados correctamente.`);
+                    validateChromosome(selectedChromosome);
+                    renderChromosomeGrid();
+                });
+            } else alert("Seleccione un cromosoma.");
+        });
+        
+        document.getElementById('crossBtn').addEventListener('click', () => {
+            if (selectedChromosome) {
+                showModal('Resolver cruce', `Resolver cruce de cromosomas en el par ${selectedChromosome}`, () => {
+                    addHistoryLog(`Cruce resuelto en par ${selectedChromosome}`);
+                    alert(`Cruce resuelto. Los cromosomas han sido individualizados.`);
+                    validateChromosome(selectedChromosome);
+                    renderChromosomeGrid();
+                });
+            } else alert("Seleccione un cromosoma.");
+        });
+        
+        document.getElementById('cleanBtn').addEventListener('click', () => {
+            if (selectedChromosome) {
+                showModal('Limpiar artefactos', `Eliminar artefactos y ruido cerca del cromosoma ${selectedChromosome}`, () => {
+                    addHistoryLog(`Artefactos eliminados cerca de cromosoma ${selectedChromosome}`);
+                    alert(`Artefactos eliminados de la imagen.`);
+                });
+            } else alert("Seleccione un cromosoma.");
+        });
+    }
+
+    // Modal helper
+    let currentCallback = null;
+    function showModal(title, message, callback) {
+        document.getElementById('modalTitle').innerText = title;
+        document.getElementById('modalMessage').innerHTML = message;
+        currentCallback = callback;
+        document.getElementById('toolModal').classList.add('active');
+    }
+    
+    function closeModal() {
+        document.getElementById('toolModal').classList.remove('active');
+        currentCallback = null;
+    }
+    
+    function confirmAction() {
+        if (currentCallback) currentCallback();
+        closeModal();
+    }
+
+    function setupManualInteractions() {
+        document.getElementById('splitChrom')?.addEventListener('click', () => {
+            if (selectedChromosome) {
+                document.getElementById('manualFeedback').innerText = `✂️ Cromosoma ${selectedChromosome} dividido en dos regiones.`;
+                addHistoryLog(`Cromosoma ${selectedChromosome} dividido manualmente`);
+            } else document.getElementById('manualFeedback').innerText = 'Selecciona un cromosoma primero.';
+        });
+        document.getElementById('mergeFrag')?.addEventListener('click', () => {
+            if (selectedChromosome) {
+                document.getElementById('manualFeedback').innerText = `🔗 Fragmentos unidos en cromosoma ${selectedChromosome}.`;
+                addHistoryLog(`Fragmentos unidos en cromosoma ${selectedChromosome}`);
+            } else document.getElementById('manualFeedback').innerText = 'Selecciona un cromosoma.';
+        });
+        document.getElementById('deleteArtifact')?.addEventListener('click', () => {
+            if (selectedChromosome) {
+                document.getElementById('manualFeedback').innerText = `🧹 Artefacto eliminado cerca de cromosoma ${selectedChromosome}.`;
+                addHistoryLog(`Artefacto eliminado cerca de cromosoma ${selectedChromosome}`);
+            } else document.getElementById('manualFeedback').innerText = 'Seleccione cromosoma.';
+        });
+    }
+
+    function generateThumbnails() {
+        const container = document.getElementById('thumbnailList');
+        container.innerHTML = '';
+        for (let i = 1; i <= 20; i++) {
+            const num = i.toString().padStart(2, '0');
+            const card = document.createElement('div');
+            card.className = `thumb-card ${i === 1 ? 'selected' : ''}`;
+            card.innerHTML = `<div class="thumb-icon">${num}</div><div class="thumb-info"><strong>Metafase ${num}</strong><br><small>ID: M${i}</small></div>`;
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.thumb-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                const workspaceMsg = document.querySelector('.workspace-header span');
+                if (workspaceMsg) workspaceMsg.innerHTML = `🧬 Clasificación de Cariotipo – Metafase ${num} | Resolución 450–550 bandas`;
+                addHistoryLog(`Cambio a metafase ${num}`);
+            });
+            container.appendChild(card);
+        }
+    }
+
+    function initModeToggle() {
+        const modeBtns = document.querySelectorAll('.mode-btn');
+        const manualToolsDiv = document.getElementById('manualToolsContainer');
+        modeBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                modeBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                manualModeActive = (btn.getAttribute('data-mode') === 'manual');
+                if (manualModeActive) {
+                    manualToolsDiv.style.display = 'block';
+                    document.getElementById('dragFeedback').innerHTML = '🖱️ Modo manual activo: puede corregir clasificaciones manualmente.';
+                    addHistoryLog('Modo manual activado');
+                } else {
+                    manualToolsDiv.style.display = 'none';
+                    document.getElementById('dragFeedback').innerHTML = '🤖 Modo IA activo: clasificación automática asistida.';
+                    addHistoryLog('Modo IA activado');
+                }
+            });
+        });
+        manualToolsDiv.style.display = 'none';
+    }
+
+    function bindActionButtons() {
+        document.getElementById('saveCorrectionsBtn').addEventListener('click', () => {
+            addHistoryLog('Correcciones guardadas en sesión clínica');
+            alert("Correcciones guardadas en sesión clínica.");
+        });
+        document.getElementById('validateBtn').addEventListener('click', () => {
+            if (selectedChromosome) {
+                validateChromosome(selectedChromosome);
+                renderChromosomeGrid();
+                refreshRightPanelForChromosome(selectedChromosome);
+                alert(`Cromosoma ${selectedChromosome} validado manualmente.`);
+            } else alert("Selecciona un cromosoma para validar.");
+        });
+        document.getElementById('generateReportBtn').addEventListener('click', () => {
+            if (hasPendingLowConfidence()) {
+                alert("Existen cromosomas de baja confianza sin validar. Complete la revisión antes de continuar.");
+            } else {
+                // Guardar resultado del cariotipo
+                const activePatient = JSON.parse(localStorage.getItem('activePatient'));
+                const karyotypeData = {
+                    karyotype: activePatient?.gender === 'F' ? '46,XX' : '46,XY',
+                    cellsAnalyzed: 20,
+                    validatedPairs: 23,
+                    needsReview: lowConfidenceList.length,
+                    corrections: validatedChromosomes.size,
+                    confidence: '97',
+                    validatedAt: new Date().toISOString(),
+                    validatedBy: 'Citogenetista'
+                };
+                localStorage.setItem('karyotypeResult', JSON.stringify(karyotypeData));
+
+                addHistoryLog('Informe ISCN generado y firmado digitalmente');
+                alert("✅ Informe generado con éxito.\n\nRedirigiendo al reporte final...");
+                window.location.href = 'informe.html';
+            }
+        });
+        document.getElementById('newCaseBtn').addEventListener('click', () => {
+            if (confirm("Iniciar nuevo caso reiniciará validaciones.")) {
+                validatedChromosomes.clear();
+                lowPendingSet.clear();
+                markersList = [];
+                historyLogs = [];
+                for (let lc of lowConfidenceList) lowPendingSet.add(lc);
+                selectedChromosome = null;
+                renderChromosomeGrid();
+                updateLowConfidencePending();
+                updateReportButtonState();
+                refreshRightPanelForChromosome(null);
+                addHistoryLog('Nuevo caso iniciado');
+                alert("Nuevo caso cargado. Pendientes: 3 cromosomas de baja confianza.");
+            }
+        });
+    }
+
+    function init() {
+        generateThumbnails();
+        renderChromosomeGrid();
+        initModeToggle();
+        setupToolbar();
+        setupClassificationTools();
+        setupConflictTools();
+        setupManualInteractions();
+        bindActionButtons();
+        updateLowConfidencePending();
+        updateReportButtonState();
+        selectedChromosome = null;
+        refreshRightPanelForChromosome(null);
+        addHistoryLog('Sesión iniciada');
+    }
+
+    init();
+</script>
+</body>
+</html>

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biomed UMSS - Especialista Validador | Cariotipado IA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --umss-blue: #003770;
+            --umss-red: #E30613;
+            --bg-clinical: #f4f7fa;
+            --dark-panel: #1a1c23;
+            --green-success: #1e8868;
+            --orange-warning: #d45100;
+            --border-color: #e2e8f0;
+            --text-main: #1e293b;
+            --gray-text: #64748b;
+            --white: #ffffff;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,55,112,0.12);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-clinical);
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        /* ============================================ */
+        /* NAVBAR SUPERIOR ÚNICO */
+        /* ============================================ */
+        .navbar {
+            background: var(--umss-blue);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .nav-brand { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .role-tag { 
+            background: rgba(255,255,255,0.15); 
+            padding: 4px 12px; 
+            border-radius: 4px; 
+            font-size: 0.7rem; 
+            font-weight: 600;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .nav-links { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+        .nav-item { 
+            color: #cbd5e1; 
+            text-decoration: none; 
+            font-size: 0.85rem; 
+            display: flex; 
+            align-items: center; 
+            gap: 8px;
+            transition: 0.3s;
+            cursor: pointer;
+            padding: 8px 0;
+        }
+        .nav-item.active { 
+            color: white; 
+            font-weight: 600;
+            border-bottom: 2px solid var(--umss-red);
+        }
+        .nav-item:hover { color: white; }
+
+        /* Badge dinámico */
+        .badge-alert {
+            background: var(--umss-red);
+            color: white;
+            font-size: 0.65rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        /* Perfil usuario */
+        .user-info {
+            text-align: right;
+        }
+        .user-name {
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .user-role {
+            font-size: 0.6rem;
+            color: #cbd5e1;
+        }
+
+        /* ============================================ */
+        /* MAIN CONTENT */
+        /* ============================================ */
+        .main-content {
+            max-width: 1400px;
+            margin: 1.5rem auto;
+            padding: 0 1.5rem;
+        }
+
+        /* PAGE HEADER - Dinámico */
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+        .page-header h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+        .page-header p {
+            color: var(--gray-text);
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Stats row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-card {
+            background: var(--white);
+            padding: 1rem 1.2rem;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--bg-clinical);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--umss-blue);
+            font-size: 1.3rem;
+        }
+
+        .stat-info h3 {
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: var(--umss-blue);
+        }
+        .stat-info p { font-size: 0.7rem; color: var(--gray-text); }
+
+        /* Filter chips */
+        .filter-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .chips-group { display: flex; gap: 10px; flex-wrap: wrap; }
+        .chip {
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: var(--white);
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: 0.2s;
+        }
+        .chip:hover { background: var(--bg-clinical); }
+        .chip.active { background: var(--umss-blue); color: white; border-color: var(--umss-blue); }
+
+        /* Botón firma */
+        .btn-signature {
+            background: #94a3b8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: not-allowed;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn-signature.ready { background: var(--green-success); cursor: pointer; }
+
+        /* Tabla */
+        .audit-card {
+            background: var(--white);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; padding: 14px; text-align: left; font-size: 0.7rem; color: var(--umss-blue); text-transform: uppercase; font-weight: 700; }
+        td { padding: 14px; border-top: 1px solid var(--border-color); font-size: 0.85rem; }
+        .row-critical { border-left: 4px solid var(--umss-red); background: var(--red-light, #fff5f5); }
+        .row-warning { border-left: 4px solid var(--orange-warning); background: var(--orange-light, #fffaf5); }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--umss-blue);
+            color: var(--umss-blue);
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-outline:hover { background: var(--bg-clinical); }
+
+        /* Secciones */
+        .section { display: none; animation: fadeIn 0.3s ease; }
+        .section.active { display: block; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.9);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: var(--white);
+            width: 90%;
+            max-width: 1000px;
+            max-height: 85vh;
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .modal-header { padding: 1.2rem 1.5rem; background: var(--umss-blue); color: white; display: flex; justify-content: space-between; align-items: center; }
+        .modal-body { padding: 1.5rem; overflow-y: auto; }
+        .comparison-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .comparison-card { background: var(--bg-clinical); border-radius: 12px; padding: 1rem; text-align: center; }
+        .chromosome-display { background: #1a1a2e; border-radius: 8px; min-height: 180px; display: flex; align-items: center; justify-content: center; color: rgba(255,255,255,0.5); }
+        .ideogram-ref { width: 50px; height: 160px; background: linear-gradient(180deg, #ccc 0%, #ccc 10%, #fff 10%, #fff 20%, #999 20%, #999 30%, #fff 30%, #fff 40%, #ccc 40%, #ccc 50%, #fff 50%, #fff 60%, #999 60%, #999 70%, #fff 70%, #fff 80%, #ccc 80%, #ccc 90%, #fff 90%, #fff 100%); border-radius: 4px; margin: 0 auto; }
+        .decision-footer { padding: 1rem 1.5rem; background: #f8fafc; display: flex; justify-content: flex-end; gap: 1rem; border-top: 1px solid var(--border-color); }
+        .btn { padding: 8px 20px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; }
+        .btn-confirm { background: var(--green-success); color: white; }
+        .btn-reject { background: var(--umss-red); color: white; }
+        .btn-cancel { background: #e2e8f0; color: var(--text-main); }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @media (max-width: 768px) {
+            .navbar { flex-direction: column; height: auto; padding: 1rem; text-align: center; }
+            .nav-links { justify-content: center; }
+            .stats-row { grid-template-columns: 1fr; }
+            .filter-section { flex-direction: column; align-items: stretch; }
+            .comparison-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Control de acceso: Solo Supervisor y Administrador
+        const userData = JSON.parse(localStorage.getItem('biomed_user'));
+        if (!userData || (userData.role !== 'supervisor' && userData.role !== 'admin')) {
+            alert("No tiene permisos para acceder al Panel de Supervisor.");
+            window.location.href = "index.html";
+        }
+    </script>
+
+    <!-- NAVBAR SUPERIOR ÚNICO -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand" style="text-decoration: none; color: white;"> 
+            <i class="fas fa-dna fa-lg"></i>
+            <div> 
+                <strong>BIOMED UMSS</strong>
+                <div style="font-size: 0.6rem; letter-spacing: 1px;">INTELLIGENT KARYOTYPING</div>
+            </div>
+            <span class="role-tag">ESPECIALISTA VALIDADOR</span> 
+        </a>
+        <div class="nav-links"> 
+            <a href="#" class="nav-item" data-section="bandeja" onclick="switchToSection('bandeja', this); return false;">
+                <i class="fas fa-microscope"></i> Bandeja de Auditoría
+                <span class="badge-alert" id="criticalBadge">5</span>
+            </a>
+            <a href="registrarmuestrafinal.html" class="nav-item">
+                <i class="fas fa-flask"></i> Muestras
+            </a>
+            <a href="#" class="nav-item" data-section="rendimiento" onclick="switchToSection('rendimiento', this); return false;">
+                <i class="fas fa-chart-line"></i> Rendimiento IA
+            </a>
+            <a href="#" class="nav-item" data-section="archivo" onclick="switchToSection('archivo', this); return false;">
+                <i class="fas fa-history"></i> Archivo Clínico
+            </a> 
+            <a href="configuracion.html" class="nav-item" id="nav-config" style="display: none;"><i class="fas fa-cog"></i> Configuración</a>
+            <a href="index.html" class="nav-item"><i class="fas fa-sign-out-alt"></i> Salir</a>
+        </div>
+        <div class="user-info">
+            <div class="user-name">Dra. María López</div>
+            <div class="user-role">Garante Clínico</div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+        <!-- PAGE HEADER - DINÁMICO -->
+        <div class="page-header">
+            <h1 id="page-title">Bandeja de Auditoría</h1>
+            <p id="page-subtitle">Casos pendientes de validación experta · 5 requieren atención prioritaria</p>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- SECCIÓN BANDEJA DE AUDITORÍA -->
+        <!-- ============================================ -->
+        <div id="bandeja-section" class="section active">
+            <!-- Stats row -->
+            <div class="stats-row">
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-clock"></i></div><div class="stat-info"><h3>6.2 min</h3><p>TAT promedio</p></div></div>
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-percent"></i></div><div class="stat-info"><h3>12%</h3><p>Tasa corrección IA</p></div></div>
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-exclamation-triangle" style="color: var(--umss-red);"></i></div><div class="stat-info"><h3>5</h3><p>Alertas críticas</p></div></div>
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-check-circle" style="color: var(--green-success);"></i></div><div class="stat-info"><h3>102</h3><p>Casos validados</p></div></div>
+            </div>
+
+            <!-- Filter Chips -->
+            <div class="filter-section">
+                <div class="chips-group">
+                    <div class="chip active" onclick="filterCases('all')">Todos (148)</div>
+                    <div class="chip critical" onclick="filterCases('critical')">⚠️ Críticos (5)</div>
+                    <div class="chip" onclick="filterCases('warning')">🟡 Dudosos (12)</div>
+                    <div class="chip" onclick="filterCases('normal')">✅ Normales (102)</div>
+                </div>
+                <button class="btn-signature" id="signatureBtn" disabled><i class="fas fa-signature"></i> Firmar pendientes (5)</button>
+            </div>
+
+            <!-- Tabla de casos -->
+            <div class="audit-card">
+                <table id="casesTable">
+                    <thead><tr><th>ID Caso</th><th>Paciente</th><th>Analista</th><th>Confianza IA</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead>
+                    <tbody>
+                        <tr class="row-critical"><td><strong>CB-0442</strong></td><td>ANON-442 (M/28)</td><td>Dra. García</td><td><span style="color: var(--umss-red); font-weight: 700;">72%</span></td><td>10/04/2026</td><td><span style="background: #fce8e9; color: var(--umss-red); padding: 4px 8px; border-radius: 12px;">⚠️ Crítico</span></td><td><button class="btn-outline" onclick="openAuditModal('CB-2026-0442', 4, 72)">Auditar →</button></td></tr>
+                        <tr class="row-critical"><td><strong>CB-0435</strong></td><td>ANON-435 (F/31)</td><td>Dr. Martínez</td><td><span style="color: var(--umss-red); font-weight: 700;">68%</span></td><td>08/04/2026</td><td><span style="background: #fce8e9; color: var(--umss-red); padding: 4px 8px; border-radius: 12px;">⚠️ Crítico</span></td><td><button class="btn-outline" onclick="openAuditModal('CB-2026-0435', 12, 68)">Auditar →</button></td></tr>
+                        <tr class="row-critical"><td><strong>CB-0438</strong></td><td>ANON-438 (M/52)</td><td>Dra. López</td><td><span style="color: var(--umss-red); font-weight: 700;">71%</span></td><td>07/04/2026</td><td><span style="background: #fce8e9; color: var(--umss-red); padding: 4px 8px; border-radius: 12px;">⚠️ Crítico</span></td><td><button class="btn-outline" onclick="openAuditModal('CB-2026-0438', 18, 71)">Auditar →</button></td></tr>
+                        <tr class="row-warning"><td><strong>CB-0430</strong></td><td>ANON-430 (F/45)</td><td>Dra. García</td><td><span style="color: var(--orange-warning); font-weight: 700;">82%</span></td><td>05/04/2026</td><td><span style="background: #fbeee6; color: var(--orange-warning); padding: 4px 8px; border-radius: 12px;">🟡 Dudoso</span></td><td><button class="btn-outline" onclick="openAuditModal('CB-2026-0430', 7, 82)">Auditar →</button></td></tr>
+                        <tr><td><strong>CB-0425</strong></td><td>ANON-425 (M/23)</td><td>Dr. Martínez</td><td><span style="color: var(--green-success); font-weight: 700;">96%</span></td><td>03/04/2026</td><td><span style="background: #e9f3f0; color: var(--green-success); padding: 4px 8px; border-radius: 12px;">✅ Normal</span></td><td><button class="btn-outline" onclick="viewNormalReport('CB-2026-0425')">Ver →</button></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="background: var(--bg-clinical); border-radius: 12px; padding: 0.75rem 1rem; border-left: 3px solid var(--umss-blue);">
+                <p style="font-size: 0.75rem;"><i class="fas fa-shield-alt"></i> <strong>Prevención de errores:</strong> La firma digital estará disponible solo después de auditar los 5 casos críticos.</p>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- SECCIÓN RENDIMIENTO IA -->
+        <!-- ============================================ -->
+        <div id="rendimiento-section" class="section">
+            <div class="stats-row">
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-chart-line"></i></div><div class="stat-info"><h3>97.2%</h3><p>Precisión global</p></div></div>
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-tachometer-alt"></i></div><div class="stat-info"><h3>92ms</h3><p>Latencia promedio</p></div></div>
+                <div class="stat-card"><div class="stat-icon"><i class="fas fa-database"></i></div><div class="stat-info"><h3>15,420</h3><p>Casos entrenados</p></div></div>
+            </div>
+            <div class="audit-card">
+                <table>
+                    <thead><tr><th>Métrica</th><th>Valor</th><th>Benchmark</th><th>Estado</th></tr></thead>
+                    <tbody>
+                        <tr><td>Segmentación (IoU)</td><td>96.8%</td><td>95%</td><td><span style="color: var(--green-success);">✓ Superior</span></td></tr>
+                        <tr><td>Clasificación cromosómica</td><td>97.2%</td><td>95.3%</td><td><span style="color: var(--green-success);">✓ Superior</span></td></tr>
+                        <tr><td>Detección de anomalías</td><td>89%</td><td>85%</td><td><span style="color: var(--orange-warning);">⚠ En desarrollo</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="background: white; border-radius: 12px; padding: 1rem; border: 1px solid var(--border-color);">
+                <h4 style="font-size: 0.8rem; color: var(--umss-blue);">🧠 Arquitectura del Modelo</h4>
+                <p style="font-size: 0.75rem; color: var(--gray-text);">CarioNet v2.4 · ResNet-152 + Attention · 15,420 casos clínicos validados</p>
+            </div>
+        </div>
+
+        <!-- ============================================ -->
+        <!-- SECCIÓN ARCHIVO CLÍNICO -->
+        <!-- ============================================ -->
+        <div id="archivo-section" class="section">
+            <div class="audit-card">
+                <table id="archivoTable">
+                    <thead><tr><th>ID Caso</th><th>Paciente</th><th>Fecha</th><th>Resultado</th><th>Validado por</th><th>Acciones</th></tr></thead>
+                    <tbody id="archivoTableBody">
+                        <!-- Se llena dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <!-- MODAL DE AUDITORÍA -->
+    <div id="auditModal" class="modal-overlay" onclick="if(event.target===this) closeAuditModal()">
+        <div class="modal-content">
+            <div class="modal-header"><h3><i class="fas fa-search"></i> Auditoría de Caso: <span id="modalCaseId">CB-2026-0442</span></h3><button onclick="closeAuditModal()" style="background:none; border:none; color:white; font-size:1.2rem;">✕</button></div>
+            <div class="modal-body">
+                <div class="comparison-grid">
+                    <div class="comparison-card"><h4>🔬 Cromosoma del Paciente (Par <span id="modalPair">4</span>)</h4><div class="chromosome-display">🧬</div><div style="margin-top:0.5rem;"><span style="color:var(--umss-red); font-weight:700;">⚠️ Confianza IA: <span id="modalConfidence">72</span>%</span></div></div>
+                    <div class="comparison-card"><h4>📚 Ideograma de Referencia</h4><div class="chromosome-display" style="background:#f0f0f0;"><div class="ideogram-ref"></div></div><div style="font-size:0.7rem;">Patrón de bandas GTG - Par <span id="modalPairRef">4</span> normal</div></div>
+                </div>
+                <div style="background:var(--bg-clinical); border-radius:12px; padding:1rem; border-left:3px solid var(--umss-red);"><strong><i class="fas fa-exclamation-triangle"></i> Anomalía detectada por IA:</strong><p id="modalAnomaly">Posible variante estructural en brazo p</p></div>
+            </div>
+            <div class="decision-footer"><button class="btn-cancel" onclick="closeAuditModal()">Cancelar</button><button class="btn-cancel" onclick="reassignCase()">Reasignar</button><button class="btn-confirm" onclick="validateCase()">✓ Validar</button><button class="btn-reject" onclick="reportAnomaly()">⚠️ Reportar</button></div>
+        </div>
+    </div>
+
+    <script>
+        let currentAuditCase = null, currentAuditRow = null;
+        let currentPatientData = null;
+
+        // Datos de casos con información completa del paciente
+        const casesData = {
+            'CB-2026-0442': { patientName: 'ANON-442', chn: 'CHN-0442', gender: 'M', age: 28, analyst: 'Dra. García', confidence: 72 },
+            'CB-2026-0435': { patientName: 'ANON-435', chn: 'CHN-0435', gender: 'F', age: 31, analyst: 'Dr. Martínez', confidence: 68 },
+            'CB-2026-0438': { patientName: 'ANON-438', chn: 'CHN-0438', gender: 'M', age: 52, analyst: 'Dra. López', confidence: 71 },
+            'CB-2026-0430': { patientName: 'ANON-430', chn: 'CHN-0430', gender: 'F', age: 45, analyst: 'Dra. García', confidence: 82 },
+            'CB-2026-0425': { patientName: 'ANON-425', chn: 'CHN-0425', gender: 'M', age: 23, analyst: 'Dr. Martínez', confidence: 96 }
+        };
+
+        // Casos pendientes que se pueden ver directamente (normales)
+        function viewNormalReport(caseId) {
+            const caseInfo = casesData[caseId];
+            if (!caseInfo) return;
+
+            // Guardar datos del paciente
+            localStorage.setItem('activePatient', JSON.stringify({
+                id: caseId,
+                name: caseInfo.patientName,
+                chn: caseInfo.chn,
+                gender: caseInfo.gender,
+                age: caseInfo.age
+            }));
+
+            // Guardar resultado del cariotipo (normal)
+            const karyotype = caseInfo.gender === 'F' ? '46,XX' : '46,XY';
+            localStorage.setItem('karyotypeResult', JSON.stringify({
+                karyotype: karyotype,
+                cellsAnalyzed: 20,
+                validatedPairs: 23,
+                needsReview: 0,
+                corrections: 0,
+                confidence: caseInfo.confidence || '95',
+                validatedAt: new Date().toISOString(),
+                validatedBy: 'Supervisor'
+            }));
+
+            window.location.href = 'informe.html';
+        }
+
+        // Casos completados (archivo clínico)
+        let completedCases = [
+            { id: 'CB-2026-0440', patient: 'ANON-440', gender: 'M', age: 35, chn: 'CHN-0440', date: '08/04/2026', result: '46,XY', validatedBy: 'Dra. García' },
+            { id: 'CB-2026-0439', patient: 'ANON-439', gender: 'F', age: 29, chn: 'CHN-0439', date: '07/04/2026', result: '46,XX', validatedBy: 'Dr. Martínez' },
+            { id: 'CB-2026-0437', patient: 'ANON-437', gender: 'M', age: 8, chn: 'CHN-0437', date: '06/04/2026', result: '47,XY,+21', validatedBy: 'Dra. López' },
+            { id: 'CB-2026-0425', patient: 'ANON-425', gender: 'M', age: 23, chn: 'CHN-0425', date: '03/04/2026', result: '46,XY', validatedBy: 'Dr. Martínez' }
+        ];
+
+        // Cargar casos completados desde localStorage si existen
+        const storedCompleted = JSON.parse(localStorage.getItem('completedCases') || '[]');
+        if (storedCompleted.length > 0) {
+            completedCases = [...storedCompleted.map(c => ({
+                id: c.id,
+                patient: c.patient,
+                date: new Date(c.date).toLocaleDateString('es-ES'),
+                result: c.result,
+                validatedBy: c.validatedBy
+            })), ...completedCases];
+        }
+
+        // Mostrar configuración solo si es admin
+        if (userData && userData.role === 'admin') {
+            document.getElementById('nav-config').style.display = 'flex';
+        }
+
+        function switchToSection(section, clickedElement = null) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`${section}-section`).classList.add('active');
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+
+            // Marcar el elemento activo
+            if (clickedElement) {
+                clickedElement.classList.add('active');
+            } else {
+                // Buscar el nav-item correspondiente
+                const navItem = document.querySelector(`[data-section="${section}"]`);
+                if (navItem) navItem.classList.add('active');
+            }
+
+            const titles = {
+                'bandeja': { title: 'Bandeja de Auditoría', subtitle: 'Casos pendientes de validación experta · 5 requieren atención prioritaria' },
+                'rendimiento': { title: 'Rendimiento IA', subtitle: 'Métricas de precisión del modelo de inteligencia artificial' },
+                'archivo': { title: 'Archivo Clínico', subtitle: 'Historial de casos validados y reportes generados' }
+            };
+            document.getElementById('page-title').innerText = titles[section].title;
+            document.getElementById('page-subtitle').innerText = titles[section].subtitle;
+
+            // Cargar archivo clínico si corresponde
+            if (section === 'archivo') {
+                renderArchivoTable();
+            }
+        }
+
+        function renderArchivoTable() {
+            const tbody = document.getElementById('archivoTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = completedCases.map(c => `
+                <tr>
+                    <td><strong>${c.id}</strong></td>
+                    <td>${c.patient}</td>
+                    <td>${c.date}</td>
+                    <td><span style="background: var(--green-light); color: var(--green-success); padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600;">${c.result}</span></td>
+                    <td>${c.validatedBy || '—'}</td>
+                    <td><button class="btn-outline" onclick="viewCompletedReport('${c.id}')"><i class="fas fa-file-alt"></i> Ver Reporte</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function filterCases(type) {
+            document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('#casesTable tbody tr').forEach(row => {
+                if (type === 'all') row.style.display = '';
+                else if (type === 'critical') row.style.display = row.classList.contains('row-critical') ? '' : 'none';
+                else if (type === 'warning') row.style.display = row.classList.contains('row-warning') ? '' : 'none';
+                else if (type === 'normal') row.style.display = (!row.classList.contains('row-critical') && !row.classList.contains('row-warning')) ? '' : 'none';
+            });
+        }
+
+        function openAuditModal(caseId, pair, confidence) {
+            currentAuditCase = caseId;
+            currentPatientData = casesData[caseId] || { patientName: 'Desconocido', gender: 'M', age: 0 };
+
+            document.getElementById('modalCaseId').innerText = caseId;
+            document.getElementById('modalPair').innerText = pair;
+            document.getElementById('modalPairRef').innerText = pair;
+            document.getElementById('modalConfidence').innerText = confidence;
+            document.getElementById('modalAnomaly').innerHTML = confidence < 75 ? 'Posible variante estructural detectada - requiere revisión manual' : 'Artefacto en imagen - verificar calidad';
+            document.getElementById('auditModal').classList.add('active');
+            currentAuditRow = Array.from(document.querySelectorAll('#casesTable tbody tr')).find(row => row.cells[0]?.innerText.includes(caseId.replace('CB-', '')));
+        }
+
+        function viewCompletedReport(caseId) {
+            const caseInfo = completedCases.find(c => c.id === caseId) || { patient: 'ANON-000', gender: 'M', age: 0, result: '46,XY' };
+
+            // Guardar datos del paciente
+            localStorage.setItem('activePatient', JSON.stringify({
+                id: caseId,
+                name: caseInfo.patient,
+                chn: caseInfo.chn || 'CHN-0000',
+                gender: caseInfo.gender || 'M',
+                age: caseInfo.age || 0
+            }));
+
+            // Guardar resultado del cariotipo
+            localStorage.setItem('karyotypeResult', JSON.stringify({
+                karyotype: caseInfo.result,
+                cellsAnalyzed: 20,
+                validatedPairs: 23,
+                needsReview: 0,
+                corrections: 0,
+                confidence: '97',
+                validatedAt: caseInfo.date
+            }));
+
+            window.location.href = 'informe.html';
+        }
+
+        function closeAuditModal() { document.getElementById('auditModal').classList.remove('active'); }
+        function reassignCase() { alert(`Caso ${currentAuditCase} reasignado.`); closeAuditModal(); }
+        function validateCase() {
+            if(currentAuditRow) currentAuditRow.remove();
+
+            // Determinar el cariotipo basado en el caso
+            let karyotype = '46,XY';
+            if (currentAuditCase?.includes('437')) karyotype = '47,XY,+21';
+            else if (currentAuditCase?.includes('435')) karyotype = '45,X';
+            else if (currentAuditCase?.includes('438')) karyotype = '47,XXY';
+            else if (currentPatientData?.gender === 'F') karyotype = '46,XX';
+
+            // Guardar datos del paciente activo
+            if (currentPatientData) {
+                localStorage.setItem('activePatient', JSON.stringify({
+                    id: currentAuditCase,
+                    name: currentPatientData.patientName,
+                    chn: currentPatientData.chn,
+                    gender: currentPatientData.gender,
+                    age: currentPatientData.age
+                }));
+            }
+
+            // Guardar resultado del cariotipo para el informe
+            const karyotypeData = {
+                karyotype: karyotype,
+                cellsAnalyzed: 20,
+                validatedPairs: 23,
+                needsReview: 0,
+                corrections: currentAuditCase?.includes('0442') ? 3 :
+                             currentAuditCase?.includes('0435') ? 1 :
+                             currentAuditCase?.includes('0438') ? 2 : 0,
+                confidence: document.getElementById('modalConfidence')?.innerText || '95',
+                validatedAt: new Date().toISOString(),
+                validatedBy: userData?.name || 'Dra. María López'
+            };
+            localStorage.setItem('karyotypeResult', JSON.stringify(karyotypeData));
+
+            alert(`✅ Caso ${currentAuditCase} validado.\n\nEl cariotipo ha sido aprobado y el informe está listo para generarse.`);
+            closeAuditModal();
+            updateSignatureButton();
+
+            // Redirigir al informe final
+            setTimeout(() => {
+                window.location.href = 'informe.html';
+            }, 500);
+        }
+        function reportAnomaly() { alert(`Anomalía reportada.`); closeAuditModal(); }
+        
+        function updateSignatureButton() {
+            let remaining = document.querySelectorAll('#casesTable tbody tr.row-critical').length;
+            let btn = document.getElementById('signatureBtn'), badge = document.getElementById('criticalBadge');
+            if(remaining === 0) { btn.disabled = false; btn.classList.add('ready'); btn.innerHTML = '<i class="fas fa-signature"></i> Firmar todos los casos'; btn.onclick = () => alert('Firma completada.'); if(badge) badge.style.display = 'none'; }
+            else { btn.disabled = true; btn.classList.remove('ready'); btn.innerHTML = `<i class="fas fa-signature"></i> Firmar pendientes (${remaining})`; if(badge) badge.innerText = remaining; }
+        }
+
+        // Inicializar con bandeja activa
+        switchToSection('bandeja');
+
+        // Actualizar info de usuario
+        if (userData) {
+            document.querySelector('.user-name').innerText = userData.name === 'super' ? 'Dr. Carlos Supervisor' :
+                userData.name === 'admin' ? 'Ing. Admin' : 'Dra. María López';
+            document.querySelector('.user-role').innerText = userData.role === 'supervisor' ? 'Garante Clínico' : 'Administrador';
+        }
+    </script>
+</body>
+</html>
