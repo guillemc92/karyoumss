@@ -5,11 +5,11 @@
 | Campo | Detalle |
 |---|---|
 | **Proyecto** | BIOMED UMSS – Intelligent Karyotyping |
-| **Versión** | 0.1 (borrador) |
+| **Versión** | 0.2 (enriquecido con video Simon Brown) |
 | **Fecha** | Mayo 2026 |
 | **Autor** | Ing. Guillermo Mamani Chambi |
 | **Trazabilidad** | FSD_v1.md §2 · BRD_v2.md §4 |
-| **Referencia** | C4 Model — https://c4model.com/ |
+| **Referencia** | C4 Model — https://c4model.com/ · Video: Simon Brown — "Visualising Software Architecture" |
 | **Estado** | Borrador — pendiente revisión de equipo |
 
 ---
@@ -18,7 +18,11 @@
 
 ### §0.1 ¿Qué es el C4 Model?
 
-El C4 Model es un enfoque de diagramación de arquitectura de software diseñado para ser fácil de aprender y amigable para desarrolladores. Proporciona un conjunto de **abstracciones jerárquicas** e independientes de notación y herramientas para comunicar la arquitectura de un sistema en distintos niveles de detalle.
+El C4 Model es un enfoque de diagramación de arquitectura de software creado por **Simon Brown**, diseñado para resolver la "crisis de comunicación" en ingeniería de software: el abandono del UML dejó un vacío que fue llenado por diagramas informales y ambiguos — lo que Brown llama **"garbage diagrams"**.
+
+La filosofía central es: **"abstracciones primero, notación después"**. Brown usa la metáfora de los **mapas geográficos**: así como un mapa puede mostrarse a distintos niveles de zoom (país → ciudad → calle → edificio), la arquitectura debe visualizarse a diferentes niveles de detalle para contar historias técnicas a distintas audiencias sin perder la conexión con el código real.
+
+El C4 Model proporciona un conjunto de **abstracciones jerárquicas** independientes de notación y herramientas para comunicar la arquitectura de un sistema en distintos niveles de detalle.
 
 El nombre "C4" proviene de sus cuatro niveles de abstracción:
 
@@ -31,14 +35,46 @@ El nombre "C4" proviene de sus cuatro niveles de abstracción:
 
 ### §0.2 Las 4 Abstracciones del C4 Model
 
-| Abstracción | Definición | Ejemplo BIOMED |
-|---|---|---|
-| **Person** | Usuario humano que interactúa con el sistema | Citogenetista, Supervisor, Director |
-| **Software System** | La unidad de más alto nivel; lo que se está construyendo o con lo que se interactúa | BIOMED UMSS, LIS Hospitalario, TorchServe |
-| **Container** | Unidad desplegable dentro del sistema (app, DB, microservicio) | React App, FastAPI, Redis, PostgreSQL |
-| **Component** | Bloque de construcción dentro de un container | CHN Anonymizer, ISCN Generator, WebSocket Manager |
+Definiciones exactas según Simon Brown en el video:
 
-### §0.3 Scope de este Documento
+| Abstracción | Definición exacta (Simon Brown) | Ejemplo BIOMED |
+|---|---|---|
+| **Person** | Usuario humano que interactúa con el sistema; representa roles o personas | Citogenetista, Supervisor, Director |
+| **Software System** | Nivel más alto de abstracción. Algo que entrega valor a sus usuarios, ya sea interno o externo a la organización | BIOMED UMSS, LIS Hospitalario, TorchServe |
+| **Container** | ⚠️ **No es Docker**. Es una unidad de ejecución o almacenamiento — algo que necesita estar "en ejecución" para que el sistema funcione (app web, app móvil, base de datos, sistema de archivos) | React App, FastAPI API, Redis, PostgreSQL |
+| **Component** | Agrupación lógica de funciones relacionadas (módulos o paquetes) dentro de un container, con interfaz limpia y fronteras bien definidas | CHN Anonymizer, ISCN Generator, WebSocket Manager |
+| **Code** | Elementos de implementación más granulares: clases, interfaces, esquemas de BD | Clases Python, TypeScript interfaces |
+
+> **Nota crítica del video:** El diagrama de Componentes (Nivel 3) debe tener un **mapeo 1:1** con la estructura real del código fuente. Si el diagrama no refleja el código, pierde valor como herramienta de ingeniería.
+
+### §0.3 Los 4 Diagramas — Características según el Video
+
+| Nivel | Diagrama | Alcance | Audiencia | Nota del video |
+|---|---|---|---|---|
+| 1 | **System Context** | El sistema como caja negra + usuarios + sistemas externos | Técnicos y no técnicos | Herramienta más poderosa para alinear stakeholders comerciales, product owners y devs |
+| 2 | **Container** | Descompone el sistema en apps y almacenes de datos. Muestra elecciones tecnológicas y comunicación entre procesos (IPC) | Técnicos | Muestra llamadas de red entre containers |
+| 3 | **Component** | Zoom dentro de un container para mostrar sus componentes internos | Desarrolladores | **Mapeo 1:1 obligatorio con estructura real del código** |
+| 4 | **Code** | Diagramas de clases, interfaces, esquemas | Desarrolladores | Brown recomienda **generarlos automáticamente desde el IDE**, no dibujarlos a mano — se vuelven obsoletos rápidamente |
+
+### §0.4 Buenas Prácticas del Video (Simon Brown)
+
+| Práctica | Descripción |
+|---|---|
+| **Títulos explícitos** | Todo diagrama debe declarar claramente su tipo y alcance. Ej: "System Context Diagram for BIOMED UMSS" |
+| **Leyendas obligatorias** | No asumir que colores o formas son obvios. Siempre incluir leyenda con la semántica visual |
+| **Flechas con intención** | Usar flechas **unidireccionales** con verbos de acción específicos. Ej: "hace llamadas a la API de..." — evitar el término vago "usa" |
+| **Texto sobre estética** | El diagrama debe tener sentido incluso sin color ni forma. La descripción textual corta dentro de las cajas es vital |
+| **Arquitectura como código** | Brown desaconseja Visio/Lucidchart por falta de semántica arquitectónica. Recomienda **PlantUML con macros C4** o Structurizr DSL |
+
+### §0.5 Ejemplo del Video: Internet Banking System
+
+Simon Brown usa un **Sistema de Banca por Internet** para demostrar los 4 niveles:
+- **Nivel 1:** Cliente bancario → Sistema → Mainframe Banking System + Email System
+- **Nivel 2:** Single Page App (Angular) + App Móvil (Xamarin) + API Backend (Java/Spring MVC) + PostgreSQL
+- **Nivel 3 (dentro del API):** Sign-in Controller, Security Component, Mainframe Banking Facade
+- **Nivel 4:** Diagrama de clases del Mainframe Facade (generado desde IDE)
+
+### §0.6 Scope de este Documento
 
 Este borrador cubre **exclusivamente el Nivel 1 (System Context Diagram)** del C4 Model para BIOMED UMSS. Los niveles 2, 3 y 4 se desarrollarán en versiones posteriores del DTI.
 
