@@ -4,7 +4,7 @@
 | Campo | Valor |
 |:---|:---|
 | **Producto** | BIOMED UMSS – Intelligent Karyotyping |
-| **Grupo** | G04 |
+| **Grupo** |  |
 | **Versión** | v1.0 (entrega final) |
 | **Fecha** | 13/05/2026 |
 | **Arquitecto responsable** | Ing. Guillermo Mamani Chambi |
