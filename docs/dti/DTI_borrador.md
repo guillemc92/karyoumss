@@ -138,30 +138,42 @@ El análisis citogenético tradicional presenta tres fallas estructurales (BRD_v
 ### 2.1 System Context Diagram
 
 ```mermaid
-C4Context
-    title System Context Diagram — BIOMED UMSS Intelligent Karyotyping Platform (v1.0)
+graph TD
+    %% ── Personas ──────────────────────────────────────
+    Cito(["👤 Citogenetista<br/>Usuario primario<br/>Valida y corrige cromosomas"])
+    Sup(["👤 Supervisor<br/>Garante clínico<br/>Audita y firma digitalmente"])
+    Admin(["👤 Administrador<br/>Gestión del sistema<br/>Configura usuarios e integraciones"])
 
-    Person(citogenetista, "Citogenetista", "Usuario primario. Valida diagnóstico, corrige clasificaciones, genera informes")
-    Person(supervisor, "Supervisor", "Control de calidad. Audita casos, revisa métricas, firma digitalmente")
-    Person(administrador, "Administrador", "Gestión del sistema. Configura usuarios, modelos IA, integración LIS")
+    %% ── Sistema principal ──────────────────────────────
+    BIOMED["🧬 BIOMED UMSS<br/>─────────────────────<br/>Plataforma web SaaS de<br/>cariotipado asistido por IA<br/>Human-in-the-loop · Softmax"]
 
-    System(biomed, "BIOMED UMSS", "Plataforma web de cariotipado asistido por IA. Automatiza segmentación y clasificación. Human-in-the-loop, semaforización Softmax")
+    %% ── Sistemas externos ──────────────────────────────
+    TS[("🧠 TorchServe<br/>Motor IA GPU<br/>Mask R-CNN + ResNet50")]
+    S3[("☁️ S3 / MinIO<br/>Almacenamiento objetos<br/>Imágenes metafase")]
+    LIS[("🏥 LIS Hospitalario<br/>Receptor de informes<br/>HL7 FHIR")]
+    EMAIL[("✉️ Email<br/>Notificaciones<br/>Supervisor")]
 
-    System_Ext(torchserve, "TorchServe / Motor IA", "Servicio de inferencia en GPU. Mask R-CNN + ResNet50. Procesa tiles de imágenes")
-    System_Ext(s3, "S3 / MinIO", "Almacenamiento de objetos. Imágenes de metafase (cloud o on-premise)")
-    System_Ext(lis, "LIS Hospitalario", "Sistema de Información de Laboratorio. Receptor de informes finales. HL7 FHIR")
-    System_Ext(email, "Email / Notificaciones", "Sistema de correo. Notifica al supervisor cuando un informe requiere firma")
+    %% ── Relaciones personas → sistema ──────────────────
+    Cito -->|"HTTPS · Carga imágenes, valida cromosomas"| BIOMED
+    Sup  -->|"HTTPS · Audita casos, firma digital"| BIOMED
+    Admin-->|"HTTPS · Configura sistema"| BIOMED
 
-    Rel(citogenetista, biomed, "Carga imágenes, valida cromosomas, corrige clasificaciones", "HTTPS")
-    Rel(supervisor, biomed, "Audita casos, firma informes, revisa métricas", "HTTPS")
-    Rel(administrador, biomed, "Configura usuarios, modelos IA, integración con LIS", "HTTPS")
-    Rel(biomed, torchserve, "Envía tiles 1024x1024 para segmentación y clasificación", "REST + mTLS")
-    Rel(torchserve, biomed, "Retorna máscaras, clases y scores Softmax", "REST")
-    Rel(biomed, s3, "Almacena/recupera imágenes de metafase por CHN", "AWS SDK / HTTP")
-    Rel(biomed, lis, "Envía informe final firmado (ISCN + interpretación)", "HL7 FHIR / REST")
-    Rel(biomed, email, "Envía notificación de informe listo para firma", "SMTP / API")
+    %% ── Relaciones sistema → externos ──────────────────
+    BIOMED -->|"REST+mTLS · Envía tiles CHN para inferencia"| TS
+    TS     -->|"REST · Retorna máscaras y scores Softmax"| BIOMED
+    BIOMED -->|"S3 API · Lee/escribe imágenes por CHN"| S3
+    BIOMED -->|"HL7 FHIR · Envía informe firmado"| LIS
+    BIOMED -->|"SMTP · Notifica informe listo"| EMAIL
 
-    UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
+    %% ── Estilos ────────────────────────────────────────
+    style BIOMED fill:#003770,stroke:#E30613,stroke-width:3px,color:#fff
+    style Cito   fill:#0d3b6e,stroke:#00b4ff,color:#fff
+    style Sup    fill:#0d3b6e,stroke:#00b4ff,color:#fff
+    style Admin  fill:#0d3b6e,stroke:#00b4ff,color:#fff
+    style TS     fill:#1a0533,stroke:#a78bfa,color:#fff
+    style S3     fill:#0a2e1a,stroke:#00e676,color:#fff
+    style LIS    fill:#2e1a0a,stroke:#ff9800,color:#fff
+    style EMAIL  fill:#1a1a1a,stroke:#7d8590,color:#ccc
 ```
 
 ### 2.2 Tabla de Actores y Sistemas Externos
@@ -184,38 +196,54 @@ C4Context
 
 ```mermaid
 graph TB
-    subgraph Client_Tier ["Capa de Presentación"]
-        SPA["React SPA: Mesa de Edición<br/>'React 18 / Vite / Konva.js'"]
+    %% ── Capa Presentación ──────────────────────────────
+    subgraph PRES ["🖥️  Capa de Presentación"]
+        SPA["⚛️ React SPA<br/>Mesa de Edición · Semaforización<br/><i>React 18 / Vite / Konva.js</i>"]
     end
 
-    subgraph API_Tier ["Capa de Aplicación y Orquestación"]
-        API["FastAPI: Orquestador REST<br/>'Python 3.11+'"]
-        Auth["CHN Anonymizer Service<br/>'Lógica de dominio'"]
+    %% ── Capa Aplicación ────────────────────────────────
+    subgraph APP ["⚡  Capa de Aplicación y Orquestación"]
+        API["🔧 FastAPI Backend<br/>REST + WebSocket<br/><i>Python 3.11+</i>"]
+        CHN["🛡️ CHN Anonymizer<br/>Anonimización obligatoria<br/><i>Lógica de dominio</i>"]
     end
 
-    subgraph Async_Tier ["Procesamiento Asíncrono"]
-        Broker(("Redis: Message Broker"))
-        Worker["Celery: Image Processor<br/>'Python / OpenCV'"]
+    %% ── Capa Asíncrona ─────────────────────────────────
+    subgraph ASYNC ["🔄  Procesamiento Asíncrono"]
+        BROKER(["🔴 Redis Broker<br/>Cola de mensajes<br/><i>Redis 7</i>"])
+        WORKER["⚙️ Celery Worker<br/>CLAHE · Tiling · Pipeline IA<br/><i>Celery 5 / Python</i>"]
     end
 
-    subgraph AI_Tier ["Inferencia de IA"]
-        Torch["TorchServe: Modelos CV<br/>'PyTorch / GPU'"]
+    %% ── Capa IA ────────────────────────────────────────
+    subgraph AI ["🧠  Inferencia IA — GPU"]
+        TORCH["🤖 TorchServe<br/>Mask R-CNN + ResNet50<br/><i>PyTorch / NVIDIA GPU</i>"]
     end
 
-    subgraph Persistence_Tier ["Almacenamiento"]
-        DB[("PostgreSQL: Clínica<br/>'Metadata y CHN'")]
-        S3["MinIO/S3: Imágenes<br/>'Metafases y Recortes'"]
+    %% ── Capa Persistencia ──────────────────────────────
+    subgraph PERSIST ["💾  Almacenamiento"]
+        DB[("🗄️ PostgreSQL 15<br/>Muestras · Audit Trail<br/><i>ACID</i>")]
+        S3["📦 MinIO / S3<br/>Imágenes metafase<br/><i>&gt;10MB por objeto</i>"]
     end
 
-    SPA -->|"HTTPS / JSON"| API
-    API -->|"Validar / Anonimizar"| Auth
-    API -->|"Encolar Jobs"| Broker
-    Broker -->|"Consume"| Worker
-    Worker -->|"Inferencia REST"| Torch
-    Worker -->|"Persistir Recortes"| S3
-    Worker -->|"Actualizar Estado"| DB
-    API -->|"Queries"| DB
-    SPA -->|"Visualizar Imágenes (Presigned URL)"| S3
+    %% ── Relaciones ─────────────────────────────────────
+    SPA    -->|"HTTPS/JSON"| API
+    API    -->|"CHN antes de cloud"| CHN
+    API    -->|"Encola tarea"| BROKER
+    BROKER -->|"Consume"| WORKER
+    WORKER -->|"Inferencia REST"| TORCH
+    WORKER -->|"Persiste recortes"| S3
+    WORKER -->|"Actualiza estado"| DB
+    API    -->|"Queries CRUD"| DB
+    SPA    -->|"Presigned URL"| S3
+
+    %% ── Estilos ────────────────────────────────────────
+    style SPA    fill:#003b6f,stroke:#00b4ff,color:#fff
+    style API    fill:#003b6f,stroke:#00b4ff,color:#fff
+    style CHN    fill:#1a0533,stroke:#E30613,stroke-width:2px,color:#fff
+    style BROKER fill:#3d0000,stroke:#ff5252,color:#fff
+    style WORKER fill:#1a0533,stroke:#a78bfa,color:#fff
+    style TORCH  fill:#0a2433,stroke:#00ffe0,color:#fff
+    style DB     fill:#0a2e1a,stroke:#00e676,color:#fff
+    style S3     fill:#1a2e0a,stroke:#69f0ae,color:#fff
 ```
 
 ### 3.2 Descripción de cada Contenedor
@@ -251,61 +279,73 @@ graph TB
 
 ```mermaid
 flowchart TB
-    subgraph FastAPI ["FastAPI Container — API Gateway (Arquitectura Hexagonal)"]
+    subgraph FastAPI ["🔧 FastAPI Container — API Gateway (Arquitectura Hexagonal)"]
 
-        subgraph AdapterIn ["Adapter Layer — In"]
+        subgraph AdapterIn ["📥 Adapter Layer — In"]
             direction LR
-            REST_Router["samples_router.py\nREST Endpoints"]
-            WS_Handler["websocket_handler.py\nWebSocket Manager"]
-            Auth_Middleware["auth_middleware.py\nJWT Validation"]
+            REST_Router["samples_router.py<br/>REST Endpoints"]
+            WS_Handler["websocket_handler.py<br/>WebSocket Manager"]
+            Auth_Middleware["auth_middleware.py<br/>JWT Validation"]
         end
 
-        subgraph AppLayer ["Application Layer — Use Cases"]
+        subgraph AppLayer ["⚙️ Application Layer — Use Cases"]
             direction LR
-            CreateSampleUC["CreateSampleUseCase\n(UC-01 pasos 1-4)"]
-            ValidateChromosomeUC["ValidateChromosomeUseCase\n(UC-02)"]
-            GenerateReportUC["GenerateReportUseCase\n(UC-03)"]
+            CreateSampleUC["CreateSampleUseCase<br/>UC-01 · Ingesta + CHN + Queue"]
+            ValidateChromosomeUC["ValidateChromosomeUseCase<br/>UC-02 · Semáforo + Edición"]
+            GenerateReportUC["GenerateReportUseCase<br/>UC-03 · ISCN + Firma"]
         end
 
-        subgraph DomainLayer ["Domain Layer — Core"]
-            CHN_Service["chn_service.py\nCHNCode Generator"]
-            ISCN_Service["iscn_generator.py\nISCN Creator"]
-            Audit_Service["audit_service.py\nTrail Recorder"]
+        subgraph DomainLayer ["🏛️ Domain Layer — Core"]
+            direction LR
+            CHN_Service["chn_service.py<br/>CHNCode Generator"]
+            ISCN_Service["iscn_generator.py<br/>ISCN 2020 Creator"]
+            Audit_Service["audit_service.py<br/>Trail Recorder"]
         end
 
-        subgraph AdapterOut ["Adapter Layer — Out"]
+        subgraph AdapterOut ["📤 Adapter Layer — Out"]
             direction LR
-            PG_Adapter["postgres_adapter.py\nSampleRepository"]
-            Redis_Adapter["redis_adapter.py\nTask Publisher"]
-            WS_Publisher["websocket_publisher.py\nEvent Sender"]
+            PG_Adapter["postgres_adapter.py<br/>SampleRepository"]
+            Redis_Adapter["redis_adapter.py<br/>Task Publisher"]
+            WS_Publisher["websocket_publisher.py<br/>Event Sender"]
         end
     end
 
-    subgraph External ["External (other containers)"]
-        PG[(PostgreSQL)]
-        Redis[(Redis Queue)]
-        UI[React Frontend]
+    subgraph External ["🔌 External Containers"]
+        direction LR
+        PG[("🗄️ PostgreSQL")]
+        Redis[("🔴 Redis Queue")]
+        UI["⚛️ React Frontend"]
     end
 
+    %% Adapter In → Use Cases
     REST_Router --> CreateSampleUC
     REST_Router --> ValidateChromosomeUC
     REST_Router --> GenerateReportUC
-    WS_Handler --> WS_Publisher
+    WS_Handler  --> WS_Publisher
 
-    CreateSampleUC --> CHN_Service
-    CreateSampleUC --> PG_Adapter
-    CreateSampleUC --> Redis_Adapter
-
+    %% Use Cases → Domain
+    CreateSampleUC      --> CHN_Service
     ValidateChromosomeUC --> Audit_Service
+    GenerateReportUC    --> ISCN_Service
+
+    %% Use Cases → Adapter Out
+    CreateSampleUC      --> PG_Adapter
+    CreateSampleUC      --> Redis_Adapter
     ValidateChromosomeUC --> PG_Adapter
+    GenerateReportUC    --> PG_Adapter
+    GenerateReportUC    --> WS_Publisher
 
-    GenerateReportUC --> ISCN_Service
-    GenerateReportUC --> PG_Adapter
-    GenerateReportUC --> WS_Publisher
-
-    PG_Adapter --> PG
+    %% Adapter Out → External
+    PG_Adapter    --> PG
     Redis_Adapter --> Redis
-    WS_Publisher --> UI
+    WS_Publisher  --> UI
+
+    %% Estilos
+    style AdapterIn   fill:#0a1f3d,stroke:#00b4ff,color:#fff
+    style AppLayer    fill:#1a0533,stroke:#a78bfa,color:#fff
+    style DomainLayer fill:#0a2e1a,stroke:#00e676,color:#fff
+    style AdapterOut  fill:#2e1a0a,stroke:#ff9800,color:#fff
+    style External    fill:#1a1a1a,stroke:#7d8590,color:#ccc
 ```
 
 ### 4.2 Mapeo Componente → Código (1:1)
