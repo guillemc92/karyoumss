@@ -1,0 +1,35 @@
+sequenceDiagram
+    title UC-AUDIT: Auditoría Aleatoria 5% Anti-Sesgo
+
+    participant SYS as Sistema BIOMED
+    participant PG as PostgreSQL
+    participant WS as WebSocket
+    actor SUP as Supervisor
+
+    Note over SYS: Trigger: sample entra a pending_signature
+
+    SYS->>PG: SELECT chromosomes WHERE sample_id=X AND confidence_score >= 0.86
+    PG-->>SYS: Lista cromosomas "verdes" (auto-aceptados)
+    SYS->>SYS: Random sample 5% de cromosomas verdes
+    SYS->>PG: INSERT audit_tasks (chromosome_ids, supervisor_id, due_at)
+
+    SYS->>WS: Notifica supervisor: "5% para auditoría aleatoria"
+    WS-->>SUP: "Revisar N cromosomas seleccionados"
+
+    loop Auditoría de cada cromosoma seleccionado
+        SUP->>SYS: GET /chromosomes/{id}/detail
+        SYS-->>SUP: Cromosoma + clasificación IA + Grad-CAM disponible
+
+        alt Supervisor aprueba clasificación
+            SUP->>SYS: POST /audit/{id}/approve
+            SYS->>PG: INSERT edits (action="audit_approve", user_id=supervisor_jwt)
+        else Supervisor detecta error
+            SUP->>SYS: POST /audit/{id}/reject {correction}
+            SYS->>PG: UPDATE chromosome (pair_number=correction, validated=false)
+            SYS->>PG: INSERT edits (action="audit_reject")
+            Note over SYS,PG: Devuelve muestra a pending_validation
+        end
+    end
+
+    SYS->>PG: UPDATE audit_tasks SET completed=true
+    Note over SYS: Anti-sesgo: previene confianza ciega en IA

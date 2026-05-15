@@ -1,0 +1,33 @@
+sequenceDiagram
+    title UC-XAI: Explicabilidad con Grad-CAM (Saliency Maps)
+
+    actor C as Citogenetista
+    participant UI as React SPA
+    participant API as FastAPI
+    participant TS as TorchServe
+    participant PG as PostgreSQL
+
+    C->>UI: Clic ícono "¿Por qué?" en cromosoma naranja
+    UI->>API: POST /api/v1/chromosomes/{id}/xai
+
+    API->>PG: SELECT chromosome (polygon, s3_path_crop)
+    API->>TS: POST /predictions/gradcam {crop_base64, target_class}
+    TS->>TS: Forward pass EfficientNet-B3
+    TS->>TS: Grad-CAM: gradientes respecto a última capa conv
+    TS->>TS: Genera heatmap superpuesto (rojo=importante, azul=irrelevante)
+    TS-->>API: {saliency_map_base64, attention_regions}
+
+    API->>PG: INSERT edits (action="xai_viewed", user_id=JWT)
+    Note over API,PG: Log obligatorio — trazabilidad clínica
+
+    API-->>UI: {heatmap_url, explanation: "El par 21 se identificó por..."}
+    UI->>UI: Renderiza overlay del heatmap sobre cromosoma
+    UI-->>C: Visualización Grad-CAM con regiones de atención
+
+    alt Analista acepta clasificación IA
+        C->>UI: "Acepto — la IA tiene razón"
+        UI->>API: PATCH /chromosomes/{id}/validated
+    else Analista corrige
+        C->>UI: Cambia par cromosómico manualmente
+        UI->>API: PATCH /chromosomes/{id}/position {pair_override}
+    end

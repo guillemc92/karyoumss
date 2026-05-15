@@ -1,0 +1,29 @@
+sequenceDiagram
+    title UC-01: Ingesta y Anonimización de Muestra
+
+    actor C as Citogenetista
+    participant UI as React SPA
+    participant API as FastAPI
+    participant CHN as CHN Anonymizer
+    participant S3 as S3/MinIO
+    participant PG as PostgreSQL
+    participant R as Redis Queue
+
+    C->>UI: Selecciona imagen TIFF/PNG (<50MB)
+    UI->>UI: Valida formato y tamaño (client-side)
+    UI->>API: POST /api/v1/samples/image (multipart)
+
+    API->>API: Valida formato (TIFF/PNG/JP2)
+    API->>CHN: Solicita código CHN único
+    CHN->>PG: Verifica unicidad del CHN
+    CHN-->>API: CHN-2026-05-13-0001
+
+    API->>S3: Upload imagen (path: CHN-2026-05-13-0001/meta.tiff)
+    S3-->>API: URL presignada
+    API->>PG: INSERT samples (chn_code, s3_path, status=queued)
+    API->>R: Enqueue {sample_id, s3_path, chn_code}
+    API-->>UI: 202 Accepted {sample_id, task_id}
+
+    UI-->>C: "Muestra en procesamiento ⏳"
+
+    Note over API,R: Flujo asíncrono — no bloquea el cliente

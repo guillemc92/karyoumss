@@ -1,0 +1,62 @@
+erDiagram
+    USERS {
+        uuid id PK
+        string email UK
+        string name
+        enum role "citogenetista|supervisor|admin"
+        string password_hash
+        string totp_secret "Para MFA"
+        timestamp created_at
+    }
+
+    SAMPLES {
+        uuid id PK
+        string chn_code UK "CHN-YYYY-MM-DD-NNNN"
+        string s3_path
+        enum status "queued|processing|ready|pending_validation|pending_signature|emitido|error|manual_mode"
+        uuid analyst_id FK
+        timestamp created_at
+        timestamp processed_at
+    }
+
+    CHROMOSOMES {
+        uuid id PK
+        uuid sample_id FK
+        int pair_number "1-22 23=X 24=Y"
+        float confidence_score "Softmax 0.0-1.0 SIN redondear"
+        json polygon_coords "GeoJSON array"
+        bool requires_review "True si score lt 0.85"
+        bool validated
+        bool xai_viewed "Grad-CAM activado"
+        uuid validated_by FK
+        timestamp validated_at
+    }
+
+    EDITS {
+        uuid id PK "Solo INSERT — INALTERABLE"
+        uuid chromosome_id FK
+        uuid user_id FK "Siempre del JWT"
+        enum action "rotate|move|split|merge|reclassify|validate|xai_viewed"
+        json before_state
+        json after_state
+        timestamp created_at "DEFAULT NOW() — no del cliente"
+    }
+
+    REPORTS {
+        uuid id PK
+        uuid sample_id FK UK
+        string iscn_nomenclature "READ ONLY — no PATCH"
+        enum status "pending_validation|pending_signature|emitido"
+        uuid signed_by FK
+        string mfa_token_hash
+        timestamp signed_at
+        timestamp created_at
+    }
+
+    USERS ||--o{ SAMPLES : "analiza"
+    SAMPLES ||--o{ CHROMOSOMES : "contiene"
+    CHROMOSOMES ||--o{ EDITS : "registra historial"
+    SAMPLES ||--|| REPORTS : "genera"
+    USERS ||--o{ REPORTS : "firma"
+    USERS ||--o{ EDITS : "realiza"
+    USERS ||--o{ CHROMOSOMES : "valida"

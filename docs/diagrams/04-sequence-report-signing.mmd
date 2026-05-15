@@ -1,0 +1,41 @@
+sequenceDiagram
+    title UC-03: Generación y Firma Digital del Informe
+
+    actor C as Citogenetista
+    actor S as Supervisor
+    participant UI as React SPA
+    participant API as FastAPI
+    participant PG as PostgreSQL
+    participant LIS as LIS Hospitalario
+    participant EMAIL as Email Service
+
+    C->>UI: Clic "Generar Informe"
+    UI->>API: POST /api/v1/reports {sample_id}
+    API->>PG: ¿Todos los cromosomas <0.85 validados?
+
+    alt Cromosomas pendientes
+        API-->>UI: 409 Conflict {message: "X cromosomas pendientes"}
+        UI-->>C: Bloqueo — muestra lista pendientes ❌
+    else Todos validados
+        API->>API: Genera ISCN (determinístico)
+        API->>PG: INSERT reports (iscn, status=pending_signature)
+        API-->>UI: 201 Created {report_id, iscn_nomenclature}
+        API->>EMAIL: Notifica supervisor "Informe listo para firma"
+    end
+
+    S->>UI: Abre informe
+    UI->>API: GET /api/v1/samples/{id}/audit-trail
+    API-->>UI: Historial completo de ediciones
+    S->>UI: Revisa audit trail y valida ISCN
+
+    S->>UI: Clic "Firmar con MFA"
+    UI->>UI: Solicita TOTP/biométrico
+    UI->>API: POST /api/v1/reports/{id}/sign {supervisor_id_jwt, mfa_token}
+
+    API->>API: Verifica supervisor ≠ analista (casos críticos)
+    API->>API: Valida token MFA
+    API->>PG: UPDATE reports SET status=emitido, signed_by, signed_at=NOW()
+    API->>LIS: POST informe firmado (HL7 FHIR)
+    LIS-->>API: 200 OK
+    API-->>UI: {status: "emitido", signed_at}
+    UI-->>S: "Informe emitido exitosamente ✅"

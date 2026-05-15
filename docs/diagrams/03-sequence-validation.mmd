@@ -1,0 +1,34 @@
+sequenceDiagram
+    title UC-02: Validación con Semaforización de Confianza
+
+    actor C as Citogenetista
+    participant UI as React SPA
+    participant API as FastAPI
+    participant PG as PostgreSQL
+
+    UI->>API: GET /api/v1/samples/{id}/chromosomes
+    API->>PG: SELECT chromosomes WHERE sample_id=id
+    PG-->>API: 46 cromosomas con confidence_score
+    API-->>UI: List[ChromosomeDetail]
+
+    UI->>UI: Renderiza Mesa de Edición (Konva.js)
+    Note over UI: Verde (≥0.85) · Naranja (<0.85) · Gradiente continuo
+
+    loop Para cada cromosoma naranja
+        C->>UI: Revisa cromosoma resaltado
+        opt Necesita edición
+            C->>UI: Drag & drop / Rotar / Reclasificar
+            UI->>API: PATCH /chromosomes/{id}/position
+            API->>PG: UPDATE chromosome + INSERT edit_trail
+        end
+        C->>UI: Marca como validado ✓
+        UI->>API: PATCH /chromosomes/{id}/validated
+        API->>PG: UPDATE validated=true, validated_by=user_id_jwt
+        API->>PG: INSERT edits (action="validate", user_id del JWT)
+        API-->>UI: {all_validated: false, remaining: N-1}
+    end
+
+    API-->>UI: {all_validated: true, remaining: 0}
+    UI->>UI: Habilita botón "Generar Informe" ✅
+
+    Note over C,PG: Auditoría aleatoria 5% de cromosomas verdes (anti-sesgo)
