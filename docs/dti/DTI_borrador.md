@@ -4,15 +4,16 @@
 | Campo | Valor |
 |:---|:---|
 | **Producto** | BIOMED UMSS – Intelligent Karyotyping |
-| **Grupo** |  |
-| **Versión** | v1.0 (entrega final) |
+| **Grupo** | G04 |
+| **Versión** | v1.2 (sincronizado con MD folder — BRD v3.5, PRD v2, FSD v2, MRD v1) |
 | **Fecha** | 13/05/2026 |
 | **Arquitecto responsable** | Ing. Guillermo Mamani Chambi |
 | **Stakeholders** | UMSS, IIBISMED-UMSS, laboratorios citogenéticos |
 | **Estado** | Para revisión docente |
-| **BRD** | `docs/BRD_v2.md` |
-| **PRD** | `docs/PRD_v1.md` |
-| **FSD** | `docs/FSD_v1.md` |
+| **BRD** | `docs/BRD_v3.5.md` *(versión definitiva — v3.5)* |
+| **MRD** | `docs/MRD_v1.md` *(nuevo — mercado, TAM/SAM/SOM)* |
+| **PRD** | `docs/PRD_v2.md` *(versión definitiva — v2.0)* |
+| **FSD** | `docs/FSD_v2.md` *(versión definitiva — v2.0)* |
 | **LFSD** | `docs/LFSD.md` |
 | **PROMPT_MAPPINGS** | `docs/PROMPT_MAPPINGS.md` |
 | **Referencia C4** | https://c4model.com/ · Simon Brown |
@@ -51,9 +52,10 @@ Este documento es el **contrato técnico inicial** del producto BIOMED UMSS. Deb
 
 | Documento | Versión | Secciones relevantes |
 |:---|:---|:---|
-| BRD_v2.md | 2.0 | §1–§8 (problema, usuarios, métricas, riesgos) |
-| PRD_v1.md | 1.0 | §5–§7 (user stories, criterios, priorización) |
-| FSD_v1.md | 1.0 | §2–§4 (stack, arquitectura, casos de uso) |
+| BRD_v3.5.md | **3.5 (definitivo)** | §1–§9 (problema, BMC, SMART, RACI, XAI, 21 CFR Part 11) |
+| MRD_v1.md | **1.0 (nuevo)** | TAM/SAM/SOM, segmentación, personas, discovery |
+| PRD_v2.md | **2.0 (definitivo)** | Constitution, Epics, XAI Saliency Maps, scope |
+| FSD_v2.md | **2.0 (definitivo)** | U-Net, EfficientNet-B3, Grad-CAM, Audit Trail hash chain |
 | LFSD.md | 1.0 | §2–§5 (UC críticos, tasks, NFR mínimos) |
 | PROMPT_MAPPINGS.md | 1.0 | PM-UC01-API, PM-UC01-SEG, PM-UC01-CLS |
 | Informe Final M2 | v2.4.1 | §2.4 Stakeholders, §6 Riesgos, §7 Conclusiones |
@@ -102,11 +104,12 @@ El análisis citogenético tradicional presenta tres fallas estructurales (BRD_v
 
 | ID | Métrica | Baseline | Meta v1 | Fuente |
 |:---|:---|:---|:---|:---|
-| NS-01 | **TTK (Time to Karyotype)** | 45 min | <15 min | BRD §5, Informe M2 §1 |
-| KPI-01 | Precisión diagnóstica | Variable | >97.2% | BRD §5 |
-| KPI-02 | Tasa corrección manual | ~100% | <15% | Informe M2 §7 (13% logrado) |
-| KPI-03 | Tasa de error diagnóstico | Variable | 0% omisiones | BRD §5 |
-| KPI-04 | Atención dirigida | 100% revisión | <20% pares manuales | Informe M2 §7 |
+| NS-01 | **TTK (Time to Karyotype)** | 45 min | ≤15 min | BRD v3.5 §7, Informe M2 §1 |
+| KPI-01 | **Sensibilidad diagnóstica** | Variable | **>99%** | BRD v3.5 §8 *(actualizado)* |
+| KPI-02 | Throughput por laboratorio | — | ≥500 muestras/mes | BRD v3.5 §8 |
+| KPI-03 | Tiempo en modo degradado | — | <5% mensual | BRD v3.5 §8 |
+| KPI-04 | Tasa corrección manual | ~100% | <15% | Informe M2 §7 (13% logrado) |
+| KPI-05 | Payback period | — | 18–24 meses | MRD v1.0 §3.1 |
 
 ### 1.5 Restricciones de Negocio Clave
 
@@ -126,7 +129,9 @@ El análisis citogenético tradicional presenta tres fallas estructurales (BRD_v
 | Backend API | FastAPI | 0.115+ | Asíncrono nativo, compatible con ecosistema CV |
 | Cola de tareas | Redis + Celery | 7 / 5 | Desacoplamiento frontend/AI, escalabilidad horizontal |
 | Motor IA | TorchServe / NVIDIA Triton | 0.12+ | Serving de modelos PyTorch en GPU con batching |
-| Modelos IA | Mask R-CNN + ResNet50 | PyTorch 2.0+ | Precisión probada en citogenética |
+| Segmentación | **U-Net** | PyTorch 2.0+ | Segmentación semántica cromosómica (FSD v2) |
+| Clasificación | **EfficientNet-B3** | PyTorch 2.0+ | Clasificación pares 1–22, X, Y (FSD v2) |
+| XAI | **Grad-CAM** | — | Saliency maps para explicabilidad y anti-sesgo |
 | Base de datos | PostgreSQL | 15+ | Integridad referencial, audit trail, ACID |
 | Almacenamiento | S3 / MinIO | — | Imágenes de metafase de alta resolución |
 | Contenedores | Docker + Docker Compose | — | Reproducibilidad, escalabilidad horizontal |
