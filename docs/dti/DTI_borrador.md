@@ -7,7 +7,7 @@
 | **Grupo** | G04 |
 | **Versión** | v1.2 (sincronizado con MD folder — BRD v3.5, PRD v2, FSD v2, MRD v1) |
 | **Fecha** | 13/05/2026 |
-| **Arquitecto responsable** | Ing. Guillermo Mamani Chambi |
+| **Equipo** | Ing. Guillermo Mamani Chambi (Arquitecto/PM) · Ing. Josue David Villarroel Rojas (Dev/IA) |
 | **Stakeholders** | UMSS, IIBISMED-UMSS, laboratorios citogenéticos |
 | **Estado** | Para revisión docente |
 | **BRD** | `docs/BRD_v3.5.md` *(versión definitiva — v3.5)* |

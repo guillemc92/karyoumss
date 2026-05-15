@@ -13,7 +13,7 @@
 | Grupo | G04 |
 | Versión | v2.1 (Constitution 5 principios + Discovery Track + Vibe Coding enriquecido) |
 | Fecha | Mayo 2026 |
-| Product Manager / Autor | Ing. Guillermo Mamani Chambi |
+| Product Manager / Autor | Ing. Guillermo Mamani Chambi · Ing. Josue David Villarroel Rojas |
 | Revisores | Docente \+ Tech Lead \+ QA |
 | Estado | Aprobado |
 | BRD de referencia | BRD v3.5 |

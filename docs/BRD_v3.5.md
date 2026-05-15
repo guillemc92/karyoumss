@@ -12,7 +12,7 @@
 | Fecha | Mayo 2026 |
 | Sponsor de negocio | Dirección IIBISMED - UMSS |
 | Stakeholders | Ministerio de Salud (Bolivia), Laboratorios Citogenéticos, Auditores Clínicos |
-| Autores | Ing. Guillermo Mamani Chambi |
+| Autores | Ing. Guillermo Mamani Chambi · Ing. Josue David Villarroel Rojas |
 | Revisores | Docente + 1 grupo par |
 | Estado | Aprobado |
 | Insumo del Módulo Anterior | 01_vision_negocio.txt, tarea2.txt, mod2informefinal.pdf |

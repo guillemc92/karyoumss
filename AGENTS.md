@@ -1,8 +1,12 @@
 # AGENTS.md — BIOMED UMSS Intelligent Karyotyping Platform
 ## Contrato Funcional para Agentes IA (Claude · Cursor · Copilot)
 
-**Versión:** v1.0 | **Fecha:** Mayo 2026 | **Grupo:** G04
-**Autor:** Ing. Guillermo Mamani Chambi | **Estado:** Aprobado
+**Versión:** v1.1 | **Fecha:** Mayo 2026 | **Grupo:** G04
+**Equipo:**
+- Ing. Guillermo Mamani Chambi — Arquitecto de Software & Product Manager (CEO/Producto)
+- Ing. Josue David Villarroel Rojas — Desarrollador Full Stack & Especialista en IA (CTO/Desarrollo)
+
+**Estado:** Aprobado
 
 > **Regla de oro:** Este archivo es la fuente de verdad para cualquier agente IA que trabaje en este repositorio. Si una decisión arquitectónica no está aquí o en los docs/ referenciados, no existe y no debe asumirse.
 

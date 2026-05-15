@@ -9,7 +9,7 @@
 | **Grupo** | G04 |
 | **Versión** | v2.0 (Excelente — 10 UC + 30+ elementos + API contracts) |
 | **Fecha** | Mayo 2026 |
-| **Autores** | Ing. Guillermo Mamani Chambi |
+| **Autores** | Ing. Guillermo Mamani Chambi · Ing. Josue David Villarroel Rojas |
 | **Revisores** | Docente + 1 grupo par |
 | **Estado** | Aprobado |
 | **Modo** | FSD Clásico 🔧 |

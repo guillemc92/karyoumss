@@ -14,7 +14,7 @@ Complementa al BRD (visión interna del negocio) y antecede al PRD (qué debe ha
 | Grupo | G04 |
 | Versión | v1.0 |
 | Fecha | Mayo 2026 |
-| Product Manager / Autor | Ing. Guillermo Mamani Chambi |
+| Product Manager / Autor | Ing. Guillermo Mamani Chambi · Ing. Josue David Villarroel Rojas |
 | Revisores | Docente + stakeholders |
 | Estado | Aprobado |
 | Relación con BRD | BRD v3.5 |

@@ -6,7 +6,7 @@
 | **Producto** | BIOMED UMSS – Intelligent Karyotyping Platform |
 | **Versión** | 2.0 (10 contratos completos — 6 elementos + Invariantes + Failure Modes) |
 | **Fecha** | Mayo 2026 |
-| **Autor** | Ing. Guillermo Mamani Chambi |
+| **Autores** | Ing. Guillermo Mamani Chambi · Ing. Josue David Villarroel Rojas |
 | **Trazabilidad** | FSD_v2.md → PRD_v2.md → BRD_v3.5 → PROMPT_MAPPINGS.md |
 
 > **Propósito:** En el AI SDLC, el PROMPT_MAPPINGS es la fuente de verdad del ciclo agéntico. Cada entrada mapea: **Input** (requerimiento) → **Prompt** (6 elementos) → **Output** (código) + **Invariantes** (propiedades verificables) + **Failure Modes** (comportamiento ante fallo).
