@@ -66,7 +66,7 @@ Este documento es el **contrato técnico inicial** del producto BIOMED UMSS. Deb
 
 ### 1.0 Resumen Ejecutivo
 
-**BIOMED UMSS** representa un cambio de paradigma en el diagnóstico citogenético mediante la implementación de una arquitectura de **Inteligencia Aumentada**. A diferencia de los sistemas tradicionales, esta plataforma utiliza un pipeline asíncrono basado en **Arquitectura Hexagonal**, desacoplando el motor de inferencia (Mask R-CNN / ResNet50) de las reglas de negocio clínicas (estándar ISCN).
+**BIOMED UMSS** representa un cambio de paradigma en el diagnóstico citogenético mediante la implementación de una arquitectura de **Inteligencia Aumentada**. A diferencia de los sistemas tradicionales, esta plataforma utiliza un pipeline asíncrono basado en **Arquitectura Hexagonal**, desacoplando el motor de inferencia (**U-Net + EfficientNet-B3**) de las reglas de negocio clínicas (estándar ISCN 2024).
 
 El valor técnico reside en la transición de un flujo de trabajo manual y fatigante a uno de **atención dirigida**, donde la IA procesa la segmentación y clasificación en segundo plano, permitiendo al especialista enfocarse exclusivamente en la validación de casos complejos detectados mediante semaforización de confianza. Con un enfoque de **Privacidad por Diseño (Código CHN)** y una infraestructura escalable en contenedores, el sistema garantiza una reducción del **Time to Karyotype (TTK)** de 45 a menos de 15 minutos, asegurando precisión diagnóstica y cumplimiento normativo sin precedentes en la región.
 
@@ -153,7 +153,7 @@ graph TD
     BIOMED["🧬 BIOMED UMSS<br/>─────────────────────<br/>Plataforma web SaaS de<br/>cariotipado asistido por IA<br/>Human-in-the-loop · Softmax"]
 
     %% ── Sistemas externos ──────────────────────────────
-    TS[("🧠 TorchServe<br/>Motor IA GPU<br/>Mask R-CNN + ResNet50")]
+    TS[("🧠 TorchServe<br/>Motor IA GPU<br/>U-Net + EfficientNet-B3")]
     S3[("☁️ S3 / MinIO<br/>Almacenamiento objetos<br/>Imágenes metafase")]
     LIS[("🏥 LIS Hospitalario<br/>Receptor de informes<br/>HL7 FHIR")]
     EMAIL[("✉️ Email<br/>Notificaciones<br/>Supervisor")]
@@ -220,7 +220,7 @@ graph TB
 
     %% ── Capa IA ────────────────────────────────────────
     subgraph AI ["🧠  Inferencia IA — GPU"]
-        TORCH["🤖 TorchServe<br/>Mask R-CNN + ResNet50<br/><i>PyTorch / NVIDIA GPU</i>"]
+        TORCH["🤖 TorchServe<br/>U-Net + EfficientNet-B3<br/><i>PyTorch / NVIDIA GPU</i>"]
     end
 
     %% ── Capa Persistencia ──────────────────────────────
@@ -260,7 +260,7 @@ graph TB
 | **CHN Anonymizer** | Lógica de aplicación | Anonimización: genera CHN-YYYY-NNNN, valida unicidad | Debe ejecutarse ANTES de cualquier transmisión cloud (ADR-0003) |
 | **Redis Broker** | Redis 7 | Message broker: cola de tareas asíncronas | Ligero, compatible con Celery, baja latencia |
 | **Celery Worker** | Celery 5 + Python | Procesador de imágenes: CLAHE, tiling, coordinación con IA | Escala horizontalmente, desacopla inferencia del API |
-| **TorchServe** | TorchServe + NVIDIA Triton | Inferencia de modelos: Mask R-CNN (segmentación), ResNet50 (clasificación) | Serving nativo de PyTorch, batching automático |
+| **TorchServe** | TorchServe + NVIDIA Triton | Inferencia de modelos: **U-Net** (segmentación), **EfficientNet-B3** (clasificación) | Serving nativo de PyTorch, batching automático |
 | **PostgreSQL** | PostgreSQL 15 | Datos clínicos: muestras, cromosomas, reportes, audit trail | ACID, integridad referencial, permisos granulares |
 | **MinIO/S3** | S3-compatible | Almacenamiento de objetos: imágenes de metafase y recortes | Imágenes grandes (>10MB) no deben ir a la BD |
 
@@ -410,10 +410,10 @@ sequenceDiagram
     R->>W: 7. Consume tarea
     W->>S3: 8. Descarga imagen
     W->>W: 9. CLAHE preprocessing + Tiling 1024x1024
-    W->>T: 10. Mask R-CNN (segmentación)
+    W->>T: 10. U-Net (segmentación cromosómica)
     T-->>W: polygons + bounding boxes
     W->>W: 11. NMS + ensamblado de tiles
-    W->>T: 12. ResNet50 (clasificación batch x16)
+    W->>T: 12. EfficientNet-B3 (clasificación batch x16)
     T-->>W: pairs + confidence scores (Softmax)
     W->>PG: 13. Persiste 46 cromosomas (status=ready)
     W->>API: 14. Publica evento vía Redis PubSub

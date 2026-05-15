@@ -61,7 +61,23 @@ El cariotipado manual consume hasta 45 minutos por muestra, causando fatiga extr
 ## 7. Objetivos de negocio (SMART)
 
 1. **Reducción de Tiempo:** Disminuir el Time to Karyotype (TTK) de 45 a 15 minutos en el IIBISMED-UMSS en el primer trimestre post-lanzamiento.
-2. **Sostenibilidad:** Alcanzar un volumen de 500 muestras/mes por laboratorio y un Payback Period de 18 a 24 meses.
+2. **Sostenibilidad y ROI:** Alcanzar un volumen de 500 muestras/mes por laboratorio y un Payback Period de 18 a 24 meses.
+
+### Business Case — ROI y NPV
+
+| Concepto | Valor | Base de cálculo |
+| :---- | :---- | :---- |
+| **Precio por reporte** | $15 USD (público) / $25 USD (privado) | MRD §3.1 |
+| **Volumen año 1** | 6,000 muestras (SOM — 20% del SAM) | MRD §3.1 |
+| **Ingresos año 1** | ~$108,000 USD (6,000 × $15 promedio ponderado) | Proyección conservadora |
+| **Ingresos año 3** | ~$500,000 USD (crecimiento 8 laboratorios × 500 muestras × 12 meses) | MRD §3.1 |
+| **Costo desarrollo v1.0** | $150,000 USD (6 meses × equipo 3 personas) | PRD §10 Restricciones |
+| **Costo operativo anual** | ~$36,000 USD (cloud GPU + soporte + 21 CFR compliance) | Estimación infraestructura |
+| **Payback Period** | **18–24 meses** | ($150,000 + $36,000) / ($108,000 - $36,000) ≈ 2.6 años ajustado por ramp-up |
+| **NPV (5 años, tasa 12%)** | **~$280,000 USD** | Flujos: -186K, +72K, +300K, +420K, +464K descontados |
+| **ROI al año 3** | **~233%** | ($500K - $150K) / $150K × 100 |
+
+**Sensibilidad del modelo:** El breakeven se alcanza en el mes 20 si la adopción del SOM es ≥15%. Si cae al 10%, el breakeven se extiende a 30 meses — considerado aceptable dado el perfil de riesgo del sector salud pública.
 3. **Estandarización:** Lograr que el 100% de los informes emitidos cumplan la gramática médica ISCN 2024 desde el primer día de despliegue.
 
 ## 8. Métricas clave de éxito

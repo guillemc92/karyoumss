@@ -240,13 +240,21 @@ Imagen TIFF/PNG (>10MB)
 
 ## 9. Skills Disponibles para el Agente
 
-| Skill | Comando | Descripción |
-|:---|:---|:---|
-| **notebooklm** | `/notebooklm` | Consultar notebooks de investigación (Biomed M4, Evaluación Docente) |
-| **meta-ads** | `/meta-ads` | Gestión de campañas Facebook/Instagram para marketing de BIOMED |
-| **find-skills** | `/find-skills` | Buscar e instalar nuevos skills del ecosistema |
-| **security-review** | `/security-review` | Revisar seguridad del código antes de push |
-| **simplify** | `/simplify` | Refactorizar código para reducir complejidad |
+> **5 skills accionables** — todos específicos al dominio clínico-técnico de BIOMED UMSS.
+
+| Skill | Comando | Descripción | Cuándo usarlo |
+|:---|:---|:---|:---|
+| **notebooklm** | `/notebooklm` | Consulta notebooks de investigación citogenética y arquitectura del proyecto (Biomed M4, M3) | Cuando necesites contexto de diseño, decisiones previas o referencias del dominio |
+| **security-review** | `/security-review` | Auditoría de seguridad del código antes de push — detecta PII leaks, auth gaps, inyección SQL | Obligatorio antes de cualquier PR que toque endpoints de datos clínicos |
+| **simplify** | `/simplify` | Refactorización para reducir complejidad ciclomática — especialmente en pipeline IA y audit trail | Cuando una función supera 50 líneas o tiene complejidad ciclomática >10 |
+| **find-skills** | `/find-skills` | Descubre e instala nuevos skills del ecosistema agéntico | Cuando necesites capacidad nueva no cubierta por los skills actuales |
+| **init** | `/init` | Genera o actualiza CLAUDE.md / AGENTS.md con documentación actualizada del codebase | Al inicio de sprint o cuando el stack cambia significativamente |
+
+### Reglas de uso de Skills
+
+- **security-review** es OBLIGATORIO antes de merge a `release/1.0.0` para cualquier cambio en `app/api/`, `app/services/chn_service.py` o `app/middleware/audit_trail.py`
+- **notebooklm** se usa con el notebook `biomed-umss---modulo-4-arquitectura-e-ia` como fuente primaria
+- **simplify** no debe ejecutarse sobre archivos en `app/domain/` sin revisión manual previa (riesgo de romper invariantes de dominio)
 
 ---
 
