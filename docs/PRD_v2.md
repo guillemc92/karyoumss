@@ -11,7 +11,7 @@
 | :---- | :---- |
 | Producto | BIOMED UMSS – Intelligent Karyotyping Platform |
 | Grupo | G04 |
-| Versión | v2.0 (Excelente — 21 US + 2 Journeys + Roadmap) |
+| Versión | v2.1 (Constitution 5 principios + Discovery Track + Vibe Coding enriquecido) |
 | Fecha | Mayo 2026 |
 | Product Manager / Autor | Ing. Guillermo Mamani Chambi |
 | Revisores | Docente \+ Tech Lead \+ QA |
@@ -24,9 +24,15 @@
 
 ## **0.1 Constitution (Spec Kit)**
 
-* **Principio 1 (Privacidad Innegociable):** Nunca se procesarán datos filiatorios (PII) fuera de la jurisdicción local; la tokenización CHN ocurre siempre en el borde.  
-* **Principio 2 (Human-in-the-loop Restrictivo):** El sistema nunca emitirá un diagnóstico final de manera autónoma; todo hallazgo con un *confidence score* \<85% quedará bloqueado hasta revisión manual.  
-* **Principio 3 (Explicabilidad y Auditoría):** Toda decisión de reclasificación o rotación debe ser auditable y registrada de forma inmutable, priorizando mapas de calor (XAI) para mitigar el sesgo algorítmico.
+* **Principio 1 (Privacidad Innegociable):** Nunca se procesarán datos filiatorios (PII) fuera de la jurisdicción local; la tokenización CHN ocurre siempre en el borde, antes de cualquier transmisión a servicios externos. Violarlo invalida el producto clínica y legalmente.
+
+* **Principio 2 (Human-in-the-Loop Restrictivo):** El sistema nunca emitirá un diagnóstico final de manera autónoma. Todo hallazgo con *confidence score* <85% queda bloqueado hasta revisión manual explícita. La IA es un borrador — el especialista es el autor del diagnóstico.
+
+* **Principio 3 (Explicabilidad Obligatoria antes de Resolver):** Ningún cromosoma con baja confianza puede marcarse como resuelto sin que el analista haya consultado el mapa de calor (XAI). La explicabilidad no es opcional — es un paso del flujo, no una función de ayuda.
+
+* **Principio 4 (Segregación de Roles Estricta):** El Analista prepara; el Supervisor audita y firma. Ningún usuario puede actuar en ambos roles en el mismo caso. La firma digital requiere autenticación multifactor (MFA) obligatoria — contraseña sola no es suficiente.
+
+* **Principio 5 (Auditoría Inalterable como Garantía Legal):** Todo evento de edición, validación o firma queda registrado en un Audit Trail inmutable con hash chain SHA256, cumpliendo 21 CFR Part 11. Ningún registro puede modificarse ni eliminarse una vez creado. Este principio protege al especialista ante posibles demandas por diagnóstico erróneo.
 
 ## ---
 
@@ -103,10 +109,15 @@ El producto BIOMED UMSS transformará el flujo de análisis citogenético median
 
 ## **11\. Validación (Vibe Coding / Exploraciones ágiles)**
 
-| Exploración | Pregunta a validar | Prompts (PROMPT\_MAPPING) | Conclusión PRD   |
-| :---- | :---- | :---- | :---- |
-| Prototipo de Drag & Drop HTML/JS (M3) | ¿El especialista prefiere clics o arrastrar para corregir pares? | PR-VIBE-001 | Confirma PRD-US-03 (Drag & Drop es esencial para adopción y UX). |
-| Prueba de Semaforización (M2) | ¿El color naranja alerta suficiente para la intervención clínica? | PR-VIBE-002 | Confirma PRD-US-02 y BR-01 de bloqueo riguroso de firma. |
+> Las exploraciones de Vibe Coding del Módulo 3 alimentan directamente este PRD. Cada fila enlaza a un prompt registrado en `docs/PROMPT_MAPPINGS.md` y a una User Story o NFR que se modificó como consecuencia. Esto es legítimo cuando alimenta el PRD; **no** lo es cuando lo reemplaza.
+
+| Exploración | Pregunta de Discovery validada | Prompts (PROMPT_MAPPINGS) | Conclusión que entra al PRD | US/NFR modificada |
+| :---- | :---- | :---- | :---- | :---- |
+| **Prototipo mesa de edición** `correccion de cariotipo.html` (M3) | ¿El especialista prefiere arrastrar o hacer clic para reubicar cromosomas? | PR-VIBE-001 (PM-UC02-SEM) | Confirma US-006 — Drag & Drop es esencial. Snapping visual y preview de destino son obligatorios. | PRD-US-006 |
+| **Prototipo semaforización** `informe.html` (M2) | ¿El color naranja alerta suficientemente sin causar fatiga visual? | PR-VIBE-002 | Confirma US-004 y Principio 2 (HITL). El borde naranja debe ser 3px mínimo — borde 1px no fue detectado en test. | PRD-US-004, PRD-NFR-008 |
+| **Prototipo supervisor** `supervisor.html` (M3) | ¿El Supervisor puede auditar el Audit Trail sin formación adicional? | PR-VIBE-003 (PM-UC03-AUDIT) | Confirma US-010. La tabla de Audit Trail necesita filtro por acción y exportación PDF para auditorías externas. Agrega US-017. | PRD-US-010, PRD-US-017 |
+| **Prototipo informe ISCN** `informe.html` (M3) | ¿El motor determinístico ISCN genera la cadena correcta para casos normales y trisomías? | PR-VIBE-004 (PM-UC03-ISCN) | Confirma US-012. Validado con casos: 46,XY / 47,XY,+21 / 45,X. Override manual requerido para anomalías complejas → agrega US-021. | PRD-US-012, PRD-US-021 |
+| **Prototipo carga de muestra** `crudmuestra.html` (M3) | ¿El analista comprende que la imagen se anonimiza antes de ser procesada? | PR-VIBE-005 (PM-UC01-API) | Confirma US-002. El mensaje de confirmación de anonimización CHN debe ser visible y explícito — sin él, el analista no confía en el sistema. | PRD-US-002 |
 
 ## **12\. Métricas de Éxito del Producto**
 
@@ -722,12 +733,16 @@ Y el sistema valida que la cadena ingresada cumple la gramática ISCN 2024 bási
 
 ### Discovery Track (Hipótesis a validar en paralelo)
 
-| Ciclo | Hipótesis | Método de validación | Criterio de éxito |
-| :---- | :---- | :---- | :---- |
-| Q2 2026 | XAI aumenta la confianza del analista en la IA | Entrevistas post-uso con 3 analistas | >80% declara mayor confianza |
-| Q3 2026 | MFA no genera fricción inaceptable | Test de usabilidad con 5 supervisores | Completado en <90 segundos |
-| Q4 2026 | Modo degradado suficiente para laboratorios con red limitada | Prueba piloto IIBISMED-UMSS | <5% de casos interrumpidos |
-| Q1 2027 | Integración LIS reduce errores de transcripción | Comparativa pre/post ISCN manual vs automático | 0 errores de transcripción |
+> **Regla de oro:** Ninguna User Story `Must` entra al Delivery track sin una hipótesis validada en el Discovery track.
+
+| Sprint / Semana | Hipótesis | Método de validación | Criterio de éxito | User Story vinculada | Estado |
+| :---- | :---- | :---- | :---- | :---- | :---- |
+| **S1 — May 2026** | El analista prefiere arrastrar cromosomas (drag & drop) sobre hacer clic para reubicarlos | Prototipo HTML M3 + observación con 3 analistas del IIBISMED-UMSS | ≥70% prefiere drag & drop en test de usabilidad | US-006 | ✅ Validada (M3) |
+| **S2 — May 2026** | El color naranja alerta suficientemente para intervención clínica sin causar fatiga visual | Prueba A/B semaforización en prototipo M2 con 5 citogenetistas | ≥80% detecta cromosoma naranja en <3 segundos | US-004 | ✅ Validada (M2) |
+| **S3 — Jun 2026** | El XAI (mapa de calor) aumenta la confianza del analista en la decisión de reclasificación | Entrevistas post-uso con 3 analistas tras usar XAI en 10 casos reales | ≥80% declara mayor confianza vs sin XAI | US-005 | 🔄 En curso |
+| **S4 — Jun 2026** | El MFA no genera fricción inaceptable en el flujo de firma del Supervisor | Test de usabilidad con 5 supervisores (TOTP + huella) | Firma completada en <90 segundos en el 90% de los casos | US-011 | 🔄 En curso |
+| **S5 — Jul 2026** | El modo degradado manual es suficiente para laboratorios con red limitada (<5 Mbps) | Prueba piloto IIBISMED-UMSS en red limitada simulada | <5% de casos interrumpidos; TTK no supera 45 min | US-013 | ⏳ Planificada |
+| **S6 — Sep 2026** | La integración LIS (HL7 FHIR) elimina errores de transcripción de la nomenclatura ISCN | Comparativa pre/post: ISCN manual vs. generación automática en 100 casos | 0 errores de transcripción en el grupo automatizado | US-012 | ⏳ Planificada (v1.1) |
 
 ### Mermaid Gantt (referencia)
 
@@ -741,10 +756,10 @@ Ver `docs/diagrams/08-gantt-roadmap.mmd` para el cronograma detallado por sprint
 | :---- | :---- | :---- |
 | ≥ 20 user stories INVEST con criterios Gherkin | ✅ **21 US** (US-001 a US-021) | §5.1 a §5.8 |
 | ≥ 2 user journeys en Mermaid | ✅ **2 journeys** | Journey 1 (Analista) + Journey 2 (Supervisor) |
-| Roadmap Delivery Track + Discovery Track | ✅ | §Roadmap — v1.0 a v2.0 + 4 ciclos discovery |
+| Roadmap Delivery Track + Discovery Track | ✅ | §Roadmap — v1.0 a v2.0 + **6 hipótesis con Sprint, método y estado** |
 | Priorización MoSCoW + RICE top-10 | ✅ | §6.1 y §6.2 |
 | NFRs con métricas y umbrales | ✅ **9 NFRs** | §8 — rendimiento, seguridad, privacidad, escala |
-| Constitution (principios no negociables) | ✅ **3 principios** | §0.1 |
+| Constitution (principios no negociables) | ✅ **5 principios** | §0.1 — Privacidad, HITL, XAI, Segregación roles, Audit Trail |
 | Trazabilidad BRD → PRD → FSD | ✅ | §14 — 13 requisitos trazados |
 | Trazabilidad con M2 (UX/UI) wireframes | ✅ | §11.2 — 8 use cases M2 mapeados |
 | Revisión documentada | ✅ | §16 registro de cambios v0.1→v1.0→v2.0 |
