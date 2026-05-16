@@ -158,47 +158,52 @@ El producto BIOMED UMSS transformará el flujo de análisis citogenético median
 
 ```mermaid
 journey
-    title Journey 1: Analista Citogenetista — Análisis completo de muestra
-    section Preparación
-        Recibir muestra física en laboratorio: 3: Analista
-        Capturar imagen de metafase en microscopio: 3: Analista
-        Acceder a BIOMED UMSS (login): 5: Analista
-    section Ingesta
-        Subir imagen TIFF al sistema: 4: Analista
-        Sistema asigna código CHN automáticamente: 5: Sistema
-        Sistema encola para procesamiento IA: 5: Sistema
-    section Espera Asíncrona
-        Analista trabaja en otro caso mientras espera: 4: Analista
-        Recibir notificación WebSocket Borrador listo: 5: Sistema
-    section Validación
-        Abrir mesa de edición con cromosomas semafor.: 4: Analista
-        Revisar cromosomas naranja con Grad-CAM XAI: 3: Analista
-        Corregir clasificaciones incorrectas drag drop: 3: Analista
-        Verificar que todos los naranjas están resueltos: 4: Analista
-    section Cierre
-        Hacer clic en Pasar a Supervisor: 5: Analista
-        Caso queda en bandeja del Supervisor: 5: Sistema
+    title Journey del Analista Citogenetista — Flujo completo de validación
+    section 1. Carga y Anonimización
+        Cargar imagen de metafase: 5: Analista
+        Sistema valida formato y tamaño: 5: Sistema
+        Generar código CHN único: 5: Sistema
+        Eliminar metadatos PII de la imagen: 5: Sistema
+    section 2. Procesamiento IA en Background
+        Encolar tarea en Redis: 5: Sistema
+        Segmentar cromosomas con U-Net: 4: Sistema IA
+        Clasificar con EfficientNet-B3: 4: Sistema IA
+        Calcular confidence scores Softmax: 5: Sistema IA
+    section 3. Validación de Atención Dirigida
+        Recibir notificación WebSocket: 5: Analista
+        Identificar cromosomas naranja menor 85%: 5: Analista
+        Consultar XAI mapa de calor Grad-CAM: 4: Analista
+        Resolver cromosoma naranja con drag and drop: 5: Analista
+    section 4. Resolución Completa
+        Validar todos los cromosomas naranja: 5: Analista
+        Sistema verifica resolución completa: 5: Sistema
+        Pasar caso a Supervisor: 5: Analista
 ```
 
 ### Journey 2: Supervisor – Auditoría y firma
 
 ```mermaid
 journey
-    title Journey 2: Supervisor — Auditoría y firma digital
-    section Recepción
-        Recibir caso en bandeja: 4: Supervisor
-        Ver Audit Trail del analista: 5: Supervisor
-    section Auditoría Aleatoria
-        Sistema marca 5% cromosomas verdes: 5: Sistema
-        Supervisor revisa cromosomas auditados: 4: Supervisor
-        Compara con ideograma de referencia: 4: Supervisor
-    section Firma
+    title Journey del Supervisor — Auditoría y Firma Regulatoria
+    section 1. Recepción y Auditoría Aleatoria
+        Recibir caso en bandeja de entrada: 5: Supervisor
+        Sistema selecciona 5% de cromosomas verdes: 5: Sistema
+        Revisar cromosomas marcados con badge púrpura: 4: Supervisor
+        Comparar con ideograma de referencia: 4: Supervisor
+        Confirmar o rechazar cada auditoría: 5: Supervisor
+    section 2. Verificación de Trazabilidad
+        Acceder al Audit Trail inmutable: 5: Supervisor
+        Verificar hash chain de ediciones del Analista: 4: Supervisor
+        Validar que todas las acciones tienen registro: 5: Supervisor
+    section 3. Firma con MFA
+        Hacer clic en Firmar Reporte: 5: Supervisor
         Autenticación MFA con TOTP o huella: 3: Supervisor
-        Firmar reporte digitalmente: 5: Supervisor
-        Sistema genera ISCN y exporta PDF: 5: Sistema
-    section Envío
-        Informe enviado a LIS Hospitalario: 5: Sistema
-        Supervisor archiva caso como completado: 5: Supervisor
+        Sistema valida MFA y genera ISCN: 5: Sistema
+    section 4. Emisión y Exportación
+        Revisar ISCN generado automáticamente: 5: Supervisor
+        Override manual con justificación si aplica: 3: Supervisor
+        Firmar digitalmente con hash vinculado: 5: Supervisor
+        Exportar reporte a PDF y enviar a LIS: 5: Supervisor
 ```
 
 ---
@@ -522,6 +527,57 @@ Y el sistema valida que la cadena ingresada cumple la gramática ISCN 2024 bási
 
 ---
 
+## Diagrama de Estados del Caso (State Diagram)
+
+> Visualiza los estados posibles de una muestra a lo largo de su ciclo de vida clínico — desde la carga hasta el reporte final firmado.
+
+```mermaid
+stateDiagram-v2
+    [*] --> PENDING_AI : upload_imagen()
+
+    PENDING_AI --> BLOCKED_CONF : pipeline_IA_completo\n(confidence < 85% detectado)
+    PENDING_AI --> ANALYST_VALIDATED : pipeline_IA_completo\n(sin cromosomas naranja)
+
+    BLOCKED_CONF --> REVISION_ANALISTA : analista_abre_caso()
+    REVISION_ANALISTA --> BLOCKED_CONF : validacion_incompleta()
+    REVISION_ANALISTA --> ANALYST_VALIDATED : todos_naranjas_resueltos()\nAND xai_consultado_obligatorio()
+
+    ANALYST_VALIDATED --> PENDING_SUPERVISOR : pasar_a_supervisor()
+
+    PENDING_SUPERVISOR --> UNDER_AUDIT : supervisor_abre_caso()
+    UNDER_AUDIT --> PENDING_SUPERVISOR : auditoria_incompleta()
+    UNDER_AUDIT --> READY_TO_SIGN : auditoria_completa()\nAND 5%_verdes_auditados()
+
+    READY_TO_SIGN --> SIGNING : firmar()
+    SIGNING --> SIGNED : mfa_valido()
+    SIGNING --> READY_TO_SIGN : mfa_fallido_3_intentos()\nbloquear_15_min()
+
+    PENDING_AI --> MANUAL_MODE : ia_no_disponible()
+    MANUAL_MODE --> ANALYST_VALIDATED : analista_completa_manual()
+
+    SIGNED --> REPORTED : generar_pdf_iscn()
+    REPORTED --> [*]
+
+    note right of PENDING_AI
+        Tarea encolada en Redis
+        TTK empieza a contar aquí
+    end note
+    note right of BLOCKED_CONF
+        Botón "Pasar a Supervisor"
+        deshabilitado (HITL activo)
+    end note
+    note right of SIGNING
+        Requiere MFA
+        (TOTP / huella / tarjeta)
+    end note
+    note right of REPORTED
+        Estado FINAL inalterable
+        Audit Trail completo
+    end note
+```
+
+---
+
 **6\. Priorización**
 
 **6.1 MoSCoW**
@@ -547,6 +603,38 @@ Y el sistema valida que la cadena ingresada cumple la gramática ISCN 2024 bási
 | PRD-US-002 | Anonimización | 500 | 2.0 | 100 | 5 | 200 |
 | PRD-US-009 | Auditoría aleatoria 5% | 500 | 1.5 | 85 | 4 | 159 |
 | PRD-US-013 | Modo degradado | 500 | 1.5 | 80 | 5 | 120 |
+
+### Visualización de Priorización por Sprint (Gantt RICE)
+
+```mermaid
+gantt
+    title Priorización RICE — Plan de Sprints BIOMED UMSS v1.0
+    dateFormat YYYY-MM-DD
+    axisFormat %d/%m
+
+    section Sprint 1 — RICE ≥ 285 (Críticos)
+    US-008 Bloqueo confianza RICE 500       :done,    us008, 2026-06-01, 3d
+    US-004 Semaforización verde/naranja RICE 285 :done, us004, 2026-06-04, 5d
+
+    section Sprint 2 — RICE 190-285 (Must)
+    US-002 Anonimización CHN RICE 200       :done,    us002, 2026-06-09, 5d
+    US-011 Firma digital MFA RICE 198       :active,  us011, 2026-06-14, 6d
+    US-010 Audit Trail inmutable RICE 190   :active,  us010, 2026-06-20, 5d
+
+    section Sprint 3 — RICE 140-190 (Must)
+    US-006 Drag and drop corrección RICE 180 :        us006, 2026-06-25, 5d
+    US-003 Segmentación automática RICE 178  :        us003, 2026-06-30, 8d
+    US-009 Auditoría aleatoria 5% RICE 159  :        us009, 2026-07-08, 4d
+
+    section Sprint 4 — RICE 120-140 (Must/Should)
+    US-005 XAI Grad-CAM RICE 140            :        us005, 2026-07-12, 8d
+    US-013 Modo degradado RICE 120          :        us013, 2026-07-20, 5d
+
+    section Sprint 5 — Should Have
+    US-007 Dividir y unir cromosomas        :        us007, 2026-07-25, 5d
+    US-014 Notificaciones WebSocket         :        us014, 2026-07-30, 4d
+    US-016 Rotación cromosoma               :        us016, 2026-08-03, 3d
+```
 
 ---
 
@@ -596,6 +684,44 @@ Y el sistema valida que la cadena ingresada cumple la gramática ISCN 2024 bási
 | LIS Hospitalario (futuro v1.1) | API externa | Envío de reporte vía HL7 FHIR | Media (dependencia del laboratorio) |
 | Servicio de timestamping (futuro) | Externo | Cumplimiento 21 CFR Part 11 | Baja (opcional, costo marginal) |
 
+### Arquitectura de Seguridad y Flujo de Datos
+
+```mermaid
+flowchart TB
+    subgraph LAB ["🏥 Laboratorio Clínico (On-Premise — PII nunca sale)"]
+        A["👤 Analista"] -->|"1. Carga imagen TIFF"| B["⚛️ React Frontend"]
+        B -->|"2. CHN + imagen anonimizada"| C["⚡ FastAPI"]
+        C -->|"3. Almacena mapeo CHN↔PII"| D[("🔒 Vault Local\nCHN ↔ PII")]
+        C -->|"4. Encola tarea"| E[("🔴 Redis")]
+    end
+
+    subgraph CLOUD ["☁️ Infraestructura BIOMED (Solo datos CHN — sin PII)"]
+        E -->|"5. Consume"| F["⚙️ Celery Worker"]
+        F -->|"6. Inferencia GPU"| G["🧠 TorchServe\nU-Net + EfficientNet-B3"]
+        G -->|"7. Resultados + XAI"| H[("🗄️ PostgreSQL\n+ Audit Trail SHA256")]
+        F -->|"8. Imagen anon."| I[("📦 S3/MinIO\npath: CHN-YYYY-...")]
+    end
+
+    subgraph RETURN ["🔔 Flujo de Retorno"]
+        H -->|"9. Estado listo"| C
+        C -->|"10. WebSocket push"| B
+        B -->|"11. Notificación"| A
+    end
+
+    subgraph SUPERVISOR ["🔏 Auditoría y Firma Regulatoria"]
+        J["👨‍⚕️ Supervisor"] -->|"12. Accede"| K["🖥️ Portal Supervisor"]
+        K -->|"13. Consulta Audit Trail"| H
+        K -->|"14. MFA + Firma digital"| C
+        C -->|"15. Reporte PDF firmado"| I
+    end
+
+    style A fill:#003770,color:#fff
+    style J fill:#003770,color:#fff
+    style D fill:#E30613,color:#fff
+    style G fill:#7c3aed,color:#fff
+    style H fill:#0a2e1a,color:#fff
+```
+
 ---
 
 **10\. Supuestos y restricciones**
@@ -613,6 +739,75 @@ Y el sistema valida que la cadena ingresada cumple la gramática ISCN 2024 bási
 * Cronograma: 6 meses a MVP v1.0.  
 * Stack tecnológico: Python/FastAPI backend, React/TypeScript frontend, PostgreSQL, Redis, GPU NVIDIA.  
 * Cumplimiento: ISO 15189, 21 CFR Part 11, Ley Boliviana de Secreto Médico.
+
+---
+
+## Diagrama de Secuencia — Flujo Completo del Sistema
+
+> Muestra la interacción entre todos los actores y componentes en el flujo end-to-end de una muestra, desde la carga hasta el reporte firmado.
+
+```mermaid
+sequenceDiagram
+    participant A as Analista
+    participant UI as React Frontend
+    participant API as FastAPI
+    participant V as Vault Local
+    participant R as Redis
+    participant W as Celery Worker
+    participant T as TorchServe GPU
+    participant S3 as S3/MinIO
+    participant PG as PostgreSQL
+    participant S as Supervisor
+
+    A->>UI: 1. Carga imagen TIFF
+    UI->>API: POST /upload (multipart)
+    API->>API: 2. Genera código CHN único
+    API->>V: 3. Almacena mapeo CHN↔PII (local, nunca cloud)
+    API->>S3: 4. Guarda imagen (path: CHN-YYYY-MM-DD-NNNN)
+    API->>PG: 5. Crea caso (status=PENDING_AI)
+    API->>R: 6. Enqueue task {sample_id, s3_path, chn}
+    API-->>UI: 202 Accepted {task_id}
+    UI-->>A: "Muestra en procesamiento..."
+
+    R->>W: 7. Consume task
+    W->>S3: 8. Descarga imagen por CHN
+    W->>T: 9. U-Net — segmentación
+    T-->>W: bounding_boxes + polygons
+    W->>T: 10. EfficientNet-B3 — clasificación batch x16
+    T-->>W: [{pair, confidence_score}] × 46
+    W->>PG: 11. Persiste 46 cromosomas (score sin redondear)
+    W->>API: 12. Redis PubSub "sample:ready"
+    API-->>UI: 13. WebSocket push "Borrador listo 🔔"
+    UI-->>A: Badge de notificación
+
+    A->>UI: 14. Revisa cromosomas naranja
+    A->>UI: 15. Consulta XAI (mapa de calor)
+    UI->>API: GET /xai/{chromosome_id}
+    API->>T: 16. Grad-CAM sobre EfficientNet
+    T-->>API: {heatmap_b64, salient_region}
+    API->>PG: Registra XAI_VIEWED en Audit Trail
+    API-->>UI: heatmap + explanation_text
+    A->>UI: 17. Arrastra cromosoma (drag & drop)
+    UI->>API: PATCH /chromosomes/{id}/position
+    API->>PG: UPDATE + INSERT edits (hash chain SHA256)
+
+    A->>UI: 18. "Pasar a Supervisor"
+    UI->>API: POST /pass-to-supervisor
+    API->>PG: UPDATE status=PENDING_SUPERVISOR
+
+    S->>UI: 19. Abre caso en bandeja
+    UI->>API: GET /case/{id}/audit-trail
+    API->>PG: 20. Selecciona 5% cromosomas verdes para auditoría
+    API-->>UI: cromosomas con badge púrpura
+    S->>UI: 21. Revisa auditoría aleatoria
+    S->>UI: 22. "Firmar Reporte"
+    UI->>API: POST /reports/{id}/sign {mfa_token}
+    API->>API: 23. Valida MFA (TOTP/huella)
+    API->>API: 24. Genera ISCN determinístico
+    API->>PG: 25. INSERT report + SIGN_REPORT en Audit Trail
+    API->>S3: 26. Almacena PDF firmado
+    API-->>UI: "Reporte emitido exitosamente ✅"
+```
 
 ---
 
