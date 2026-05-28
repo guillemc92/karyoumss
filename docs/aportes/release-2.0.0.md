@@ -7,7 +7,7 @@
 
 | Integrante | Tareas Completadas | % Aporte | Rol Principal |
 | :--- | :--- | :--- | :--- |
-| Ing. Guillermo Mamani | 0 | 0% | Project Manager / Architect |
+| Ing. Guillermo Mamani |4 | 100% | Project Manager / Architect |
 | [Integrante 2] | 0 | 0% | Backend Developer |
 | [Integrante 3] | 0 | 0% | AI Engineer |
 | [Integrante 4] | 0 | 0% | Frontend Developer |
