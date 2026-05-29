@@ -17,7 +17,7 @@
 | **Dominio** | Citogenética clínica — diagnóstico de cromosomas |
 | **Propósito** | Reducir el Time to Karyotype (TTK) de 45 min a ≤15 min con Human-in-the-loop |
 | **URL prototipo** | https://guillemc92.github.io/karyoumss/ |
-| **Branch entrega** | `release/1.0.0` |
+| **Branch entrega** | `release/2.0.0` |
 
 ---
 
@@ -33,14 +33,14 @@ El agente debe operar bajo el paradigma de **Desarrollo Guiado por Especificacio
 | `/plan` | Descomponer una especificación (`.md`) en tareas granulares y testeables | `/plan docs/specs/SPEC-003.md` |
 | `/skill-generate-prompt` | Crear un prompt de sistema optimizado desde un UC del FSD | `@skill-generate-prompt FSD-UC-003` |
 | `/skill-sync-diagrams` | Sincronizar diagramas Mermaid con la implementación actual | `@skill-sync-diagrams` |
-| `/skill-validation-agent` | Validar un Pull Request contra los requerimientos del FSD | `@skill-validation-agent PR-123` |
+| `/skill-validation-agent` | Validar un Pull Request contra los requerimientos del FSD, incluyendo la regla clínica de no-emisión RN-09 / BR-R5 | `@skill-validation-agent PR-123` |
 
 ### 2.2 Flujo de Trabajo Obligatorio
 1. **Análisis de Contexto:** Leer FSD $\to$ BRD $\to$ DTI $\to$ AGENTS.md.
 2. **Definición de Spec (`/spec`):** Crear la especificación técnica con Capa 1 (Funcional) y Capa 2 (Técnica/ADR).
 3. **Planificación de Tareas (`/plan`):** Descomponer la spec en tareas atómicas (máx 3h) en un archivo de seguimiento (ej. `TASKS.md`).
 4. **Implementación Incremental:** Ejecutar tareas siguiendo el orden de prioridad, aplicando tests unitarios por cada tarea.
-5. **Validación de Spec (`/skill-validation-agent`):** Verificar que el código implementado satisface el 100% de la especificación inicial.
+5. **Validación de Spec (`/skill-validation-agent`):** Verificar que el código implementado satisface el 100% de la especificación inicial y que cumple reglas clínicas críticas como RN-09 / BR-R5 de bloqueo de emisión de informe.
 
 ---
 
@@ -120,6 +120,7 @@ RN-08: Auditoría aleatoria del 5% de cromosomas con score ≥ 86% (anti-sesgo).
 | ADR-0001 | Tiling 1024×1024 con overlap 64px + NMS para imágenes >4K | `docs/adr/0001-tiling.md` |
 | ADR-0002 | Pipeline asíncrono Redis+Celery (no síncrono, no Kafka) | `docs/adr/0002-async-pipeline.md` |
 | ADR-0003 | CHN Anonimización en el borde antes de transmisión cloud | `docs/adr/0003-chn-anonymization.md` |
+| ADR-0004 | Estrategia de evolución arquitectónica: monolito modular + satélites | `docs/adr/0004-Estrategia-Evolucion-Arquitectonica.md` |
 
 **Regla para el agente:** Si se te pide cambiar estas decisiones, solicita confirmación explícita del arquitecto y documenta el nuevo ADR antes de codificar.
 
@@ -318,7 +319,7 @@ BRD_v3.5.md          → Qué necesita el negocio
 2. **Naming conventions:** `snake_case` Python · `camelCase` TypeScript · `kebab-case` archivos
 3. **Cada PR debe:** Actualizar PROMPT_MAPPINGS.md + agregar test + pasar linter
 4. **Commits:** `feat:` `fix:` `docs:` `test:` `refactor:` según conventional commits
-5. **Branch:** trabajar en `feature/<nombre>` $\to$ PR a `release/1.0.0`
+5. **Branch:** trabajar en `feature/<nombre>` \to PR a `release/2.0.0`
 
 *AGENTS.md v1.1 — Fuente de verdad para Claude, Cursor Agent, Copilot y agentes custom*
 *Actualizar este archivo ante cualquier cambio arquitectónico significativo*
