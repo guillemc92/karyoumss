@@ -65,7 +65,7 @@ El pipeline se detiene inmediatamente si un "Gate" no se satisface. No se permit
 | `gate:context` | `actors != []` AND `use_cases != []` | **STOP** $\to$ Solicitar aclaración de UC |
 | `gate:spec` | `has_api_contracts == true` AND `has_acceptance_criteria == true` | **RETRY** $\to$ Refinar SPEC |
 | `gate:plan` | `all_tasks_testable == true` AND `max_task_duration <= 3h` | **RETRY** $\to$ Descomponer tareas |
-| `gate:impl` | `validation-agent status == PASS` | **BLOCK** $\to$ Prohibido merge a `release/1.0.0` |
+| `gate:impl` | `validation-agent status == PASS` | **BLOCK** → Prohibido merge a `release/2.0.0` |
 
 ## 4. Política de Fallos y Recuperación
 

@@ -44,6 +44,7 @@ Convertir la narrativa del FSD en instrucciones operativas:
 ### Paso 3: Inyección de Invariantes
 Inyectar las reglas críticas de `AGENTS.md` y el `DTI`:
 - **RN-03:** Obligar a la anonimización CHN si hay datos PII o servicios cloud.
+- **RN-09 / BR-R5:** Asegurar que ningún prompt de generación de reporte permita la emisión si existe un cromosoma con score < 0.85 sin validación explícita del analista, y que la firma del supervisor sea el mecanismo para desbloquear la emisión.
 - **Semaforización:** Forzar la lógica de `score < 0.85` si el flujo implica validación.
 - **Audit Trail:** Exigir el registro inalterable en la tabla `edits`.
 

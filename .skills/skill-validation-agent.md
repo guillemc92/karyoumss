@@ -16,7 +16,7 @@ owner: Ing. Guillermo Mamani Chambi
 Este Skill es la última línea de defensa antes de que el código llegue a producción. A diferencia de un review de código estándar, este agente no busca "estilo", sino **Fidelidad Técnica**. Su objetivo es asegurar que no existan brechas entre lo que el médico/negocio solicitó (FSD) y lo que el desarrollador escribió.
 
 ## 1. Cuándo activarlo (triggers)
-- **DURANTE:** La revisión de Pull Requests (PR), antes de fusionar cualquier funcionalidad al branch `release/1.0.0`.
+- **DURANTE:** La revisión de Pull Requests (PR), antes de fusionar cualquier funcionalidad al branch `release/2.0.0`.
 - **ARRANCA cuando:** El usuario solicita validar un PR contra el FSD, menciona la necesidad de un "check de cumplimiento clínico", o invoca `@skill-validation-agent`.
 - **NO ACTIVAR cuando:** Se realizan cambios puramente visuales (CSS), corrección de typos en documentación o tareas de infraestructura que no toquen la lógica de negocio.
 
@@ -37,6 +37,7 @@ El agente debe ejecutar un análisis exhaustivo en tres capas:
 ### Capa B: Validación de Reglas Críticas (Invariantes)
 El agente debe buscar activamente violaciones a las reglas no-negociables:
 - **RN-01 & RN-02 (Bloqueo Clínico):** ¿El código impide la generación de informes si hay cromosomas $\text{score} < 0.85$ no validados?
+- **RN-09 / BR-R5 (Control de No Emisión):** ¿El sistema bloquea la exportación del informe si existe al menos un cromosoma con score < 0.85 que no haya sido validado explícitamente por el analista, y exige firma del supervisor para desbloquear?
 - **RN-03 (Privacidad PII):** ¿Hay alguna fuga de datos de paciente hacia S3 o TorchServe? ¿Está el anonimizador CHN ejecutándose ANTES de la transmisión?
 - **RN-05 (Inalterabilidad):** ¿Se intenta realizar un `UPDATE` o `DELETE` sobre la tabla `edits`?
 
@@ -68,6 +69,7 @@ El agente debe responder exclusivamente con este formato:
 | Regla | Severidad | Descripción | Ubicación |
 | :--- | :--- | :--- | :--- |
 | `RN-03` | **CRITICAL** | Se detectó envío de `patient_id` al endpoint de TorchServe | `backend/app/tasks/worker.py:142` |
+| `RN-09` | **CRITICAL** | El flujo permite emitir un reporte con cromosoma score < 0.85 sin validación explícita del analista | `backend/app/reports.py:86` |
 
 ### 🔍 MISSING
 - [ ] Paso X del UC-001: "Notificar al supervisor vía email" no implementado.
