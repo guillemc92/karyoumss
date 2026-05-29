@@ -1,0 +1,36 @@
+sequenceDiagram
+    title UC-DEGR: Modo Degradado Elegante (IA no disponible)
+
+    participant W as Celery Worker
+    participant TS as TorchServe
+    participant PG as PostgreSQL
+    participant WS as WebSocket
+    participant UI as React SPA
+    actor C as Citogenetista
+
+    W->>TS: POST /predictions/unet_karyotype (intento 1)
+    TS-->>W: TimeoutException (>10s)
+    W->>TS: Reintento 2
+    TS-->>W: ConnectError
+    W->>TS: Reintento 3
+    TS-->>W: ConnectError
+
+    Note over W,TS: 3 reintentos agotados — activar modo degradado
+
+    W->>PG: UPDATE samples SET status='manual_mode'
+    W->>WS: Redis PubSub {status:"manual_mode", message:"IA no disponible"}
+    WS-->>UI: WebSocket push
+
+    UI-->>C: Banner amarillo: "IA temporalmente no disponible.\nPuede continuar con análisis manual."
+
+    Note over UI,C: El especialista NO es bloqueado
+
+    C->>UI: Activa mesa de edición manual
+    UI->>UI: Carga imagen original desde S3 (presigned URL)
+    C->>UI: Traza cromosomas manualmente (drag zones)
+    C->>UI: Asigna pares manualmente (1-22, X, Y)
+    UI->>API: PATCH /chromosomes (bulk manual entry)
+    API->>PG: INSERT chromosomes (validated=true, requires_review=false)
+    API-->>UI: Mesa completa — informe desbloqueado ✅
+
+    Note over C,PG: Audit trail registra modo_degradado como contexto

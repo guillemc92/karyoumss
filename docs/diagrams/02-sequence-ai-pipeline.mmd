@@ -1,0 +1,35 @@
+sequenceDiagram
+    title UC-01: Pipeline IA Asíncrono (Celery Worker)
+
+    participant R as Redis Queue
+    participant W as Celery Worker
+    participant S3 as S3/MinIO
+    participant TS as TorchServe GPU
+    participant PG as PostgreSQL
+    participant WS as WebSocket Manager
+
+    R->>W: Consume tarea {sample_id, s3_path, chn_code}
+    W->>S3: GET imagen por chn_code (nunca por PII)
+    S3-->>W: Stream imagen TIFF
+
+    W->>W: CLAHE preprocessing (clipLimit=3.0, tileGridSize=8x8)
+    W->>W: Tiling 1024x1024 + overlap 64px (si imagen >4K)
+
+    loop Por cada tile
+        W->>TS: POST /predictions/unet_karyotype {tile_base64}
+        TS-->>W: {polygons, bounding_boxes, masks}
+    end
+
+    W->>W: NMS — elimina duplicados en bordes de tiles
+
+    loop Batch de 16 cromosomas
+        W->>TS: POST /predictions/efficientnet_b3 {crops_base64}
+        TS-->>W: [{pair_number, confidence_score}] x16
+    end
+
+    W->>PG: INSERT 46 chromosomes (pair, score, polygon, requires_review)
+    W->>PG: UPDATE samples SET status='ready'
+    W->>WS: Redis PubSub PUBLISH "sample:{id}:events" {status:"ready", count:46}
+    WS-->>UI: WebSocket push — "Borrador listo 🔔"
+
+    Note over W,TS: Si TorchServe falla → modo degradado manual

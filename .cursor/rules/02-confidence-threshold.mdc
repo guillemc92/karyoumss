@@ -1,0 +1,22 @@
+---
+description: Umbral clínico 0.85 — requires_review, persistencia sin redondeo, UI de informe
+globs: backend/**/*,frontend/**/*
+alwaysApply: false
+---
+
+# Umbral de Confianza — 0.85 es regla de negocio
+
+- `confidence_score < 0.85` → `requires_review = True` → bloquea exportación
+- **No** hardcodear `0.85` en el frontend; viene del backend en el modelo de datos
+- Persistir `confidence_score` como `FLOAT` **sin** `round()` antes del INSERT
+- Botón "Generar Informe" **deshabilitado** si `remaining_reviews > 0`
+
+```typescript
+// ✅ CORRECTO
+const canGenerateReport = chromosomes.every(
+  c => c.validated || c.confidence_score >= 0.85
+);
+
+// ❌ PROHIBIDO
+const score = Math.round(prediction.confidence * 100) / 100;
+```

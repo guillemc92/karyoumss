@@ -1,0 +1,142 @@
+# Cursor Rules — BIOMED UMSS Intelligent Karyotyping
+# Reglas específicas del dominio clínico-citogenético para Cursor Agent
+
+## REGLA 1: Privacidad por Diseño (Privacy by Design — Obligatorio)
+
+Antes de generar CUALQUIER código que involucre datos del paciente:
+
+1. Verificar que el flujo pasa por `chn_service.py` PRIMERO
+2. El formato CHN es SIEMPRE: `CHN-YYYY-MM-DD-NNNN` (ej: CHN-2026-05-13-0001)
+3. Ninguna variable, log, query o request a servicios externos debe contener:
+   - Nombre del paciente
+   - Edad, fecha de nacimiento
+   - DNI, número de expediente
+   - Cualquier PII (Personally Identifiable Information)
+4. En tests: usar SIEMPRE datos sintéticos con CHN ficticio (CHN-TEST-0001)
+
+```python
+# ✅ CORRECTO
+def process_sample(chn_code: str, s3_path: str) -> dict:
+    ...
+
+# ❌ NUNCA HACER ESTO
+def process_sample(patient_name: str, patient_id: str) -> dict:
+    ...
+```
+
+## REGLA 2: Umbral de Confianza — El 0.85 es Sagrado
+
+El umbral del 85% (0.85) es una regla de negocio clínica, NO un parámetro configurable en el código cliente.
+
+- `confidence_score < 0.85` → `requires_review = True` → bloqueo de exportación
+- NUNCA hardcodear 0.85 en el frontend. Viene del backend como parte del modelo de datos
+- El campo `confidence_score` se persiste como `FLOAT` sin redondear (NO usar `round()` antes del INSERT)
+- El botón "Generar Informe" en el frontend debe estar DESHABILITADO si `remaining_reviews > 0`
+
+```typescript
+// ✅ CORRECTO
+const canGenerateReport = chromosomes.every(c => c.validated || c.confidence_score >= 0.85);
+
+// ❌ NUNCA — no redondear el score
+const score = Math.round(prediction.confidence * 100) / 100; // PROHIBIDO
+```
+
+## REGLA 3: Audit Trail Inalterable — Solo INSERT
+
+La tabla `edits` es un registro legal inmutable. Al generar código de edición:
+
+1. SIEMPRE registrar `before_state` y `after_state` como JSON
+2. El `user_id` viene SIEMPRE del JWT token decodificado, NUNCA del body del request
+3. El `created_at` es `DEFAULT NOW()` en la DB, NUNCA se recibe del cliente
+4. Generar SIEMPRE el middleware de auditoría ANTES del endpoint handler
+
+```python
+# ✅ CORRECTO — user_id del JWT
+async def validate_chromosome(
+    chromosome_id: UUID,
+    current_user: User = Depends(get_current_user)  # Del JWT
+):
+    await audit_service.record(
+        chromosome_id=chromosome_id,
+        user_id=current_user.id,  # Del JWT, no del body
+        action="validate",
+        before_state=before,
+        after_state=after
+    )
+
+# ❌ NUNCA — user_id del body
+async def validate_chromosome(body: ValidateRequest):
+    user_id = body.user_id  # PROHIBIDO — manipulable
+```
+
+## REGLA 4: Modelos IA Correctos (U-Net + EfficientNet-B3)
+
+Al generar código de pipeline IA, usar SIEMPRE:
+- **Segmentación:** `U-Net` (NO Mask R-CNN)
+- **Clasificación:** `EfficientNet-B3` (NO ResNet50)
+- **XAI:** `Grad-CAM` para saliency maps
+- **Serving:** TorchServe en puerto 8080
+
+```python
+# ✅ CORRECTO
+SEGMENTATION_MODEL = "unet_karyotype"
+CLASSIFICATION_MODEL = "efficientnet_b3_karyotype"
+TORCHSERVE_URL = "http://torchserve:8080/predictions"
+
+# ❌ OBSOLETO — no usar estos modelos
+SEGMENTATION_MODEL = "mask_rcnn"  # INCORRECTO
+CLASSIFICATION_MODEL = "resnet50"  # INCORRECTO
+```
+
+## REGLA 5: Modo Degradado Elegante
+
+Siempre implementar fallback cuando TorchServe no responde:
+
+```python
+# ✅ CORRECTO — modo degradado
+try:
+    result = await torchserve_client.predict(image_tiles)
+except (httpx.TimeoutException, httpx.ConnectError):
+    # Marcar muestra para análisis manual puro
+    await sample_service.set_status(sample_id, "manual_mode")
+    await ws_manager.notify(sample_id, {
+        "status": "manual_mode",
+        "message": "IA no disponible. Puede continuar con análisis manual."
+    })
+    return  # No lanzar excepción al usuario
+
+# ❌ NUNCA bloquear al especialista cuando la IA falla
+raise HTTPException(500, "AI service unavailable")  # PROHIBIDO
+```
+
+## REGLA 6: Estructura de Carpetas — Arquitectura Hexagonal
+
+Al crear nuevos archivos en el backend, respetar:
+- `app/api/` → Solo routers FastAPI (HTTP adapters)
+- `app/domain/` → Entidades y agregados (pura lógica de negocio, sin imports de FastAPI/SQLAlchemy)
+- `app/services/` → Use cases (orquestación)
+- `app/db/` → Repositorios SQLAlchemy (adapters de salida)
+- `app/tasks/` → Celery tasks (adapters de salida)
+
+```
+NUNCA importar SQLAlchemy en app/domain/
+NUNCA importar FastAPI en app/domain/
+NUNCA importar Celery en app/api/
+```
+
+## REGLA 7: Tests — Siempre con Datos Sintéticos
+
+```python
+# ✅ CORRECTO
+@pytest.fixture
+def sample_chn():
+    return "CHN-TEST-0001"
+
+# ❌ NUNCA datos reales de pacientes en tests
+@pytest.fixture
+def sample_patient():
+    return {"name": "Juan Pérez", "dob": "1990-01-01"}  # PROHIBIDO
+```
+
+---
+*Cursor Rules v1.0 — BIOMED UMSS | Aplicar en todo el repositorio karyoumss*

@@ -1,0 +1,23 @@
+stateDiagram-v2
+    title Máquina de Estados — Report (Informe)
+
+    [*] --> pending_validation : POST /reports\nTodos los cromosomas validados
+
+    pending_validation --> pending_signature : Analista confirma\nISCN generado
+
+    pending_signature --> emitido : Supervisor firma\ncon MFA (TOTP/biométrico)
+    pending_signature --> pending_validation : Supervisor rechaza\ndevuelve al analista
+
+    emitido --> [*] : Enviado a LIS\n(HL7 FHIR) + PDF generado
+
+    note right of pending_validation
+        Requiere:\n- 0 cromosomas naranjas sin validar\n- ISCN generado correctamente
+    end note
+
+    note right of pending_signature
+        Requiere:\n- Supervisor distinto al analista\n- Token MFA válido\n- Audit trail completo
+    end note
+
+    note right of emitido
+        INALTERABLE\nstatus nunca retrocede\nDesde emitido
+    end note

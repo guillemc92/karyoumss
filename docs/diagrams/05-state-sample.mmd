@@ -1,0 +1,31 @@
+stateDiagram-v2
+    title Máquina de Estados — Sample (Muestra)
+
+    [*] --> queued : POST /samples/image\nCHN asignado
+
+    queued --> processing : Celery Worker\nconsume tarea
+
+    processing --> ready : Pipeline IA\ncompletado (46 cromosomas)
+    processing --> error : TorchServe falla\n3 reintentos agotados
+    processing --> manual_mode : TorchServe\nno disponible
+
+    ready --> pending_validation : Analista abre\nmesa de edición
+
+    pending_validation --> ready : Analista descarta\ncambios
+    pending_validation --> pending_signature : POST /reports\n(todos validados)
+
+    pending_signature --> emitido : Supervisor firma\ncon MFA
+    pending_signature --> pending_validation : Supervisor\nrechaza — devuelve
+
+    error --> queued : Reintento manual\npor administrador
+    manual_mode --> pending_validation : Analista completa\nanálisis manual
+
+    emitido --> [*] : Enviado a LIS\n(HL7 FHIR)
+
+    note right of pending_validation
+        Bloqueo activo si:\n- cromosomas <0.85 sin validar\n- edit_trail incompleto
+    end note
+
+    note right of emitido
+        Estado FINAL — inalterable\nAudit trail completo
+    end note

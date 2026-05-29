@@ -1,0 +1,1062 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biomed UMSS - Registro de Muestra | Captura de Metafases</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --umss-blue: #003770;
+            --umss-red: #E30613;
+            --blue-hover: #003265;
+            --blue-light: #e6ebf1;
+            --green-success: #1e8868;
+            --green-light: #e9f3f0;
+            --orange-warning: #d45100;
+            --orange-light: #fbeee6;
+            --gray-bg: #f8f9fa;
+            --gray-text: #64748b;
+            --white: #ffffff;
+            --border-light: #e2e8f0;
+            --dark-workspace: #1a1c23;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,55,112,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,55,112,0.15);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+            --space-xs: 4px;
+            --space-sm: 8px;
+            --space-md: 16px;
+            --space-lg: 24px;
+            --space-xl: 32px;
+            --space-2xl: 40px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #1e293b;
+            background: linear-gradient(135deg, var(--gray-bg) 0%, var(--blue-light) 100%);
+            min-height: 100vh;
+        }
+
+        /* ============================================ */
+        /* NAVBAR SUPERIOR */
+        /* ============================================ */
+        .navbar {
+            background: var(--umss-blue);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .nav-brand { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .nav-brand h1 { font-size: 1.3rem; font-weight: 700; }
+        .role-tag { background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.2); }
+        .nav-links { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+        .nav-item { color: #cbd5e1; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; cursor: pointer; padding: 8px 0; }
+        .nav-item.active { color: white; font-weight: 600; border-bottom: 2px solid var(--umss-red); }
+        .nav-item:hover { color: white; }
+        .user-info { text-align: right; }
+        .user-name { font-size: 0.8rem; font-weight: 600; }
+        .user-role { font-size: 0.6rem; color: #cbd5e1; }
+
+        /* ============================================ */
+        /* MAIN CONTENT */
+        /* ============================================ */
+        .main-container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+        .page-header p {
+            color: var(--gray-text);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+        }
+
+        /* Tarjeta principal */
+        .form-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+        }
+
+        .card-header {
+            padding: var(--space-lg);
+            background: linear-gradient(135deg, var(--gray-bg) 0%, var(--white) 100%);
+            border-bottom: 1px solid var(--border-light);
+        }
+        .card-header h2 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+        .card-header p {
+            font-size: 0.75rem;
+            color: var(--gray-text);
+            margin-top: 4px;
+        }
+
+        .card-body {
+            padding: var(--space-xl);
+        }
+
+        /* ============================================ */
+        /* FORMULARIOS */
+        /* ============================================ */
+        .form-section {
+            margin-bottom: var(--space-2xl);
+        }
+        .form-section-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+            margin-bottom: var(--space-md);
+            padding-bottom: var(--space-sm);
+            border-bottom: 2px solid var(--umss-red);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--space-lg);
+            margin-bottom: var(--space-md);
+        }
+        .form-row.three-col {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--umss-blue);
+            margin-bottom: 6px;
+        }
+        .form-label .required { color: var(--umss-red); }
+        .form-input {
+            padding: 12px 14px;
+            border: 1.5px solid var(--border-light);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            background: var(--white);
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: var(--umss-blue);
+            box-shadow: 0 0 0 3px rgba(0,55,112,0.1);
+        }
+        select.form-input {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+        }
+        textarea.form-input {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Checkbox group */
+        .checkbox-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .checkbox-item input {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--umss-blue);
+            cursor: pointer;
+        }
+        .checkbox-item label {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+
+        /* ============================================ */
+        /* CAPTURA DE METAFASES */
+        /* ============================================ */
+        .capture-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: var(--space-lg);
+            margin-bottom: var(--space-lg);
+        }
+
+        .camera-panel {
+            background: var(--dark-workspace);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+        }
+        .camera-header {
+            background: var(--umss-blue);
+            color: white;
+            padding: 10px 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .camera-preview {
+            background: #0f1115;
+            min-height: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .preview-placeholder {
+            text-align: center;
+            color: #94a3b8;
+        }
+        .preview-placeholder i {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+        .camera-controls {
+            padding: 15px;
+            background: var(--gray-bg);
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            border-top: 1px solid var(--border-light);
+        }
+
+        .adjust-panel {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+        }
+        .adjust-header {
+            background: var(--gray-bg);
+            padding: 12px 15px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-light);
+        }
+        .adjust-body {
+            padding: 15px;
+        }
+        .slider-group {
+            margin-bottom: 15px;
+        }
+        .slider-group label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            margin-bottom: 5px;
+        }
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border-light);
+            -webkit-appearance: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--umss-blue);
+            cursor: pointer;
+        }
+        .quality-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .quality-good { background: var(--green-light); color: var(--green-success); }
+        .quality-warning { background: var(--orange-light); color: var(--orange-warning); }
+
+        .gallery-section {
+            margin-top: var(--space-lg);
+            border-top: 1px solid var(--border-light);
+            padding-top: var(--space-lg);
+        }
+        .gallery-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+        .gallery-item {
+            background: var(--gray-bg);
+            border-radius: var(--radius-md);
+            padding: 8px;
+            text-align: center;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            position: relative;
+        }
+        .gallery-item:hover { border-color: var(--umss-blue); }
+        .gallery-thumb {
+            width: 80px;
+            height: 60px;
+            background: #1a1c23;
+            border-radius: 6px;
+            margin: 0 auto 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5rem;
+        }
+        .gallery-thumb img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .gallery-label {
+            font-size: 0.6rem;
+            color: var(--gray-text);
+        }
+        .delete-image {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--umss-red);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.6rem;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .gallery-item:hover .delete-image { opacity: 1; }
+
+        /* Botones */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+        .btn-primary { background: var(--umss-blue); color: white; }
+        .btn-primary:hover { background: var(--blue-hover); transform: translateY(-1px); }
+        .btn-outline { background: transparent; color: var(--umss-blue); border: 1.5px solid var(--umss-blue); }
+        .btn-outline:hover { background: var(--blue-light); }
+        .btn-success { background: var(--green-success); color: white; }
+
+        .form-actions {
+            display: flex;
+            gap: var(--space-md);
+            justify-content: flex-end;
+            padding-top: var(--space-lg);
+            border-top: 1px solid var(--border-light);
+            margin-top: var(--space-lg);
+        }
+
+        .alert-info {
+            background: var(--blue-light);
+            border-left: 4px solid var(--umss-blue);
+            padding: var(--space-md);
+            border-radius: var(--radius-md);
+            margin-bottom: var(--space-lg);
+            font-size: 0.8rem;
+        }
+
+        /* MODAL DE PROCESAMIENTO IA */
+        .ai-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 55, 112, 0.95);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+        }
+        .ai-modal-content { max-width: 500px; width: 90%; }
+        .ai-progress-container {
+            background: rgba(255,255,255,0.2);
+            height: 10px;
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        .ai-progress-bar {
+            background: var(--green-success);
+            width: 0%;
+            height: 100%;
+            transition: width 0.3s;
+        }
+        .ai-status-text { font-size: 1rem; font-weight: 500; height: 1.5rem; }
+        .ai-steps { text-align: left; margin-top: 20px; font-size: 0.8rem; opacity: 0.8; }
+        .ai-step { margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+        .ai-step i { color: var(--green-success); display: none; }
+        .ai-step.active i { display: inline; }
+
+        @media (max-width: 900px) {
+            .capture-container { grid-template-columns: 1fr; }
+            .navbar { flex-direction: column; height: auto; padding: 1rem; text-align: center; }
+            .nav-links { justify-content: center; }
+            .form-row, .form-row.three-col { grid-template-columns: 1fr; gap: var(--space-md); }
+            .card-body { padding: var(--space-lg); }
+            .ai-modal-content {
+                padding: 1rem;
+            }
+            .ai-modal-content h2 { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Control de acceso: Citogenetista, Supervisor y Administrador
+        const userData = JSON.parse(localStorage.getItem('biomed_user'));
+        if (!userData || (userData.role !== 'citogenetista' && userData.role !== 'admin' && userData.role !== 'supervisor')) {
+            alert("Acceso restringido al registro de muestras.");
+            window.location.href = "index.html";
+        }
+    </script>
+
+    <!-- NAVBAR SUPERIOR -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand" style="text-decoration: none; color: white;">
+            <i class="fas fa-dna fa-lg"></i>
+            <div><strong>BIOMED UMSS</strong><div style="font-size: 0.6rem;">INTELLIGENT KARYOTYPING</div></div>
+            <span class="role-tag">REGISTRO DE MUESTRAS</span>
+        </a>
+        <div class="nav-links">
+            <a href="supervisor.html" class="nav-item" id="nav-supervisor"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+            <a href="#" class="nav-item active"><i class="fas fa-plus-circle"></i> Registro</a>
+            <a href="configuracion.html" class="nav-item" id="nav-config"><i class="fas fa-cog"></i> Configuración</a>
+            <a href="index.html" class="nav-item"><i class="fas fa-sign-out-alt"></i> Salir</a>
+        </div>
+        <div class="user-info">
+            <div class="user-name">Carlos Mercado</div>
+            <div class="user-role">Técnico Especialista</div>
+        </div>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <div class="main-container">
+        <div class="page-header">
+            <h1><i class="fas fa-clipboard-list"></i> Registro de Nueva Muestra</h1>
+            <p>Complete la información del paciente y capture las imágenes de metafase</p>
+        </div>
+
+        <div class="alert-info">
+            <i class="fas fa-info-circle"></i> <strong>Información importante:</strong> Los campos marcados con <span style="color: var(--umss-red);">*</span> son obligatorios. Se requieren al menos 20 metafases de calidad.
+        </div>
+
+        <div class="form-card">
+            <div class="card-header">
+                <h2><i class="fas fa-dna"></i> Datos de la Muestra</h2>
+                <p>Ingrese la información del paciente y las imágenes de metafase</p>
+            </div>
+            <div class="card-body">
+
+                <!-- SECCIÓN 1: INFORMACIÓN DEL PACIENTE -->
+                <div class="form-section">
+                    <div class="form-section-title"><i class="fas fa-user"></i> Información del Paciente</div>
+                    <div class="form-row three-col">
+                        <div class="form-group">
+                            <label class="form-label">CHN (Historia Clínica) <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="chn" placeholder="Ej: CHN-12345" value="CHN-442">
+                            <small style="font-size: 0.65rem; color: var(--gray-text); margin-top: 4px;">Número único de historia clínica</small>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Nombre completo <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="patientName" placeholder="Nombre del paciente" value="ANON-442">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Fecha de nacimiento <span class="required">*</span></label>
+                            <input type="date" class="form-input" id="birthDate" value="1998-03-15">
+                        </div>
+                    </div>
+                    <div class="form-row three-col">
+                        <div class="form-group">
+                            <label class="form-label">Género <span class="required">*</span></label>
+                            <select class="form-input" id="gender">
+                                <option value="">Seleccionar...</option>
+                                <option value="M" selected>Masculino</option>
+                                <option value="F">Femenino</option>
+                                <option value="O">Otro</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Documento de identidad</label>
+                            <input type="text" class="form-input" id="document" placeholder="CI / Pasaporte" value="12345678">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Teléfono de contacto</label>
+                            <input type="tel" class="form-input" id="phone" placeholder="+591 XXXXXXXX" value="+591 71234567">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 2: INFORMACIÓN DE LA MUESTRA -->
+                <div class="form-section">
+                    <div class="form-section-title"><i class="fas fa-flask"></i> Información de la Muestra</div>
+                    <div class="form-row three-col">
+                        <div class="form-group">
+                            <label class="form-label">Código de muestra <span class="required">*</span></label>
+                            <input type="text" class="form-input" id="sampleCode" placeholder="Generado automáticamente" value="BM-2026-0442" readonly style="background: var(--gray-bg);">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Tipo de muestra <span class="required">*</span></label>
+                            <select class="form-input" id="sampleType">
+                                <option value="">Seleccionar...</option>
+                                <option value="sangre" selected>Sangre periférica</option>
+                                <option value="medula">Médula ósea</option>
+                                <option value="amniotico">Líquido amniótico</option>
+                                <option value="vellosidades">Vellosidades coriales</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Método de cultivo</label>
+                            <select class="form-input" id="cultureMethod">
+                                <option value="">Seleccionar...</option>
+                                <option value="72h" selected>Sangre periférica — Cultura 72h</option>
+                                <option value="24h">Médula ósea — Cultura 24h</option>
+                                <option value="7d">Líquido amniótico — Cultura 7 días</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Fecha de recolección <span class="required">*</span></label>
+                            <input type="date" class="form-input" id="collectionDate" value="2026-04-13">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Fecha de recepción en laboratorio</label>
+                            <input type="date" class="form-input" id="receptionDate" value="2026-04-13">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Médico solicitante</label>
+                            <input type="text" class="form-input" id="requestingDoctor" placeholder="Nombre del médico" value="Dr. Alejandro Rojas">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Servicio/Departamento</label>
+                            <input type="text" class="form-input" id="department" placeholder="Ej: Genética Clínica" value="Genética Clínica">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 3: HISTORIAL CLÍNICO -->
+                <div class="form-section">
+                    <div class="form-section-title"><i class="fas fa-notes-medical"></i> Historial Clínico</div>
+                    <div class="form-group" style="margin-bottom: var(--space-md);">
+                        <label class="form-label">Motivo de la consulta / Indicación</label>
+                        <textarea class="form-input" id="indication" placeholder="Describa el motivo de la solicitud del estudio citogenético...">Estudio prenatal por edad materna avanzada. Screening de primer trimestre alterado.</textarea>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Antecedentes familiares relevantes</label>
+                        <textarea class="form-input" id="familyHistory" placeholder="Historial de condiciones genéticas en la familia...">Sin antecedentes familiares de importancia.</textarea>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 4: TIPO DE ANÁLISIS -->
+                <div class="form-section">
+                    <div class="form-section-title"><i class="fas fa-microscope"></i> Solicitud de Análisis</div>
+                    <div class="form-row">
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="analysis1" checked>
+                                <label for="analysis1">Cariotipo de alta resolución (GTG-banding 450-550)</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="analysis2">
+                                <label for="analysis2">Análisis de mosaicismo</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="analysis3">
+                                <label for="analysis3">FISH (Fluorescence in situ hybridization)</label>
+                            </div>
+                        </div>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="analysis4">
+                                <label for="analysis4">Array-CGH (Microarray)</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="analysis5">
+                                <label for="analysis5">Estudio de fragilidad cromosómica</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="analysis6">
+                                <label for="analysis6">Otro (especificar en notas)</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 5: CAPTURA DE METAFASES -->
+                <div class="form-section">
+                    <div class="form-section-title"><i class="fas fa-camera"></i> Captura de Metafases</div>
+                    
+                    <div class="capture-container">
+                        <!-- Panel de cámara -->
+                        <div class="camera-panel">
+                            <div class="camera-header">
+                                <span><i class="fas fa-video"></i> Vista previa</span>
+                                <span id="cameraStatus">📷 Cámara desconectada</span>
+                            </div>
+                            <div class="camera-preview" id="cameraPreview">
+                                <div class="preview-placeholder">
+                                    <i class="fas fa-camera"></i>
+                                    <p>Conecte una cámara o seleccione un archivo</p>
+                                    <button class="btn btn-primary btn-sm" id="connectCameraBtn" style="margin-top: 10px; padding: 8px 16px; font-size: 0.7rem;">
+                                        <i class="fas fa-plug"></i> Conectar cámara
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="camera-controls">
+                                <button class="btn btn-primary" id="captureBtn" disabled>
+                                    <i class="fas fa-camera"></i> Capturar metafase
+                                </button>
+                                <button class="btn btn-outline" id="uploadFileBtn">
+                                    <i class="fas fa-upload"></i> Subir imagen
+                                </button>
+                                <input type="file" id="fileInput" accept="image/jpeg,image/png,image/tiff" style="display: none;" multiple>
+                            </div>
+                        </div>
+
+                        <!-- Panel de ajustes -->
+                        <div class="adjust-panel">
+                            <div class="adjust-header"><i class="fas fa-sliders-h"></i> Ajustes de imagen</div>
+                            <div class="adjust-body">
+                                <div class="slider-group">
+                                    <label>Brillo <span id="brightnessVal">0</span></label>
+                                    <input type="range" id="brightness" min="-100" max="100" value="0">
+                                </div>
+                                <div class="slider-group">
+                                    <label>Contraste <span id="contrastVal">0</span></label>
+                                    <input type="range" id="contrast" min="-100" max="100" value="0">
+                                </div>
+                                <div class="slider-group">
+                                    <label>Umbral (Threshold) <span id="thresholdVal">50</span></label>
+                                    <input type="range" id="threshold" min="0" max="100" value="50">
+                                </div>
+                                <div class="slider-group">
+                                    <label>Resolución</label>
+                                    <select class="form-input" id="resolution">
+                                        <option value="640x480">640x480</option>
+                                        <option value="800x600">800x600</option>
+                                        <option value="1024x768" selected>1024x768</option>
+                                        <option value="1280x960">1280x960</option>
+                                    </select>
+                                </div>
+                                <div class="quality-indicator" style="margin-top: 12px;">
+                                    <span id="qualityBadge" class="quality-badge quality-warning">
+                                        <i class="fas fa-chart-line"></i> Calidad: Sin evaluar
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Galería de metafases capturadas -->
+                    <div class="gallery-section">
+                        <div class="gallery-title">
+                            <span><i class="fas fa-images"></i> Metafases capturadas (<span id="captureCount">0</span>/20 mínimas)</span>
+                            <div>
+                                <button class="btn btn-outline btn-sm" id="clearAllBtn" style="padding: 4px 12px; font-size: 0.7rem;">
+                                    <i class="fas fa-trash"></i> Limpiar todas
+                                </button>
+                            </div>
+                        </div>
+                        <div class="gallery-grid" id="galleryGrid">
+                            <div style="grid-column: 1/-1; text-align: center; color: var(--gray-text); padding: 20px;">
+                                No hay metafases capturadas. Conecte una cámara o suba imágenes.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTONES DE ACCIÓN -->
+                <div class="form-actions">
+                    <button class="btn btn-outline" id="saveDraftBtn"><i class="fas fa-save"></i> Guardar borrador</button>
+                    <button class="btn btn-outline" id="cancelBtn"><i class="fas fa-times"></i> Cancelar</button>
+                    <button class="btn btn-primary" id="submitBtn"><i class="fas fa-robot"></i> Registrar y analizar con IA</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SIMULACION IA -->
+    <div id="aiSimulationModal" class="ai-modal-overlay">
+        <div class="ai-modal-content">
+            <i class="fas fa-brain fa-4x" style="margin-bottom: 20px;"></i>
+            <h2>Procesando con Biomed IA</h2>
+            <div class="ai-progress-container">
+                <div id="aiProgressBar" class="ai-progress-bar"></div>
+            </div>
+            <div id="aiStatusText" class="ai-status-text">Iniciando motor de análisis...</div>
+            <div class="ai-steps">
+                <div class="ai-step" id="step1"><i class="fas fa-check-circle"></i> Detección de metafases y filtrado de calidad</div>
+                <div class="ai-step" id="step2"><i class="fas fa-check-circle"></i> Segmentación de instancias (Mask R-CNN)</div>
+                <div class="ai-step" id="step3"><i class="fas fa-check-circle"></i> Clasificación de bandas y ordenamiento ISCN</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL SIMULACION IA -->
+    <div id="aiSimulationModal" class="ai-modal-overlay">
+        <div class="ai-modal-content">
+            <i class="fas fa-brain fa-4x" style="margin-bottom: 20px;"></i>
+            <h2>Procesando con Biomed IA</h2>
+            <div class="ai-progress-container">
+                <div id="aiProgressBar" class="ai-progress-bar"></div>
+            </div>
+            <div id="aiStatusText" class="ai-status-text">Iniciando motor de análisis...</div>
+            <div class="ai-steps">
+                <div class="ai-step" id="step1"><i class="fas fa-check-circle"></i> Detección de metafases y filtrado de calidad</div>
+                <div class="ai-step" id="step2"><i class="fas fa-check-circle"></i> Segmentación de instancias (Mask R-CNN)</div>
+                <div class="ai-step" id="step3"><i class="fas fa-check-circle"></i> Clasificación de bandas y ordenamiento ISCN</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elementos DOM
+        const cameraPreview = document.getElementById('cameraPreview');
+        const connectCameraBtn = document.getElementById('connectCameraBtn');
+        const captureBtn = document.getElementById('captureBtn');
+        const uploadFileBtn = document.getElementById('uploadFileBtn');
+        const fileInput = document.getElementById('fileInput');
+        const galleryGrid = document.getElementById('galleryGrid');
+        const captureCountSpan = document.getElementById('captureCount');
+        const clearAllBtn = document.getElementById('clearAllBtn');
+        const submitBtn = document.getElementById('submitBtn');
+        const saveDraftBtn = document.getElementById('saveDraftBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        
+        // Ocultar links administrativos si no es admin
+        const currentUser = JSON.parse(localStorage.getItem('biomed_user'));
+        if (currentUser && currentUser.role !== 'admin') {
+            if (document.getElementById('nav-supervisor')) document.getElementById('nav-supervisor').style.display = 'none';
+            if (document.getElementById('nav-config')) document.getElementById('nav-config').style.display = 'none';
+        }
+
+        // Controles de imagen
+        const brightnessSlider = document.getElementById('brightness');
+        const contrastSlider = document.getElementById('contrast');
+        const thresholdSlider = document.getElementById('threshold');
+        const resolutionSelect = document.getElementById('resolution');
+        const qualityBadge = document.getElementById('qualityBadge');
+        
+        let capturedImages = [];
+        let stream = null;
+        let videoElement = null;
+
+        function updateCaptureCount() {
+            captureCountSpan.innerText = capturedImages.length;
+            const isValid = capturedImages.length >= 20;
+            if (isValid) {
+                qualityBadge.className = 'quality-badge quality-good';
+                qualityBadge.innerHTML = '<i class="fas fa-check-circle"></i> Calidad: Suficiente (' + capturedImages.length + '/20)';
+            } else {
+                qualityBadge.className = 'quality-badge quality-warning';
+                qualityBadge.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Faltan ' + (20 - capturedImages.length) + ' metafases (mínimo 20)';
+            }
+        }
+
+        function renderGallery() {
+            if (capturedImages.length === 0) {
+                galleryGrid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--gray-text); padding: 20px;">No hay metafases capturadas. Conecte una cámara o suba imágenes.</div>';
+                return;
+            }
+            
+            galleryGrid.innerHTML = capturedImages.map((img, idx) => `
+                <div class="gallery-item" data-idx="${idx}" onclick="selectImage(${idx})">
+                    <div class="gallery-thumb">
+                        <img src="${img.data}" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                    </div>
+                    <div class="gallery-label">Metafase ${idx + 1}</div>
+                    <div class="delete-image" onclick="event.stopPropagation(); deleteImage(${idx})">
+                        <i class="fas fa-times"></i>
+                    </div>
+                </div>
+            `).join('');
+            updateCaptureCount();
+        }
+
+        function addCapturedImage(imageData) {
+            capturedImages.push({ data: imageData, timestamp: new Date() });
+            renderGallery();
+        }
+
+        // Conectar cámara
+        connectCameraBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                videoElement = document.createElement('video');
+                videoElement.srcObject = stream;
+                videoElement.autoplay = true;
+                videoElement.style.width = '100%';
+                videoElement.style.maxHeight = '280px';
+                videoElement.style.borderRadius = '8px';
+                
+                cameraPreview.innerHTML = '';
+                cameraPreview.appendChild(videoElement);
+                
+                captureBtn.disabled = false;
+                document.getElementById('cameraStatus').innerHTML = '✅ Cámara conectada';
+                connectCameraBtn.textContent = 'Desconectar cámara';
+                connectCameraBtn.onclick = disconnectCamera;
+            } catch (err) {
+                alert('No se pudo acceder a la cámara: ' + err.message);
+            }
+        });
+        
+        function disconnectCamera() {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            cameraPreview.innerHTML = `<div class="preview-placeholder">
+                <i class="fas fa-camera"></i>
+                <p>Conecte una cámara o seleccione un archivo</p>
+                <button class="btn btn-primary btn-sm" id="connectCameraBtn" style="margin-top: 10px; padding: 8px 16px; font-size: 0.7rem;">
+                    <i class="fas fa-plug"></i> Conectar cámara
+                </button>
+            </div>`;
+            captureBtn.disabled = true;
+            document.getElementById('cameraStatus').innerHTML = '📷 Cámara desconectada';
+            connectCameraBtn.textContent = 'Conectar cámara';
+            connectCameraBtn.onclick = () => connectCamera();
+        }
+        
+        // Capturar imagen desde cámara
+        captureBtn.addEventListener('click', () => {
+            if (videoElement) {
+                const canvas = document.createElement('canvas');
+                canvas.width = videoElement.videoWidth;
+                canvas.height = videoElement.videoHeight;
+                const ctx = canvas.getContext('2d');
+                
+                ctx.filter = `brightness(${100 + parseInt(brightnessSlider.value)}%) contrast(${100 + parseInt(contrastSlider.value)}%)`;
+                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
+                
+                const imageData = canvas.toDataURL('image/jpeg');
+                addCapturedImage(imageData);
+                
+                const flash = document.createElement('div');
+                flash.style.position = 'fixed';
+                flash.style.top = 0;
+                flash.style.left = 0;
+                flash.style.width = '100%';
+                flash.style.height = '100%';
+                flash.style.backgroundColor = 'white';
+                flash.style.opacity = '0.5';
+                flash.style.zIndex = 9999;
+                document.body.appendChild(flash);
+                setTimeout(() => flash.remove(), 100);
+            }
+        });
+        
+        // Subir archivos
+        uploadFileBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            files.forEach(file => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    addCapturedImage(event.target.result);
+                };
+                reader.readAsDataURL(file);
+            });
+            fileInput.value = '';
+        });
+        
+        window.deleteImage = function(idx) {
+            capturedImages.splice(idx, 1);
+            renderGallery();
+        };
+        
+        window.selectImage = function(idx) {
+            alert(`Metafase ${idx + 1} seleccionada. Puede aplicar ajustes o recortar.`);
+        };
+        
+        clearAllBtn.addEventListener('click', () => {
+            if (confirm('¿Eliminar todas las metafases capturadas?')) {
+                capturedImages = [];
+                renderGallery();
+            }
+        });
+        
+        brightnessSlider.addEventListener('input', () => {
+            document.getElementById('brightnessVal').innerText = brightnessSlider.value;
+        });
+        contrastSlider.addEventListener('input', () => {
+            document.getElementById('contrastVal').innerText = contrastSlider.value;
+        });
+        thresholdSlider.addEventListener('input', () => {
+            document.getElementById('thresholdVal').innerText = thresholdSlider.value;
+        });
+        
+        saveDraftBtn.addEventListener('click', () => {
+            const formData = {
+                chn: document.getElementById('chn').value,
+                patientName: document.getElementById('patientName').value,
+                sampleCode: document.getElementById('sampleCode').value,
+                metafases: capturedImages.length
+            };
+            localStorage.setItem('biomed_draft', JSON.stringify(formData));
+            alert('✅ Borrador guardado correctamente.');
+        });
+        
+        cancelBtn.addEventListener('click', () => {
+            if (confirm('¿Cancelar registro? Los datos no guardados se perderán.')) {
+                if (stream) disconnectCamera();
+                capturedImages = [];
+                renderGallery();
+                alert('Formulario cancelado.');
+            }
+        });
+        
+        submitBtn.addEventListener('click', () => {
+            const chn = document.getElementById('chn').value;
+            const patientName = document.getElementById('patientName').value;
+            
+            if (!chn || !patientName) {
+                alert('⚠️ Complete los campos obligatorios: CHN y Nombre del paciente.');
+                return;
+            }
+            
+            if (capturedImages.length < 3) {
+                alert(`⚠️ Se requieren al menos 3 metafases para el análisis (recomendado: 20). Actualmente tiene ${capturedImages.length}.`);
+                return;
+            }
+            
+            // Iniciar Simulación IA
+            const modal = document.getElementById('aiSimulationModal');
+            const bar = document.getElementById('aiProgressBar');
+            const status = document.getElementById('aiStatusText');
+            modal.style.display = 'flex';
+
+            const steps = [
+                { progress: 30, text: "Detectando y aislando cromosomas...", step: 'step1' },
+                { progress: 60, text: "Segmentando bandas citogenéticas...", step: 'step2' },
+                { progress: 90, text: "Organizando pares homólogos (ISCN)...", step: 'step3' },
+                { progress: 100, text: "Cariograma listo para validación.", step: null }
+            ];
+
+            let currentStep = 0;
+            const interval = setInterval(() => {
+                if (currentStep < steps.length) {
+                    const s = steps[currentStep];
+                    bar.style.width = s.progress + '%';
+                    status.innerText = s.text;
+                    if (s.step) document.getElementById(s.step).classList.add('active');
+                    currentStep++;
+                } else {
+                    clearInterval(interval);
+                    const patientData = {
+                        chn: chn,
+                        name: patientName,
+                        sampleCode: document.getElementById('sampleCode').value,
+                        gender: document.getElementById('gender').value
+                    };
+                    localStorage.setItem('activePatient', JSON.stringify(patientData));
+                    window.location.href = 'correccion de cariotipo.html';
+                }
+            }, 1200);
+        });
+        
+        // Generar código de muestra automático
+        const date = new Date();
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        document.getElementById('sampleCode').value = `BM-${year}${month}${day}-${Math.floor(Math.random() * 1000)}`;
+        
+        // Simular archivos demo precargados
+        const demoFiles = ['metafase_001.tiff', 'metafase_002.tiff', 'metafase_003.tiff'];
+        setTimeout(() => {
+            demoFiles.forEach(file => {
+                const fakeImageData = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23333742'/%3E%3Ctext x='50' y='55' text-anchor='middle' fill='%236b7280' font-size='10'%3E🧬%3C/text%3E%3C/svg%3E";
+                addCapturedImage(fakeImageData);
+            });
+        }, 500);
+    </script>
+</body>
+</html>

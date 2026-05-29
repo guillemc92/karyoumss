@@ -1,0 +1,39 @@
+gantt
+    title Roadmap BIOMED UMSS — Sprints v1.0
+    dateFormat  YYYY-MM-DD
+    axisFormat  %d/%m
+
+    section Sprint 0 — Setup
+    Scaffolding Docker Compose      :done,    s0a, 2026-05-01, 3d
+    Modelo de datos PostgreSQL      :done,    s0b, 2026-05-02, 2d
+    Auth JWT + roles                :done,    s0c, 2026-05-03, 2d
+
+    section Sprint 1 — Ingesta (UC-01 fase 1)
+    CHN Anonymizer service          :done,    s1a, 2026-05-05, 2d
+    POST /samples + S3 upload       :done,    s1b, 2026-05-06, 3d
+    Redis enqueue + Celery worker   :done,    s1c, 2026-05-08, 3d
+    WebSocket push notification     :done,    s1d, 2026-05-10, 2d
+
+    section Sprint 2 — Pipeline IA (UC-01 fase 2)
+    U-Net segmentación              :active,  s2a, 2026-05-12, 5d
+    EfficientNet-B3 clasificación   :active,  s2b, 2026-05-14, 4d
+    Grad-CAM XAI integration        :         s2c, 2026-05-17, 3d
+    Tiling strategy GPU             :         s2d, 2026-05-18, 3d
+
+    section Sprint 3 — Validación (UC-02)
+    Mesa de edición Konva.js        :         s3a, 2026-05-20, 5d
+    Semaforización verde/naranja    :         s3b, 2026-05-22, 3d
+    Audit Trail middleware           :         s3c, 2026-05-24, 2d
+    Auditoría aleatoria 5%          :         s3d, 2026-05-25, 2d
+
+    section Sprint 4 — Informes (UC-03)
+    ISCN Generator determinístico   :         s4a, 2026-05-27, 3d
+    Firma digital MFA               :         s4b, 2026-05-28, 3d
+    Integración LIS (HL7 FHIR)     :         s4c, 2026-05-30, 3d
+    Exportación PDF con footnotes   :         s4d, 2026-06-01, 2d
+
+    section Sprint 5 — QA + Release
+    Tests integración k6            :         s5a, 2026-06-03, 3d
+    Tests Playwright cross-browser  :         s5b, 2026-06-04, 3d
+    Modo degradado elegante         :         s5c, 2026-06-05, 2d
+    Release 1.0.0 branch            :milestone, s5d, 2026-06-07, 0d

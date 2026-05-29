@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biomed UMSS - Reporte de Cariotipo | Cariotipado IA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --umss-blue: #003770;
+            --umss-red: #E30613;
+            --blue-hover: #003265;
+            --blue-light: #e6ebf1;
+            --green-success: #1e8868;
+            --green-light: #e9f3f0;
+            --orange-warning: #d45100;
+            --orange-light: #fbeee6;
+            --gray-bg: #f8f9fa;
+            --gray-text: #64748b;
+            --white: #ffffff;
+            --border-light: #e2e8f0;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,55,112,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,55,112,0.15);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #1e293b;
+            background: linear-gradient(135deg, var(--gray-bg) 0%, var(--blue-light) 100%);
+            min-height: 100vh;
+        }
+
+        /* ============================================ */
+        /* NAVBAR SUPERIOR - ESTILO UMSS */
+        /* ============================================ */
+        .navbar {
+            background: var(--umss-blue);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .nav-brand { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .nav-brand h1 { font-size: 1.3rem; font-weight: 700; }
+        .role-tag { background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.2); }
+        .nav-links { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+        .nav-item { color: #cbd5e1; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; cursor: pointer; padding: 8px 0; }
+        .nav-item.active { color: white; font-weight: 600; border-bottom: 2px solid var(--umss-red); }
+        .nav-item:hover { color: white; }
+        .user-info { text-align: right; }
+        .user-name { font-size: 0.8rem; font-weight: 600; }
+        .user-role { font-size: 0.6rem; color: #cbd5e1; }
+
+        /* ============================================ */
+        /* MAIN CONTENT */
+        /* ============================================ */
+        .main-container {
+            max-width: 1400px;
+            margin: 1.5rem auto;
+            padding: 0 1.5rem;
+        }
+
+        /* Header de página */
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+        .page-header p {
+            color: var(--gray-text);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+        }
+
+        /* ============================================ */
+        /* REPORT LAYOUT - MEJORADO CON SEPARACIÓN */
+        /* ============================================ */
+        .report-layout {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 1.5rem;
+        }
+
+        /* Report Main */
+        .report-main {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+        }
+
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-light);
+            background: var(--white);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+
+        .card-subtitle {
+            font-size: 0.75rem;
+            color: var(--gray-text);
+            margin-top: 4px;
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* Resultado destacado */
+        .result-highlight {
+            background: var(--green-light);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid var(--green-success);
+        }
+
+        .result-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--green-success);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .result-title {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--green-success);
+            line-height: 1.3;
+            margin-bottom: 0.75rem;
+        }
+
+        .result-description {
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+
+        /* Sección de detalles técnicos */
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--umss-blue);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--umss-red);
+            display: inline-block;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-card {
+            background: var(--gray-bg);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            border: 1px solid var(--border-light);
+        }
+
+        .info-label {
+            font-size: 0.7rem;
+            color: var(--gray-text);
+            margin-bottom: 0.25rem;
+        }
+
+        .info-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--umss-blue);
+        }
+
+        /* Tabla de validación */
+        .validation-table {
+            background: var(--gray-bg);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            border: 1px solid var(--border-light);
+            margin-top: 0.5rem;
+        }
+
+        .validation-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .validation-row:last-child {
+            border-bottom: none;
+        }
+
+        .validation-label {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        .validation-value {
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .validation-value.success {
+            color: var(--green-success);
+        }
+
+        .validation-value.warning {
+            color: var(--umss-red);
+        }
+
+        /* ============================================ */
+        /* COLUMNA LATERAL - ESTILO MEJORADO */
+        /* ============================================ */
+        .report-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .sidebar-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+        }
+
+        .sidebar-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-light);
+            background: linear-gradient(135deg, var(--gray-bg) 0%, var(--white) 100%);
+        }
+
+        .sidebar-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+
+        .sidebar-subtitle {
+            font-size: 0.7rem;
+            color: var(--gray-text);
+            margin-top: 2px;
+        }
+
+        .sidebar-body {
+            padding: 1.25rem;
+        }
+
+        /* Cariograma Grid */
+        .cariogram-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .chromosome-pair {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background: var(--gray-bg);
+            border-radius: var(--radius-md);
+            padding: 0.5rem;
+        }
+
+        .chromosome {
+            background: var(--umss-blue);
+            border-radius: 4px;
+        }
+
+        .chromosome.large { width: 20px; height: 16px; border-radius: 8px; }
+        .chromosome.medium { width: 18px; height: 15px; border-radius: 7px; }
+        .chromosome.small { width: 16px; height: 13px; border-radius: 6px; }
+        .chromosome.x-chrom { width: 28px; height: 12px; border-radius: 6px; }
+        .chromosome.y-chrom { width: 20px; height: 10px; border-radius: 5px; }
+
+        .sex-chromosomes {
+            background: var(--green-light);
+            border: 1px solid var(--green-success);
+            border-radius: var(--radius-md);
+            grid-column: span 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 0.5rem;
+        }
+
+        .sex-label {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--green-success);
+            margin-left: 4px;
+        }
+
+        /* Validación Digital */
+        .signature-box {
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .signature-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .avatar {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(135deg, var(--umss-blue), var(--umss-red));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 1rem;
+        }
+
+        .signature-name {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+
+        .signature-role {
+            font-size: 0.65rem;
+            color: var(--gray-text);
+        }
+
+        .signature-cert {
+            background: var(--green-light);
+            border-radius: var(--radius-md);
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.7rem;
+            color: var(--green-success);
+        }
+
+        .signature-hash {
+            font-size: 0.65rem;
+            color: var(--gray-text);
+        }
+
+        /* Botones */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.7rem 1.2rem;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--umss-blue);
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+        .btn-primary:hover {
+            background: var(--blue-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--umss-blue);
+            border: 1.5px solid var(--umss-blue);
+        }
+        .btn-outline:hover {
+            background: var(--blue-light);
+        }
+
+        /* Información del paciente */
+        .patient-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .patient-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .patient-row:last-child {
+            border-bottom: none;
+        }
+
+        .patient-label {
+            font-size: 0.75rem;
+            color: var(--gray-text);
+        }
+
+        .patient-value {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--umss-blue);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .report-layout { grid-template-columns: 1fr; }
+            .navbar { flex-direction: column; height: auto; padding: 1rem; text-align: center; }
+            .nav-links { justify-content: center; }
+            .info-grid { grid-template-columns: 1fr; }
+            .cariogram-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Control de acceso
+        const userData = JSON.parse(localStorage.getItem('biomed_user'));
+        if (!userData) {
+            window.location.href = "index.html";
+        }
+    </script>
+
+    <!-- NAVBAR SUPERIOR ESTILO UMSS -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <i class="fas fa-dna fa-lg"></i>
+            <div><strong>BIOMED UMSS</strong><div style="font-size: 0.6rem;">INTELLIGENT KARYOTYPING</div></div>
+            <span class="role-tag">REPORTE DE CARIOTIPO</span>
+        </div>
+        <div class="nav-links">
+            <a href="crudmuestra.html" class="nav-item"><i class="fas fa-list"></i> Mis Muestras</a>
+            <a href="supervisor.html" class="nav-item" id="nav-supervisor"><i class="fas fa-user-shield"></i> Supervisor</a>
+            <a href="registrarmuestrafinal.html" class="nav-item" id="nav-mue"><i class="fas fa-flask"></i> Registro</a>
+            <a href="configuracion.html" class="nav-item" id="nav-config"><i class="fas fa-cog"></i> Configuración</a>
+            <a href="index.html" class="nav-item"><i class="fas fa-sign-out-alt"></i> Salir</a>
+        </div>
+        <div class="user-info">
+            <div class="user-name">Dra. María López</div>
+            <div class="user-role">Garante Clínico</div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="page-header">
+            <div style="display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                <h1><i class="fas fa-file-alt"></i> Reporte de Cariotipo</h1>
+                <span id="reportStatus" style="background: var(--green-success); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.5px;">ESTADO: FINALIZADO</span>
+                <span id="resultIcn" style="background: var(--umss-blue); color: white; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 700;">ISCN: 46,XY</span>
+            </div>
+            <p id="reportTimestamp">Ref: CB-2026-0442 · Generado el 10 Abr 2026, 15:45</p>
+        </div>
+
+        <div class="report-layout">
+            <!-- COLUMNA PRINCIPAL -->
+            <div class="report-main">
+                <div class="card-header">
+                    <div class="card-title">Reporte de Cariotipo</div>
+                    <div class="card-subtitle">Informe clínico generado por Biomed IA</div>
+                </div>
+
+                <div class="card-body">
+                    <!-- Información del Paciente en el Reporte -->
+                    <div class="info-grid" style="margin-bottom: 1.5rem;">
+                        <div class="info-card">
+                            <div class="info-label">ID Paciente</div>
+                            <div class="info-value" id="resPatientId">ANON-442</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-label">Nombre</div>
+                            <div class="info-value" id="resPatientName">Paciente Anonimizado</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-label">Edad / Género</div>
+                            <div class="info-value" id="resPatientDemo">28 años / Masculino</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-label">CHN</div>
+                            <div class="info-value" id="resChn">CHN-442</div>
+                        </div>
+                    </div>
+
+                    <!-- Resultado destacado -->
+                    <div class="result-highlight">
+                        <div class="result-label">RESULTADO DEL ANÁLISIS</div>
+                        <div class="result-title" id="resultTitle">46,XY [20] — Cariotipo Masculino Normal</div>
+                        <div class="result-description" id="resultDescription">
+                            No se detectaron anomalías estructurales ni numéricas significativas. El cariotipo muestra complemento cromosómico normal con 46 cromosomas. Se validaron manualmente 3 regiones de baja confianza inicial (pares 4, 12 y 18), confirmándose su clasificación correcta tras revisión del facultativo.
+                        </div>
+                    </div>
+
+                    <!-- Detalles Técnicos -->
+                    <div class="section-title">DETALLES TÉCNICOS</div>
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <div class="info-label">Método</div>
+                            <div class="info-value">GTG-Banding a 450-550 bandas</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-label">Muestra</div>
+                            <div class="info-value">Sangre periférica — Cultura 72h</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-label">Células analizadas</div>
+                            <div class="info-value">20 metafases — 5 completas</div>
+                        </div>
+                        <div class="info-card">
+                            <div class="info-label">Resolución promedio</div>
+                            <div class="info-value">480 bandas ± 45</div>
+                        </div>
+                    </div>
+
+                    <!-- Validación IA + Humana -->
+                    <div class="section-title">VALIDACIÓN IA + HUMANA</div>
+                    <div class="validation-table">
+                        <div class="validation-row">
+                            <span class="validation-label">Pares analizados por IA</span>
+                            <span class="validation-value">23</span>
+                        </div>
+                        <div class="validation-row">
+                            <span class="validation-label">Clasificación automática exitosa</span>
+                            <span class="validation-value success">20 (87%)</span>
+                        </div>
+                        <div class="validation-row">
+                            <span class="validation-label">Requirieron validación humana</span>
+                            <span class="validation-value warning">3 (13%)</span>
+                        </div>
+                        <div class="validation-row">
+                            <span class="validation-label">Correcciones post-validación</span>
+                            <span class="validation-value">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMNA LATERAL -->
+            <div class="report-sidebar">
+                <!-- Cariograma Final -->
+                <div class="sidebar-card">
+                    <div class="sidebar-header">
+                        <div class="sidebar-title">Cariograma Final</div>
+                        <div class="sidebar-subtitle">Representación visual validada</div>
+                    </div>
+                    <div class="sidebar-body">
+                        <div class="cariogram-grid">
+                            <div class="chromosome-pair">
+                                <div class="chromosome large"></div>
+                                <div class="chromosome large"></div>
+                            </div>
+                            <div class="chromosome-pair">
+                                <div class="chromosome medium"></div>
+                                <div class="chromosome medium"></div>
+                            </div>
+                            <div class="chromosome-pair">
+                                <div class="chromosome small"></div>
+                                <div class="chromosome small"></div>
+                            </div>
+                            <div class="chromosome-pair">
+                                <div class="chromosome small"></div>
+                                <div class="chromosome small"></div>
+                            </div>
+                            <div class="chromosome-pair">
+                                <div class="chromosome small"></div>
+                                <div class="chromosome small"></div>
+                            </div>
+                            <div class="chromosome-pair">
+                                <div class="chromosome small"></div>
+                                <div class="chromosome small"></div>
+                            </div>
+                            <div class="chromosome-pair">
+                                <div class="chromosome small"></div>
+                                <div class="chromosome small"></div>
+                            </div>
+                            <div class="chromosome-pair">
+                                <div class="chromosome small"></div>
+                                <div class="chromosome small"></div>
+                            </div>
+                            <div class="sex-chromosomes">
+                                <div class="chromosome x-chrom"></div>
+                                <div class="chromosome y-chrom"></div>
+                                <span class="sex-label">XY</span>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.7rem; color: var(--gray-text); text-align: center;">
+                            Cariotipo organizado según nomenclatura ISCN 2020
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Validación Digital -->
+                <div class="sidebar-card">
+                    <div class="sidebar-header">
+                        <div class="sidebar-title">Validación Digital</div>
+                        <div class="sidebar-subtitle">Firma y trazabilidad</div>
+                    </div>
+                    <div class="sidebar-body">
+                        <div class="signature-box">
+                            <div class="signature-info">
+                                <div class="avatar">ML</div>
+                                <div>
+                                    <div class="signature-name">Dra. María García López</div>
+                                    <div class="signature-role">Citogenética Clínica · UMSS</div>
+                                </div>
+                            </div>
+                            <div class="signature-cert">
+                                <i class="fas fa-lock"></i> Firmado digitalmente con certificado médico
+                            </div>
+                            <div class="signature-hash">
+                                10 Abr 2026, 15:45 · Hash: a8f3d2...e4b7
+                            </div>
+                        </div>
+                        <button class="btn btn-primary" id="downloadPdfBtn">
+                            <i class="fas fa-file-pdf"></i> Descargar PDF del Reporte
+                        </button>
+                        <button class="btn btn-outline" id="sendToLisBtn">
+                            <i class="fas fa-share-alt"></i> Enviar a HIS / LIS
+                        </button>
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border-light);">
+                            <button class="btn" id="finalizeCaseBtn" style="background: var(--green-success); color: white;">
+                                <i class="fas fa-check-double"></i> Finalizar y Cerrar Caso
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información del Paciente -->
+                <div class="sidebar-card">
+                    <div class="sidebar-header">
+                        <div class="sidebar-title">Información del Paciente</div>
+                        <div class="sidebar-subtitle">Datos de identificación</div>
+                    </div>
+                    <div class="sidebar-body">
+                        <div class="patient-info">
+                            <div class="patient-row">
+                                <span class="patient-label">ID Paciente</span>
+                                <span class="patient-value" id="sidebarPatientId">ANON-442</span>
+                            </div>
+                            <div class="patient-row">
+                                <span class="patient-label">Edad / Género</span>
+                                <span class="patient-value" id="sidebarPatientDemo">28 años / Masculino</span>
+                            </div>
+                            <div class="patient-row">
+                                <span class="patient-label">Médico solicitante</span>
+                                <span class="patient-value">Dr. Alejandro Rojas</span>
+                            </div>
+                            <div class="patient-row">
+                                <span class="patient-label">Fecha de ingreso</span>
+                                <span class="patient-value" id="sidebarDate">10 de abril de 2026</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Navegación Rápida -->
+                <div class="sidebar-card">
+                    <div class="sidebar-header">
+                        <div class="sidebar-title">Acciones Rápidas</div>
+                        <div class="sidebar-subtitle">Gestión del flujo de trabajo</div>
+                    </div>
+                    <div class="sidebar-body">
+                        <button class="btn btn-outline" onclick="window.location.href='crudmuestra.html'" style="margin-bottom: 0.5rem;">
+                            <i class="fas fa-list"></i> Volver al Listado
+                        </button>
+                        <button class="btn btn-outline" onclick="window.location.href='registrarmuestrafinal.html'" style="margin-bottom: 0.5rem;">
+                            <i class="fas fa-plus"></i> Nuevo Caso
+                        </button>
+                        <button class="btn btn-outline" onclick="window.location.href='supervisor.html'" id="btnBackToSupervisor" style="display: none;">
+                            <i class="fas fa-user-shield"></i> Panel Supervisor
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Carga de datos dinámicos y control de flujo
+        const activePatient = JSON.parse(localStorage.getItem('activePatient'));
+        const karyotypeResult = JSON.parse(localStorage.getItem('karyotypeResult'));
+        const userSession = JSON.parse(localStorage.getItem('biomed_user'));
+
+        // Función para generar interpretación clínica basada en el resultado
+        function generateClinicalInterpretation(karyotype, gender) {
+            const interpretations = {
+                '46,XX': 'Cariotipo femenino normal. No se observan anomalías cromosómicas estructurales ni numéricas. El estudio citogenético es compatible con un cariotipo femenino normal.',
+                '46,XY': 'Cariotipo masculino normal. No se observan anomalías cromosómicas estructurales ni numéricas. El estudio citogenético es compatible con un cariotipo masculino normal.',
+                '47,XX,+21': 'Síndrome de Down (Trisomía 21). Se observa un cromosoma 21 adicional. El cariotipo corresponde a trisomía 21 libre, compatible con Síndrome de Down.',
+                '47,XY,+21': 'Síndrome de Down (Trisomía 21). Se observa un cromosoma 21 adicional. El cariotipo corresponde a trisomía 21 libre, compatible con Síndrome de Down.',
+                '45,X': 'Síndrome de Turner. Se observa monosomía X. El cariotipo muestra ausencia de un cromosoma sexual, compatible con Síndrome de Turner.',
+                '47,XXY': 'Síndrome de Klinefelter. Se observa un cromosoma X adicional. El cariotipo corresponde a cariotipo 47,XXY, compatible con Síndrome de Klinefelter.'
+            };
+            return interpretations[karyotype] || `Cariotipo ${karyotype}. Resultado que requiere análisis especializado por citogenetista.`;
+        }
+
+        // Cargar datos del paciente si existen
+        if (activePatient) {
+            document.getElementById('resPatientId').innerText = activePatient.id || activePatient.chn || 'ANON-442';
+            document.getElementById('resPatientName').innerText = activePatient.name || activePatient.patientName || 'Paciente Anonimizado';
+            document.getElementById('resChn').innerText = activePatient.chn || '—';
+            document.getElementById('resPatientDemo').innerText = `${activePatient.age || '—'} años / ${activePatient.gender === 'F' ? 'Femenino' : 'Masculino'}`;
+
+            // Generar código de referencia dinámico
+            const today = new Date();
+            const dateStr = today.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+            const timeStr = today.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('reportTimestamp').innerText = `Ref: ${activePatient.id || 'CB-2026-0000'} · Generado el ${dateStr}, ${timeStr}`;
+        }
+
+        // Cargar resultado del cariotipo si existe
+        if (karyotypeResult) {
+            const karyotype = karyotypeResult.karyotype || (activePatient?.gender === 'F' ? '46,XX' : '46,XY');
+            const gender = activePatient?.gender === 'F' ? 'Femenino' : 'Masculino';
+            const numCells = karyotypeResult.cellsAnalyzed || '20';
+
+            document.getElementById('resultTitle').innerText = `${karyotype} [${numCells}] — ${generateClinicalInterpretation(karyotype, gender).split('.')[0]}`;
+            document.getElementById('resultIcn').innerText = `ISCN: ${karyotype}`;
+            document.getElementById('resultDescription').innerText = generateClinicalInterpretation(karyotype, gender);
+
+            // Actualizar tabla de validación
+            const validatedCount = karyotypeResult.validatedPairs || 20;
+            const needsReview = karyotypeResult.needsReview || 0;
+            document.querySelector('.validation-table').innerHTML = `
+                <div class="validation-row">
+                    <span class="validation-label">Pares analizados por IA</span>
+                    <span class="validation-value">23</span>
+                </div>
+                <div class="validation-row">
+                    <span class="validation-label">Clasificación automática exitosa</span>
+                    <span class="validation-value success">${validatedCount} (${Math.round(validatedCount/23*100)}%)</span>
+                </div>
+                <div class="validation-row">
+                    <span class="validation-label">Requirieron validación humana</span>
+                    <span class="validation-value ${needsReview > 0 ? 'warning' : ''}">${needsReview} (${Math.round(needsReview/23*100)}%)</span>
+                </div>
+                <div class="validation-row">
+                    <span class="validation-label">Correcciones post-validación</span>
+                    <span class="validation-value">${karyotypeResult.corrections || 0}</span>
+                </div>
+            `;
+        }
+
+        // Control de navegación según rol
+        if (userSession) {
+            if (userSession.role !== 'admin') {
+                if (document.getElementById('nav-supervisor') && userSession.role !== 'supervisor')
+                    document.getElementById('nav-supervisor').style.display = 'none';
+                if (document.getElementById('nav-config'))
+                    document.getElementById('nav-config').style.display = 'none';
+            }
+            // Mostrar nombre del usuario
+            document.querySelector('.user-name').innerText = userSession.name === 'cito' ? 'Dra. María López' :
+                userSession.name === 'super' ? 'Dr. Carlos Supervisor' :
+                userSession.name === 'admin' ? 'Ing. Admin' : userSession.name;
+            document.querySelector('.user-role').innerText = userSession.role === 'citogenetista' ? 'Citogenetista' :
+                userSession.role === 'supervisor' ? 'Supervisor' : 'Administrador';
+
+            // Mostrar botón de supervisor si corresponde
+            if (userSession.role === 'supervisor' || userSession.role === 'admin') {
+                const btnSupervisor = document.getElementById('btnBackToSupervisor');
+                if (btnSupervisor) btnSupervisor.style.display = 'block';
+            }
+        }
+
+        // Actualizar datos del sidebar
+        if (activePatient) {
+            document.getElementById('sidebarPatientId').innerText = activePatient.id || activePatient.chn || 'ANON-442';
+            document.getElementById('sidebarPatientDemo').innerText = `${activePatient.age || '—'} años / ${activePatient.gender === 'F' ? 'Femenino' : 'Masculino'}`;
+            const date = activePatient.date ? new Date(activePatient.date).toLocaleDateString('es-ES') : '—';
+            document.getElementById('sidebarDate').innerText = date;
+        }
+
+        // Acción de Finalización
+        document.getElementById('finalizeCaseBtn')?.addEventListener('click', () => {
+            if(confirm("¿Desea cerrar este caso y marcarlo como completado en el sistema?")) {
+                alert('✅ Caso guardado en el archivo clínico exitosamente.\n\nEl informe ha sido archivado y el caso cerrado.');
+                // Guardar en historial de casos completados
+                const completedCases = JSON.parse(localStorage.getItem('completedCases') || '[]');
+                const caseData = {
+                    id: activePatient?.id || 'CB-2026-0000',
+                    patient: activePatient?.name || 'Paciente',
+                    result: karyotypeResult?.karyotype || '46,XY',
+                    date: new Date().toISOString(),
+                    validatedBy: userSession?.name || 'Sistema'
+                };
+                completedCases.unshift(caseData);
+                localStorage.setItem('completedCases', JSON.stringify(completedCases));
+
+                // Limpiamos el paciente activo para el siguiente flujo
+                localStorage.removeItem('activePatient');
+                localStorage.removeItem('karyotypeResult');
+                window.location.href = 'crudmuestra.html';
+            }
+        });
+
+        document.getElementById('downloadPdfBtn')?.addEventListener('click', () => {
+            const reportRef = activePatient?.id || 'CB-2026-0000';
+            alert(`📄 Descargando reporte PDF...\n\nInforme ISCN: ${reportRef}\nEl archivo se ha generado correctamente y se está descargando.`);
+        });
+
+        document.getElementById('sendToLisBtn')?.addEventListener('click', () => {
+            alert('📤 Reporte enviado al Sistema de Información de Laboratorio (LIS/HIS).\n\nEstado: Enviado exitosamente\nEl médico solicitante será notificado automáticamente.');
+        });
+    </script>
+</body>
+</html>

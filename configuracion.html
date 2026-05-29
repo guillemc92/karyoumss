@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biomed UMSS - Configuración del Sistema | Cariotipado IA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --umss-blue: #003770;
+            --umss-red: #E30613;
+            --blue-hover: #003265;
+            --blue-light: #e6ebf1;
+            --green-success: #1e8868;
+            --green-light: #e9f3f0;
+            --orange-warning: #d45100;
+            --orange-light: #fbeee6;
+            --gray-bg: #f8f9fa;
+            --gray-text: #64748b;
+            --white: #ffffff;
+            --border-light: #e2e8f0;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,55,112,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,55,112,0.15);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #1e293b;
+            background: linear-gradient(135deg, var(--gray-bg) 0%, var(--blue-light) 100%);
+            min-height: 100vh;
+        }
+
+        /* ============================================ */
+        /* NAVBAR SUPERIOR - ESTILO UMSS */
+        /* ============================================ */
+        .navbar {
+            background: var(--umss-blue);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .nav-brand { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .nav-brand h1 { font-size: 1.3rem; font-weight: 700; }
+        .role-tag { background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.2); }
+        .nav-links { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+        .nav-item { color: #cbd5e1; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; cursor: pointer; padding: 8px 0; }
+        .nav-item.active { color: white; font-weight: 600; border-bottom: 2px solid var(--umss-red); }
+        .nav-item:hover { color: white; }
+        .user-info { text-align: right; }
+        .user-name { font-size: 0.8rem; font-weight: 600; }
+        .user-role { font-size: 0.6rem; color: #cbd5e1; }
+
+        /* ============================================ */
+        /* MAIN CONTENT */
+        /* ============================================ */
+        .main-container {
+            max-width: 1400px;
+            margin: 1.5rem auto;
+            padding: 0 1.5rem;
+        }
+
+        /* Header de página */
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+        .page-header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+        .page-header p {
+            color: var(--gray-text);
+            font-size: 0.85rem;
+            margin-top: 0.25rem;
+        }
+
+        /* ============================================ */
+        /* CONFIG LAYOUT */
+        /* ============================================ */
+        .config-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 1.5rem;
+        }
+
+        /* Sidebar de configuración */
+        .config-sidebar {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+            height: fit-content;
+            position: sticky;
+            top: 90px;
+        }
+
+        .config-nav {
+            padding: 1rem;
+        }
+
+        .config-nav-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gray-text);
+            margin-bottom: 1rem;
+            padding: 0 0.5rem;
+        }
+
+        .config-nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            margin-bottom: 0.25rem;
+            transition: all 0.2s;
+        }
+
+        .config-nav-item:hover {
+            background: var(--gray-bg);
+        }
+
+        .config-nav-item.active {
+            background: var(--blue-light);
+            color: var(--umss-blue);
+        }
+
+        .config-nav-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .config-nav-icon.blue { background: var(--umss-blue); color: white; }
+        .config-nav-icon.green { background: var(--green-light); color: var(--green-success); }
+        .config-nav-icon.yellow { background: var(--orange-light); color: var(--orange-warning); }
+        .config-nav-icon.light-blue { background: #e3f2fd; color: #2196f3; }
+        .config-nav-icon.red { background: #fce8e9; color: var(--umss-red); }
+        .config-nav-icon.purple { background: #f3e5f5; color: #9c27b0; }
+        .config-nav-icon.neural { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+
+        .config-nav-text {
+            flex: 1;
+        }
+
+        .config-nav-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .config-nav-sublabel {
+            font-size: 0.7rem;
+            color: var(--gray-text);
+        }
+
+        /* Versión del sistema */
+        .config-version {
+            padding: 1rem;
+            border-top: 1px solid var(--border-light);
+            margin-top: 1rem;
+        }
+
+        .config-version-title {
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--gray-text);
+            margin-bottom: 0.75rem;
+        }
+
+        .config-version-number {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+
+        .config-version-date {
+            font-size: 0.7rem;
+            color: var(--gray-text);
+            margin-bottom: 0.75rem;
+        }
+
+        .config-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0.5rem 0.75rem;
+            background: var(--green-light);
+            border-radius: var(--radius-md);
+        }
+
+        .config-status-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--green-success);
+            border-radius: 50%;
+        }
+
+        .config-status-text {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: var(--green-success);
+        }
+
+        /* Contenido de configuración */
+        .config-content {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            border: 1px solid var(--border-light);
+        }
+
+        .config-content-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-light);
+            background: linear-gradient(135deg, var(--gray-bg) 0%, var(--white) 100%);
+        }
+
+        .config-content-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+
+        .config-content-subtitle {
+            font-size: 0.75rem;
+            color: var(--gray-text);
+            margin-top: 4px;
+        }
+
+        .config-content-body {
+            padding: 1.5rem;
+        }
+
+        /* ============================================ */
+        /* MODELOS IA - SECCIÓN MEJORADA */
+        /* ============================================ */
+        .models-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .model-card {
+            background: var(--white);
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .model-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .model-card.active {
+            border: 2px solid var(--umss-blue);
+            background: var(--blue-light);
+        }
+
+        .model-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .model-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+
+        .model-status {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+        }
+
+        .model-status.active {
+            background: var(--green-light);
+            color: var(--green-success);
+        }
+
+        .model-status.inactive {
+            background: var(--gray-bg);
+            color: var(--gray-text);
+        }
+
+        .model-status.beta {
+            background: var(--orange-light);
+            color: var(--orange-warning);
+        }
+
+        .model-meta {
+            font-size: 0.7rem;
+            color: var(--gray-text);
+            margin-bottom: 1rem;
+        }
+
+        .model-metrics {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric {
+            flex: 1;
+        }
+
+        .metric-value {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--umss-blue);
+        }
+
+        .metric-label {
+            font-size: 0.65rem;
+            color: var(--gray-text);
+        }
+
+        /* Parámetros de IA */
+        .params-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .param-slider {
+            width: 100%;
+            margin: 0.5rem 0;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border-light);
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--umss-blue);
+            cursor: pointer;
+        }
+
+        .param-value {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+            margin-top: 0.25rem;
+        }
+
+        /* Tabla de métricas */
+        .metrics-table {
+            background: var(--gray-bg);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-name {
+            font-size: 0.8rem;
+            color: var(--gray-text);
+        }
+
+        .metric-number {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+        }
+
+        /* Formularios y secciones */
+        .form-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-section-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--umss-blue);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--umss-red);
+            display: inline-block;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-label {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--umss-blue);
+            margin-bottom: 0.5rem;
+        }
+
+        .form-input {
+            padding: 0.75rem;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+            background: var(--white);
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--umss-blue);
+            box-shadow: 0 0 0 3px rgba(0,55,112,0.1);
+        }
+
+        select.form-input {
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+        }
+
+        /* Profile Section */
+        .profile-section {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--umss-blue), var(--umss-red));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .profile-actions {
+            flex: 1;
+        }
+
+        .profile-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .profile-buttons {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        /* Security Section */
+        .security-section {
+            background: var(--gray-bg);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid var(--border-light);
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .section-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+
+        .section-icon.red { background: #fce8e9; }
+        .section-icon.green { background: var(--green-light); }
+
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* Toggle Switch */
+        .toggle-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            margin-bottom: 0.75rem;
+            border: 1px solid var(--border-light);
+        }
+
+        .toggle-info h4 {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .toggle-info p {
+            font-size: 0.7rem;
+            color: var(--gray-text);
+        }
+
+        .toggle-switch {
+            width: 48px;
+            height: 24px;
+            background: var(--gray-text);
+            border-radius: 12px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toggle-switch.active {
+            background: var(--green-success);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.2s;
+        }
+
+        .toggle-switch.active::after {
+            left: 26px;
+        }
+
+        /* Botones */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.2rem;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--umss-blue);
+            color: white;
+        }
+        .btn-primary:hover {
+            background: var(--blue-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--umss-blue);
+            border: 1.5px solid var(--umss-blue);
+        }
+        .btn-outline:hover {
+            background: var(--blue-light);
+        }
+
+        .btn-success {
+            background: var(--green-success);
+            color: white;
+        }
+        .btn-success:hover {
+            background: #156b50;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-light);
+        }
+
+        /* Rendimiento del sistema */
+        .system-stats {
+            background: linear-gradient(135deg, var(--green-light) 0%, var(--white) 100%);
+            border-radius: var(--radius-lg);
+            padding: 1rem;
+            margin-top: 1rem;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+
+        .stat-box {
+            text-align: center;
+        }
+
+        .stat-box .value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: var(--green-success);
+        }
+
+        .stat-box .label {
+            font-size: 0.65rem;
+            color: var(--gray-text);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .config-layout { grid-template-columns: 1fr; }
+            .navbar { flex-direction: column; height: auto; padding: 1rem; text-align: center; }
+            .nav-links { justify-content: center; }
+            .form-grid { grid-template-columns: 1fr; }
+            .params-grid { grid-template-columns: 1fr; }
+            .profile-section { flex-direction: column; text-align: center; }
+            .profile-buttons { justify-content: center; }
+            .config-sidebar { position: static; }
+            .models-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Control de acceso: Solo el administrador puede entrar aquí
+        const userData = JSON.parse(localStorage.getItem('biomed_user'));
+        if (!userData || userData.role !== 'admin') {
+            alert("Acceso restringido. Solo el administrador tiene acceso a esta página.");
+            window.location.href = "index.html";
+        }
+    </script>
+
+    <!-- NAVBAR SUPERIOR ESTILO UMSS -->
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand" style="text-decoration: none; color: white;">
+            <i class="fas fa-dna fa-lg"></i>
+            <div><strong>BIOMED UMSS</strong><div style="font-size: 0.6rem;">INTELLIGENT KARYOTYPING</div></div>
+            <span class="role-tag">CONFIGURACIÓN</span>
+        </a>
+        <div class="nav-links">
+            <a href="supervisor.html" class="nav-item"><i class="fas fa-user-shield"></i> Supervisor</a>
+            <a href="registrarmuestrafinal.html" class="nav-item"><i class="fas fa-flask"></i> Registro de Muestras</a>
+            <a href="#" class="nav-item active"><i class="fas fa-cog"></i> Configuración</a>
+            <a href="index.html" class="nav-item"><i class="fas fa-sign-out-alt"></i> Salir</a>
+        </div>
+        <div class="user-info">
+            <div class="user-name">Dra. María López</div>
+            <div class="user-role">Garante Clínico</div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="page-header">
+            <h1><i class="fas fa-cog"></i> Configuración del Sistema</h1>
+            <p>Personaliza tu experiencia y ajusta los parámetros del sistema</p>
+        </div>
+
+        <div class="config-layout">
+            <!-- SIDEBAR DE CONFIGURACIÓN -->
+            <div class="config-sidebar">
+                <div class="config-nav">
+                    <div class="config-nav-title">CONFIGURACIÓN</div>
+                    <div class="config-nav-item" data-tab="profile">
+                        <div class="config-nav-icon blue"><i class="fas fa-user"></i></div>
+                        <div class="config-nav-text">
+                            <div class="config-nav-label">Perfil de Usuario</div>
+                            <div class="config-nav-sublabel">Datos personales</div>
+                        </div>
+                    </div>
+                    <div class="config-nav-item" data-tab="security">
+                        <div class="config-nav-icon red"><i class="fas fa-lock"></i></div>
+                        <div class="config-nav-text">
+                            <div class="config-nav-label">Seguridad</div>
+                            <div class="config-nav-sublabel">Privacidad y acceso</div>
+                        </div>
+                    </div>
+                    <div class="config-nav-item" data-tab="modelos">
+                        <div class="config-nav-icon neural"><i class="fas fa-brain"></i></div>
+                        <div class="config-nav-text">
+                            <div class="config-nav-label">Modelo IA</div>
+                            <div class="config-nav-sublabel">Algoritmos y precisión</div>
+                        </div>
+                    </div>
+                    <div class="config-nav-item" data-tab="notifications">
+                        <div class="config-nav-icon yellow"><i class="fas fa-bell"></i></div>
+                        <div class="config-nav-text">
+                            <div class="config-nav-label">Notificaciones</div>
+                            <div class="config-nav-sublabel">Alertas y avisos</div>
+                        </div>
+                    </div>
+                    <div class="config-nav-item" data-tab="integrations">
+                        <div class="config-nav-icon light-blue"><i class="fas fa-plug"></i></div>
+                        <div class="config-nav-text">
+                            <div class="config-nav-label">Integraciones</div>
+                            <div class="config-nav-sublabel">HIS, LIS, API</div>
+                        </div>
+                    </div>
+                    <div class="config-nav-item" data-tab="appearance">
+                        <div class="config-nav-icon purple"><i class="fas fa-palette"></i></div>
+                        <div class="config-nav-text">
+                            <div class="config-nav-label">Visualización</div>
+                            <div class="config-nav-sublabel">Tema y preferencias</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="config-version">
+                    <div class="config-version-title">Versión del Sistema</div>
+                    <div class="config-version-number">Biomed v2.4.1</div>
+                    <div class="config-version-date">Build 2026.04.10 · Última actualización hoy</div>
+                    <div class="config-status">
+                        <div class="config-status-dot"></div>
+                        <span class="config-status-text">Todo está actualizado</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONTENIDO PRINCIPAL - Perfil (activo por defecto) -->
+            <div class="config-content">
+                <div class="config-content-header">
+                    <div class="config-content-title" id="config-title">Perfil de Usuario</div>
+                    <div class="config-content-subtitle" id="config-subtitle">Actualiza tu información personal y credenciales</div>
+                </div>
+
+                <div class="config-content-body" id="profile-tab">
+                    <!-- Foto de perfil -->
+                    <div class="profile-section">
+                        <div class="profile-avatar">ML</div>
+                        <div class="profile-actions">
+                            <div class="profile-label">Foto de perfil</div>
+                            <div class="profile-buttons">
+                                <button class="btn btn-primary" onclick="alert('Funcionalidad de carga de imagen')">Subir nueva foto</button>
+                                <button class="btn btn-outline" onclick="alert('Foto eliminada')">Eliminar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Datos personales -->
+                    <div class="form-section">
+                        <div class="form-section-title">INFORMACIÓN PERSONAL</div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Nombre completo</label>
+                                <input type="text" class="form-input" value="María García López">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Correo institucional</label>
+                                <input type="email" class="form-input" value="mgarcia@umss.bo">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Especialidad</label>
+                                <input type="text" class="form-input" value="Citogenética Clínica">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Registro profesional</label>
+                                <input type="text" class="form-input" value="MED-4452-BO">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Teléfono</label>
+                                <input type="tel" class="form-input" value="+591 2 2154847">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Ubicación</label>
+                                <input type="text" class="form-input" value="UMSS · Hospital del Norte">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-outline" onclick="alert('Cambios descartados')">Cancelar</button>
+                        <button class="btn btn-primary" onclick="alert('Perfil actualizado correctamente')">Guardar cambios</button>
+                    </div>
+                </div>
+
+                <!-- Seguridad -->
+                <div class="config-content-body" id="security-tab" style="display: none;">
+                    <div class="form-section">
+                        <div class="form-section-title">CAMBIAR CONTRASEÑA</div>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label class="form-label">Contraseña actual</label>
+                                <input type="password" class="form-input" value="••••••••••••">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Nueva contraseña</label>
+                                <input type="password" class="form-input" placeholder="Ingresa nueva contraseña">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Confirmar contraseña</label>
+                                <input type="password" class="form-input" placeholder="Confirma nueva contraseña">
+                            </div>
+                        </div>
+                        <button class="btn btn-success" onclick="alert('Contraseña actualizada')">Actualizar contraseña</button>
+                    </div>
+
+                    <div class="form-section">
+                        <div class="form-section-title">AUTENTICACIÓN</div>
+                        <div class="security-section">
+                            <div class="section-header">
+                                <div class="section-icon green"><i class="fas fa-shield-alt"></i></div>
+                                <div class="section-title">Verificación en dos pasos (2FA)</div>
+                            </div>
+                            <div class="toggle-item">
+                                <div class="toggle-info">
+                                    <h4>Autenticación de dos factores</h4>
+                                    <p>Agrega una capa adicional de seguridad a tu cuenta</p>
+                                </div>
+                                <div class="toggle-switch" onclick="this.classList.toggle('active')"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-outline" onclick="alert('Cambios descartados')">Cancelar</button>
+                        <button class="btn btn-primary" onclick="alert('Configuración de seguridad actualizada')">Guardar cambios</button>
+                    </div>
+                </div>
+
+                <!-- Modelo IA - SECCIÓN COMPLETA (extraída de biomed.html) -->
+                <div class="config-content-body" id="modelos-tab" style="display: none;">
+                    <!-- Modelos disponibles -->
+                    <div class="form-section">
+                        <div class="form-section-title">MODELOS DISPONIBLES</div>
+                        <div class="models-grid">
+                            <div class="model-card active" data-model="v2.4">
+                                <div class="model-header">
+                                    <span class="model-name">CarioNet v2.4</span>
+                                    <span class="model-status active">Activo</span>
+                                </div>
+                                <div class="model-meta">Entrenado: 2026-04-10 · 15k+ casos</div>
+                                <div class="model-metrics">
+                                    <div class="metric">
+                                        <div class="metric-value">97.2%</div>
+                                        <div class="metric-label">Precisión</div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-value">92ms</div>
+                                        <div class="metric-label">Latencia</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="model-card" data-model="v2.3">
+                                <div class="model-header">
+                                    <span class="model-name">CarioNet v2.3</span>
+                                    <span class="model-status inactive">Anterior</span>
+                                </div>
+                                <div class="model-meta">Entrenado: 2026-01-15 · 12k+ casos</div>
+                                <div class="model-metrics">
+                                    <div class="metric">
+                                        <div class="metric-value">95.8%</div>
+                                        <div class="metric-label">Precisión</div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-value">110ms</div>
+                                        <div class="metric-label">Latencia</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="model-card" data-model="v2.2">
+                                <div class="model-header">
+                                    <span class="model-name">CarioNet v2.2-beta</span>
+                                    <span class="model-status beta">Beta</span>
+                                </div>
+                                <div class="model-meta">Entrenado: 2025-11-20 · 8k+ casos</div>
+                                <div class="model-metrics">
+                                    <div class="metric">
+                                        <div class="metric-value">94.1%</div>
+                                        <div class="metric-label">Precisión</div>
+                                    </div>
+                                    <div class="metric">
+                                        <div class="metric-value">135ms</div>
+                                        <div class="metric-label">Latencia</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Parámetros de clasificación -->
+                    <div class="form-section">
+                        <div class="form-section-title">PARÁMETROS DE CLASIFICACIÓN</div>
+                        <div class="params-grid">
+                            <div class="form-group">
+                                <label class="form-label">Umbral de confianza mínima</label>
+                                <input type="range" class="param-slider" min="0" max="100" value="85">
+                                <div class="param-value">85%</div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Sensibilidad de detección</label>
+                                <input type="range" class="param-slider" min="0" max="100" value="92">
+                                <div class="param-value">92%</div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Modo de análisis</label>
+                                <select class="form-input">
+                                    <option selected>Rápido (prioriza velocidad)</option>
+                                    <option>Balanceado</option>
+                                    <option>Precisión máxima (más lento)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Nivel de logging</label>
+                                <select class="form-input">
+                                    <option>Mínimo</option>
+                                    <option selected>Normal</option>
+                                    <option>Detallado</option>
+                                    <option>Debug</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Métricas de precisión -->
+                    <div class="form-section">
+                        <div class="form-section-title">MÉTRICAS DE PRECISIÓN</div>
+                        <div class="metrics-table">
+                            <div class="metric-row">
+                                <span class="metric-name">Precisión global</span>
+                                <span class="metric-number">97.2%</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-name">Sensibilidad</span>
+                                <span class="metric-number">96.8%</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-name">Especificidad</span>
+                                <span class="metric-number">98.1%</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-name">F1-Score</span>
+                                <span class="metric-number">0.969</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Entrenamiento y validación -->
+                    <div class="form-section">
+                        <div class="form-section-title">ENTRENAMIENTO Y VALIDACIÓN</div>
+                        <div class="metrics-table">
+                            <div class="metric-row">
+                                <span class="metric-name">Dataset de entrenamiento</span>
+                                <span class="metric-number">15,420 casos</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-name">Dataset de validación</span>
+                                <span class="metric-number">3,855 casos</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-name">Epochs de entrenamiento</span>
+                                <span class="metric-number">250</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-name">Arquitectura</span>
+                                <span class="metric-number">ResNet-152 + Attention</span>
+                            </div>
+                            <div class="metric-row">
+                                <span class="metric-name">Última actualización</span>
+                                <span class="metric-number">10 Abr 2026</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Rendimiento del sistema -->
+                    <div class="form-section">
+                        <div class="form-section-title">RENDIMIENTO DEL SISTEMA</div>
+                        <div class="system-stats">
+                            <div class="stat-box">
+                                <div class="value">148</div>
+                                <div class="label">Casos procesados hoy</div>
+                            </div>
+                            <div class="stat-box">
+                                <div class="value">99.9%</div>
+                                <div class="label">Uptime</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-outline" onclick="alert('Valores restaurados')">Restaurar valores por defecto</button>
+                        <button class="btn btn-primary" onclick="alert('Configuración del modelo guardada')">Guardar configuración</button>
+                    </div>
+                </div>
+
+                <!-- Notificaciones -->
+                <div class="config-content-body" id="notifications-tab" style="display: none;">
+                    <div class="form-section">
+                        <div class="form-section-title">PREFERENCIAS DE NOTIFICACIÓN</div>
+                        <div class="toggle-item">
+                            <div class="toggle-info">
+                                <h4>Notificaciones por email</h4>
+                                <p>Recibir alertas sobre casos nuevos y actualizaciones</p>
+                            </div>
+                            <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                        <div class="toggle-item">
+                            <div class="toggle-info">
+                                <h4>Alertas de baja confianza IA</h4>
+                                <p>Notificar cuando se detecten cromosomas con baja confianza</p>
+                            </div>
+                            <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                        <div class="toggle-item">
+                            <div class="toggle-info">
+                                <h4>Reporte semanal de actividad</h4>
+                                <p>Recibir resumen semanal de casos procesados</p>
+                            </div>
+                            <div class="toggle-switch" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-outline" onclick="alert('Cambios descartados')">Cancelar</button>
+                        <button class="btn btn-primary" onclick="alert('Preferencias de notificación actualizadas')">Guardar cambios</button>
+                    </div>
+                </div>
+
+                <!-- Integraciones -->
+                <div class="config-content-body" id="integrations-tab" style="display: none;">
+                    <div class="form-section">
+                        <div class="form-section-title">LIS / HIS</div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label class="form-label">Endpoint API</label>
+                            <input type="text" class="form-input" value="https://lis.hospital.bo/api/v1">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label class="form-label">API Key</label>
+                            <input type="password" class="form-input" value="••••••••••••••••••••••••••••••••">
+                        </div>
+                        <div class="toggle-item">
+                            <div class="toggle-info">
+                                <h4>Envío automático de reportes</h4>
+                                <p>Enviar reportes automáticamente al LIS al completar validación</p>
+                            </div>
+                            <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                        <div class="toggle-item">
+                            <div class="toggle-info">
+                                <h4>Sincronización de pacientes</h4>
+                                <p>Importar automáticamente datos de pacientes desde HIS</p>
+                            </div>
+                            <div class="toggle-switch" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                        <button class="btn btn-outline" style="margin-top: 1rem;" onclick="alert('Probando conexión con LIS... Conexión exitosa')">
+                            <i class="fas fa-plug"></i> Probar conexión
+                        </button>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-outline" onclick="alert('Cambios descartados')">Cancelar</button>
+                        <button class="btn btn-primary" onclick="alert('Configuración de integración guardada')">Guardar cambios</button>
+                    </div>
+                </div>
+
+                <!-- Visualización -->
+                <div class="config-content-body" id="appearance-tab" style="display: none;">
+                    <div class="form-section">
+                        <div class="form-section-title">TEMA Y VISUALIZACIÓN</div>
+                        <div class="toggle-item">
+                            <div class="toggle-info">
+                                <h4>Modo oscuro</h4>
+                                <p>Usar tema oscuro en el visor de cariotipo</p>
+                            </div>
+                            <div class="toggle-switch" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                        <div class="toggle-item">
+                            <div class="toggle-info">
+                                <h4>Mostrar confidence scores</h4>
+                                <p>Visualizar porcentajes de confianza en cada cromosoma</p>
+                            </div>
+                            <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                        <div class="toggle-item">
+                            <div class="toggle-info">
+                                <h4>Auto-validar pares con alta confianza</h4>
+                                <p>Validar automáticamente cromosomas con confianza >95%</p>
+                            </div>
+                            <div class="toggle-switch active" onclick="this.classList.toggle('active')"></div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-outline" onclick="alert('Cambios descartados')">Cancelar</button>
+                        <button class="btn btn-primary" onclick="alert('Preferencias de visualización actualizadas')">Guardar cambios</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración de tabs
+        const tabConfig = {
+            profile: { title: 'Perfil de Usuario', subtitle: 'Actualiza tu información personal y credenciales' },
+            security: { title: 'Seguridad', subtitle: 'Gestiona tu contraseña y métodos de autenticación' },
+            modelos: { title: 'Modelo IA', subtitle: 'Gestiona y configura los modelos de inteligencia artificial' },
+            notifications: { title: 'Notificaciones', subtitle: 'Configura tus preferencias de alertas y avisos' },
+            integrations: { title: 'Integraciones', subtitle: 'Conecta Biomed con HIS, LIS y sistemas externos' },
+            appearance: { title: 'Visualización', subtitle: 'Personaliza el tema y las preferencias visuales' }
+        };
+
+        const tabs = {
+            profile: document.getElementById('profile-tab'),
+            security: document.getElementById('security-tab'),
+            modelos: document.getElementById('modelos-tab'),
+            notifications: document.getElementById('notifications-tab'),
+            integrations: document.getElementById('integrations-tab'),
+            appearance: document.getElementById('appearance-tab')
+        };
+
+        function activateTab(tabId) {
+            // Ocultar todos los tabs
+            Object.values(tabs).forEach(tab => {
+                if (tab) tab.style.display = 'none';
+            });
+            // Mostrar el tab seleccionado
+            if (tabs[tabId]) tabs[tabId].style.display = 'block';
+            
+            // Actualizar título y subtítulo
+            if (tabConfig[tabId]) {
+                document.getElementById('config-title').innerText = tabConfig[tabId].title;
+                document.getElementById('config-subtitle').innerText = tabConfig[tabId].subtitle;
+            }
+            
+            // Actualizar clase active en el sidebar
+            document.querySelectorAll('.config-nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('data-tab') === tabId) {
+                    item.classList.add('active');
+                }
+            });
+        }
+
+        // Agregar event listeners a los items del sidebar
+        document.querySelectorAll('.config-nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const tabId = item.getAttribute('data-tab');
+                if (tabId && tabs[tabId]) activateTab(tabId);
+            });
+        });
+
+        // Model cards selection
+        document.querySelectorAll('.model-card').forEach(card => {
+            card.addEventListener('click', function() {
+                document.querySelectorAll('.model-card').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                const modelName = this.querySelector('.model-name')?.innerText || 'Modelo';
+                alert(`Modelo ${modelName} seleccionado como activo`);
+            });
+        });
+
+        // Sliders con feedback visual
+        document.querySelectorAll('.param-slider').forEach(slider => {
+            const valueDisplay = slider.parentElement.querySelector('.param-value');
+            if (valueDisplay) {
+                slider.addEventListener('input', function() {
+                    valueDisplay.innerText = this.value + '%';
+                });
+            }
+        });
+
+        // Navegación del navbar
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                const href = this.getAttribute('href');
+                // Solo prevenir el comportamiento por defecto si es un enlace interno (#)
+                if (href === '#' || !href) {
+                    e.preventDefault();
+                }
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Inicializar tab activo (perfil)
+        activateTab('profile');
+    </script>
+</body>
+</html>

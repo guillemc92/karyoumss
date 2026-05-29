@@ -1,0 +1,19 @@
+---
+description: Tests solo con CHN y datos sintéticos — nunca PII de pacientes reales
+globs: **/tests/**/*,**/*test*.py,**/*.test.ts,**/*.spec.ts
+alwaysApply: false
+---
+
+# Tests — Datos Sintéticos
+
+```python
+# ✅ CORRECTO
+@pytest.fixture
+def sample_chn():
+    return "CHN-TEST-0001"
+
+# ❌ PROHIBIDO
+@pytest.fixture
+def sample_patient():
+    return {"name": "Juan Pérez", "dob": "1990-01-01"}
+```

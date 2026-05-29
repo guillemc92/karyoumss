@@ -1,0 +1,19 @@
+---
+description: Arquitectura hexagonal backend — capas api, domain, services, db, tasks
+globs: backend/**/*
+alwaysApply: false
+---
+
+# Estructura Hexagonal (Backend)
+
+| Carpeta | Rol |
+|---------|-----|
+| `app/api/` | Routers FastAPI (HTTP adapters) |
+| `app/domain/` | Entidades y agregados (sin FastAPI/SQLAlchemy) |
+| `app/services/` | Use cases (orquestación) |
+| `app/db/` | Repositorios SQLAlchemy |
+| `app/tasks/` | Celery tasks |
+
+**Prohibido:**
+- SQLAlchemy o FastAPI en `app/domain/`
+- Celery en `app/api/`

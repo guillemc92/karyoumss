@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biomed UMSS - CRUD de Muestras | Cariotipado IA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --umss-blue: #003770;
+            --umss-red: #E30613;
+            --blue-hover: #003265;
+            --blue-light: #e6ebf1;
+            --green-success: #1e8868;
+            --green-light: #e9f3f0;
+            --orange-warning: #d45100;
+            --orange-light: #fbeee6;
+            --gray-bg: #f8f9fa;
+            --gray-text: #64748b;
+            --white: #ffffff;
+            --border-light: #e2e8f0;
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,55,112,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,55,112,0.15);
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #1e293b;
+            background: linear-gradient(135deg, var(--gray-bg) 0%, var(--blue-light) 100%);
+            min-height: 100vh;
+        }
+
+        /* ============================================ */
+        /* NAVBAR SUPERIOR */
+        /* ============================================ */
+        .navbar {
+            background: var(--umss-blue);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .nav-brand { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; text-decoration: none; color: white; }
+        .nav-brand h1 { font-size: 1.3rem; font-weight: 700; }
+        .role-tag { background: rgba(255,255,255,0.15); padding: 4px 12px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; border: 1px solid rgba(255,255,255,0.2); }
+        .nav-links { display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+        .nav-item { color: #cbd5e1; text-decoration: none; font-size: 0.85rem; display: flex; align-items: center; gap: 8px; transition: 0.3s; cursor: pointer; padding: 8px 0; }
+        .nav-item.active { color: white; font-weight: 600; border-bottom: 2px solid var(--umss-red); }
+        .nav-item:hover { color: white; }
+        .user-info { text-align: right; }
+        .user-name { font-size: 0.8rem; font-weight: 600; }
+        .user-role { font-size: 0.6rem; color: #cbd5e1; }
+
+        /* ============================================ */
+        /* MAIN CONTENT */
+        /* ============================================ */
+        .main-container {
+            max-width: 1400px;
+            margin: 1.5rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .page-header {
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        .page-header h1 { font-size: 1.5rem; font-weight: 700; color: var(--umss-blue); }
+        .page-header p { color: var(--gray-text); font-size: 0.85rem; margin-top: 0.25rem; }
+
+        /* Stats row */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .stat-card {
+            background: var(--white);
+            padding: 1rem 1.2rem;
+            border-radius: var(--radius-lg);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border: 1px solid var(--border-light);
+            box-shadow: var(--shadow-sm);
+        }
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--blue-light);
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--umss-blue);
+            font-size: 1.2rem;
+        }
+        .stat-info h3 { font-size: 1.4rem; font-weight: 800; color: var(--umss-blue); }
+        .stat-info p { font-size: 0.7rem; color: var(--gray-text); }
+
+        /* Barra de búsqueda y filtros */
+        .search-bar {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            padding: 0.75rem 1.2rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            border: 1px solid var(--border-light);
+        }
+        .search-input {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--gray-bg);
+            padding: 0.5rem 1rem;
+            border-radius: 40px;
+            flex: 1;
+            max-width: 400px;
+        }
+        .search-input input {
+            border: none;
+            background: transparent;
+            outline: none;
+            width: 100%;
+            font-size: 0.8rem;
+        }
+        .filter-buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .filter-chip {
+            padding: 0.4rem 1rem;
+            border-radius: 40px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--gray-bg);
+            color: var(--gray-text);
+        }
+        .filter-chip:hover { background: var(--blue-light); }
+        .filter-chip.active { background: var(--umss-blue); color: white; }
+
+        /* Botones de acción */
+        .btn-primary {
+            background: var(--umss-blue);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .btn-primary:hover { background: var(--blue-hover); transform: translateY(-1px); }
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--umss-blue);
+            color: var(--umss-blue);
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-outline:hover { background: var(--blue-light); }
+        .btn-danger {
+            background: var(--umss-red);
+            color: white;
+            border: none;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+        .btn-danger:hover { background: #a9000b; }
+
+        /* Tabla */
+        .table-container {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            border: 1px solid var(--border-light);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+        }
+        .table-header {
+            display: grid;
+            grid-template-columns: 80px 150px 120px 100px 100px 120px 1fr;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: var(--gray-bg);
+            border-bottom: 1px solid var(--border-light);
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--umss-blue);
+        }
+        .table-row {
+            display: grid;
+            grid-template-columns: 80px 150px 120px 100px 100px 120px 1fr;
+            gap: 0.5rem;
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid var(--border-light);
+            align-items: center;
+            transition: background 0.2s;
+        }
+        .table-row:hover { background: var(--blue-light); }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .status-review { background: var(--orange-light); color: var(--orange-warning); }
+        .status-processing { background: var(--blue-light); color: var(--umss-blue); }
+        .status-completed { background: var(--green-light); color: var(--green-success); }
+
+        .actions { display: flex; gap: 0.5rem; }
+
+        /* Paginación */
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem;
+            border-top: 1px solid var(--border-light);
+        }
+        .pagination-buttons { display: flex; gap: 0.5rem; }
+        .page-btn {
+            padding: 0.3rem 0.7rem;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border-light);
+            background: var(--white);
+            cursor: pointer;
+            font-size: 0.7rem;
+        }
+        .page-btn.active { background: var(--umss-blue); color: white; border-color: var(--umss-blue); }
+        .page-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* Modal CRUD */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            position: sticky;
+            top: 0;
+            background: var(--umss-blue);
+            color: white;
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 { font-size: 1rem; }
+        .close-modal { background: none; border: none; color: white; font-size: 1.2rem; cursor: pointer; }
+        .modal-body { padding: 1.5rem; }
+        .form-group { margin-bottom: 1rem; }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--umss-blue);
+            margin-bottom: 0.25rem;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 0.6rem;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            font-size: 0.8rem;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .modal-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border-light);
+        }
+
+        @media (max-width: 900px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .table-header, .table-row { grid-template-columns: 1fr; gap: 0.5rem; }
+            .table-header { display: none; }
+            .table-row .table-cell { display: flex; justify-content: space-between; }
+            .table-row .table-cell::before { content: attr(data-label); font-weight: 600; }
+            .navbar { flex-direction: column; padding: 1rem; text-align: center; }
+            .nav-links { justify-content: center; }
+            .search-bar { flex-direction: column; align-items: stretch; }
+            .search-input { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <script>
+        // Control de acceso: Citogenetista, Supervisor y Administrador
+        const userData = JSON.parse(localStorage.getItem('biomed_user'));
+        if (!userData || (userData.role !== 'citogenetista' && userData.role !== 'admin' && userData.role !== 'supervisor')) {
+            alert("Acceso restringido. Por favor inicie sesión.");
+            window.location.href = "index.html";
+        }
+    </script>
+
+    <nav class="navbar">
+        <a href="index.html" class="nav-brand">
+            <i class="fas fa-dna fa-lg"></i>
+            <div><strong>BIOMED UMSS</strong><div style="font-size: 0.6rem;">INTELLIGENT KARYOTYPING</div></div>
+            <span class="role-tag">CRUD MUESTRAS</span>
+        </a>
+        <div class="nav-links">
+            <a href="supervisor.html" class="nav-item" id="nav-supervisor"><i class="fas fa-user-shield"></i> Supervisor</a>
+            <a href="registrarmuestrafinal.html" class="nav-item"><i class="fas fa-plus-circle"></i> Registro</a>
+            <a href="#" class="nav-item active"><i class="fas fa-flask"></i> Muestras</a>
+            <a href="configuracion.html" class="nav-item" id="nav-config"><i class="fas fa-cog"></i> Configuración</a>
+            <a href="index.html" class="nav-item"><i class="fas fa-sign-out-alt"></i> Salir</a>
+        </div>
+        <div class="user-info">
+            <div class="user-name" id="displayUserName">Usuario</div>
+            <div class="user-role" id="displayUserRole">Especialista</div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="page-header">
+            <div>
+                <h1><i class="fas fa-flask"></i> Gestión de Muestras</h1>
+                <p>Administre todas las muestras del sistema (CRUD completo)</p>
+            </div>
+            <button class="btn-primary" id="btnNuevaMuestra"><i class="fas fa-plus"></i> Nueva Muestra</button>
+        </div>
+
+        <!-- Estadísticas -->
+        <div class="stats-row" id="statsContainer">
+            <div class="stat-card"><div class="stat-icon"><i class="fas fa-chart-line"></i></div><div class="stat-info"><h3 id="totalCount">0</h3><p>Total muestras</p></div></div>
+            <div class="stat-card"><div class="stat-icon"><i class="fas fa-hourglass-half"></i></div><div class="stat-info"><h3 id="processingCount">0</h3><p>En proceso</p></div></div>
+            <div class="stat-card"><div class="stat-icon"><i class="fas fa-exclamation-triangle" style="color: var(--orange-warning);"></i></div><div class="stat-info"><h3 id="reviewCount">0</h3><p>Requieren revisión</p></div></div>
+            <div class="stat-card"><div class="stat-icon"><i class="fas fa-check-circle" style="color: var(--green-success);"></i></div><div class="stat-info"><h3 id="completedCount">0</h3><p>Completadas</p></div></div>
+        </div>
+
+        <!-- Búsqueda y filtros -->
+        <div class="search-bar">
+            <div class="search-input">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Buscar por ID, paciente o CHN...">
+            </div>
+            <div class="filter-buttons">
+                <div class="filter-chip active" data-filter="all">Todas</div>
+                <div class="filter-chip" data-filter="review">⚠️ Revisión</div>
+                <div class="filter-chip" data-filter="processing">⏳ En proceso</div>
+                <div class="filter-chip" data-filter="completed">✓ Completadas</div>
+            </div>
+        </div>
+
+        <!-- Tabla de muestras -->
+        <div class="table-container">
+            <div class="table-header">
+                <div>ID</div><div>Paciente</div><div>CHN</div><div>Estado</div><div>Fecha</div><div>Analista</div><div>Acciones</div>
+            </div>
+            <div id="samplesTableBody"></div>
+            <div class="pagination">
+                <div class="pagination-info" id="paginationInfo">Mostrando 0-0 de 0 muestras</div>
+                <div class="pagination-buttons" id="paginationButtons"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL CREAR/EDITAR MUESTRA -->
+    <div id="sampleModal" class="modal-overlay" onclick="if(event.target===this) closeModal()">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle"><i class="fas fa-plus-circle"></i> Nueva Muestra</h3>
+                <button class="close-modal" onclick="closeModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editId">
+                <div class="form-row">
+                    <div class="form-group"><label>Código Muestra <span style="color:var(--umss-red);">*</span></label><input type="text" id="sampleCode" placeholder="Ej: BM-2026-0001"></div>
+                    <div class="form-group"><label>CHN <span style="color:var(--umss-red);">*</span></label><input type="text" id="chn" placeholder="Número de historia clínica"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Paciente <span style="color:var(--umss-red);">*</span></label><input type="text" id="patientName" placeholder="Nombre completo"></div>
+                    <div class="form-group"><label>Analista</label><input type="text" id="analyst" placeholder="Nombre del analista"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Género</label><select id="gender"><option value="M">Masculino</option><option value="F">Femenino</option></select></div>
+                    <div class="form-group"><label>Edad</label><input type="number" id="age" placeholder="Edad"></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group"><label>Estado</label><select id="status"><option value="processing">En proceso</option><option value="review">Revisión IA</option><option value="completed">Completado</option></select></div>
+                    <div class="form-group"><label>Fecha</label><input type="date" id="date"></div>
+                </div>
+                <div class="form-group"><label>Notas adicionales</label><textarea id="notes" rows="2" placeholder="Información adicional..."></textarea></div>
+                <div class="modal-actions">
+                    <button class="btn-outline" onclick="closeModal()">Cancelar</button>
+                    <button class="btn-primary" id="btnSaveSample">Guardar Muestra</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL ELIMINAR -->
+    <div id="deleteModal" class="modal-overlay" onclick="if(event.target===this) closeDeleteModal()">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-trash-alt"></i> Eliminar Muestra</h3>
+                <button class="close-modal" onclick="closeDeleteModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro de eliminar la muestra <strong id="deleteSampleId"></strong>?</p>
+                <p style="font-size: 0.7rem; color: var(--gray-text); margin-top: 0.5rem;">Esta acción no se puede deshacer.</p>
+                <div class="modal-actions" style="margin-top: 1rem;">
+                    <button class="btn-outline" onclick="closeDeleteModal()">Cancelar</button>
+                    <button class="btn-danger" id="btnConfirmDelete">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Datos iniciales de muestra
+        let samples = [
+            { id: "CB-2026-0442", patientName: "ANON-442", chn: "CHN-442", analyst: "Dra. García", gender: "M", age: 28, status: "review", date: "2026-04-10", notes: "Posible variante estructural" },
+            { id: "CB-2026-0441", patientName: "ANON-441", chn: "CHN-441", analyst: "Dr. Martínez", gender: "F", age: 35, status: "processing", date: "2026-04-09", notes: "" },
+            { id: "CB-2026-0440", patientName: "ANON-440", chn: "CHN-440", analyst: "Dra. López", gender: "M", age: 42, status: "completed", date: "2026-04-08", notes: "Cariotipo normal" },
+            { id: "CB-2026-0439", patientName: "ANON-439", chn: "CHN-439", analyst: "Dr. Martínez", gender: "F", age: 19, status: "processing", date: "2026-04-08", notes: "" },
+            { id: "CB-2026-0438", patientName: "ANON-438", chn: "CHN-438", analyst: "Dra. García", gender: "M", age: 52, status: "review", date: "2026-04-07", notes: "Posible deleción" },
+            { id: "CB-2026-0437", patientName: "ANON-437", chn: "CHN-437", analyst: "Dra. López", gender: "F", age: 8, status: "completed", date: "2026-04-06", notes: "" },
+            { id: "CB-2026-0436", patientName: "ANON-436", chn: "CHN-436", analyst: "Dr. Martínez", gender: "M", age: 65, status: "completed", date: "2026-04-06", notes: "" },
+            { id: "CB-2026-0435", patientName: "ANON-435", chn: "CHN-435", analyst: "Dra. García", gender: "F", age: 31, status: "review", date: "2026-04-05", notes: "Banda p ausente" }
+        ];
+
+        let currentPage = 1;
+        const itemsPerPage = 8;
+        let currentFilter = "all";
+        let currentSearch = "";
+        let deleteId = null;
+
+        function updateStats() {
+            document.getElementById('totalCount').innerText = samples.length;
+            document.getElementById('processingCount').innerText = samples.filter(s => s.status === 'processing').length;
+            document.getElementById('reviewCount').innerText = samples.filter(s => s.status === 'review').length;
+            document.getElementById('completedCount').innerText = samples.filter(s => s.status === 'completed').length;
+        }
+
+        function getStatusBadge(status) {
+            if (status === 'review') return '<span class="status-badge status-review"><i class="fas fa-exclamation-triangle"></i> Revisión IA</span>';
+            if (status === 'processing') return '<span class="status-badge status-processing"><i class="fas fa-spinner"></i> En proceso</span>';
+            return '<span class="status-badge status-completed"><i class="fas fa-check-circle"></i> Completado</span>';
+        }
+
+        function filterData() {
+            let filtered = [...samples];
+            if (currentFilter !== 'all') filtered = filtered.filter(s => s.status === currentFilter);
+            if (currentSearch) {
+                const searchLower = currentSearch.toLowerCase();
+                filtered = filtered.filter(s => 
+                    s.id.toLowerCase().includes(searchLower) || 
+                    s.patientName.toLowerCase().includes(searchLower) ||
+                    (s.chn && s.chn.toLowerCase().includes(searchLower))
+                );
+            }
+            return filtered;
+        }
+
+        function renderTable() {
+            const filtered = filterData();
+            const totalItems = filtered.length;
+            const totalPages = Math.ceil(totalItems / itemsPerPage);
+            const start = (currentPage - 1) * itemsPerPage;
+            const paginatedItems = filtered.slice(start, start + itemsPerPage);
+
+            const tbody = document.getElementById('samplesTableBody');
+            tbody.innerHTML = paginatedItems.map(sample => `
+                <div class="table-row">
+                    <div class="table-cell" data-label="ID"><strong>${sample.id}</strong></div>
+                    <div class="table-cell" data-label="Paciente">${sample.patientName}<br><small style="font-size:0.65rem;">${sample.gender === 'M' ? 'Masculino' : 'Femenino'}, ${sample.age} años</small></div>
+                    <div class="table-cell" data-label="CHN">${sample.chn || '—'}</div>
+                    <div class="table-cell" data-label="Estado">${getStatusBadge(sample.status)}</div>
+                    <div class="table-cell" data-label="Fecha">${formatDate(sample.date)}</div>
+                    <div class="table-cell" data-label="Analista">${sample.analyst}</div>
+                    <div class="table-cell actions" data-label="Acciones">
+                        <button class="btn-outline" onclick="editSample('${sample.id}')"><i class="fas fa-edit"></i> Editar</button>
+                        ${sample.status === 'completed' ? `
+                        <button class="btn-outline" style="background: var(--green-light); border-color: var(--green-success); color: var(--green-success);" onclick="viewReport('${sample.id}')"><i class="fas fa-file-alt"></i> Ver Informe</button>
+                        ` : sample.status === 'review' ? `
+                        <button class="btn-outline" style="background: var(--orange-light); border-color: var(--orange-warning); color: var(--orange-warning);" onclick="processKaryotype('${sample.id}')"><i class="fas fa-microscope"></i> Procesar</button>
+                        ` : `
+                        <button class="btn-outline" onclick="processKaryotype('${sample.id}')"><i class="fas fa-play"></i> Continuar</button>
+                        `}
+                        <button class="btn-danger" onclick="confirmDelete('${sample.id}')"><i class="fas fa-trash"></i> Eliminar</button>
+                    </div>
+                </div>
+            `).join('');
+
+            const startItem = start + 1;
+            const endItem = Math.min(start + itemsPerPage, totalItems);
+            document.getElementById('paginationInfo').innerText = `Mostrando ${startItem}-${endItem} de ${totalItems} muestras`;
+
+            const paginationDiv = document.getElementById('paginationButtons');
+            paginationDiv.innerHTML = `
+                <button class="page-btn" onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>← Anterior</button>
+                ${Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum = i + 1;
+                    return `<button class="page-btn ${currentPage === pageNum ? 'active' : ''}" onclick="changePage(${pageNum})">${pageNum}</button>`;
+                }).join('')}
+                <button class="page-btn" onclick="changePage(${currentPage + 1})" ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}>Siguiente →</button>
+            `;
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '—';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('es-ES');
+        }
+
+        function changePage(page) {
+            const filtered = filterData();
+            const totalPages = Math.ceil(filtered.length / itemsPerPage);
+            if (page >= 1 && page <= totalPages) { currentPage = page; renderTable(); }
+        }
+
+        // Filtros
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.getAttribute('data-filter');
+                currentPage = 1;
+                renderTable();
+            });
+        });
+
+        document.getElementById('searchInput').addEventListener('input', function() {
+            currentSearch = this.value;
+            currentPage = 1;
+            renderTable();
+        });
+
+        // CRUD Functions
+        function openModal(isEdit = false, sample = null) {
+            const modal = document.getElementById('sampleModal');
+            const title = document.getElementById('modalTitle');
+            if (isEdit && sample) {
+                title.innerHTML = '<i class="fas fa-edit"></i> Editar Muestra';
+                document.getElementById('editId').value = sample.id;
+                document.getElementById('sampleCode').value = sample.id;
+                document.getElementById('chn').value = sample.chn || '';
+                document.getElementById('patientName').value = sample.patientName;
+                document.getElementById('analyst').value = sample.analyst;
+                document.getElementById('gender').value = sample.gender;
+                document.getElementById('age').value = sample.age;
+                document.getElementById('status').value = sample.status;
+                document.getElementById('date').value = sample.date;
+                document.getElementById('notes').value = sample.notes || '';
+            } else {
+                title.innerHTML = '<i class="fas fa-plus-circle"></i> Nueva Muestra';
+                document.getElementById('editId').value = '';
+                document.getElementById('sampleCode').value = '';
+                document.getElementById('chn').value = '';
+                document.getElementById('patientName').value = '';
+                document.getElementById('analyst').value = 'Carlos Mercado';
+                document.getElementById('gender').value = 'M';
+                document.getElementById('age').value = '';
+                document.getElementById('status').value = 'processing';
+                document.getElementById('date').value = new Date().toISOString().split('T')[0];
+                document.getElementById('notes').value = '';
+            }
+            modal.classList.add('active');
+        }
+
+        function closeModal() { document.getElementById('sampleModal').classList.remove('active'); }
+
+        function editSample(id) {
+            const sample = samples.find(s => s.id === id);
+            if (sample) openModal(true, sample);
+        }
+
+        function saveSample() {
+            const id = document.getElementById('editId').value;
+            const sampleData = {
+                id: document.getElementById('sampleCode').value,
+                patientName: document.getElementById('patientName').value,
+                chn: document.getElementById('chn').value,
+                analyst: document.getElementById('analyst').value,
+                gender: document.getElementById('gender').value,
+                age: parseInt(document.getElementById('age').value) || 0,
+                status: document.getElementById('status').value,
+                date: document.getElementById('date').value,
+                notes: document.getElementById('notes').value
+            };
+
+            if (!sampleData.id || !sampleData.patientName) {
+                alert('⚠️ Complete los campos obligatorios: Código de muestra y Nombre del paciente');
+                return;
+            }
+
+            if (id) {
+                // Actualizar
+                const index = samples.findIndex(s => s.id === id);
+                if (index !== -1) samples[index] = sampleData;
+                alert(`✅ Muestra ${sampleData.id} actualizada correctamente`);
+            } else {
+                // Crear nueva
+                if (samples.find(s => s.id === sampleData.id)) {
+                    alert('⚠️ Ya existe una muestra con ese código');
+                    return;
+                }
+                samples.push(sampleData);
+                alert(`✅ Muestra ${sampleData.id} creada correctamente`);
+            }
+            updateStats();
+            renderTable();
+            closeModal();
+        }
+
+        function confirmDelete(id) {
+            deleteId = id;
+            document.getElementById('deleteSampleId').innerText = id;
+            document.getElementById('deleteModal').classList.add('active');
+        }
+
+        function closeDeleteModal() { document.getElementById('deleteModal').classList.remove('active'); deleteId = null; }
+
+        function deleteSample() {
+            if (deleteId) {
+                samples = samples.filter(s => s.id !== deleteId);
+                updateStats();
+                renderTable();
+                alert(`✅ Muestra ${deleteId} eliminada correctamente`);
+                closeDeleteModal();
+            }
+        }
+
+        function viewReport(sampleId) {
+            const sample = samples.find(s => s.id === sampleId);
+            if (sample) {
+                // Guardar datos del paciente activo
+                localStorage.setItem('activePatient', JSON.stringify({
+                    id: sample.id,
+                    name: sample.patientName,
+                    chn: sample.chn,
+                    gender: sample.gender,
+                    age: sample.age
+                }));
+                // Guardar resultado del cariotipo
+                localStorage.setItem('karyotypeResult', JSON.stringify({
+                    karyotype: sample.gender === 'F' ? '46,XX' : '46,XY',
+                    cellsAnalyzed: 20,
+                    validatedPairs: 23,
+                    needsReview: 0,
+                    corrections: 0,
+                    confidence: '97',
+                    validatedAt: sample.date
+                }));
+                window.location.href = 'informe.html';
+            }
+        }
+
+        function processKaryotype(sampleId) {
+            const sample = samples.find(s => s.id === sampleId);
+            if (sample) {
+                // Guardar datos del paciente activo
+                localStorage.setItem('activePatient', JSON.stringify({
+                    id: sample.id,
+                    name: sample.patientName,
+                    chn: sample.chn,
+                    gender: sample.gender,
+                    age: sample.age
+                }));
+                // Ir a corrección de cariotipo
+                window.location.href = 'correccion de cariotipo.html';
+            }
+        }
+
+        document.getElementById('btnNuevaMuestra').addEventListener('click', () => openModal(false));
+        document.getElementById('btnSaveSample').addEventListener('click', saveSample);
+        document.getElementById('btnConfirmDelete').addEventListener('click', deleteSample);
+        document.getElementById('btnNuevaMuestra').addEventListener('click', () => {
+            window.location.href = 'registrarmuestrafinal.html';
+        });
+
+        // Configurar UI según usuario
+        if (userData) {
+            document.getElementById('displayUserName').innerText = userData.name === 'cito' ? 'Dra. María López' : userData.name;
+            document.getElementById('displayUserRole').innerText = userData.role.toUpperCase();
+            if (userData.role !== 'admin') {
+                if (document.getElementById('nav-supervisor') && userData.role !== 'supervisor') document.getElementById('nav-supervisor').style.display = 'none';
+                if (document.getElementById('nav-config')) document.getElementById('nav-config').style.display = 'none';
+            }
+        }
+
+        // Inicializar
+        updateStats();
+        renderTable();
+    </script>
+</body>
+</html>

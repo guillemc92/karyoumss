@@ -1,0 +1,31 @@
+stateDiagram-v2
+    title Máquina de Estados — Chromosome
+
+    [*] --> classified : EfficientNet-B3\nassigna par + score
+
+    classified --> needs_review : score < 0.85\nrequires_review = true
+    classified --> auto_accepted : score >= 0.85\nborde verde
+
+    needs_review --> under_edit : Analista abre\ncromosoma naranja
+    needs_review --> xai_viewed : Analista activa\nGrad-CAM saliency map
+
+    xai_viewed --> under_edit : Analista decide\neditar
+    xai_viewed --> validated : Analista acepta\nclasificación IA
+
+    under_edit --> validated : PATCH /validated\n+ registro en edits
+
+    auto_accepted --> random_audit : Selección aleatoria\n5% por supervisor
+    auto_accepted --> validated : Validación implícita\n(no requiere acción)
+
+    random_audit --> validated : Supervisor aprueba
+    random_audit --> under_edit : Supervisor detecta\nerror — devuelve
+
+    validated --> [*] : Contribuye al\ndesbloqueo de informe
+
+    note right of needs_review
+        Bloquea exportación\nde informe
+    end note
+
+    note right of xai_viewed
+        Log obligatorio:\nXAI_VIEWED en audit trail
+    end note

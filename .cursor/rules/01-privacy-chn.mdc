@@ -1,0 +1,21 @@
+---
+description: Privacidad por diseño — CHN antes de cualquier dato; sin PII en logs ni APIs externas
+alwaysApply: true
+---
+
+# Privacidad por Diseño (Obligatorio)
+
+Antes de generar código que involucre datos del paciente:
+
+1. Verificar que el flujo pasa por `chn_service.py` **primero**
+2. Formato CHN: `CHN-YYYY-MM-DD-NNNN` (ej: `CHN-2026-05-13-0001`)
+3. Prohibido en variables, logs, queries o requests externos: nombre, edad, DOB, DNI, expediente u otra PII
+4. En tests: datos sintéticos con CHN ficticio (`CHN-TEST-0001`)
+
+```python
+# ✅ CORRECTO
+def process_sample(chn_code: str, s3_path: str) -> dict: ...
+
+# ❌ PROHIBIDO
+def process_sample(patient_name: str, patient_id: str) -> dict: ...
+```

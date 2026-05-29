@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>KaryoUMSS · Masterclass · Skills & Agents Architecture</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #f0f4f8;
+            font-family: 'Inter', sans-serif;
+            color: #1a2c3e;
+            line-height: 1.5;
+            scroll-behavior: smooth;
+        }
+
+        /* contenedor maestro */
+        .master-container {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+        }
+
+        /* tipografía refinada */
+        h1, h2, h3 {
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(135deg, #0B2B40 0%, #1C5D7A 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            line-height: 1.2;
+        }
+
+        h2 {
+            font-size: 1.6rem;
+            border-left: 4px solid #1C6E8F;
+            padding-left: 1rem;
+            margin: 1.5rem 0 1rem 0;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: #1e4a6e;
+        }
+
+        /* cards con borde sutil y sombra técnica */
+        .card-master {
+            background: #ffffff;
+            border-radius: 1.25rem;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.02), 0 2px 4px rgba(0, 0, 0, 0.02), 0 0 0 1px rgba(0, 0, 0, 0.03);
+            transition: all 0.2s ease;
+            padding: 1.5rem;
+        }
+
+        .card-master:hover {
+            box-shadow: 0 20px 30px -12px rgba(0, 79, 102, 0.1);
+            border-color: rgba(28, 110, 143, 0.2);
+        }
+
+        /* grid profesional */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.2rem;
+        }
+
+        @media (max-width: 900px) {
+            .grid-2, .grid-3, .grid-4 {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+        }
+
+        /* códigos y bloques terminal */
+        .code-block {
+            background: #0e1e2a;
+            border-radius: 1rem;
+            padding: 1.2rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            color: #cde5f5;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+            border: 1px solid #2c4a62;
+        }
+
+        .inline-code {
+            background: #eef2f5;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.5rem;
+            color: #1a5d7a;
+        }
+
+        /* badges y etiquetas */
+        .badge-skill {
+            background: #e9f1f7;
+            color: #1c6e8f;
+            font-weight: 600;
+            font-size: 0.7rem;
+            padding: 0.25rem 0.8rem;
+            border-radius: 2rem;
+            display: inline-block;
+            letter-spacing: 0.01em;
+        }
+
+        .badge-agent {
+            background: #e6f0ec;
+            color: #1f6e5c;
+        }
+
+        .badge-arch {
+            background: #eaeef9;
+            color: #2c5282;
+        }
+
+        /* tabla refinada */
+        .tech-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .tech-table th {
+            text-align: left;
+            padding: 0.8rem 0.5rem;
+            background: #f8fafc;
+            font-weight: 600;
+            color: #1a4c6e;
+        }
+
+        .tech-table td {
+            padding: 0.7rem 0.5rem;
+            border-bottom: 1px solid #e4e9ef;
+        }
+
+        /* flujo socratico */
+        .flow-steps {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+        }
+
+        .step {
+            background: #fafcfd;
+            border-radius: 2rem;
+            padding: 0.5rem 1rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            border: 1px solid #dee6ed;
+            color: #2c5a74;
+        }
+
+        hr {
+            margin: 1.5rem 0;
+            border: none;
+            border-top: 1px solid #e2e9f0;
+        }
+
+        footer {
+            font-size: 0.75rem;
+            text-align: center;
+            padding-top: 3rem;
+            color: #6c86a0;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 2rem;
+        }
+
+        a {
+            text-decoration: none;
+            color: #1c6e8f;
+        }
+
+        .hero-icon {
+            background: #ffffffcc;
+            backdrop-filter: blur(4px);
+            border-radius: 3rem;
+            padding: 0.25rem 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="master-container">
+    <!-- cabecera / master title -->
+    <div class="flex justify-between items-start flex-wrap gap-4 mb-6">
+        <div>
+            <div class="flex gap-2 mb-2">
+                <span class="badge-skill">AI‑SDLC · producción</span>
+                <span class="badge-arch">hexagonal · trazabilidad</span>
+            </div>
+            <h1>Skills & Agents<br><span style="font-size: 1.8rem; color: #2d5a7a;">guía profesional para KaryoUMSS</span></h1>
+            <p class="text-gray-600 max-w-2xl mt-3" style="font-size: 1rem;">De los requisitos (BRD) al código gobernado por IA. Skills = contexto persistente. Agents = ejecutores. Una arquitectura aumentada para tu plataforma de cariotipado.</p>
+        </div>
+        <div class="bg-white/80 rounded-2xl px-5 py-2 border border-gray-200">
+            <span class="font-mono text-sm text-gray-600">/karyoumss/.claude/skills/</span><br>
+            <span class="font-mono text-sm font-semibold text-teal-700">+ .cursor/rules/</span>
+        </div>
+    </div>
+
+    <!-- 1. DEFINICIÓN ESENCIAL (SKILL) -->
+    <div class="card-master mb-8">
+        <div class="flex flex-wrap justify-between items-start gap-4">
+            <div>
+                <span class="badge-skill">concepto clave</span>
+                <h2 style="margin-top: 0.5rem;">¿Qué es un Skill?</h2>
+                <p class="text-gray-700 max-w-2xl">Un <strong class="text-teal-800">Skill es un perfil experto</strong> que instruye a la IA para que adopte tu arquitectura, respete tu FSD, use tu stack y mantenga trazabilidad. No improvisa: ejecuta.</p>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-3 font-mono text-xs border">
+                📁 karyoumss/.claude/skills/karyoumss-cytogenetic-analysis/SKILL.md
+            </div>
+        </div>
+        <div class="grid-2 mt-6">
+            <div class="border rounded-xl p-4 bg-gray-50/40">
+                <div class="font-bold text-red-700">SIN Skill</div>
+                <div class="text-sm text-gray-600">La IA alucina, inventa dependencias, ignora tu BRD/FSD.</div>
+                <div class="code-block text-xs mt-3">Usuario → IA genérica → código frágil (sin reglas)</div>
+            </div>
+            <div class="border rounded-xl p-4 bg-teal-50/30 border-teal-200">
+                <div class="font-bold text-teal-800">CON Skill</div>
+                <div class="text-sm text-gray-700">La IA obedece tu dominio, escribe tests, documenta trazabilidad.</div>
+                <div class="code-block text-xs mt-3">Usuario → Skill → Agent → código especializado + tests + ADR</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. AGENT + DIFERENCIA CLAVE -->
+    <div class="card-master mb-8">
+        <span class="badge-agent">🤖 agentes IA</span>
+        <h2>Agent + Skill = flujo profesional</h2>
+        <div class="grid-2">
+            <div>
+                <p><strong class="text-gray-800">Agent</strong> es la IA que trabaja dentro del repositorio (Claude Code, Cursor).<br>
+                El <strong class="text-gray-800">Skill</strong> actúa como su “manual de estilo técnico”.</p>
+                <div class="bg-[#0e1e2a] rounded-xl p-3 text-white font-mono text-sm mt-4">
+                    > Usa el skill karyoumss-cytogenetic-analysis e implementa FSD-UC-004
+                </div>
+                <p class="text-xs text-gray-500 mt-2">El agent lee el Skill, aplica reglas de trazabilidad y genera código alineado con FSD + ADR.</p>
+            </div>
+            <div class="bg-indigo-50/30 rounded-xl p-4 border border-indigo-100">
+                <div class="font-mono text-sm flex items-center gap-2 flex-wrap">🧩 Cadena: <span class="bg-white px-2 py-1 rounded-full shadow-sm">Usuario</span> → <span class="bg-indigo-100 px-2 py-1 rounded-full">Skill</span> → <span class="bg-indigo-200 px-2 py-1 rounded-full">Agent</span> → <span class="bg-emerald-100 px-2 py-1 rounded-full">Código + tests + traza</span></div>
+                <hr class="my-3">
+                <div class="text-sm">Cursor no lee Skills nativos → <span class="font-mono">.cursor/rules/*.mdc</span> (equivalente funcional). Claude Code sí acepta skills en <span class="font-mono">.claude/skills/</span>.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. ESTRUCTURA REAL DEL PROYECTO (tree) -->
+    <div class="card-master mb-8">
+        <h2>📁 Estructura para KaryoUMSS</h2>
+        <div class="grid-2">
+            <div class="code-block text-sm">
+                karyoumss/<br>
+                ├── .claude/<br>
+                │   └── skills/<br>
+                │       └── karyoumss-cytogenetic-analysis/<br>
+                │           └── SKILL.md<br>
+                ├── .cursor/<br>
+                │   └── rules/<br>
+                │       └── karyoumss-rules.mdc<br>
+                ├── docs/<br>
+                │   ├── brd/ prd/ fsd/ adr/<br>
+                │   └── skills/<br>
+                ├── src/<br>
+                └── tests/
+            </div>
+            <div>
+                <div class="bg-gray-50 p-4 rounded-xl">
+                    <div class="font-semibold">✅ Recomendación:</div>
+                    <ul class="list-disc pl-5 text-sm space-y-2 mt-2 text-gray-700">
+                        <li>Skills en <span class="inline-code">.claude/skills/</span> (solo para este proyecto)</li>
+                        <li>Rules de Cursor en <span class="inline-code">.cursor/rules/</span> (reglas permanentes)</li>
+                        <li>Siempre mantener FSD + trazabilidad explicita en PROMPT_MAPPINGS.md</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. COMPARATIVA CLAUDE / CURSOR (tabla) -->
+    <div class="card-master mb-8">
+        <h2>⚙️ Claude Code vs Cursor · Estrategia técnica</h2>
+        <table class="tech-table">
+            <thead>
+                <tr><th>Herramienta</th><th>Skills nativos</th><th>Rules nativas</th><th>Implementación en KaryoUMSS</th></tr>
+            </thead>
+            <tbody>
+                <tr><td class="font-semibold">Claude Code</td><td>✅ .claude/skills/</td><td>❌</td><td>Skill dedicado para análisis citogenético, integración FastAPI + PostgreSQL</td></tr>
+                <tr><td class="font-semibold">Cursor</td><td>❌</td><td>✅ .cursor/rules/*.mdc</td><td>Reglas de arquitectura hexagonal, no inventar reglas de negocio, generar tests automáticos</td></tr>
+            </tbody>
+        </table>
+        <div class="mt-4 p-3 bg-slate-50 rounded-lg text-sm">
+            📌 <strong>Ejemplo de regla Cursor (karyoumss-rules.mdc):</strong>
+            <div class="code-block text-xs mt-2"># Siempre seguir arquitectura hexagonal<br># Todo endpoint debe tener trazabilidad (correlation_id)<br># Generar tests unitarios e integración para cada caso de uso del FSD</div>
+        </div>
+    </div>
+
+    <!-- 5. CICLO AI-SDLC COMPLETO -->
+    <div class="card-master mb-8 bg-gradient-to-r from-gray-900 to-gray-800 text-white">
+        <h2 class="text-white" style="border-left-color: #47b5d6;">🔄 AI‑SDLC: Del negocio al código</h2>
+        <div class="flow-steps">
+            <span class="step bg-white/10 text-white">📘 BRD</span>
+            <span class="step bg-white/10 text-white">📋 PRD</span>
+            <span class="step bg-white/10 text-white">⚙️ FSD</span>
+            <span class="step bg-white/10 text-white">🧠 SKILL</span>
+            <span class="step bg-white/10 text-white">🤖 AGENT</span>
+            <span class="step bg-white/10 text-white">📐 ADR</span>
+            <span class="step bg-white/10 text-white">✅ CÓDIGO + TEST</span>
+        </div>
+        <p class="text-sm text-gray-300">Cada skill garantiza que la implementación respete los ADR y el FSD, evitando alucinaciones y manteniendo auditoría técnica.</p>
+    </div>
+
+    <!-- 6. CREACIÓN PASO A PASO DE UN SKILL (listado maestro) -->
+    <div class="card-master mb-8">
+        <h2>🛠️ Crea tu primer Skill (pasos ejecutables)</h2>
+        <div class="grid-2">
+            <div>
+                <div class="flex gap-3 items-start mb-4"><span class="font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full">1</span> <span class="font-mono">mkdir -p .claude/skills/karyoumss-cytogenetic-analysis</span></div>
+                <div class="flex gap-3 items-start mb-4"><span class="font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full">2</span> <span>Crear <span class="inline-code">SKILL.md</span> con frontmatter y reglas (role, task, context, invariants)</span></div>
+                <div class="flex gap-3 items-start mb-4"><span class="font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full">3</span> <span>Invocar dentro de Claude Code: <span class="inline-code">"Usa el skill karyoumss-cytogenetic-analysis e implementa FSD-UC-004"</span></span></div>
+                <div class="flex gap-3 items-start"><span class="font-bold text-teal-700 bg-teal-50 px-3 py-1 rounded-full">4</span> <span>Verificar trazabilidad: el agente debe referenciar IDs del FSD y actualizar PROMPT_MAPPINGS.md</span></div>
+            </div>
+            <div class="bg-gray-50 rounded-xl p-4">
+                <div class="font-mono text-sm font-bold">🧬 Ejemplo de skill (fragmento):</div>
+                <div class="code-block text-xs mt-2">---
+name: karyoumss-cytogenetic-analysis
+description: cumplimiento FSD, citogenética, trazabilidad
+allowed-tools: read,edit,run-tests
+---
+# Role: especialista en visión artificial médica
+# Task: implementar UC de segmentación con arquitectura hexagonal
+# Context: BRD_v3.5, FSD-UC-004, ADR tiling GPU
+# Output: endpoint + tests + documentación</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. CASO REAL: INVOCACIÓN Y RESULTADO -->
+    <div class="card-master mb-8">
+        <h2>🎯 Ejemplo real: KaryoUMSS en acción</h2>
+        <div class="grid-2">
+            <div>
+                <p><span class="font-semibold">Prompt ejecutado:</span></p>
+                <div class="code-block text-sm">> Usa el skill karyoumss-cytogenetic-analysis e implementa FSD-UC-004 (clasificación de cromosomas con IA)</div>
+                <p class="mt-3 font-semibold">Respuesta del agente (automatizada):</p>
+                <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1 mt-2">
+                    <li>✔ Lee SKILL.md y detecta arquitectura hexagonal</li>
+                    <li>✔ Crea endpoint <span class="inline-code">POST /karyotype/classify</span> con FastAPI</li>
+                    <li>✔ Integra modelo ResNet50 y preprocesamiento OpenCV</li>
+                    <li>✔ Genera tests unitarios + integración con Gherkin</li>
+                    <li>✔ Registra correlation_id y actualiza PROMPT_MAPPINGS.md</li>
+                </ul>
+            </div>
+            <div class="bg-teal-50/40 rounded-xl p-4 border border-teal-100">
+                <div class="font-bold text-teal-800">✅ Trazabilidad asegurada</div>
+                <div class="text-sm mt-2">FSD-UC-004 → implementación → tests validados → ADR-0001 (tiling) respetado. El código incluye comentarios con origen de requerimientos.</div>
+                <div class="code-block text-xs mt-3"># FSD-UC-004: confidence_score ≥0.85 → borde verde / naranja</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 8. QUÉ AUTOMATIZAR: catálogo de skills recomendados -->
+    <div class="card-master mb-8">
+        <h2>⚡ Skills estratégicos para KaryoUMSS</h2>
+        <div class="grid-4">
+            <div class="border rounded-lg p-3 text-center"><span class="font-bold">fastapi-api</span><div class="text-xs text-gray-500">endpoints CRUD + validación</div></div>
+            <div class="border rounded-lg p-3 text-center"><span class="font-bold">opencv-processing</span><div class="text-xs text-gray-500">realce de bandas G, CLAHE</div></div>
+            <div class="border rounded-lg p-3 text-center"><span class="font-bold">test-generator</span><div class="text-xs text-gray-500">pytest + BDD (Gherkin)</div></div>
+            <div class="border rounded-lg p-3 text-center"><span class="font-bold">postgres-audit</span><div class="text-xs text-gray-500">audit trail + hash chain</div></div>
+            <div class="border rounded-lg p-3 text-center"><span class="font-bold">ai-segmentation</span><div class="text-xs text-gray-500">Mask R-CNN, TorchServe</div></div>
+            <div class="border rounded-lg p-3 text-center"><span class="font-bold">report-iscn</span><div class="text-xs text-gray-500">generación PDF, nomenclatura</div></div>
+            <div class="border rounded-lg p-3 text-center"><span class="font-bold">docker-compose</span><div class="text-xs text-gray-500">despliegue reproducible</div></div>
+            <div class="border rounded-lg p-3 text-center"><span class="font-bold">crossref-doi</span><div class="text-xs text-gray-500">publicación científica</div></div>
+        </div>
+    </div>
+
+    <!-- 9. BUENAS PRÁCTICAS Y RECOMENDACIÓN FINAL -->
+    <div class="card-master">
+        <h2>📌 Recomendaciones para una adopción sólida</h2>
+        <div class="grid-2">
+            <div>
+                <div class="flex gap-3 mb-3"><span class="text-emerald-700 text-xl">➊</span> <span><strong class="font-semibold">Empieza pequeño</strong><br>Un skill para FastAPI + otro para generación de tests.</span></div>
+                <div class="flex gap-3 mb-3"><span class="text-emerald-700 text-xl">➋</span> <span><strong class="font-semibold">Skills viven cerca del código</strong><br>Almacénalos en <span class="inline-code">.claude/skills/</span> dentro del repo.</span></div>
+                <div class="flex gap-3"><span class="text-emerald-700 text-xl">➌</span> <span><strong class="font-semibold">Mantén la trazabilidad</strong><br>FSD → SKILL → AGENT → código + tests + PROMPT_MAPPINGS.</span></div>
+            </div>
+            <div class="bg-[#0e1e2a] rounded-xl p-4 text-white text-sm">
+                <div class="font-mono">💡 “Los Skills no son magia. Son contexto estructurado. Cuanto más preciso sea el Skill, menos alucinaciones tendrás en el código generado.”</div>
+                <div class="mt-3 text-xs text-cyan-300">Arquitectura aumentada · AI‑SDLC · KaryoUMSS</div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        <p>© 2025 · KaryoUMSS — Masterclass: Skills & Agents. Flujo profesional con Claude Code, Cursor, trazabilidad arquitectónica.<br>
+        Basado en BRD v3.5, ADR de microservicios y FSD-UC-004. Repositorio modelo: .claude/skills/ + .cursor/rules/</p>
+    </footer>
+</div>
+
+</body>
+</html>

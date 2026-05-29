@@ -1,0 +1,25 @@
+---
+description: Fallback manual_mode si TorchServe falla — no bloquear al especialista
+globs: backend/**/*,ai_engine/**/*
+alwaysApply: false
+---
+
+# Modo Degradado Elegante
+
+Si TorchServe no responde, permitir análisis manual sin error 500 al usuario.
+
+```python
+# ✅ CORRECTO
+try:
+    result = await torchserve_client.predict(image_tiles)
+except (httpx.TimeoutException, httpx.ConnectError):
+    await sample_service.set_status(sample_id, "manual_mode")
+    await ws_manager.notify(sample_id, {
+        "status": "manual_mode",
+        "message": "IA no disponible. Puede continuar con análisis manual.",
+    })
+    return
+
+# ❌ PROHIBIDO
+raise HTTPException(500, "AI service unavailable")
+```

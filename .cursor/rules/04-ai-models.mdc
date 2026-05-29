@@ -1,0 +1,23 @@
+---
+description: Pipeline IA — U-Net, EfficientNet-B3, Grad-CAM, TorchServe :8080
+globs: ai_engine/**/*,backend/app/tasks/**/*
+alwaysApply: false
+---
+
+# Modelos IA Autorizados
+
+- **Segmentación:** U-Net (no Mask R-CNN)
+- **Clasificación:** EfficientNet-B3 (no ResNet50)
+- **XAI:** Grad-CAM (saliency maps)
+- **Serving:** TorchServe puerto 8080
+
+```python
+# ✅ CORRECTO
+SEGMENTATION_MODEL = "unet_karyotype"
+CLASSIFICATION_MODEL = "efficientnet_b3_karyotype"
+TORCHSERVE_URL = "http://torchserve:8080/predictions"
+
+# ❌ OBSOLETO
+SEGMENTATION_MODEL = "mask_rcnn"
+CLASSIFICATION_MODEL = "resnet50"
+```

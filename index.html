@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biomed UMSS - Plataforma de Cariotipado IA</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            /* PALETA AZUL - Basada en paleta.txt */
+            --blue-light: #e6ebf1;
+            --blue-light-hover: #d9e1ea;
+            --blue-light-active: #b0c1d3;
+            --blue-primary: #003770;
+            --blue-primary-hover: #003265;
+            --blue-primary-active: #002c5a;
+            --blue-dark: #002954;
+            --blue-dark-hover: #002143;
+            --blue-dark-active: #001932;
+            --blue-darker: #001327;
+
+            /* PALETA VERDE MEJORADA - Basada en paleta.txt */
+            --green-light: #e9f3f0;
+            --green-light-hover: #dde6e8;
+            --green-light-active: #b9dad0;
+            --green-primary: #1e8868;
+            --green-primary-hover: #1b7a5e;
+            --green-primary-active: #186d53;
+            --green-dark: #17664e;
+            --green-dark-hover: #12523e;
+            --green-dark-active: #0d3d2f;
+            --green-darker: #0b3024;
+
+            /* PALETA ROJA - Basada en paleta.txt */
+            --red-light: #f8e6e7;
+            --red-light-hover: #f5d9db;
+            --red-light-active: #eab0b4;
+            --red-primary: #bc000c;
+            --red-primary-hover: #a9000b;
+            --red-primary-active: #96000a;
+            --red-dark: #8d0009;
+            --red-dark-hover: #710007;
+            --red-dark-active: #550005;
+            --red-darker: #420004;
+
+            /* PALETA NARANJA - Basada en paleta.txt */
+            --orange-light: #fbeee6;
+            --orange-light-hover: #f9e5d9;
+            --orange-light-active: #f2c9b0;
+            --orange-primary: #d45100;
+            --orange-primary-hover: #bf4900;
+            --orange-primary-active: #aa4100;
+            --orange-dark: #9f3d00;
+            --orange-dark-hover: #7f3100;
+            --orange-dark-active: #5f2400;
+
+            /* PALETA GRIS - Basada en paleta.txt */
+            --gray-light: #f1f1f2;
+            --gray-light-hover: #eaebeb;
+            --gray-light-active: #d5d5d6;
+            --gray-primary: #76777c;
+            --gray-primary-hover: #6a6b70;
+            --gray-primary-active: #5e5f63;
+            --gray-dark: #59595d;
+            --gray-dark-hover: #47474a;
+            --gray-dark-active: #353638;
+            --gray-darker: #292a2b;
+
+            /* Neutros */
+            --white: #ffffff;
+            --off-white: #f8f9fa;
+            --border-light: #e2e8f0;
+            --text-primary: #001327;
+            --gray-text: #64748b;
+
+            /* Sombras */
+            --shadow-sm: 0 1px 3px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 12px rgba(0,55,112,0.12);
+            --shadow-lg: 0 8px 24px rgba(0,55,112,0.15);
+
+            /* Bordes */
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-xl: 16px;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #1e293b;
+            background-color: var(--gray-light);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* ============================================ */
+        /* NAVBAR SUPERIOR */
+        /* ============================================ */
+        .navbar {
+            background: var(--blue-primary);
+            min-height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .nav-brand { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+        .nav-brand h1 { font-size: 1.3rem; font-weight: 700; }
+        .nav-brand span { color: var(--red-primary); }
+        .login-btn {
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 20px;
+            border-radius: 40px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .login-btn:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-1px);
+        }
+
+        /* ============================================ */
+        /* HERO SECTION */
+        /* ============================================ */
+        .hero {
+            background: linear-gradient(135deg, var(--blue-primary) 0%, var(--blue-dark) 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .hero h2 {
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+
+        .hero-slogan {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 30px;
+            color: var(--blue-light);
+            font-style: italic;
+            padding: 15px;
+            border-left: 4px solid var(--red-primary);
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        }
+
+        .cta-button {
+            display: inline-block;
+            background-color: var(--green-primary);
+            color: white;
+            padding: 16px 40px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            border-radius: 50px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .cta-button:hover {
+            background-color: var(--green-primary-hover);
+            transform: translateY(-3px);
+        }
+
+        /* ============================================ */
+        /* PROBLEM SECTION */
+        /* ============================================ */
+        .problem {
+            padding: 80px 0;
+            background-color: var(--white);
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+
+        .section-title h2 {
+            font-size: 2.2rem;
+            color: var(--blue-primary);
+            margin-bottom: 15px;
+        }
+
+        .section-title p {
+            color: var(--gray-text);
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .problem-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .problem-card {
+            background-color: var(--gray-light);
+            border-radius: var(--radius-lg);
+            padding: 30px;
+            box-shadow: var(--shadow-sm);
+            border-top: 4px solid var(--blue-primary);
+            transition: transform 0.3s;
+        }
+
+        .problem-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .problem-icon {
+            background-color: var(--blue-light);
+            color: var(--blue-primary);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .problem-card h3 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            color: var(--blue-primary);
+        }
+
+        .problem-card p {
+            color: var(--gray-text);
+        }
+
+        /* ============================================ */
+        /* SOLUTION SECTION */
+        /* ============================================ */
+        .solution {
+            padding: 80px 0;
+            background-color: var(--blue-light);
+        }
+
+        .solution-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 50px;
+            align-items: center;
+        }
+
+        .solution-text h2 {
+            font-size: 2rem;
+            color: var(--blue-primary);
+            margin-bottom: 20px;
+        }
+
+        .solution-text p {
+            margin-bottom: 20px;
+            color: var(--gray-text);
+        }
+
+        .solution-features {
+            list-style: none;
+            margin-top: 25px;
+        }
+
+        .solution-features li {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .solution-features i {
+            color: var(--green-primary);
+            margin-top: 3px;
+        }
+
+        .solution-visual {
+            background-color: var(--white);
+            border-radius: var(--radius-xl);
+            padding: 30px;
+            box-shadow: var(--shadow-md);
+            text-align: center;
+            border: 1px solid var(--border-light);
+        }
+
+        .demo-placeholder {
+            background: linear-gradient(135deg, var(--blue-light) 0%, var(--white) 100%);
+            height: 250px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        /* ============================================ */
+        /* ROLES SECTION */
+        /* ============================================ */
+        .roles {
+            padding: 80px 0;
+            background-color: var(--white);
+        }
+
+        .roles-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .role-card {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            padding: 30px;
+            text-align: center;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-light);
+            transition: all 0.3s;
+        }
+
+        .role-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .role-icon {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--blue-primary), var(--red-primary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 2rem;
+            color: white;
+        }
+
+        .role-card h3 {
+            font-size: 1.3rem;
+            color: var(--blue-primary);
+            margin-bottom: 10px;
+        }
+
+        .role-card .role-desc {
+            color: var(--gray-text);
+            font-size: 0.85rem;
+            margin-bottom: 15px;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            background: var(--blue-light);
+            color: var(--blue-primary);
+        }
+
+        /* ============================================ */
+        /* CTA SECTION */
+        /* ============================================ */
+        .cta-section {
+            background: linear-gradient(135deg, var(--green-primary) 0%, var(--green-dark) 100%);
+            color: white;
+            padding: 80px 0;
+            text-align: center;
+        }
+
+        .demo-button {
+            background: white;
+            color: var(--green-primary);
+            padding: 16px 40px;
+            border-radius: 50px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .demo-button:hover {
+            background: var(--green-light);
+            transform: translateY(-3px);
+        }
+
+        /* ============================================ */
+        /* FOOTER */
+        /* ============================================ */
+        footer {
+            background-color: var(--blue-primary);
+            color: white;
+            padding: 50px 0 20px;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 40px;
+            margin-bottom: 40px;
+        }
+
+        .footer-section h3 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            color: var(--blue-light);
+        }
+
+        .footer-section p, .footer-section a {
+            color: #93c5fd;
+            margin-bottom: 10px;
+            display: block;
+            text-decoration: none;
+        }
+
+        .footer-section a:hover {
+            color: white;
+        }
+
+        .copyright {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+            color: #93c5fd;
+            font-size: 0.8rem;
+        }
+
+        /* ============================================ */
+        /* MODAL DE LOGIN */
+        /* ============================================ */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.active { display: flex; }
+
+        .login-modal {
+            background: var(--white);
+            border-radius: var(--radius-xl);
+            width: 90%;
+            max-width: 420px;
+            overflow: hidden;
+            animation: fadeInModal 0.3s ease;
+        }
+
+        @keyframes fadeInModal {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .modal-header {
+            background: var(--blue-primary);
+            padding: 1.5rem;
+            text-align: center;
+            color: white;
+        }
+        .modal-header h3 { font-size: 1.3rem; margin-bottom: 4px; }
+        .modal-header p { font-size: 0.7rem; opacity: 0.8; }
+
+        .modal-body {
+            padding: 1.5rem;
+        }
+
+        .role-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+        }
+        .role-option {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid var(--border-light);
+            border-radius: var(--radius-md);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .role-option.selected {
+            border-color: var(--blue-primary);
+            background: var(--blue-light);
+        }
+        .role-option i { font-size: 1.2rem; display: block; margin-bottom: 5px; }
+        .role-option span { font-size: 0.7rem; font-weight: 600; }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            color: var(--blue-primary);
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border-light);
+            border-radius: var(--radius-md);
+            font-size: 0.85rem;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--blue-primary);
+        }
+
+        .login-submit {
+            width: 100%;
+            padding: 12px;
+            background: var(--blue-primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.2rem;
+            color: white;
+            cursor: pointer;
+        }
+
+        .alert-error {
+            background: var(--red-light);
+            color: var(--red-primary);
+            padding: 10px;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            .roles-grid { grid-template-columns: 1fr; }
+            .solution-content { grid-template-columns: 1fr; gap: 30px; }
+            .navbar { flex-direction: column; padding: 1rem; text-align: center; }
+            .hero h2 { font-size: 2rem; }
+            .hero-slogan { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- NAVBAR SUPERIOR -->
+    <nav class="navbar">
+        <div class="nav-brand">
+            <i class="fas fa-dna fa-lg"></i>
+            <div><strong>BIOMED <span>UMSS</span></strong><div style="font-size: 0.6rem;">INTELLIGENT KARYOTYPING</div></div>
+        </div>
+        <button class="login-btn" id="openLoginBtn"><i class="fas fa-sign-in-alt"></i> Acceder al Sistema</button>
+    </nav>
+
+    <!-- HERO SECTION -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2>Del Raw al Reporte</h2>
+                <div class="hero-slogan">
+                    Automatizamos el análisis de cariotipos para que los citogenetistas puedan enfocarse en diagnosticar, no en recortar cromosomas.
+                </div>
+                <p>Biomed es una solución de inteligencia artificial que automatiza el proceso de creación de cariotipos, reduciendo el tiempo de análisis manual en un 70% y minimizando errores por fatiga visual.</p>
+                <button class="cta-button" id="ctaLoginBtn">Solicitar Demo Gratuita <i class="fas fa-calendar-alt"></i></button>
+            </div>
+        </div>
+    </section>
+
+    <!-- PROBLEM SECTION -->
+    <section id="problema" class="problem">
+        <div class="container">
+            <div class="section-title">
+                <h2>Optimización del Procesamiento Citogenético Manual</h2>
+                <p>El análisis tradicional de metafases demanda recursos excesivos. Nuestra plataforma automatiza el flujo de trabajo para mejorar la eficiencia operativa.</p>
+            </div>
+            <div class="problem-grid">
+                <div class="problem-card"><div class="problem-icon"><i class="fas fa-clock"></i></div><h3>Tiempo Excesivo</h3><p>15-30 minutos por caso dedicados exclusivamente a tareas manuales de recorte y clasificación de cromosomas.</p></div>
+                <div class="problem-card"><div class="problem-icon"><i class="fas fa-eye"></i></div><h3>Fatiga Visual</h3><p>Horas de análisis visual continuo que afectan la concentración y aumentan el riesgo de errores por fatiga.</p></div>
+                <div class="problem-card"><div class="problem-icon"><i class="fas fa-exclamation-triangle"></i></div><h3>Variabilidad en Resultados</h3><p>Clasificación subjetiva de cromosomas similares que puede variar entre diferentes técnicos.</p></div>
+                <div class="problem-card"><div class="problem-icon"><i class="fas fa-tachometer-alt"></i></div><h3>Presión por Reducir TAT</h3><p>Constante presión para reducir el tiempo de entrega (TAT) de resultados en un entorno de alta carga de trabajo.</p></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- SOLUTION SECTION -->
+    <section id="solucion" class="solution">
+        <div class="container">
+            <div class="section-title">
+                <h2>Nuestra Solución: Asistente Inteligente para Citogenetistas</h2>
+                <p>Biomed genera automáticamente un borrador de cariotipo organizado para que usted solo tenga que validar y corregir.</p>
+            </div>
+            <div class="solution-content">
+                <div class="solution-text">
+                    <h2>Automatización inteligente con IA</h2>
+                    <p>Biomed utiliza algoritmos avanzados de visión por computadora para identificar, segmentar y clasificar automáticamente los cromosomas en imágenes de metafase.</p>
+                    <ul class="solution-features">
+                        <li><i class="fas fa-check-circle"></i> <strong>Precisión superior al 97%</strong> en condiciones de laboratorio estándar</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Interfaz intuitiva</strong> con herramientas de corrección fáciles de usar</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Generación automática de informe ISCN</strong> que se actualiza en tiempo real</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Control total del experto</strong> sobre el resultado final</li>
+                        <li><i class="fas fa-check-circle"></i> <strong>Reducción de tiempo</strong> de 25 a 5 minutos por caso en promedio</li>
+                    </ul>
+                </div>
+                <div class="solution-visual">
+                    <div class="demo-placeholder">
+                        <div style="text-align: center; color: var(--blue-primary);">
+                            <i class="fas fa-chart-bar" style="font-size: 4rem; margin-bottom: 15px;"></i>
+                            <p style="font-weight: 500;">Simulador de Procesamiento Automático</p>
+                        </div>
+                    </div>
+                    <p>Visualización interactiva del cariograma generado automáticamente con herramientas de edición intuitivas.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ROLES SECTION -->
+    <section class="roles">
+        <div class="container">
+            <div class="section-title">
+                <h2>Roles del Sistema</h2>
+                <p>Tres perfiles diseñados para cada necesidad en el flujo de trabajo citogenético</p>
+            </div>
+            <div class="roles-grid">
+                <div class="role-card">
+                    <div class="role-icon"><i class="fas fa-user-md"></i></div>
+                    <h3>Citogenetista</h3>
+                    <div class="role-desc">Especialista validador encargado de la revisión y aprobación final de los cariotipos generados por IA.</div>
+                    <span class="role-badge">Validación diagnóstica</span>
+                </div>
+                <div class="role-card">
+                    <div class="role-icon"><i class="fas fa-clipboard-list"></i></div>
+                    <h3>Supervisor</h3>
+                    <div class="role-desc">Especialista en control de calidad, auditoría de casos y gestión del rendimiento del equipo.</div>
+                    <span class="role-badge">Control de calidad</span>
+                </div>
+                <div class="role-card">
+                    <div class="role-icon"><i class="fas fa-cogs"></i></div>
+                    <h3>Administrador</h3>
+                    <div class="role-desc">Gestión de usuarios, configuración del sistema, integraciones y mantenimiento técnico.</div>
+                    <span class="role-badge">Configuración técnica</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA SECTION -->
+    <section id="demo" class="cta-section">
+        <div class="container">
+            <h2>¿Listo para transformar su flujo de trabajo de citogenética?</h2>
+            <p style="max-width: 700px; margin: 0 auto 30px;">Únase a los laboratorios pioneros que ya están probando Biomed. Solicite una demo gratuita y personalizada.</p>
+            <button class="demo-button" id="demoLoginBtn">Solicitar Demo <i class="fas fa-arrow-right"></i></button>
+            <p style="margin-top: 20px; font-size: 0.85rem;">Demo de 15 minutos sin compromiso</p>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section"><h3>Biomed UMSS</h3><p>Automatizamos el análisis de cariotipos para que los citogenetistas puedan enfocarse en diagnosticar.</p><p><i class="fas fa-envelope"></i> info@biomed.umss.bo</p></div>
+                <div class="footer-section"><h3>Enlaces Rápidos</h3><a href="#problema">El Problema</a><a href="#solucion">La Solución</a><a href="#demo">Solicitar Demo</a></div>
+                <div class="footer-section"><h3>Equipo Fundador</h3><p>CEO/Investigación & Producto</p><p>CTO/Prompts & Desarrollo</p><p>CMO/Validación & Growth</p></div>
+            </div>
+            <div class="copyright"><p>&copy; 2026 Biomed UMSS. Todos los derechos reservados. | Sistema de Cariotipado Asistido por IA</p></div>
+        </div>
+    </footer>
+
+    <!-- MODAL DE LOGIN -->
+    <div id="loginModal" class="modal-overlay">
+        <div class="login-modal">
+            <div class="modal-header">
+                <span class="close-modal" onclick="closeLoginModal()">&times;</span>
+                <h3><i class="fas fa-dna"></i> BIOMED UMSS</h3>
+                <p>Iniciar Sesión</p>
+            </div>
+            <div class="modal-body">
+                <div id="loginError" class="alert-error">⚠️ Credenciales incorrectas</div>
+                <div class="role-selector" id="roleSelector">
+                    <div class="role-option" data-role="citogenetista"><i class="fas fa-user-md"></i><span>Citogenetista</span></div>
+                    <div class="role-option" data-role="supervisor"><i class="fas fa-clipboard-list"></i><span>Supervisor</span></div>
+                    <div class="role-option" data-role="admin"><i class="fas fa-cogs"></i><span>Administrador</span></div>
+                </div>
+                <div class="form-group">
+                    <label>Usuario</label>
+                    <input type="text" id="loginUser" placeholder="Ingrese su usuario">
+                </div>
+                <div class="form-group">
+                    <label>Contraseña</label>
+                    <input type="password" id="loginPass" placeholder="••••••••">
+                </div>
+                <button class="login-submit" onclick="handleLogin()">Ingresar al Sistema</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Credenciales por rol
+        const credentials = {
+            citogenetista: { user: "cito", pass: "cito", redirect: "crudmuestra.html" },
+            supervisor: { user: "super", pass: "super", redirect: "supervisor.html" },
+            admin: { user: "admin", pass: "admin", redirect: "configuracion.html" }
+        };
+
+        let selectedRole = "citogenetista";
+
+        // Selector de rol
+        document.querySelectorAll('.role-option').forEach(opt => {
+            opt.addEventListener('click', function() {
+                document.querySelectorAll('.role-option').forEach(o => o.classList.remove('selected'));
+                this.classList.add('selected');
+                selectedRole = this.getAttribute('data-role');
+            });
+        });
+        document.querySelector('.role-option').classList.add('selected');
+
+        // Modal functions
+        function openLoginModal() {
+            document.getElementById('loginModal').classList.add('active');
+            document.getElementById('loginError').style.display = 'none';
+            document.getElementById('loginUser').value = '';
+            document.getElementById('loginPass').value = '';
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.remove('active');
+        }
+
+        function handleLogin() {
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
+            const cred = credentials[selectedRole];
+
+            if (user === cred.user && pass === cred.pass) {
+                localStorage.setItem('biomed_user', JSON.stringify({ role: selectedRole, name: user }));
+                window.location.href = cred.redirect;
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('openLoginBtn').addEventListener('click', openLoginModal);
+        document.getElementById('ctaLoginBtn').addEventListener('click', openLoginModal);
+        document.getElementById('demoLoginBtn').addEventListener('click', openLoginModal);
+
+        // Cerrar modal al hacer clic fuera
+        document.getElementById('loginModal').addEventListener('click', function(e) {
+            if (e.target === this) closeLoginModal();
+        });
+
+        // Enter key
+        document.getElementById('loginPass').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') handleLogin();
+        });
+    </script>
+</body>
+</html>

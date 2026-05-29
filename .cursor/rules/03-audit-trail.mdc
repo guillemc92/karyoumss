@@ -1,0 +1,33 @@
+---
+description: Tabla edits inmutable — solo INSERT; user_id del JWT; auditoría antes del handler
+globs: backend/**/*
+alwaysApply: false
+---
+
+# Audit Trail Inalterable — Solo INSERT
+
+Al generar código de edición de cromosomas:
+
+1. Registrar `before_state` y `after_state` como JSON
+2. `user_id` **siempre** del JWT decodificado, nunca del body
+3. `created_at` = `DEFAULT NOW()` en DB, nunca del cliente
+4. Middleware de auditoría **antes** del endpoint handler
+
+```python
+# ✅ CORRECTO
+async def validate_chromosome(
+    chromosome_id: UUID,
+    current_user: User = Depends(get_current_user),
+):
+    await audit_service.record(
+        chromosome_id=chromosome_id,
+        user_id=current_user.id,
+        action="validate",
+        before_state=before,
+        after_state=after,
+    )
+
+# ❌ PROHIBIDO
+async def validate_chromosome(body: ValidateRequest):
+    user_id = body.user_id
+```
