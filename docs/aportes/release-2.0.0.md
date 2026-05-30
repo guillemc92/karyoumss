@@ -28,7 +28,7 @@
 | 8 | Actualización de mapeos y trazabilidad RN-09 / BR-R5 | `docs/fsd/FSD_vFinal.md`, `docs/DTI.md`, `docs/prd/PRD_vFinal.md`, `docs/mrd/MRD_vFinal.md` | Mayo 2026 |
 | 9 | Publicación de guía de defensa y checklist final | `docs/DEFENSE_CHECKLIST.md` | Mayo 2026 |
 | 10 | Documentación de aportes reales y evidencias de branch | `docs/aportes/release-2.0.0.md` | Mayo 2026 |
-| 11 | Revisión y actualización de `docs/PROMPT_MAPPINGS.md` | `docs/PROMPT_MAPPINGS.md` | Mayo 2026 |
+| 11 | Revisión y actualización de `docs/PROMPT_MAPPING.md` | `docs/PROMPT_MAPPING.md` | Mayo 2026 |
 | 12 | Revisión de diagramas Mermaid y POCs | `docs/diagrams/`, `pocs/POC-01` → `pocs/POC-05` | Mayo 2026 |
 
 ### Total de tareas: 12
@@ -63,7 +63,7 @@ Todos los commits del branch `release/2.0.0` son de autoría de Ing. Guillermo M
 - `docs/mrd/MRD_vFinal.md` ✅
 - `docs/brd/BRD_vFinal.md` ✅
 - `AGENTS.md` ✅
-- `docs/PROMPT_MAPPINGS.md` ✅
+- `docs/PROMPT_MAPPING.md` ✅
 - `docs/roadmap.md` ✅
 - `docs/diagrams/` ✅
 - `pocs/POC-01` → `POC-05` ✅

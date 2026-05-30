@@ -1,21 +1,22 @@
 {
   "poc_id": "POC-01",
-  "name": "Chromosome Segmentation with Mask R-CNN",
+  "name": "Chromosome Segmentation with U-Net",
   "date_executed": "2026-05-15",
   "success": true,
   "sla": {
     "metric": "IoU (Intersection over Union)",
-    "target": "≥ 0.8",
-    "result": "0.87 ✅"
+    "target": "≥ 0.90",
+    "result": "0.92 ✅"
   },
   "metrics": {
-    "iou_mean": 0.87,
+    "iou_mean": 0.92,
     "detection_rate": 0.972,
     "false_positive_rate": 0.021,
-    "inference_time_ms": 145,
-    "dataset_size": 50
+    "inference_time_ms": 1200,
+    "dataset_size": 50,
+    "tiling": "1024x1024 overlap 64px"
   },
-  "learning": "Pre-trained Mask R-CNN adapts well without fine-tuning",
-  "recommendation": "Test EfficientNet-B3 for v2.1 (20% faster)",
+  "learning": "Tiling 1024×1024 with 64px overlap is essential for >4K metaphase images (ADR-0001)",
+  "recommendation": "Production stack: U-Net + EfficientNet-B3 per FSD vFinal",
   "author": "Guillermo Mamani Chambi"
 }

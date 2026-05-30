@@ -1,48 +1,52 @@
-# Defensa Final — Checklist de Preparación
+# Defensa Final — Checklist de Preparación (G04)
+
+**Rama evaluada:** `release/2.0.0`  
+**Repositorio:** https://github.com/guillemc92/karyoumss/tree/release/2.0.0
 
 ## 1. Entrega `release/2.0.0`
-- [ ] Todo el contenido crítico está en el branch `release/2.0.0`.
-- [ ] `docs/DTI.md` está completo y actualizado.
-- [ ] `docs/fsd/FSD_vFinal.md` está completo y actualizado.
-- [ ] `docs/prd/PRD_vFinal.md` está completo y actualizado.
-- [ ] `docs/mrd/MRD_vFinal.md` está completo y actualizado.
-- [ ] `docs/brd/BRD_vFinal.md` está completo y actualizado.
-- [ ] `AGENTS.md` está sincronizado con la entrega y el branch.
-- [ ] `docs/PROMPT_MAPPINGS.md` existe y refleja trazabilidad a FSD.
-- [ ] `docs/roadmap.md` está presente y con hitos claros.
-- [ ] `docs/aportes/release-2.0.0.md` documenta contribuciones reales.
-- [ ] `docs/diagrams/` tiene ≥ 8 archivos `.mmd` versionados.
-- [ ] `pocs/` tiene al menos 2 POCs documentados y ejecutables.
+- [x] Todo el contenido crítico está en el branch `release/2.0.0`.
+- [x] `docs/DTI.md` — 24 secciones (§0–§23), vFinal v2.0.
+- [x] `docs/fsd/FSD_vFinal.md`, `docs/prd/PRD_vFinal.md`, `docs/mrd/MRD_vFinal.md`, `docs/brd/BRD_vFinal.md`.
+- [x] `AGENTS.md` v1.2 sincronizado con rutas vFinal y ADR-0005.
+- [x] `docs/PROMPT_MAPPING.md` + `prompts/PR-*.md` (mapeo rápido con métricas antes/después).
+- [x] `docs/roadmap.md` con hitos post-defensa.
+- [x] `docs/aportes/release-2.0.0.md` (aportes individuales).
+- [x] `docs/diagrams/` — 12 archivos `.mmd` versionados.
+- [x] `pocs/POC-01` … `POC-05` con `metrics.json` + README.
+- [x] `docs/adr/` — ADR 0001–0005 (incluye cloud provider).
 
-## 2. Estructura de la presentación
-- [ ] Abrir con el problema y la propuesta de valor (MRD/PRD).
-- [ ] Mostrar 1 caso de uso destacado del FSD con su aviso-contrato.
-- [ ] Explicar la arquitectura con C4 Nivel 1 + 2 y el núcleo hexagonal.
-- [ ] Describir la capa distribuida / event-driven / IA como evolución.
-- [ ] Señalar los ADRs clave y trade-offs, especialmente `0001`–`0004`.
-- [ ] Cerrar con la hoja de ruta y compromisos.
+## 2. Estructura de la presentación (15 min — grupo individual)
+- [ ] 0–8 %: Producto y problema (MRD/PRD) — ~1 min
+- [ ] 8–25 %: FSD — 1 UC + aviso-contrato (ej. UC-02 + `prompts/PR-UC02-SEM.md`) — ~2 min
+- [ ] 25–58 %: C4 L1+L2 + hexagonal del core — ~5 min
+- [ ] 58–75 %: Distribuido / event-driven / AWS (ADR-0002, ADR-0005) — ~3 min
+- [ ] 75–83 %: IA + agentes + barandillas (RN-02, RN-03, Grad-CAM) — ~1 min
+- [ ] 83–92 %: POCs — 2–3 con métricas de `metrics.json` — ~1 min
+- [ ] 92–100 %: Roadmap + riesgos — ~1 min
 
-## 3. Demo recomendada
-- [ ] Si hay código ejecutable, preparar una demo de 5 minutos.
-- [ ] La demo debe mostrar código + aplicación funcionando.
-- [ ] Preferible: un endpoint backend o un flujo UI que respalde un UC del FSD.
-- [ ] Debe conectarse directamente con lo documentado en DTI/FSD.
-- [ ] Si no hay demo, explicar claramente por qué y qué se entregó.
+## 3. Demo recomendada (5 min)
+- [ ] Abrir prototipo: `correccion de cariotipo.html` o https://guillemc92.github.io/karyoumss/
+- [ ] Mostrar semaforización / mesa de edición (UC-03 FSD).
+- [ ] En GitHub: `docs/PROMPT_MAPPING.md` → símbolo RN-02 → archivo HTML.
+- [ ] Opcional: `python .cursor/skills/skill-read-context/scripts/read_context.py docs/fsd/FSD_vFinal.md --detail summary`
 
-## 4. Q&A y evaluación
-- [ ] Preparar respuestas rápidas sobre trazabilidad MRD→PRD→FSD→DTI.
-- [ ] Tener justificadas las decisiones de arquitectura y trade-offs.
-- [ ] Conocer los criterios de la rúbrica de defensa.
-- [ ] Saber qué queda en `release/2.0.0` y qué está fuera del scope.
+## 4. Q&A docente (3 min) — respuestas preparadas
+- [ ] Trazabilidad: MRD → PRD → FSD → DTI (misma cadena en §12 AGENTS.md).
+- [ ] Trade-off ADR-0005: vendor lock-in vs Terraform; latencia us-east-1 vs costo Multi-AZ.
+- [ ] RN-09 / BR-R5: bloqueo de emisión si cromosomas naranjas sin validar.
 
-## 5. Puntos críticos de la rúbrica
-- Coherencia documental: MRD, PRD, FSD, DTI y mapeo a código.
-- Calidad arquitectónica: C4, hexagonal, IA, event-driven, AWS/infra.
-- AGENTS.md: sincronizado y consistente con DTI y el ciclo de entrega.
-- POCs: definidos, medibles y con aprendizaje documentado.
-- Diagramas: legibles, versionados y referenciados en la presentación.
+## 5. Puntos críticos de la rúbrica (auto-evaluación)
+| # | Criterio | Nivel esperado | Evidencia en repo |
+|---|----------|----------------|-------------------|
+| 1 | Coherencia documental | Excelente | DTI 24§ + vFinal + C4 en DTI §2–§3 |
+| 2 | Arquitectura + AWS | Excelente | ADR-0005 + DTI §8.4 |
+| 3 | AGENTS.md | Excelente | v1.2 + skill-read-context |
+| 4 | POCs ejecutadas | Excelente | 5 POCs + metrics.json |
+| 5 | Defensa oral | (en vivo) | Este checklist |
+| 6 | Mapeo rápido | Excelente | PROMPT_MAPPING § tabla símbolos |
+| 7 | Diagramas .mmd | Excelente | 12 en `docs/diagrams/` |
 
-## 6. Nota de última hora
-- Si la defensa es en S11/S12, resaltar que `release/2.0.0` es la rama de entrega evaluada.
-- Llevar ejemplos concretos de RN-09 / BR-R5 y cómo afectan al flujo de emisión.
-- Mantener la presentación dentro de 15–25 minutos según el tamaño del grupo.
+## 6. Riesgos a mitigar en Q&A
+- POC-01: README dice U-Net; `metrics.json` histórico Mask R-CNN → explicar evolución a U-Net (ADR/stack definitivo).
+- No hay carpeta `backend/` en release → demo = prototipo HTML + documentación; sin penalización según rúbrica.
+- FSD_vFinal con escapes Markdown → normalizar si el docente abre el archivo en vivo.
