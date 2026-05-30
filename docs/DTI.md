@@ -32,14 +32,14 @@ skills_aplicados:
 release_objetivo: "release/2.0.0"
 ---
 
-# Documento Técnico Inicial del Producto (DTI) — v2.0
+# Documento Técnico Inicial del Producto (DTI) — vFinal v2.0
 ## BIOMED UMSS — Intelligent Karyotyping Platform
 
 | Campo | Valor |
 |:---|:---|
 | **Producto** | BIOMED UMSS – Intelligent Karyotyping |
 | **Grupo** | G04 |
-| **Versión** | v2.0 (sincronizado con release/2.0.0 - BRD vFinal, PRD vFinal, FSD vFinal, MRD vFinal) |
+| **Versión** | v2.0 Final (sincronizado con release/2.0.0 — BRD vFinal, PRD vFinal, FSD vFinal, MRD vFinal) |
 | **Fecha** | 29/05/2026 |
 | **Arquitecto responsable** | Ing. Guillermo Mamani Chambi |
 | **Stakeholders** | UMSS, IIBISMED-UMSS, laboratorios citogenéticos |
@@ -343,6 +343,16 @@ Detallado en el diagrama de arquitectura cloud del **[ADR-0005](file:///c:/Users
 * `dev` (us-east-1): Desarrollo, base de datos local y simulador de GPU en CPU.
 * `stg` (us-east-1): Aceptación y QA, infraestructura paralela a producción con RDS mono-AZ.
 * `prd` (us-east-1): Producción Multi-AZ, clúster GPU en auto-scaling, backups diarios.
+
+### 8.4 ADRs Registrados (despliegue e infraestructura)
+
+| ID | Título | Estado |
+|:---|:---|:---|
+| 0001 | Tiling 1024×1024 + NMS | ACCEPTED |
+| 0002 | Pipeline asíncrono Redis + Celery | ACCEPTED |
+| 0003 | CHN Anonymization en el borde | ACCEPTED |
+| 0004 | Estrategia de evolución arquitectónica | ACCEPTED |
+| 0005 | Cloud Provider & Deployment Strategy | ACCEPTED |
 
 ---
 
