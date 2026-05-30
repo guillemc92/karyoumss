@@ -725,6 +725,157 @@
 
         .demo-banner a { color: var(--cyan); }
 
+        .btn-presenter {
+            padding: 6px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: var(--text);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-left: 12px;
+        }
+
+        .btn-presenter:hover, body.presenter-mode .btn-presenter {
+            background: rgba(124, 58, 237, 0.3);
+            border-color: var(--purple);
+            color: #e9d5ff;
+        }
+
+        #presentation.presentation-wrap {
+            display: block;
+        }
+
+        body.presenter-mode #presentation.presentation-wrap {
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 0;
+        }
+
+        body.presenter-mode .slides-wrapper .slide {
+            padding: 40px 50px;
+        }
+
+        body.presenter-mode .help-hint { display: none; }
+
+        .presenter-panel {
+            display: none;
+            flex-direction: column;
+            background: #0a0e14;
+            border-left: 1px solid var(--glass-border);
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body.presenter-mode .presenter-panel {
+            display: flex;
+        }
+
+        .presenter-panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(124, 58, 237, 0.12);
+        }
+
+        .presenter-panel-header h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--purple);
+            letter-spacing: 0.08em;
+        }
+
+        .presenter-slide-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            margin-top: 8px;
+        }
+
+        .presenter-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            font-size: 14px;
+            line-height: 1.75;
+            color: #b0bec5;
+        }
+
+        .presenter-body strong { color: var(--cyan); }
+
+        .presenter-timer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--glass-border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .presenter-timer span { color: var(--accent); font-weight: 700; }
+
+        .rubric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 16px 0;
+        }
+
+        .rubric-item {
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 230, 118, 0.35);
+            background: rgba(0, 230, 118, 0.08);
+            font-size: 12px;
+        }
+
+        .rubric-item.oral {
+            border-color: rgba(0, 180, 255, 0.35);
+            background: rgba(0, 180, 255, 0.08);
+        }
+
+        .rubric-num {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            line-height: 22px;
+            text-align: center;
+            background: var(--green);
+            color: var(--bg);
+            border-radius: 50%;
+            font-weight: 800;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+
+        .rubric-item.oral .rubric-num { background: var(--accent); }
+
+        .rubric-name { font-weight: 600; color: var(--text); display: block; margin: 6px 0 4px; }
+
+        .rubric-level {
+            color: var(--green);
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .rubric-evidence { color: var(--muted); font-size: 10px; display: block; margin-top: 4px; }
+
+        .rubric-score-box {
+            margin-top: 20px;
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(0, 230, 118, 0.15), rgba(0, 180, 255, 0.1));
+            border-radius: 12px;
+            border: 1px solid rgba(0, 230, 118, 0.3);
+        }
+
+        .rubric-score-box .big {
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--green);
+        }
+
         @media (max-width: 640px) {
             .header {
                 padding: 0 15px;
@@ -754,27 +905,31 @@
 </head>
 <body>
     <div class="progress-bar" id="progress-bar" style="width: 8%"></div>
-    <div class="help-hint">← → slides · N notas · 1-3 secciones</div>
+    <div class="help-hint" id="help-hint">← → slides · N notas · P presentador · 1-3 secciones</div>
     <!-- HEADER -->
     <div class="header">
         <div class="logo-brand">
             <i class="fas fa-dna"></i>
             BIOMED UMSS — Defensa Final
         </div>
+        <div style="display: flex; align-items: center;">
         <div class="nav-tabs">
             <div class="nav-tab active" data-section="presentation">📊 Presentación</div>
             <div class="nav-tab" data-section="correction">✏️ Corrección</div>
             <div class="nav-tab" data-section="report">📄 Informe</div>
+        </div>
+        <button type="button" class="btn-presenter" id="toggle-presenter" title="Modo presentador (P)">🎤 Modo P</button>
         </div>
     </div>
 
     <!-- CONTAINER -->
     <div class="container">
         <!-- SECCIÓN 1: PRESENTACIÓN -->
-        <div id="presentation" class="section active">
+        <div id="presentation" class="section active presentation-wrap">
+            <div class="slides-wrapper">
             <div class="slides-container">
                 <!-- SLIDE 1: HERO -->
-                <div class="slide active slide-hero">
+                <div class="slide active slide-hero" data-script="Saludo. Presentarse (G04, Guillermo Mamani). Decir que la entrega evaluada es exclusivamente release/2.0.0 en GitHub. No abrir main ni otras ramas.">
                     <h1>BIOMED UMSS</h1>
                     <p class="subtitle">Intelligent Karyotyping Platform</p>
                     <p class="subtitle" style="font-size: 16px; opacity: 0.8; font-weight: 300;">Análisis Citogenético con IA</p>
@@ -788,7 +943,7 @@
                         <a href="https://github.com/guillemc92/karyoumss/tree/release/2.0.0" target="_blank" rel="noopener" style="color: var(--cyan);">github.com/guillemc92/karyoumss</a>
                     </p>
                     <div class="speaker-note">⏱ ~1 min · Abrir con rama evaluada release/2.0.0 en GitHub.</div>
-                    <div class="slide-number">01 / 13</div>
+                    <div class="slide-number">01 / 14</div>
                 </div>
 
                 <!-- SLIDE 2: TRAZABILIDAD -->
@@ -812,7 +967,7 @@
                         <li><strong>12 diagramas</strong> <code>.mmd</code> en <code>docs/diagrams/</code></li>
                     </ul>
                     <div class="speaker-note">⏱ ~1 min · Mencionar que la entrega evaluada es solo el branch, no main.</div>
-                    <div class="slide-number">02 / 13</div>
+                    <div class="slide-number">02 / 14</div>
                 </div>
 
                 <!-- SLIDE 3: PROBLEMA -->
@@ -827,7 +982,7 @@
                     </ul>
                     <p style="margin-top: 30px;"><strong>Meta:</strong> Reducir TTK (Time-to-Karyotype) a <span style="color: var(--green); font-weight: 700;">≤15 minutos</span> con Human-in-the-loop</p>
                     <div class="speaker-note">⏱ ~1 min · Conectar con mercado UMSS / laboratorios citogenéticos.</div>
-                    <div class="slide-number">03 / 13</div>
+                    <div class="slide-number">03 / 14</div>
                 </div>
 
                 <!-- SLIDE 4: FSD UC -->
@@ -841,7 +996,7 @@
                     </ul>
                     <p style="color: var(--cyan); margin-top: 20px;"><i class="fas fa-link"></i> Trazado en <code>docs/PROMPT_MAPPING.md</code> (UC-02, RN-02)</p>
                     <div class="speaker-note">⏱ ~2 min · Criterio 8–25% de la guía de presentación.</div>
-                    <div class="slide-number">04 / 13</div>
+                    <div class="slide-number">04 / 14</div>
                 </div>
 
                 <!-- SLIDE 5: SOLUCIÓN -->
@@ -855,7 +1010,7 @@
                         <li>⚡ <strong>Async</strong> Redis + Celery (ADR-0002) — API &lt;100 ms</li>
                         <li>🔐 <strong>CHN</strong> en borde antes de cloud (ADR-0003, RN-03)</li>
                     </ul>
-                    <div class="slide-number">05 / 13</div>
+                    <div class="slide-number">05 / 14</div>
                 </div>
 
                 <!-- SLIDE 6: ARQUITECTURA C4 -->
@@ -893,7 +1048,7 @@
                         </div>
                     </div>
                     <div class="speaker-note">⏱ ~3 min · Mostrar DTI §2–§3 si piden detalle.</div>
-                    <div class="slide-number">06 / 13</div>
+                    <div class="slide-number">06 / 14</div>
                 </div>
 
                 <!-- SLIDE 7: HEXAGONAL -->
@@ -907,7 +1062,7 @@
                         <li>👤 <strong>AuthPort:</strong> Validación human-in-the-loop</li>
                     </ul>
                     <p style="margin-top: 30px; color: var(--cyan);"><i class="fas fa-check-circle"></i> <strong>ADR-0004:</strong> Monolito modular + satélites de inferencia.</p>
-                    <div class="slide-number">07 / 13</div>
+                    <div class="slide-number">07 / 14</div>
                 </div>
 
                 <!-- SLIDE 8: BARANDILLAS -->
@@ -921,7 +1076,7 @@
                         <li>🔍 <strong>RN-08:</strong> auditoría aleatoria 5% de verdes</li>
                     </ul>
                     <div class="speaker-note">⏱ ~1 min · Human-in-the-loop no negociable (BRD).</div>
-                    <div class="slide-number">08 / 13</div>
+                    <div class="slide-number">08 / 14</div>
                 </div>
 
                 <!-- SLIDE 9: AWS DEPLOYMENT -->
@@ -935,7 +1090,7 @@
                         <li>💾 <strong>Backup:</strong> Multi-AZ RDS + S3 replication</li>
                         <li>💰 <strong>Costo estimado:</strong> $2,000–3,500/mes (producción)</li>
                     </ul>
-                    <div class="slide-number">09 / 13</div>
+                    <div class="slide-number">09 / 14</div>
                 </div>
 
                 <!-- SLIDE 10: POCs -->
@@ -950,7 +1105,7 @@
                     </div>
                     <p><code>pocs/POC-XX/metrics.json</code> + README · Aprendizaje: tiling esencial en &gt;4K.</p>
                     <div class="speaker-note">⏱ ~1 min · Criterio rúbrica #4 Excelente (≥2 POC).</div>
-                    <div class="slide-number">10 / 13</div>
+                    <div class="slide-number">10 / 14</div>
                 </div>
 
                 <!-- SLIDE 11: ADRs -->
@@ -966,11 +1121,11 @@
                             <tr><td>0005</td><td>AWS ECS + RDS</td><td>Vendor lock-in vs CapEx on-prem</td></tr>
                         </tbody>
                     </table>
-                    <div class="slide-number">11 / 13</div>
+                    <div class="slide-number">11 / 14</div>
                 </div>
 
                 <!-- SLIDE 12: ROADMAP -->
-                <div class="slide slide-content">
+                <div class="slide slide-content" data-script="Cerrar ciclo S12: lecciones aprendidas alimentan roadmap. Fase 2 = firma MFA, ISCN, audit trail. Fase 3 = FHIR y escala enterprise. Enfatizar: IA aumentada, nunca autónoma.">
                     <h2>Roadmap y Lecciones (S12)</h2>
                     <ul>
                         <li><strong>Fase 2:</strong> Firma MFA, ISCN 2024, audit trail hash chain, auditoría 5%</li>
@@ -978,25 +1133,96 @@
                         <li><strong>Lección:</strong> IA aumentada, no autónoma — barandillas RN-01/02</li>
                     </ul>
                     <p style="margin-top: 20px; font-size: 13px; color: var(--muted);">Fuente: <code>docs/roadmap.md</code></p>
-                    <div class="slide-number">12 / 13</div>
+                    <div class="slide-number">12 / 14</div>
                 </div>
 
-                <!-- SLIDE 13: CIERRE -->
-                <div class="slide slide-hero" style="background: linear-gradient(135deg, var(--umss-red), var(--orange));">
+                <!-- SLIDE 13: RÚBRICA -->
+                <div class="slide slide-content" data-script="Mostrar al docente que el repo cumple la rúbrica antes de la nota oral. Criterio 5 se evalúa en vivo. Invitar a revisar release/2.0.0 en GitHub si lo desea.">
+                    <h2>Auto-evaluación — Rúbrica Defensa Final</h2>
+                    <p style="font-size: 13px; color: var(--muted); margin-bottom: 12px;">Rama evaluada: <code>release/2.0.0</code> · Entrega = el branch</p>
+                    <div class="rubric-grid">
+                        <div class="rubric-item">
+                            <span class="rubric-num">1</span>
+                            <span class="rubric-name">Coherencia MRD→PRD→FSD→DTI</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">DTI 24 § · vFinal · 12 .mmd</span>
+                        </div>
+                        <div class="rubric-item">
+                            <span class="rubric-num">2</span>
+                            <span class="rubric-name">Arquitectura + AWS + ADR-0005</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">C4 · hexagonal · trade-offs</span>
+                        </div>
+                        <div class="rubric-item">
+                            <span class="rubric-num">3</span>
+                            <span class="rubric-name">AGENTS.md sincronizado</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">v1.2 · skill-read-context</span>
+                        </div>
+                        <div class="rubric-item">
+                            <span class="rubric-num">4</span>
+                            <span class="rubric-name">POCs ejecutadas</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">5 POC · metrics.json</span>
+                        </div>
+                        <div class="rubric-item oral">
+                            <span class="rubric-num">5</span>
+                            <span class="rubric-name">Defensa oral + Q&amp;A</span>
+                            <span class="rubric-level" style="color: var(--accent);">⏳ En sesión</span>
+                            <span class="rubric-evidence">15 min + demo 5 min</span>
+                        </div>
+                        <div class="rubric-item">
+                            <span class="rubric-num">6</span>
+                            <span class="rubric-name">PROMPT_MAPPING</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">Tabla símbolo→archivo→métricas</span>
+                        </div>
+                        <div class="rubric-item">
+                            <span class="rubric-num">7</span>
+                            <span class="rubric-name">Diagramas .mmd</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">12 versionados en Git</span>
+                        </div>
+                    </div>
+                    <div class="rubric-score-box">
+                        <div class="big">6 / 7 Excelente</div>
+                        <div style="font-size: 13px; color: var(--muted); margin-top: 8px;">Nota orientativa documental: <strong style="color: var(--green);">90–95 / 100</strong></div>
+                    </div>
+                    <div class="speaker-note">Úsala 1 min antes de la demo. No sustituye la evaluación del docente.</div>
+                    <div class="slide-number">13 / 14</div>
+                </div>
+
+                <!-- SLIDE 14: CIERRE -->
+                <div class="slide slide-hero" style="background: linear-gradient(135deg, var(--umss-red), var(--orange));" data-script="Transición a demo. Tecla 2 o pestaña Corrección. Mostrar mesa Konva + semáforo. Luego Informe con CHN (sin PII). Q&A: ADR-0002, RN-02, CHN.">
                     <h1 style="font-size: 48px;">Demo en vivo (5 min)</h1>
                     <p class="subtitle">Pestaña <strong>Corrección</strong> → prototipo FSD-UC-03</p>
                     <p class="subtitle" style="font-size: 14px; opacity: 0.8; margin-top: 24px;">Pestaña <strong>Informe</strong> → CHN + ISCN + audit trail (sin PII)</p>
                     <p class="subtitle" style="font-size: 13px; margin-top: 16px;">Q&amp;A docente · 3 min</p>
-                    <div class="slide-number">13 / 13</div>
+                    <div class="slide-number">14 / 14</div>
                 </div>
             </div>
 
             <!-- CONTROLES DE SLIDES -->
             <div class="slide-controls">
                 <button class="slide-btn" id="prev-slide" title="Anterior"><i class="fas fa-chevron-left"></i></button>
-                <span class="slide-counter"><span id="current-slide">1</span> / <span id="total-slides">13</span></span>
+                <span class="slide-counter"><span id="current-slide">1</span> / <span id="total-slides">14</span></span>
                 <button class="slide-btn" id="next-slide" title="Siguiente"><i class="fas fa-chevron-right"></i></button>
             </div>
+            </div><!-- slides-wrapper -->
+
+            <!-- PANEL MODO PRESENTADOR (solo visible con P) -->
+            <aside class="presenter-panel" id="presenter-panel" aria-label="Notas del presentador">
+                <div class="presenter-panel-header">
+                    <h3><i class="fas fa-user-tie"></i> Modo presentador</h3>
+                    <div class="presenter-slide-title" id="presenter-slide-title">Slide 1</div>
+                </div>
+                <div class="presenter-body" id="presenter-body">
+                    <p>Activa con <strong>P</strong> o el botón <strong>Modo P</strong>. Aquí verás el guion ampliado de cada slide.</p>
+                </div>
+                <div class="presenter-timer">
+                    Bloque presentación: <span id="presenter-block-time">~15 min</span> · Slide <span id="presenter-slide-num">1</span>/<span id="presenter-total">14</span>
+                </div>
+            </aside>
         </div>
 
         <!-- SECCIÓN 2: CORRECCIÓN DE CARIOTIPO (DEMO) -->
@@ -1142,22 +1368,69 @@
         const slides = document.querySelectorAll('.slide');
         const totalSlides = slides.length;
 
+        const SLIDE_TIMES = ['1 min','1 min','1 min','2 min','1 min','3 min','2 min','1 min','2 min','1 min','1 min','1 min','1 min','— demo'];
+
+        const PRESENTER_SCRIPTS = [
+            'Saludo. G04 — Guillermo Mamani Chambi. Entrega = branch release/2.0.0 únicamente.',
+            'Cadena MRD_vFinal → PRD → FSD → DTI v2.0. Mencionar 24 secciones y PROMPT_MAPPING.',
+            'Problema: 45 min manual, error humano. Meta TTK ≤15 min con human-in-the-loop.',
+            'UC-02 pipeline IA. Citar prompts/PR-UC02-SEM.md. CHN antes de S3. WebSocket borrador listo.',
+            'Stack: U-Net + tiling ADR-0001, EfficientNet-B3, Grad-CAM, Celery ADR-0002, CHN ADR-0003.',
+            'C4: React, FastAPI, Redis/Celery, TorchServe GPU, RDS, S3. Actores analista y supervisor.',
+            'Hexagonal: ImagePort, ModelPort, ReportPort, AuditPort, AuthPort. ADR-0004 monolito modular.',
+            'Barandillas: score <0.85 naranja, RN-01 bloqueo informe, CHN sin PII, ISCN read-only.',
+            'ADR-0005 AWS: ECS Fargate, RDS Multi-AZ, HIPAA. Trade-off: lock-in vs Terraform.',
+            '5 POCs con metrics.json en repo. IoU 0.92, F1 0.94, Merkle 100%, p95 387ms.',
+            'Tabla ADR 0001-0005 con trade-offs explícitos para Q&A del docente.',
+            'Roadmap Fase 2-3. Lección S12: IA aumentada, no autónoma.',
+            'Auto-evaluación rúbrica: 6/7 Excelente en repo. Criterio 5 = esta defensa oral.',
+            'Demo: pestaña Corrección (iframe prototipo). Informe CHN. Q&A: ADR-0002, RN-02.'
+        ];
+
+        function updatePresenterPanel() {
+            const slide = slides[currentSlide];
+            const titleEl = slide.querySelector('h1, h2');
+            const title = titleEl ? titleEl.textContent : 'Slide ' + (currentSlide + 1);
+            const script = slide.dataset.script || PRESENTER_SCRIPTS[currentSlide] || '';
+            const noteEl = slide.querySelector('.speaker-note');
+            const note = noteEl ? noteEl.textContent.replace(/^⏱\s*/, '') : '';
+
+            document.getElementById('presenter-slide-title').textContent = title;
+            document.getElementById('presenter-slide-num').textContent = currentSlide + 1;
+            document.getElementById('presenter-total').textContent = totalSlides;
+            document.getElementById('presenter-block-time').textContent =
+                '~' + SLIDE_TIMES[currentSlide] + ' (total presentación ~15 min)';
+
+            let html = '<p><strong>Guion:</strong> ' + script + '</p>';
+            if (note) html += '<p style="margin-top:16px;color:#c4b5fd;"><strong>Nota:</strong> ' + note + '</p>';
+            if (currentSlide === 12) {
+                html += '<p style="margin-top:16px;font-size:12px;color:var(--green);">✓ Invitar al docente a verificar criterios 1-4, 6-7 en GitHub si lo desea.</p>';
+            }
+            document.getElementById('presenter-body').innerHTML = html;
+        }
+
         function showSlide() {
             slides.forEach(slide => slide.classList.remove('active'));
             slides[currentSlide].classList.add('active');
             updateSlideCounter();
+            updatePresenterPanel();
             const pct = ((currentSlide + 1) / totalSlides) * 100;
             document.getElementById('progress-bar').style.width = pct + '%';
         }
 
         function nextSlide() {
             currentSlide = (currentSlide + 1) % totalSlides;
-            showSlide(currentSlide);
+            showSlide();
         }
 
         function prevSlide() {
             currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
-            showSlide(currentSlide);
+            showSlide();
+        }
+
+        function togglePresenterMode() {
+            document.body.classList.toggle('presenter-mode');
+            document.body.classList.add('show-notes');
         }
 
         function updateSlideCounter() {
@@ -1176,10 +1449,13 @@
                 if (e.key === 'ArrowLeft') prevSlide();
             }
             if (e.key === 'n' || e.key === 'N') document.body.classList.toggle('show-notes');
+            if (e.key === 'p' || e.key === 'P') togglePresenterMode();
             if (e.key === '1') navTabs[0].click();
             if (e.key === '2') navTabs[1].click();
             if (e.key === '3') navTabs[2].click();
         });
+
+        document.getElementById('toggle-presenter').addEventListener('click', togglePresenterMode);
 
         // Ocultar controles fuera de presentación
         const slideControls = document.querySelector('.slide-controls');

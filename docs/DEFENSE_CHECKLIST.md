@@ -26,7 +26,8 @@
 
 ## 3. Presentación unificada
 - [ ] Abrir `DEFENSA_MAGISTRAL.html` (13 slides + demo integrada).
-- [ ] Teclas: `←` `→` slides · `N` notas del presentador · `1` `2` `3` secciones.
+- [ ] Teclas: `←` `→` slides · `N` notas en slide · `P` **modo presentador** (panel guion) · `1` `2` `3` secciones.
+- [ ] Slide **13/14**: auto-evaluación rúbrica (6/7 Excelente).
 
 ## 4. Demo recomendada (5 min)
 - [ ] Pestaña **Corrección** en `DEFENSA_MAGISTRAL.html` (iframe al prototipo)
