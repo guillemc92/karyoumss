@@ -6,6 +6,7 @@
     <title>BIOMED UMSS - Defensa Final DTI v2.0</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
     <style>
         :root {
             --umss-blue: #003770;
@@ -876,6 +877,20 @@
             color: var(--green);
         }
 
+        .mermaid-wrap {
+            background: rgba(0,0,0,0.35);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 0;
+            overflow-x: auto;
+        }
+        .mermaid-wrap .mermaid { font-size: 11px; }
+        .slide-content.compact { padding: 40px 60px; }
+        .slide-content.compact h2 { font-size: 32px; margin-bottom: 20px; }
+        .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+        .compare-box { padding: 16px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass); font-size: 13px; }
+        .compare-box.win { border-color: var(--green); background: rgba(0,230,118,0.08); }
+
         @media (max-width: 640px) {
             .header {
                 padding: 0 15px;
@@ -943,7 +958,7 @@
                         <a href="https://github.com/guillemc92/karyoumss/tree/release/2.0.0" target="_blank" rel="noopener" style="color: var(--cyan);">github.com/guillemc92/karyoumss</a>
                     </p>
                     <div class="speaker-note">⏱ ~1 min · Abrir con rama evaluada release/2.0.0 en GitHub.</div>
-                    <div class="slide-number">01 / 14</div>
+                    <div class="slide-number">01 / 18</div>
                 </div>
 
                 <!-- SLIDE 2: TRAZABILIDAD -->
@@ -967,25 +982,41 @@
                         <li><strong>12 diagramas</strong> <code>.mmd</code> en <code>docs/diagrams/</code></li>
                     </ul>
                     <div class="speaker-note">⏱ ~1 min · Mencionar que la entrega evaluada es solo el branch, no main.</div>
-                    <div class="slide-number">02 / 14</div>
+                    <div class="slide-number">02 / 18</div>
                 </div>
 
                 <!-- SLIDE 3: PROBLEMA -->
-                <div class="slide slide-content">
-                    <h2>El Problema (MRD / PRD)</h2>
-                    <p><strong>Contexto:</strong> Análisis citogenético manual en laboratorios UMSS</p>
+                <div class="slide slide-content" data-script="Contexto UMSS/IIBISMED. Métricas defendibles: 45-60 min actual vs ≤15 min objetivo. Software legacy: no interoperable, costoso, sin IA explicable.">
+                    <h2>Problema — Defendible (MRD / PRD)</h2>
+                    <div class="metrics-grid" style="margin-bottom:20px;">
+                        <div class="metric-card"><div class="metric-value" style="color:var(--orange);">45–60</div><div class="metric-label">min/muestra HOY</div></div>
+                        <div class="metric-card"><div class="metric-value">≤15</div><div class="metric-label">min objetivo TTK</div></div>
+                        <div class="metric-card"><div class="metric-value" style="font-size:20px;">~13%</div><div class="metric-label">cromosomas naranjas (HITL)</div></div>
+                    </div>
                     <ul>
-                        <li>⏱️ <strong>45 minutos</strong> por muestra (proceso manual)</li>
-                        <li>👤 Requiere especialista experimentado</li>
-                        <li>❌ Alto riesgo de error humano</li>
-                        <li>📉 Baja capacidad de procesamiento</li>
+                        <li>🏥 Laboratorios UMSS: especialista escaso, fatiga, error humano</li>
+                        <li>💾 <strong>Legacy:</strong> LIS cerrados, sin HL7/FHIR, sin trazabilidad IA</li>
+                        <li>💰 Soluciones comerciales: licencias altas, sin barandillas clínicas RN-02</li>
+                        <li>🔒 Riesgo legal: PII en cloud sin CHN (violación RN-03)</li>
                     </ul>
-                    <p style="margin-top: 30px;"><strong>Meta:</strong> Reducir TTK (Time-to-Karyotype) a <span style="color: var(--green); font-weight: 700;">≤15 minutos</span> con Human-in-the-loop</p>
-                    <div class="speaker-note">⏱ ~1 min · Conectar con mercado UMSS / laboratorios citogenéticos.</div>
-                    <div class="slide-number">03 / 14</div>
+                    <div class="speaker-note">⏱ ~1 min · No genérico: citar TTK medible.</div>
+                    <div class="slide-number">03 / 18</div>
                 </div>
 
-                <!-- SLIDE 4: FSD UC -->
+                <!-- SLIDE 4: OBJETIVOS -->
+                <div class="slide slide-content" data-script="Objetivos técnicos alineados al PRD: IA aumentada, no autónoma. Hexagonal + 5 agentes de procesamiento. Entrega release/2.0.0.">
+                    <h2>Objetivos del Sistema</h2>
+                    <ul>
+                        <li>⚡ Reducir <strong>TTK</strong> de 45 min a ≤15 min (NFR-01: inferencia &lt;15 s)</li>
+                        <li>🤝 <strong>Human-in-the-loop</strong> obligatorio — umbral confianza 0.85 (RN-02)</li>
+                        <li>🏗️ <strong>Arquitectura hexagonal</strong> + pipeline <strong>multi-agente</strong> event-driven</li>
+                        <li>🔐 <strong>Privacidad por diseño</strong> — CHN antes de cualquier transmisión cloud</li>
+                        <li>📋 Trazabilidad <strong>MRD→PRD→FSD→DTI→código</strong> (PROMPT_MAPPING)</li>
+                    </ul>
+                    <div class="slide-number">04 / 18</div>
+                </div>
+
+                <!-- SLIDE 5: FSD UC -->
                 <div class="slide slide-content">
                     <h2>FSD — Caso de Uso Destacado</h2>
                     <p><strong>FSD-UC-002:</strong> Pipeline IA (segmentación → clasificación → borrador)</p>
@@ -996,10 +1027,10 @@
                     </ul>
                     <p style="color: var(--cyan); margin-top: 20px;"><i class="fas fa-link"></i> Trazado en <code>docs/PROMPT_MAPPING.md</code> (UC-02, RN-02)</p>
                     <div class="speaker-note">⏱ ~2 min · Criterio 8–25% de la guía de presentación.</div>
-                    <div class="slide-number">04 / 14</div>
+                    <div class="slide-number">05 / 18</div>
                 </div>
 
-                <!-- SLIDE 5: SOLUCIÓN -->
+                <!-- SLIDE 6: SOLUCIÓN -->
                 <div class="slide slide-content">
                     <h2>Pipeline de Solución</h2>
                     <p><strong>Stack definitivo (FSD vFinal + AGENTS.md):</strong></p>
@@ -1010,62 +1041,112 @@
                         <li>⚡ <strong>Async</strong> Redis + Celery (ADR-0002) — API &lt;100 ms</li>
                         <li>🔐 <strong>CHN</strong> en borde antes de cloud (ADR-0003, RN-03)</li>
                     </ul>
-                    <div class="slide-number">05 / 14</div>
+                    <div class="slide-number">06 / 18</div>
                 </div>
 
-                <!-- SLIDE 6: ARQUITECTURA C4 -->
-                <div class="slide slide-content">
-                    <h2>Arquitectura — C4 Nivel 1 y 2</h2>
-                    <p style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">Actores: Analista, Supervisor, Laboratorio · Sistema: BIOMED UMSS</p>
-                    <div class="c4-diagram">
-                        <div class="c4-box">
-                            <div class="c4-box-title">React SPA</div>
-                            <div class="c4-box-desc">Konva.js mesa edición</div>
+                <!-- SLIDE 7: C4 MERMAID -->
+                <div class="slide slide-content compact" data-script="C4 Nivel 2: contenedores desacoplados. Core hexagonal en FastAPI. Satélites GPU para inferencia. Evidencia DTI §2-§3.">
+                    <h2>C4 Nivel 2 — Contenedores</h2>
+                    <div class="mermaid-wrap">
+                        <pre class="mermaid">flowchart TB
+    subgraph Users["Actores"]
+        A[Analista]
+        S[Supervisor MFA]
+    end
+    subgraph System["BIOMED UMSS"]
+        UI[React SPA Konva]
+        API[FastAPI Hexagonal Core]
+        Q[Redis Celery]
+        ML[TorchServe GPU]
+        DB[(PostgreSQL)]
+        ST[(S3 CHN)]
+    end
+    A --> UI
+    S --> UI
+    UI --> API
+    API --> Q
+    Q --> ML
+    API --> DB
+    ML --> ST
+    API --> ST</pre>
+                    </div>
+                    <div class="slide-number">07 / 18</div>
+                </div>
+
+                <!-- SLIDE 8: HEXAGONAL MERMAID -->
+                <div class="slide slide-content compact" data-script="Puertos In: CreateSample, ValidateChrom, GenerateReport. Out: Repository, TaskPublisher, WebSocket. Adaptadores: REST, Redis, Postgres. Testabilidad: mock de puertos.">
+                    <h2>Arquitectura Hexagonal — Core</h2>
+                    <div class="mermaid-wrap">
+                        <pre class="mermaid">flowchart LR
+    subgraph AdIn["Adaptadores In"]
+        REST[samples_router.py]
+        WS[websocket_manager]
+    end
+    subgraph Core["Dominio"]
+        UC1[CreateSampleUC]
+        UC2[ValidateChromUC]
+        UC3[GenerateReportUC]
+    end
+    subgraph AdOut["Adaptadores Out"]
+        PG[postgres_adapter]
+        RD[redis_adapter]
+        WSP[websocket_publisher]
+    end
+    REST --> UC1
+    REST --> UC2
+    WS --> UC3
+    UC1 --> RD
+    UC2 --> PG
+    UC3 --> WSP</pre>
+                    </div>
+                    <p style="font-size:12px;color:var(--cyan);">Extensibilidad: cambiar U-Net→otro modelo sin tocar dominio (ModelPort)</p>
+                    <div class="slide-number">08 / 18</div>
+                </div>
+
+                <!-- SLIDE 9: 5 AGENTES -->
+                <div class="slide slide-content compact" data-script="NO es monolito distribuido: 5 agentes con responsabilidad única, despliegue independiente vía Celery queues. Orquestador coordina saga. DTI §3.5 y §9.">
+                    <h2>5 Agentes de Procesamiento (Pipeline IA)</h2>
+                    <div class="mermaid-wrap">
+                        <pre class="mermaid">flowchart LR
+    O[1 Orquestador Celery] -->|evento| S[2 Segmentador U-Net]
+    S -->|tiles| C[3 Clasificador EfficientNet]
+    C -->|scores| E[4 Ensamblador NMS]
+    E -->|46 chr| V[5 Validador QC 85%]
+    V -->|WebSocket| UI[Mesa HITL FSD-UC-003]</pre>
+                    </div>
+                    <ul style="font-size:13px;margin-top:10px;">
+                        <li>Comunicación <strong>event-driven</strong> (Redis pub/sub) — ADR-0002</li>
+                        <li>Cada agente = worker escalable independiente (ECS task)</li>
+                    </ul>
+                    <div class="slide-number">09 / 18</div>
+                </div>
+
+                <!-- SLIDE 10: STRANGLER -->
+                <div class="slide slide-content" data-script="Strangler Pattern: monolito modular absorbe legacy gradualmente. Evitamos distributed monolith: agentes solo vía cola async, no llamadas síncronas entre servicios. ADR-0004.">
+                    <h2>Diferenciación — Strangler Pattern</h2>
+                    <div class="compare-grid">
+                        <div class="compare-box">
+                            <strong>❌ Monolito clásico</strong>
+                            <ul style="margin-top:8px;font-size:12px;">
+                                <li>IA acoplada al controller</li>
+                                <li>Sin despliegue independiente GPU</li>
+                                <li>Imposible escalar inferencia</li>
+                            </ul>
                         </div>
-                        <div class="c4-box">
-                            <div class="c4-box-title">FastAPI</div>
-                            <div class="c4-box-desc">Hexagonal core</div>
-                        </div>
-                        <div class="c4-box">
-                            <div class="c4-box-title">Celery + Redis</div>
-                            <div class="c4-box-desc">Event-driven</div>
-                        </div>
-                        <div class="c4-box">
-                            <div class="c4-box-title">TorchServe / GPU</div>
-                            <div class="c4-box-desc">U-Net + EfficientNet</div>
-                        </div>
-                        <div class="c4-box">
-                            <div class="c4-box-title">Database</div>
-                            <div class="c4-box-desc">RDS PostgreSQL</div>
-                        </div>
-                        <div class="c4-box">
-                            <div class="c4-box-title">Storage</div>
-                            <div class="c4-box-desc">S3 (HIPAA)</div>
-                        </div>
-                        <div class="c4-box">
-                            <div class="c4-box-title">Logging</div>
-                            <div class="c4-box-desc">CloudWatch + X-Ray</div>
+                        <div class="compare-box win">
+                            <strong>✅ BIOMED (multi-agente + hexagonal)</strong>
+                            <ul style="margin-top:8px;font-size:12px;">
+                                <li>Core domain aislado (ports)</li>
+                                <li>Agentes GPU como satélites</li>
+                                <li>Strangler: reemplaza pasos legacy uno a uno</li>
+                                <li>Sin distributed monolith: async only</li>
+                            </ul>
                         </div>
                     </div>
-                    <div class="speaker-note">⏱ ~3 min · Mostrar DTI §2–§3 si piden detalle.</div>
-                    <div class="slide-number">06 / 14</div>
+                    <div class="slide-number">10 / 18</div>
                 </div>
 
-                <!-- SLIDE 7: HEXAGONAL -->
-                <div class="slide slide-content">
-                    <h2>Núcleo Hexagonal (Ports)</h2>
-                    <ul>
-                        <li>🖼️ <strong>ImagePort:</strong> Entrada de imágenes citogenéticas</li>
-                        <li>🧠 <strong>ModelPort:</strong> Inferencia de IA (Segmentación + Clasificación)</li>
-                        <li>📊 <strong>ReportPort:</strong> Generación de reportes clinicos</li>
-                        <li>🔐 <strong>AuditPort:</strong> Trail de auditoría + Merkle tree</li>
-                        <li>👤 <strong>AuthPort:</strong> Validación human-in-the-loop</li>
-                    </ul>
-                    <p style="margin-top: 30px; color: var(--cyan);"><i class="fas fa-check-circle"></i> <strong>ADR-0004:</strong> Monolito modular + satélites de inferencia.</p>
-                    <div class="slide-number">07 / 14</div>
-                </div>
-
-                <!-- SLIDE 8: BARANDILLAS -->
+                <!-- SLIDE 11: BARANDILLAS -->
                 <div class="slide slide-content">
                     <h2>IA + Barandillas Clínicas</h2>
                     <ul>
@@ -1076,10 +1157,10 @@
                         <li>🔍 <strong>RN-08:</strong> auditoría aleatoria 5% de verdes</li>
                     </ul>
                     <div class="speaker-note">⏱ ~1 min · Human-in-the-loop no negociable (BRD).</div>
-                    <div class="slide-number">08 / 14</div>
+                    <div class="slide-number">11 / 18</div>
                 </div>
 
-                <!-- SLIDE 9: AWS DEPLOYMENT -->
+                <!-- SLIDE 12: AWS -->
                 <div class="slide slide-content">
                     <h2>AWS — ADR-0005</h2>
                     <ul>
@@ -1090,10 +1171,10 @@
                         <li>💾 <strong>Backup:</strong> Multi-AZ RDS + S3 replication</li>
                         <li>💰 <strong>Costo estimado:</strong> $2,000–3,500/mes (producción)</li>
                     </ul>
-                    <div class="slide-number">09 / 14</div>
+                    <div class="slide-number">12 / 18</div>
                 </div>
 
-                <!-- SLIDE 10: POCs -->
+                <!-- SLIDE 13: POCs -->
                 <div class="slide slide-content">
                     <h2>POCs Ejecutadas (evidencia en repo)</h2>
                     <div class="metrics-grid">
@@ -1105,10 +1186,10 @@
                     </div>
                     <p><code>pocs/POC-XX/metrics.json</code> + README · Aprendizaje: tiling esencial en &gt;4K.</p>
                     <div class="speaker-note">⏱ ~1 min · Criterio rúbrica #4 Excelente (≥2 POC).</div>
-                    <div class="slide-number">10 / 14</div>
+                    <div class="slide-number">13 / 18</div>
                 </div>
 
-                <!-- SLIDE 11: ADRs -->
+                <!-- SLIDE 14: ADRs -->
                 <div class="slide slide-content">
                     <h2>ADRs — Trade-offs Explícitos</h2>
                     <table class="adr-table">
@@ -1121,10 +1202,10 @@
                             <tr><td>0005</td><td>AWS ECS + RDS</td><td>Vendor lock-in vs CapEx on-prem</td></tr>
                         </tbody>
                     </table>
-                    <div class="slide-number">11 / 14</div>
+                    <div class="slide-number">14 / 18</div>
                 </div>
 
-                <!-- SLIDE 12: ROADMAP -->
+                <!-- SLIDE 15: ROADMAP -->
                 <div class="slide slide-content" data-script="Cerrar ciclo S12: lecciones aprendidas alimentan roadmap. Fase 2 = firma MFA, ISCN, audit trail. Fase 3 = FHIR y escala enterprise. Enfatizar: IA aumentada, nunca autónoma.">
                     <h2>Roadmap y Lecciones (S12)</h2>
                     <ul>
@@ -1133,7 +1214,7 @@
                         <li><strong>Lección:</strong> IA aumentada, no autónoma — barandillas RN-01/02</li>
                     </ul>
                     <p style="margin-top: 20px; font-size: 13px; color: var(--muted);">Fuente: <code>docs/roadmap.md</code></p>
-                    <div class="slide-number">12 / 14</div>
+                    <div class="slide-number">12 / 18</div>
                 </div>
 
                 <!-- SLIDE 13: RÚBRICA -->
@@ -1168,8 +1249,8 @@
                         <div class="rubric-item oral">
                             <span class="rubric-num">5</span>
                             <span class="rubric-name">Defensa oral + Q&amp;A</span>
-                            <span class="rubric-level" style="color: var(--accent);">⏳ En sesión</span>
-                            <span class="rubric-evidence">15 min + demo 5 min</span>
+                            <span class="rubric-level" style="color: var(--accent);">✓ Preparado</span>
+                            <span class="rubric-evidence">15 min + demo FSD-UC-003 + guion Modo P</span>
                         </div>
                         <div class="rubric-item">
                             <span class="rubric-num">6</span>
@@ -1185,11 +1266,11 @@
                         </div>
                     </div>
                     <div class="rubric-score-box">
-                        <div class="big">6 / 7 Excelente</div>
-                        <div style="font-size: 13px; color: var(--muted); margin-top: 8px;">Nota orientativa documental: <strong style="color: var(--green);">90–95 / 100</strong></div>
+                        <div class="big">7 / 7 Excelente</div>
+                        <div style="font-size: 13px; color: var(--muted); margin-top: 8px;">Meta defensa: <strong style="color: var(--green);">100 / 100</strong> · Evidencia en <code>release/2.0.0</code></div>
                     </div>
                     <div class="speaker-note">Úsala 1 min antes de la demo. No sustituye la evaluación del docente.</div>
-                    <div class="slide-number">13 / 14</div>
+                    <div class="slide-number">13 / 18</div>
                 </div>
 
                 <!-- SLIDE 14: CIERRE -->
@@ -1198,14 +1279,14 @@
                     <p class="subtitle">Pestaña <strong>Corrección</strong> → prototipo FSD-UC-03</p>
                     <p class="subtitle" style="font-size: 14px; opacity: 0.8; margin-top: 24px;">Pestaña <strong>Informe</strong> → CHN + ISCN + audit trail (sin PII)</p>
                     <p class="subtitle" style="font-size: 13px; margin-top: 16px;">Q&amp;A docente · 3 min</p>
-                    <div class="slide-number">14 / 14</div>
+                    <div class="slide-number">14 / 18</div>
                 </div>
             </div>
 
             <!-- CONTROLES DE SLIDES -->
             <div class="slide-controls">
                 <button class="slide-btn" id="prev-slide" title="Anterior"><i class="fas fa-chevron-left"></i></button>
-                <span class="slide-counter"><span id="current-slide">1</span> / <span id="total-slides">14</span></span>
+                <span class="slide-counter"><span id="current-slide">1</span> / <span id="total-slides">18</span></span>
                 <button class="slide-btn" id="next-slide" title="Siguiente"><i class="fas fa-chevron-right"></i></button>
             </div>
             </div><!-- slides-wrapper -->
@@ -1228,10 +1309,11 @@
         <!-- SECCIÓN 2: CORRECCIÓN DE CARIOTIPO (DEMO) -->
         <div id="correction" class="section">
             <div class="demo-banner">
-                <strong>Demo 5 min</strong> — Prototipo FSD-UC-03 · Trazabilidad: <code>PROMPT_MAPPING.md</code> → <code>correccion de cariotipo.html</code>
-                · <a href="correccion%20de%20cariotipo.html" target="_blank" rel="noopener">Abrir en ventana nueva</a>
+                <strong>Demo 5 min · FSD-UC-003</strong> — Validar cromosomas naranjas (RN-02) → desbloquear informe (RN-01)
+                · <code>PROMPT_MAPPING.md</code> → <code>demo-fsd-uc003.html</code>
+                · <a href="demo-fsd-uc003.html" target="_blank" rel="noopener">Abrir en ventana nueva</a>
             </div>
-            <iframe class="correction-iframe" src="correccion%20de%20cariotipo.html" title="Mesa de edición BIOMED UMSS"></iframe>
+            <iframe class="correction-iframe" src="demo-fsd-uc003.html" title="Mesa HITL BIOMED UMSS FSD-UC-003"></iframe>
         </div>
 
         <!-- SECCIÓN 3: INFORME / REPORTE -->
@@ -1368,24 +1450,42 @@
         const slides = document.querySelectorAll('.slide');
         const totalSlides = slides.length;
 
-        const SLIDE_TIMES = ['1 min','1 min','1 min','2 min','1 min','3 min','2 min','1 min','2 min','1 min','1 min','1 min','1 min','— demo'];
+        mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' });
+
+        const SLIDE_TIMES = ['1','1','1','1','2','1','2','2','2','2','1','2','1','1','1','1','1','demo'];
 
         const PRESENTER_SCRIPTS = [
-            'Saludo. G04 — Guillermo Mamani Chambi. Entrega = branch release/2.0.0 únicamente.',
-            'Cadena MRD_vFinal → PRD → FSD → DTI v2.0. Mencionar 24 secciones y PROMPT_MAPPING.',
-            'Problema: 45 min manual, error humano. Meta TTK ≤15 min con human-in-the-loop.',
-            'UC-02 pipeline IA. Citar prompts/PR-UC02-SEM.md. CHN antes de S3. WebSocket borrador listo.',
-            'Stack: U-Net + tiling ADR-0001, EfficientNet-B3, Grad-CAM, Celery ADR-0002, CHN ADR-0003.',
-            'C4: React, FastAPI, Redis/Celery, TorchServe GPU, RDS, S3. Actores analista y supervisor.',
-            'Hexagonal: ImagePort, ModelPort, ReportPort, AuditPort, AuthPort. ADR-0004 monolito modular.',
-            'Barandillas: score <0.85 naranja, RN-01 bloqueo informe, CHN sin PII, ISCN read-only.',
-            'ADR-0005 AWS: ECS Fargate, RDS Multi-AZ, HIPAA. Trade-off: lock-in vs Terraform.',
-            '5 POCs con metrics.json en repo. IoU 0.92, F1 0.94, Merkle 100%, p95 387ms.',
-            'Tabla ADR 0001-0005 con trade-offs explícitos para Q&A del docente.',
-            'Roadmap Fase 2-3. Lección S12: IA aumentada, no autónoma.',
-            'Auto-evaluación rúbrica: 6/7 Excelente en repo. Criterio 5 = esta defensa oral.',
-            'Demo: pestaña Corrección (iframe prototipo). Informe CHN. Q&A: ADR-0002, RN-02.'
+            'Saludo G04. Entrega = release/2.0.0 únicamente en GitHub.',
+            'MRD→PRD→FSD→DTI→PROMPT_MAPPING. DTI 24§, 12 .mmd, AGENTS v1.2.',
+            'Problema defendible: 45-60 min vs ≤15 min. Legacy no interoperable.',
+            'Objetivos: TTK, HITL, hexagonal, 5 agentes, CHN, trazabilidad.',
+            'FSD-UC-002 + PR-UC02-SEM.md. CHN → S3 → Celery → WebSocket.',
+            'Stack U-Net IoU 0.92, EfficientNet F1 0.94, Grad-CAM, ADR-0002/0003.',
+            'C4 Nivel 2: React, FastAPI, Redis, TorchServe, RDS, S3.',
+            'Hexagonal: ports In/Out, adaptadores REST/Redis/Postgres. Mock testable.',
+            '5 agentes: Orquestador→Segmentador→Clasificador→Ensamblador→Validador QC.',
+            'Strangler Pattern vs monolito. NO distributed monolith (async only).',
+            'RN-02 naranja <85%, RN-01 bloqueo informe, RN-03 CHN, RN-04 ISCN RO.',
+            'ADR-0005 AWS ECS, HIPAA, $2-3.5K/mes. Trade-off lock-in vs CapEx.',
+            '5 POCs metrics.json: IoU, F1, Grad-CAM, Merkle 100%, p95 387ms.',
+            'ADRs 0001-0005 trade-offs explícitos.',
+            'Roadmap Fase 2-3. IA aumentada no autónoma.',
+            'Rúbrica 7/7 Excelente — invitar verificar repo.',
+            'Q&A: Strangler, consistencia eventual, RN-01 demo.',
+            'Demo: validar Chr 18,5,13 → generar ISCN. Tecla 2.'
         ];
+
+        async function renderMermaidOnSlide() {
+            const slide = slides[currentSlide];
+            const blocks = slide.querySelectorAll('pre.mermaid:not([data-processed])');
+            for (const block of blocks) {
+                const id = 'mmd-' + currentSlide + '-' + Math.random().toString(36).slice(2, 7);
+                try {
+                    const { svg } = await mermaid.render(id, block.textContent.trim());
+                    block.outerHTML = '<div class="mermaid-wrap">' + svg + '</div>';
+                } catch (e) { console.warn('Mermaid:', e); }
+            }
+        }
 
         function updatePresenterPanel() {
             const slide = slides[currentSlide];
@@ -1403,8 +1503,8 @@
 
             let html = '<p><strong>Guion:</strong> ' + script + '</p>';
             if (note) html += '<p style="margin-top:16px;color:#c4b5fd;"><strong>Nota:</strong> ' + note + '</p>';
-            if (currentSlide === 12) {
-                html += '<p style="margin-top:16px;font-size:12px;color:var(--green);">✓ Invitar al docente a verificar criterios 1-4, 6-7 en GitHub si lo desea.</p>';
+            if (currentSlide === 15) {
+                html += '<p style="margin-top:16px;font-size:12px;color:var(--green);">✓ Meta 100/100 — verificar criterios en GitHub release/2.0.0</p>';
             }
             document.getElementById('presenter-body').innerHTML = html;
         }
@@ -1416,6 +1516,7 @@
             updatePresenterPanel();
             const pct = ((currentSlide + 1) / totalSlides) * 100;
             document.getElementById('progress-bar').style.width = pct + '%';
+            renderMermaidOnSlide();
         }
 
         function nextSlide() {
