@@ -24,18 +24,23 @@
 - [ ] 83–92 %: POCs — 2–3 con métricas de `metrics.json` — ~1 min
 - [ ] 92–100 %: Roadmap + riesgos — ~1 min
 
-## 3. Demo recomendada (5 min)
-- [ ] Abrir prototipo: `correccion de cariotipo.html` o https://guillemc92.github.io/karyoumss/
+## 3. Presentación unificada
+- [ ] Abrir `DEFENSA_MAGISTRAL.html` (13 slides + demo integrada).
+- [ ] Teclas: `←` `→` slides · `N` notas del presentador · `1` `2` `3` secciones.
+
+## 4. Demo recomendada (5 min)
+- [ ] Pestaña **Corrección** en `DEFENSA_MAGISTRAL.html` (iframe al prototipo)
+- [ ] O abrir: `correccion de cariotipo.html` / https://guillemc92.github.io/karyoumss/
 - [ ] Mostrar semaforización / mesa de edición (UC-03 FSD).
 - [ ] En GitHub: `docs/PROMPT_MAPPING.md` → símbolo RN-02 → archivo HTML.
 - [ ] Opcional: `python .cursor/skills/skill-read-context/scripts/read_context.py docs/fsd/FSD_vFinal.md --detail summary`
 
-## 4. Q&A docente (3 min) — respuestas preparadas
+## 5. Q&A docente (3 min) — respuestas preparadas
 - [ ] Trazabilidad: MRD → PRD → FSD → DTI (misma cadena en §12 AGENTS.md).
 - [ ] Trade-off ADR-0005: vendor lock-in vs Terraform; latencia us-east-1 vs costo Multi-AZ.
 - [ ] RN-09 / BR-R5: bloqueo de emisión si cromosomas naranjas sin validar.
 
-## 5. Puntos críticos de la rúbrica (auto-evaluación)
+## 6. Puntos críticos de la rúbrica (auto-evaluación)
 | # | Criterio | Nivel esperado | Evidencia en repo |
 |---|----------|----------------|-------------------|
 | 1 | Coherencia documental | Excelente | DTI 24§ + vFinal + C4 en DTI §2–§3 |
@@ -46,7 +51,7 @@
 | 6 | Mapeo rápido | Excelente | PROMPT_MAPPING § tabla símbolos |
 | 7 | Diagramas .mmd | Excelente | 12 en `docs/diagrams/` |
 
-## 6. Riesgos a mitigar en Q&A
+## 7. Riesgos a mitigar en Q&A
 - POC-01: README dice U-Net; `metrics.json` histórico Mask R-CNN → explicar evolución a U-Net (ADR/stack definitivo).
 - No hay carpeta `backend/` en release → demo = prototipo HTML + documentación; sin penalización según rúbrica.
 - FSD_vFinal con escapes Markdown → normalizar si el docente abre el archivo en vivo.

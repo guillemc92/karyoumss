@@ -1,0 +1,1196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIOMED UMSS - Defensa Final DTI v2.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --umss-blue: #003770;
+            --umss-red: #E30613;
+            --accent: #00b4ff;
+            --cyan: #00ffe0;
+            --purple: #7c3aed;
+            --green: #00e676;
+            --orange: #ff6d00;
+            --bg: #060910;
+            --bg2: #0d1117;
+            --text: #e8eaf6;
+            --muted: #7986a3;
+            --glass: rgba(255,255,255,0.04);
+            --glass-border: rgba(255,255,255,0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg) 0%, #1a1f2e 100%);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* HEADER GLOBAL */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .logo-brand i {
+            color: var(--umss-red);
+            font-size: 20px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 30px;
+        }
+
+        .nav-tab {
+            padding: 8px 0;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .nav-tab:hover {
+            color: var(--text);
+        }
+
+        .nav-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* CONTAINER */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .container {
+            margin-top: 60px;
+            height: calc(100vh - 60px);
+            overflow: hidden;
+        }
+
+        .section {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            overflow: auto;
+        }
+
+        .section.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* PRESENTACIÓN (SLIDES) */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .slides-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            overflow: auto;
+            padding: 60px 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .slide.active {
+            opacity: 1;
+            z-index: 10;
+        }
+
+        .slide-number {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            font-size: 12px;
+            color: var(--muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* SLIDE 1: HERO */
+        .slide-hero {
+            background: linear-gradient(135deg, var(--umss-blue), var(--purple));
+            text-align: center;
+        }
+
+        .slide-hero h1 {
+            font-size: 56px;
+            font-weight: 900;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff, var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .slide-hero .subtitle {
+            font-size: 22px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 40px;
+        }
+
+        .slide-hero .badges {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* SLIDE CONTENT */
+        .slide-content h2 {
+            font-size: 40px;
+            margin-bottom: 40px;
+            color: var(--accent);
+        }
+
+        .slide-content p {
+            font-size: 16px;
+            line-height: 1.8;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+
+        .slide-content ul {
+            list-style: none;
+            margin: 30px 0;
+        }
+
+        .slide-content li {
+            padding: 12px 0;
+            padding-left: 30px;
+            position: relative;
+            font-size: 15px;
+        }
+
+        .slide-content li:before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-size: 20px;
+        }
+
+        /* DIAGRAMA C4 */
+        .c4-diagram {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .c4-box {
+            padding: 20px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .c4-box:hover {
+            background: rgba(0, 180, 255, 0.1);
+            border-color: var(--accent);
+        }
+
+        .c4-box-title {
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .c4-box-desc {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* SLIDE CONTROLS */
+        .slide-controls {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            z-index: 50;
+            background: var(--bg2);
+            padding: 15px 25px;
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+        }
+
+        .slide-btn {
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass);
+            color: var(--text);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .slide-btn:hover {
+            background: rgba(0, 180, 255, 0.2);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .slide-counter {
+            color: var(--muted);
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* CORRECCIÓN DE CARIOTIPO */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .correction-panel {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            padding: 30px;
+            height: 100%;
+            overflow: auto;
+        }
+
+        .image-viewer {
+            background: var(--bg2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+        }
+
+        .image-placeholder {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, var(--glass), transparent);
+            border: 2px dashed var(--glass-border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 15px;
+            color: var(--muted);
+        }
+
+        .image-placeholder i {
+            font-size: 48px;
+            color: var(--accent);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow: auto;
+        }
+
+        .panel {
+            background: var(--bg2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .panel-title {
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 15px;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .chromosome-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chromosome-item {
+            padding: 10px;
+            background: var(--glass);
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chromosome-item:hover {
+            background: rgba(0, 180, 255, 0.1);
+            border-color: var(--accent);
+        }
+
+        .confidence {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--green);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 20px rgba(0, 180, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--glass);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 180, 255, 0.1);
+            border-color: var(--accent);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* INFORME / REPORTE */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .report-container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 30px;
+            overflow: auto;
+            height: 100%;
+        }
+
+        .report-header {
+            background: linear-gradient(135deg, var(--umss-blue), var(--purple));
+            padding: 40px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .report-title {
+            font-size: 28px;
+            font-weight: 900;
+            margin-bottom: 10px;
+        }
+
+        .report-meta {
+            font-size: 13px;
+            opacity: 0.9;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .report-section {
+            background: var(--bg2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .report-section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .karyotype-display {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--glass);
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin: 15px 0;
+            color: var(--cyan);
+            overflow-x: auto;
+            border: 1px solid var(--glass-border);
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .result-item {
+            background: var(--glass);
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .result-label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .result-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .validation-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: var(--green);
+            color: var(--bg);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            margin: 5px 0;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-export {
+            padding: 12px 20px;
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            flex: 1;
+        }
+
+        .btn-export:hover {
+            box-shadow: 0 0 20px rgba(0, 180, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* SCROLL */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--glass);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* RESPONSIVO */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        @media (max-width: 1024px) {
+            .correction-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .slide {
+                padding: 40px;
+            }
+
+            .slide-hero h1 {
+                font-size: 36px;
+            }
+
+            .c4-diagram {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .speaker-note {
+            margin-top: 24px;
+            padding: 14px 18px;
+            background: rgba(124, 58, 237, 0.15);
+            border-left: 3px solid var(--purple);
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+            color: #c4b5fd;
+            display: none;
+        }
+
+        body.show-notes .speaker-note { display: block; }
+
+        .progress-bar {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            height: 3px;
+            background: var(--accent);
+            z-index: 99;
+            transition: width 0.4s ease;
+        }
+
+        .trace-chain {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 24px 0;
+            font-size: 13px;
+        }
+
+        .trace-step {
+            padding: 10px 16px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .trace-arrow { color: var(--accent); font-size: 18px; }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            padding: 16px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--green);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .metric-label { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+        .adr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin: 20px 0;
+        }
+
+        .adr-table th, .adr-table td {
+            padding: 10px 12px;
+            border: 1px solid var(--glass-border);
+            text-align: left;
+        }
+
+        .adr-table th { background: var(--glass); color: var(--accent); }
+
+        .help-hint {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            font-size: 10px;
+            color: var(--muted);
+            background: var(--bg2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            z-index: 40;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .confidence.warn { color: var(--orange); }
+        .correction-iframe {
+            width: 100%;
+            height: calc(100vh - 120px);
+            border: none;
+            border-radius: 12px;
+            background: #111;
+        }
+
+        .demo-banner {
+            padding: 12px 20px;
+            background: rgba(0, 230, 118, 0.1);
+            border-bottom: 1px solid rgba(0, 230, 118, 0.3);
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .demo-banner a { color: var(--cyan); }
+
+        @media (max-width: 640px) {
+            .header {
+                padding: 0 15px;
+            }
+
+            .nav-tabs {
+                gap: 15px;
+            }
+
+            .nav-tab {
+                font-size: 11px;
+            }
+
+            .slide {
+                padding: 20px;
+            }
+
+            .slide-hero h1 {
+                font-size: 28px;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progress-bar" style="width: 8%"></div>
+    <div class="help-hint">← → slides · N notas · 1-3 secciones</div>
+    <!-- HEADER -->
+    <div class="header">
+        <div class="logo-brand">
+            <i class="fas fa-dna"></i>
+            BIOMED UMSS — Defensa Final
+        </div>
+        <div class="nav-tabs">
+            <div class="nav-tab active" data-section="presentation">📊 Presentación</div>
+            <div class="nav-tab" data-section="correction">✏️ Corrección</div>
+            <div class="nav-tab" data-section="report">📄 Informe</div>
+        </div>
+    </div>
+
+    <!-- CONTAINER -->
+    <div class="container">
+        <!-- SECCIÓN 1: PRESENTACIÓN -->
+        <div id="presentation" class="section active">
+            <div class="slides-container">
+                <!-- SLIDE 1: HERO -->
+                <div class="slide active slide-hero">
+                    <h1>BIOMED UMSS</h1>
+                    <p class="subtitle">Intelligent Karyotyping Platform</p>
+                    <p class="subtitle" style="font-size: 16px; opacity: 0.8; font-weight: 300;">Análisis Citogenético con IA</p>
+                    <div class="badges" style="margin-top: 40px;">
+                        <div class="badge">G04 — BIOMED UMSS</div>
+                        <div class="badge">Módulo 4 · Arquitectura con IA</div>
+                        <div class="badge">release/2.0.0</div>
+                        <div class="badge">Ing. Guillermo Mamani Chambi — G04</div>
+                    </div>
+                    <p class="subtitle" style="font-size: 13px; margin-top: 24px; opacity: 0.7;">
+                        <a href="https://github.com/guillemc92/karyoumss/tree/release/2.0.0" target="_blank" rel="noopener" style="color: var(--cyan);">github.com/guillemc92/karyoumss</a>
+                    </p>
+                    <div class="speaker-note">⏱ ~1 min · Abrir con rama evaluada release/2.0.0 en GitHub.</div>
+                    <div class="slide-number">01 / 13</div>
+                </div>
+
+                <!-- SLIDE 2: TRAZABILIDAD -->
+                <div class="slide slide-content">
+                    <h2>Trazabilidad Documental</h2>
+                    <p>MRD → PRD → FSD → DTI (criterio rúbrica #1)</p>
+                    <div class="trace-chain">
+                        <span class="trace-step">MRD_vFinal</span>
+                        <span class="trace-arrow">→</span>
+                        <span class="trace-step">PRD_vFinal</span>
+                        <span class="trace-arrow">→</span>
+                        <span class="trace-step">FSD_vFinal</span>
+                        <span class="trace-arrow">→</span>
+                        <span class="trace-step">DTI vFinal v2.0</span>
+                        <span class="trace-arrow">→</span>
+                        <span class="trace-step">PROMPT_MAPPING</span>
+                    </div>
+                    <ul>
+                        <li><strong>DTI:</strong> 24 secciones (§0–§23) — C4, hexagonal, event-driven, AWS</li>
+                        <li><strong>AGENTS.md</strong> v1.2 sincronizado con rutas vFinal</li>
+                        <li><strong>12 diagramas</strong> <code>.mmd</code> en <code>docs/diagrams/</code></li>
+                    </ul>
+                    <div class="speaker-note">⏱ ~1 min · Mencionar que la entrega evaluada es solo el branch, no main.</div>
+                    <div class="slide-number">02 / 13</div>
+                </div>
+
+                <!-- SLIDE 3: PROBLEMA -->
+                <div class="slide slide-content">
+                    <h2>El Problema (MRD / PRD)</h2>
+                    <p><strong>Contexto:</strong> Análisis citogenético manual en laboratorios UMSS</p>
+                    <ul>
+                        <li>⏱️ <strong>45 minutos</strong> por muestra (proceso manual)</li>
+                        <li>👤 Requiere especialista experimentado</li>
+                        <li>❌ Alto riesgo de error humano</li>
+                        <li>📉 Baja capacidad de procesamiento</li>
+                    </ul>
+                    <p style="margin-top: 30px;"><strong>Meta:</strong> Reducir TTK (Time-to-Karyotype) a <span style="color: var(--green); font-weight: 700;">≤15 minutos</span> con Human-in-the-loop</p>
+                    <div class="speaker-note">⏱ ~1 min · Conectar con mercado UMSS / laboratorios citogenéticos.</div>
+                    <div class="slide-number">03 / 13</div>
+                </div>
+
+                <!-- SLIDE 4: FSD UC -->
+                <div class="slide slide-content">
+                    <h2>FSD — Caso de Uso Destacado</h2>
+                    <p><strong>FSD-UC-002:</strong> Pipeline IA (segmentación → clasificación → borrador)</p>
+                    <ul>
+                        <li><strong>Aviso-contrato:</strong> <code>prompts/PR-UC02-SEM.md</code> — semaforización &lt;85%</li>
+                        <li><strong>Flujo:</strong> POST muestra → CHN → S3 → Celery → WebSocket "Borrador listo"</li>
+                        <li><strong>Salida:</strong> 46 cromosomas con <code>confidence_score</code> sin redondear</li>
+                    </ul>
+                    <p style="color: var(--cyan); margin-top: 20px;"><i class="fas fa-link"></i> Trazado en <code>docs/PROMPT_MAPPING.md</code> (UC-02, RN-02)</p>
+                    <div class="speaker-note">⏱ ~2 min · Criterio 8–25% de la guía de presentación.</div>
+                    <div class="slide-number">04 / 13</div>
+                </div>
+
+                <!-- SLIDE 5: SOLUCIÓN -->
+                <div class="slide slide-content">
+                    <h2>Pipeline de Solución</h2>
+                    <p><strong>Stack definitivo (FSD vFinal + AGENTS.md):</strong></p>
+                    <ul>
+                        <li>🤖 <strong>Segmentación U-Net</strong> + tiling 1024×64 (ADR-0001) — IoU POC: <span style="color: var(--green);">0.92</span></li>
+                        <li>🧬 <strong>Clasificación EfficientNet-B3</strong> — F1 POC: <span style="color: var(--green);">0.94</span></li>
+                        <li>👀 <strong>XAI Grad-CAM</strong> — fidelity POC: <span style="color: var(--green);">0.92</span></li>
+                        <li>⚡ <strong>Async</strong> Redis + Celery (ADR-0002) — API &lt;100 ms</li>
+                        <li>🔐 <strong>CHN</strong> en borde antes de cloud (ADR-0003, RN-03)</li>
+                    </ul>
+                    <div class="slide-number">05 / 13</div>
+                </div>
+
+                <!-- SLIDE 6: ARQUITECTURA C4 -->
+                <div class="slide slide-content">
+                    <h2>Arquitectura — C4 Nivel 1 y 2</h2>
+                    <p style="font-size: 14px; color: var(--muted); margin-bottom: 16px;">Actores: Analista, Supervisor, Laboratorio · Sistema: BIOMED UMSS</p>
+                    <div class="c4-diagram">
+                        <div class="c4-box">
+                            <div class="c4-box-title">React SPA</div>
+                            <div class="c4-box-desc">Konva.js mesa edición</div>
+                        </div>
+                        <div class="c4-box">
+                            <div class="c4-box-title">FastAPI</div>
+                            <div class="c4-box-desc">Hexagonal core</div>
+                        </div>
+                        <div class="c4-box">
+                            <div class="c4-box-title">Celery + Redis</div>
+                            <div class="c4-box-desc">Event-driven</div>
+                        </div>
+                        <div class="c4-box">
+                            <div class="c4-box-title">TorchServe / GPU</div>
+                            <div class="c4-box-desc">U-Net + EfficientNet</div>
+                        </div>
+                        <div class="c4-box">
+                            <div class="c4-box-title">Database</div>
+                            <div class="c4-box-desc">RDS PostgreSQL</div>
+                        </div>
+                        <div class="c4-box">
+                            <div class="c4-box-title">Storage</div>
+                            <div class="c4-box-desc">S3 (HIPAA)</div>
+                        </div>
+                        <div class="c4-box">
+                            <div class="c4-box-title">Logging</div>
+                            <div class="c4-box-desc">CloudWatch + X-Ray</div>
+                        </div>
+                    </div>
+                    <div class="speaker-note">⏱ ~3 min · Mostrar DTI §2–§3 si piden detalle.</div>
+                    <div class="slide-number">06 / 13</div>
+                </div>
+
+                <!-- SLIDE 7: HEXAGONAL -->
+                <div class="slide slide-content">
+                    <h2>Núcleo Hexagonal (Ports)</h2>
+                    <ul>
+                        <li>🖼️ <strong>ImagePort:</strong> Entrada de imágenes citogenéticas</li>
+                        <li>🧠 <strong>ModelPort:</strong> Inferencia de IA (Segmentación + Clasificación)</li>
+                        <li>📊 <strong>ReportPort:</strong> Generación de reportes clinicos</li>
+                        <li>🔐 <strong>AuditPort:</strong> Trail de auditoría + Merkle tree</li>
+                        <li>👤 <strong>AuthPort:</strong> Validación human-in-the-loop</li>
+                    </ul>
+                    <p style="margin-top: 30px; color: var(--cyan);"><i class="fas fa-check-circle"></i> <strong>ADR-0004:</strong> Monolito modular + satélites de inferencia.</p>
+                    <div class="slide-number">07 / 13</div>
+                </div>
+
+                <!-- SLIDE 8: BARANDILLAS -->
+                <div class="slide slide-content">
+                    <h2>IA + Barandillas Clínicas</h2>
+                    <ul>
+                        <li>🟠 <strong>RN-02:</strong> <code>confidence_score &lt; 0.85</code> → revisión obligatoria (naranja)</li>
+                        <li>🚫 <strong>RN-01 / BR-R5:</strong> sin emisión de informe si naranjas sin validar</li>
+                        <li>🔒 <strong>RN-03:</strong> CHN antes de S3/TorchServe — cero PII en cloud</li>
+                        <li>📋 <strong>RN-04:</strong> ISCN read-only post-generación</li>
+                        <li>🔍 <strong>RN-08:</strong> auditoría aleatoria 5% de verdes</li>
+                    </ul>
+                    <div class="speaker-note">⏱ ~1 min · Human-in-the-loop no negociable (BRD).</div>
+                    <div class="slide-number">08 / 13</div>
+                </div>
+
+                <!-- SLIDE 9: AWS DEPLOYMENT -->
+                <div class="slide slide-content">
+                    <h2>AWS — ADR-0005</h2>
+                    <ul>
+                        <li>🌍 <strong>Región:</strong> us-east-1 (soberanía de datos Bolivia)</li>
+                        <li>📦 <strong>Contenedor:</strong> ECS Fargate (sin infraestructura)</li>
+                        <li>⚙️ <strong>Auto-scaling:</strong> 2-10 réplicas según carga</li>
+                        <li>🔒 <strong>Compliance:</strong> HIPAA BAA + 21 CFR Part 11</li>
+                        <li>💾 <strong>Backup:</strong> Multi-AZ RDS + S3 replication</li>
+                        <li>💰 <strong>Costo estimado:</strong> $2,000–3,500/mes (producción)</li>
+                    </ul>
+                    <div class="slide-number">09 / 13</div>
+                </div>
+
+                <!-- SLIDE 10: POCs -->
+                <div class="slide slide-content">
+                    <h2>POCs Ejecutadas (evidencia en repo)</h2>
+                    <div class="metrics-grid">
+                        <div class="metric-card"><div class="metric-value">0.92</div><div class="metric-label">POC-01 U-Net IoU</div></div>
+                        <div class="metric-card"><div class="metric-value">0.94</div><div class="metric-label">POC-02 F1-score</div></div>
+                        <div class="metric-card"><div class="metric-value">0.92</div><div class="metric-label">POC-03 Grad-CAM</div></div>
+                        <div class="metric-card"><div class="metric-value">100%</div><div class="metric-label">POC-04 Merkle</div></div>
+                        <div class="metric-card"><div class="metric-value">387ms</div><div class="metric-label">POC-05 p95 API</div></div>
+                    </div>
+                    <p><code>pocs/POC-XX/metrics.json</code> + README · Aprendizaje: tiling esencial en &gt;4K.</p>
+                    <div class="speaker-note">⏱ ~1 min · Criterio rúbrica #4 Excelente (≥2 POC).</div>
+                    <div class="slide-number">10 / 13</div>
+                </div>
+
+                <!-- SLIDE 11: ADRs -->
+                <div class="slide slide-content">
+                    <h2>ADRs — Trade-offs Explícitos</h2>
+                    <table class="adr-table">
+                        <thead><tr><th>ADR</th><th>Decisión</th><th>Trade-off</th></tr></thead>
+                        <tbody>
+                            <tr><td>0001</td><td>Tiling + NMS</td><td>Latencia vs GPU OOM</td></tr>
+                            <tr><td>0002</td><td>Redis + Celery</td><td>Simplicidad vs Kafka</td></tr>
+                            <tr><td>0003</td><td>CHN en borde</td><td>Privacidad vs latencia local</td></tr>
+                            <tr><td>0004</td><td>Monolito modular</td><td>Velocidad vs microservicios</td></tr>
+                            <tr><td>0005</td><td>AWS ECS + RDS</td><td>Vendor lock-in vs CapEx on-prem</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="slide-number">11 / 13</div>
+                </div>
+
+                <!-- SLIDE 12: ROADMAP -->
+                <div class="slide slide-content">
+                    <h2>Roadmap y Lecciones (S12)</h2>
+                    <ul>
+                        <li><strong>Fase 2:</strong> Firma MFA, ISCN 2024, audit trail hash chain, auditoría 5%</li>
+                        <li><strong>Fase 3:</strong> HL7 FHIR, Triton GPU, dashboard calidad modelo</li>
+                        <li><strong>Lección:</strong> IA aumentada, no autónoma — barandillas RN-01/02</li>
+                    </ul>
+                    <p style="margin-top: 20px; font-size: 13px; color: var(--muted);">Fuente: <code>docs/roadmap.md</code></p>
+                    <div class="slide-number">12 / 13</div>
+                </div>
+
+                <!-- SLIDE 13: CIERRE -->
+                <div class="slide slide-hero" style="background: linear-gradient(135deg, var(--umss-red), var(--orange));">
+                    <h1 style="font-size: 48px;">Demo en vivo (5 min)</h1>
+                    <p class="subtitle">Pestaña <strong>Corrección</strong> → prototipo FSD-UC-03</p>
+                    <p class="subtitle" style="font-size: 14px; opacity: 0.8; margin-top: 24px;">Pestaña <strong>Informe</strong> → CHN + ISCN + audit trail (sin PII)</p>
+                    <p class="subtitle" style="font-size: 13px; margin-top: 16px;">Q&amp;A docente · 3 min</p>
+                    <div class="slide-number">13 / 13</div>
+                </div>
+            </div>
+
+            <!-- CONTROLES DE SLIDES -->
+            <div class="slide-controls">
+                <button class="slide-btn" id="prev-slide" title="Anterior"><i class="fas fa-chevron-left"></i></button>
+                <span class="slide-counter"><span id="current-slide">1</span> / <span id="total-slides">13</span></span>
+                <button class="slide-btn" id="next-slide" title="Siguiente"><i class="fas fa-chevron-right"></i></button>
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2: CORRECCIÓN DE CARIOTIPO (DEMO) -->
+        <div id="correction" class="section">
+            <div class="demo-banner">
+                <strong>Demo 5 min</strong> — Prototipo FSD-UC-03 · Trazabilidad: <code>PROMPT_MAPPING.md</code> → <code>correccion de cariotipo.html</code>
+                · <a href="correccion%20de%20cariotipo.html" target="_blank" rel="noopener">Abrir en ventana nueva</a>
+            </div>
+            <iframe class="correction-iframe" src="correccion%20de%20cariotipo.html" title="Mesa de edición BIOMED UMSS"></iframe>
+        </div>
+
+        <!-- SECCIÓN 3: INFORME / REPORTE -->
+        <div id="report" class="section">
+            <div class="report-container">
+                <div class="report-header">
+                    <div class="report-title">Reporte de Cariotipo</div>
+                    <div class="report-meta">
+                        <span>BIOMED UMSS v2.0</span>
+                        <span>29/05/2026</span>
+                        <span>CHN-2026-05-29-0001</span>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-section-title">Datos de la Muestra</div>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-label">Código CHN (RN-03)</div>
+                            <div class="result-value">CHN-2026-05-29-0001</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Fecha Procesamiento</div>
+                            <div class="result-value">29/05/2026 14:32</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Analista (JWT)</div>
+                            <div class="result-value">UUID analista · sin PII</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Estado informe</div>
+                            <div class="result-value">pending_signature</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-section-title">Resultado Citogenético</div>
+                    <div class="karyotype-display">
+                        46, XY [100]<br>
+                        <span style="font-size: 12px; color: var(--muted);">// Cariotipo normal, 46 cromosomas, sexo masculino</span>
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <div class="validation-badge"><i class="fas fa-check-circle"></i> NORMAL</div>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-section-title">Análisis IA</div>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-label">Segmentación U-Net (IoU)</div>
+                            <div class="result-value">0.92</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Clasificación (F1)</div>
+                            <div class="result-value">0.94</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Explicabilidad</div>
+                            <div class="result-value">0.92</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Confianza Media</div>
+                            <div class="result-value">94%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-section-title">Interpretación Clínica</div>
+                    <p style="font-size: 14px; line-height: 1.8; color: var(--text);">
+                        Análisis citogenético mediante técnica de bandeo G en interfase (FISH) sobre linfocitos periféricos. 
+                        Se observa <strong>cariotipo de 46 cromosomas</strong> con <strong>sexo cromosómico XY</strong>, 
+                        resultado compatible con <strong>sexo genético masculino normal</strong>. 
+                        No se detectan anomalías de número ni estructura cromosómica visible al microscopio óptico con resolución de bandeo G.
+                    </p>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-section-title">Audit Trail (Merkle Hash Chain)</div>
+                    <div class="karyotype-display" style="color: var(--cyan); font-size: 11px;">
+                        Hash[0]: 0x7a3f9e2b1d4c8a5f...<br>
+                        Hash[1]: 0x9c2b4d8f1a6e3c5f...<br>
+                        Hash[Final]: 0x4e8a1f3d7b9c2a6e...<br>
+                        <span style="color: var(--green);">✓ Cadena válida (100% integridad)</span>
+                    </div>
+                </div>
+
+                <div class="export-buttons">
+                    <button class="btn-export" onclick="alert('📥 Descargando PDF...')">
+                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                    </button>
+                    <button class="btn-export" onclick="alert('🖨️ Enviando a imprimir...')">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                    <button class="btn-export" onclick="alert('📧 Enviando por email...')">
+                        <i class="fas fa-envelope"></i> Enviar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        // NAVEGACIÓN ENTRE SECCIONES
+        // ═══════════════════════════════════════════════════════════════
+
+        const navTabs = document.querySelectorAll('.nav-tab');
+        const sections = document.querySelectorAll('.section');
+
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const sectionId = tab.dataset.section;
+
+                navTabs.forEach(t => t.classList.remove('active'));
+                sections.forEach(s => s.classList.remove('active'));
+
+                tab.classList.add('active');
+                document.getElementById(sectionId).classList.add('active');
+
+                if (sectionId === 'presentation') {
+                    updateSlideCounter();
+                }
+            });
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // NAVEGACIÓN DE SLIDES
+        // ═══════════════════════════════════════════════════════════════
+
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        function showSlide() {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[currentSlide].classList.add('active');
+            updateSlideCounter();
+            const pct = ((currentSlide + 1) / totalSlides) * 100;
+            document.getElementById('progress-bar').style.width = pct + '%';
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % totalSlides;
+            showSlide(currentSlide);
+        }
+
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+            showSlide(currentSlide);
+        }
+
+        function updateSlideCounter() {
+            document.getElementById('current-slide').textContent = currentSlide + 1;
+            document.getElementById('total-slides').textContent = totalSlides;
+        }
+
+        document.getElementById('next-slide').addEventListener('click', nextSlide);
+        document.getElementById('prev-slide').addEventListener('click', prevSlide);
+
+        // Teclado
+        document.addEventListener('keydown', (e) => {
+            const pres = document.getElementById('presentation').classList.contains('active');
+            if (pres) {
+                if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+                if (e.key === 'ArrowLeft') prevSlide();
+            }
+            if (e.key === 'n' || e.key === 'N') document.body.classList.toggle('show-notes');
+            if (e.key === '1') navTabs[0].click();
+            if (e.key === '2') navTabs[1].click();
+            if (e.key === '3') navTabs[2].click();
+        });
+
+        // Ocultar controles fuera de presentación
+        const slideControls = document.querySelector('.slide-controls');
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                slideControls.style.display = tab.dataset.section === 'presentation' ? 'flex' : 'none';
+            });
+        });
+
+        // Inicializar
+        showSlide();
+    </script>
+</body>
+</html>
