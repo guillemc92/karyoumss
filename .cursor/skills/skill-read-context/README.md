@@ -11,8 +11,8 @@ Skill del **Core Agent KaryouMSS** para leer e interpretar requerimientos funcio
 
 ```bash
 # Desde la raíz del repo
-python .cursor/skills/skill-read-context/scripts/read_context.py docs/FSD_v2.md
-python .cursor/skills/skill-read-context/scripts/read_context.py docs/PRD_v2.md --detail full -o context/prd.json
+python .cursor/skills/skill-read-context/scripts/read_context.py docs/fsd/FSD_vFinal.md
+python .cursor/skills/skill-read-context/scripts/read_context.py docs/prd/PRD_vFinal.md --detail full -o context/prd.json
 python .cursor/skills/skill-read-context/scripts/read_context.py AGENTS.md --detail standard
 ```
 

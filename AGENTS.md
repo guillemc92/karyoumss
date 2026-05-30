@@ -1,7 +1,7 @@
 # AGENTS.md — BIOMED UMSS Intelligent Karyotyping Platform
 ## Contrato Funcional para Agentes IA (Claude · Cursor · Copilot)
 
-**Versión:** v1.1 | **Fecha:** Mayo 2026 | **Grupo:** G04
+**Versión:** v1.2 | **Fecha:** Mayo 2026 | **Grupo:** G04 | **Release:** `release/2.0.0`
 **Autor:** Ing. Guillermo Mamani Chambi | **Estado:** Aprobado
 
 > **Regla de oro:** Este archivo es la fuente de verdad para cualquier agente IA que trabaje en este repositorio. Si una decisión arquitectónica no está aquí o en los docs/ referenciados, no existe y no debe asumirse.
@@ -36,7 +36,7 @@ El agente debe operar bajo el paradigma de **Desarrollo Guiado por Especificacio
 | `/skill-validation-agent` | Validar un Pull Request contra los requerimientos del FSD, incluyendo la regla clínica de no-emisión RN-09 / BR-R5 | `@skill-validation-agent PR-123` |
 
 ### 2.2 Flujo de Trabajo Obligatorio
-1. **Análisis de Contexto:** Leer FSD $\to$ BRD $\to$ DTI $\to$ AGENTS.md.
+1. **Análisis de Contexto:** Leer `docs/fsd/FSD_vFinal.md` $\to$ `docs/brd/BRD_vFinal.md` $\to$ `docs/DTI.md` $\to$ AGENTS.md.
 2. **Definición de Spec (`/spec`):** Crear la especificación técnica con Capa 1 (Funcional) y Capa 2 (Técnica/ADR).
 3. **Planificación de Tareas (`/plan`):** Descomponer la spec en tareas atómicas (máx 3h) en un archivo de seguimiento (ej. `TASKS.md`).
 4. **Implementación Incremental:** Ejecutar tareas siguiendo el orden de prioridad, aplicando tests unitarios por cada tarea.
@@ -121,6 +121,7 @@ RN-08: Auditoría aleatoria del 5% de cromosomas con score ≥ 86% (anti-sesgo).
 | ADR-0002 | Pipeline asíncrono Redis+Celery (no síncrono, no Kafka) | `docs/adr/0002-async-pipeline.md` |
 | ADR-0003 | CHN Anonimización en el borde antes de transmisión cloud | `docs/adr/0003-chn-anonymization.md` |
 | ADR-0004 | Estrategia de evolución arquitectónica: monolito modular + satélites | `docs/adr/0004-Estrategia-Evolucion-Arquitectonica.md` |
+| ADR-0005 | Proveedor cloud AWS y estrategia de despliegue (ECS, RDS, S3) | `docs/adr/0005-cloud-provider-y-estilo-de-despliegue.md` |
 
 **Regla para el agente:** Si se te pide cambiar estas decisiones, solicita confirmación explícita del arquitecto y documenta el nuevo ADR antes de codificar.
 
@@ -158,16 +159,16 @@ karyoumss/
 │   ├── pipeline/                # CLAHE → segmentación $\to$ clasificación $\to$ XAI
 │   └── serving/                 # TorchServe config + model archive
 ├── docs/
-│   ├── BRD_v3.5.md
-│   ├── MRD_v1.md
-│   ├── PRD_v2.md
-│   ├── FSD_v2.md
-│   ├── PROMPT_MAPPINGS.md
-│   ├── dti/DTI_borrador.md
-│   ├── diagrams/                # Diagramas Mermaid por UC
- la l
-│   ├── adr/                     # Architecture Decision Records
+│   ├── DTI.md                   # Documento Técnico Inicial — vFinal v2.0
+│   ├── PROMPT_MAPPING.md        # Trazabilidad Requerimiento→Prompt→Código
+│   ├── brd/BRD_vFinal.md
+│   ├── mrd/MRD_vFinal.md
+│   ├── prd/PRD_vFinal.md
+│   ├── fsd/FSD_vFinal.md
+│   ├── diagrams/                # Diagramas Mermaid por UC (12 .mmd)
+│   ├── adr/                     # Architecture Decision Records (0001–0005)
 │   └── aportes/                 # Contribuciones individuales
+├── pocs/                        # POC-01 … POC-05 (metrics.json + README)
 └── docker-compose.yml
 ```
 
@@ -236,7 +237,7 @@ GET    /api/v1/samples/{id}/audit-trail   → List[EditTrail]
 WS     /ws/samples/{id}                   → WebSocket push events
 ```
 
-**Regla para el agente:** Nunca cambiar el contrato de respuesta sin actualizar PROMPT_MAPPINGS.md y FSD_v2.md.
+**Regla para el agente:** Nunca cambiar el contrato de respuesta sin actualizar `docs/PROMPT_MAPPING.md` y `docs/fsd/FSD_vFinal.md`.
 
 ---
 
@@ -297,17 +298,17 @@ Imagen TIFF/PNG (>10MB)
 ## 12. Trazabilidad Documental
 
 ```
-BRD_v3.5.md          → Qué necesita el negocio
-  └── MRD_v1.md       → Qué pide el mercado
-       └── PRD_v2.md  → Qué hace el producto (User Stories + Gherkin)
-            └── FSD_v2.md → Cómo lo implementa (casos de uso técnicos)
-                 ├── PROMPT_MAPPINGS.md → Trazabilidad Requerimiento→Prompt→Código
-                 ├── docs/diagrams/     → Diagramas Mermaid por UC
-                 └── docs/dti/          → DTI con C4 Niveles 1-3 + ADRs
+docs/brd/BRD_vFinal.md       → Qué necesita el negocio
+  └── docs/mrd/MRD_vFinal.md → Qué pide el mercado
+       └── docs/prd/PRD_vFinal.md → Qué hace el producto (User Stories + Gherkin)
+            └── docs/fsd/FSD_vFinal.md → Cómo lo implementa (casos de uso técnicos)
+                 ├── docs/PROMPT_MAPPING.md → Trazabilidad Requerimiento→Prompt→Código
+                 ├── docs/diagrams/         → Diagramas Mermaid por UC
+                 └── docs/DTI.md            → DTI vFinal v2.0 (24 §) + ADRs 0001–0005
 ```
 
 **Métricas AI-SDLC:**
-- **Prompt Coverage:** % de User Stories del PRD con al menos 1 PM en PROMPT_MAPPINGS $\to$ Target $\ge 80\%$
+- **Prompt Coverage:** % de User Stories del PRD con al menos 1 PM en `docs/PROMPT_MAPPING.md` $\to$ Target $\ge 80\%$
 - **Spec Fidelity:** % de contratos API del FSD implementados con firma exacta $\to$ Target $\ge 95\%$
 - **Gherkin Coverage:** % de casos de uso críticos con escenarios Gherkin verificables $\to$ Target $\ge 100\%$
 
@@ -315,11 +316,11 @@ BRD_v3.5.md          → Qué necesita el negocio
 
 ## 13. Cómo Contribuir (Para el Agente)
 
-1. **Antes de codificar:** Verificar que existe un PM en PROMPT_MAPPINGS.md para la tarea
+1. **Antes de codificar:** Verificar que existe un PM en `docs/PROMPT_MAPPING.md` para la tarea
 2. **Naming conventions:** `snake_case` Python · `camelCase` TypeScript · `kebab-case` archivos
-3. **Cada PR debe:** Actualizar PROMPT_MAPPINGS.md + agregar test + pasar linter
+3. **Cada PR debe:** Actualizar `docs/PROMPT_MAPPING.md` + agregar test + pasar linter
 4. **Commits:** `feat:` `fix:` `docs:` `test:` `refactor:` según conventional commits
 5. **Branch:** trabajar en `feature/<nombre>` \to PR a `release/2.0.0`
 
-*AGENTS.md v1.1 — Fuente de verdad para Claude, Cursor Agent, Copilot y agentes custom*
+*AGENTS.md v1.2 — Fuente de verdad para Claude, Cursor Agent, Copilot y agentes custom*
 *Actualizar este archivo ante cualquier cambio arquitectónico significativo*

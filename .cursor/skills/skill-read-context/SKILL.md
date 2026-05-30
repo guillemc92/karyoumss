@@ -21,27 +21,27 @@ owner: KaryouMSS Core Agent — G04 BIOMED UMSS
 ## 1. Cuándo activarlo (triggers)
 
 - **DURANTE:** planificación de implementación, trazabilidad PM, revisión de specs, onboarding de agentes.
-- **ARRANCA cuando:** el usuario invoca `Skill_Read_Context`, `@skill-read-context`, o pide "leer/interpretar requerimientos", "contexto del FSD/PRD", o cita `docs/FSD_v2.md` / `docs/PRD_v2.md` sin pegar el fragmento.
+- **ARRANCA cuando:** el usuario invoca `Skill_Read_Context`, `@skill-read-context`, o pide "leer/interpretar requerimientos", "contexto del FSD/PRD", o cita `docs/fsd/FSD_vFinal.md` / `docs/prd/PRD_vFinal.md` sin pegar el fragmento.
 - **NO ACTIVAR cuando:** el usuario solo pide código sin spec y rechaza leer documentos; o el artefacto es puramente de marketing (meta-ads).
 
 ## 2. Parámetros de entrada (Inputs)
 
 | Parámetro | Tipo | Obligatorio | Descripción |
 |-----------|------|-------------|-------------|
-| `file_path` | `string` (ruta) | Sí* | Ruta al artefacto. Default del repo: `docs/FSD_v2.md`, `docs/PRD_v2.md`, `docs/BRD_v3.5.md`, `AGENTS.md` |
+| `file_path` | `string` (ruta) | Sí* | Ruta al artefacto. Default del repo: `docs/fsd/FSD_vFinal.md`, `docs/prd/PRD_vFinal.md`, `docs/brd/BRD_vFinal.md`, `AGENTS.md` |
 | `format` | `enum` | No | `auto` \| `markdown` \| `md` (default: `auto`) |
 | `detail_level` | `enum` | No | `summary` \| `standard` \| `full` (default: `standard`) |
 | `uc_id` | `string` | No | Filtrar un UC concreto, ej. `FSD-UC-002` (post-proceso sobre JSON) |
 | `us_id` | `string` | No | Filtrar user story, ej. `US-02` |
 
-\*Si falta `file_path`, pedir: *"Indica la ruta del artefacto (ej. docs/FSD_v2.md) o el ID FSD-UC-NNN."*
+\*Si falta `file_path`, pedir: *"Indica la ruta del artefacto (ej. docs/fsd/FSD_vFinal.md) o el ID FSD-UC-NNN."*
 
 ### Fuentes de verdad (precedencia)
 
 1. Fragmento citado por el usuario (UC / US / BR / Gherkin).
 2. Salida JSON del script `scripts/read_context.py` (no inventar campos extra).
 3. `AGENTS.md` (RN-01…RN-08) al cruzar reglas de negocio.
-4. `docs/PROMPT_MAPPINGS.md` para trazabilidad PM.
+4. `docs/PROMPT_MAPPING.md` para trazabilidad PM.
 
 ## 3. Lógica de procesamiento (Procedimiento)
 
@@ -49,7 +49,7 @@ owner: KaryouMSS Core Agent — G04 BIOMED UMSS
 2. **Ejecutar parser** (preferido — datos verificables):
 
 ```bash
-python .cursor/skills/skill-read-context/scripts/read_context.py docs/FSD_v2.md --detail standard
+python .cursor/skills/skill-read-context/scripts/read_context.py docs/fsd/FSD_vFinal.md --detail standard
 ```
 
 3. **Interpretar JSON:** resumir en lenguaje técnico; mapear IDs a capas (`backend/app/`, `frontend/src/`) según `AGENTS.md`.
@@ -135,7 +135,7 @@ Exit codes del script: `0` OK, `2` warnings/invalidación, `1` error fatal.
 |-------------|---------|-------|
 | Python | 3.11+ | Ejecución del parser |
 | Biblioteca estándar | — | `re`, `json`, `argparse`, `pathlib` — **sin pip install** |
-| Artefactos repo | — | `docs/FSD_v2.md`, `docs/PRD_v2.md`, `AGENTS.md` |
+| Artefactos repo | — | `docs/fsd/FSD_vFinal.md`, `docs/prd/PRD_vFinal.md`, `AGENTS.md` |
 
 ## 7. Verificación (criterios de "bien hecho")
 
@@ -149,28 +149,28 @@ Exit codes del script: `0` OK, `2` warnings/invalidación, `1` error fatal.
 - Resumir el FSD de memoria sin ejecutar lectura del archivo.
 - Asumir umbrales o modelos no presentes en el doc leído.
 - Ignorar `validation.issues` con severity `error`.
-- Mezclar requisitos de `PRD_v1` y `PRD_v2` sin declarar versión.
+- Mezclar requisitos de `PRD_v1` y `PRD_vFinal` sin declarar versión.
 
 ## 9. Ejemplos de invocación
 
 ### Ejemplo 1 — Contexto completo del FSD
 
 ```
-@skill-read-context Lee docs/FSD_v2.md con detail standard y resume los UC críticos para el pipeline IA.
+@skill-read-context Lee docs/fsd/FSD_vFinal.md con detail standard y resume los UC críticos para el pipeline IA.
 ```
 
 ```bash
-python .cursor/skills/skill-read-context/scripts/read_context.py docs/FSD_v2.md --detail standard
+python .cursor/skills/skill-read-context/scripts/read_context.py docs/fsd/FSD_vFinal.md --detail standard
 ```
 
 ### Ejemplo 2 — Solo user stories del PRD (resumen)
 
 ```
-Skill_Read_Context: interpreta docs/PRD_v2.md nivel summary para listar US Must-have.
+Skill_Read_Context: interpreta docs/prd/PRD_vFinal.md nivel summary para listar US Must-have.
 ```
 
 ```bash
-python .cursor/skills/skill-read-context/scripts/read_context.py docs/PRD_v2.md --detail summary -o /tmp/prd_context.json
+python .cursor/skills/skill-read-context/scripts/read_context.py docs/prd/PRD_vFinal.md --detail summary -o /tmp/prd_context.json
 ```
 
 ### Ejemplo 3 — Invariantes antes de implementar auth
@@ -185,7 +185,7 @@ python .cursor/skills/skill-read-context/scripts/read_context.py AGENTS.md --det
 
 ## 10. Modos de fallo conocidos
 
-- `FSD_v2.md` con escapes `\#` → el script normaliza; si falla, pedir export limpio.
+- `FSD_vFinal.md` con escapes `\#` → el script normaliza; si falla, pedir export limpio.
 - Tablas US rotas (pipes desalineados) → `MISSING_USER_STORIES` warning.
 - BR duplicados (`BR-01` vs `BR-001`) → listar ambos; no fusionar sin confirmación.
 

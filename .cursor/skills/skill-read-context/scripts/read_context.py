@@ -328,7 +328,7 @@ def main() -> int:
     parser.add_argument(
         "file_path",
         type=Path,
-        help="Ruta al artefacto (ej. docs/FSD_v2.md, docs/PRD_v2.md)",
+        help="Ruta al artefacto (ej. docs/fsd/FSD_vFinal.md, docs/prd/PRD_vFinal.md)",
     )
     parser.add_argument(
         "--format",
