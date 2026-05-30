@@ -1,0 +1,24 @@
+{
+  "poc_id": "POC-05",
+  "name": "Performance & Scalability under Load",
+  "date_executed": "2026-05-25",
+  "success": true,
+  "sla": {
+    "metric": "API latency p95 under 10 concurrent users",
+    "target": "≤ 500ms",
+    "result": "387ms ✅"
+  },
+  "metrics": {
+    "latency_p50_ms": 145,
+    "latency_p95_ms": 387,
+    "latency_p99_ms": 612,
+    "throughput_requests_per_sec": 45,
+    "error_rate": 0.0,
+    "memory_usage_mb": 1240,
+    "concurrent_users": 10,
+    "test_duration_minutes": 30
+  },
+  "learning": "FastAPI + async scales well up to 10 concurrent users",
+  "recommendation": "Deploy SageMaker endpoint for inference (separate from FastAPI)",
+  "author": "Guillermo Mamani Chambi"
+}

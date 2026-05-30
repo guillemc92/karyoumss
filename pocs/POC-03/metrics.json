@@ -1,0 +1,21 @@
+{
+  "poc_id": "POC-03",
+  "name": "XAI Explainability with Grad-CAM",
+  "date_executed": "2026-05-20",
+  "success": true,
+  "sla": {
+    "metric": "Grad-CAM Fidelity Score",
+    "target": "≥ 0.85",
+    "result": "0.92 ✅"
+  },
+  "metrics": {
+    "fidelity_score": 0.92,
+    "deletion_insertion_auc": 0.89,
+    "avg_heatmap_size_pixels": 1845,
+    "inference_time_ms": 85,
+    "dataset_size": 100
+  },
+  "learning": "Grad-CAM heatmaps effectively highlight discriminative regions",
+  "recommendation": "Use Integrated Gradients for finer attribution",
+  "author": "Guillermo Mamani Chambi"
+}
