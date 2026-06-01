@@ -9,7 +9,7 @@
 | **Autor** | Ing. Guillermo Mamani Chambi |
 | **Branch objetivo** | `release/2.0.0` |
 | **Complementa** | `AGENTS.md`, `docs/PROMPT_MAPPING.md`, `docs/DTI.md` |
-| **Metodología base** | Spec-Driven Development (SDD) · Spec Kit · Agent Skills (Zambrana) |
+| **Metodología base** | Spec-Driven Development (SDD) · Spec Kit · Agent Skills (guille) |
 
 > **Propósito:** Esta guía adapta flujos agénticos de HealthTech de alta precisión al ciclo BIOMED UMSS: trazabilidad **BRD → PRD → FSD → Spec → Plan → TDD → Código**, con `PROMPT_MAPPING.md` como fuente de verdad del ciclo agéntico y `AGENTS.md` como constitución innegociable.
 
