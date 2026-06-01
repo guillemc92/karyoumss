@@ -31,7 +31,7 @@ docs/brd/BRD_vFinal.md
                            └── docs/PROMPT_MAPPING.md (trazabilidad)
 ```
 
-### 1.2 Agent Skills (adaptación Zambrana → BIOMED)
+### 1.2 Agent Skills (adaptación → BIOMED)
 
 | Concepto Zambrana | Adaptación BIOMED |
 |:---|:---|
