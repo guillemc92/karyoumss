@@ -41,7 +41,7 @@ Esta tabla proporciona un acceso rápido a la trazabilidad entre los invariantes
 | **ADR-0005** | AWS Cloud Deploy | `docs/adr/0005-cloud-provider-y-estilo-de-despliegue.md` | Servidores físicos costosos de mantener y sin escalabilidad de GPU. | Escalado automático en AWS ECS. Costo de GPU optimizado al apagar workers inactivos. |
 | **UC-01** | Ingesta de metafase | `backend/app/api/samples.py` | Registro y carga manual lento (>5 minutos por muestra). | Registro y carga asíncrona automatizada en S3 en <3 segundos. |
 | **UC-02** | Procesamiento IA | `backend/app/tasks/classification.py` | Cariotipado manual (TTK de 45 minutos). | Borrador automático en <15 segundos de inferencia en GPU. |
-| **UC-03** | Mesa de edición | `correccion de cariotipo.html` (Zustand + Konva.js) | UI con lag al arrastrar objetos SVG (>100ms latencia). | Canvas a 60 FPS con Zustand. Latencia de interacción <16ms. |
+| **UC-03** | Mesa de edición HITL (FSD-UC-003) | `demo-fsd-uc003.html` · `correccion de cariotipo.html` | UI con lag al arrastrar SVG (>100ms). Informe emitible sin validar naranjas. | RN-02 semaforización + RN-01 bloqueo ISCN en demo. CHN sin PII. |
 
 ---
 

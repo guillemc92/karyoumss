@@ -267,9 +267,14 @@ Imagen TIFF/PNG (>10MB)
 
 ## 10. Skills Disponibles para el Agente
 
+> **Guía maestra:** Ver `docs/GUIDE_AGENTS.md` — comandos `/spec`, `/plan`, flujo SDD, 3 skills core (Documentación, Arquitectura, Calidad Clínica) y constitución agéntica.
+
 | Skill | Comando | Descripción |
 |:---|:---|:---|
 | **skill-read-context** | `@skill-read-context` / `Skill_Read_Context` | Lee PRD/FSD/BRD/AGENTS y devuelve JSON estructurado (actores, UC, BR, validación) |
+| **skill-prompt-mapping-sync** | `/skill-update-mapping` | Sincroniza `docs/PROMPT_MAPPING.md` tras cambios en IA o mesa de edición |
+| **skill-hexagonal-guard** | `/skill-arch-review` | Valida hexagonal, Strangler y ADRs antes de merge |
+| **skill-clinical-audit-agent** | `/skill-clinical-audit` | Auditoría RN-01/02/08 (5% verdes, anti-sesgo) |
 | **notebooklm** | `/notebooklm` | Consultar notebooks de investigación (Biomed M4, Evaluación Docente) |
 | **meta-ads** | `/meta-ads` | Gestión de campañas Facebook/Instagram para marketing de BIOMED |
 | **find-skills** | `/find-skills` | Buscar e instalar nuevos skills del ecosistema |
@@ -303,6 +308,7 @@ docs/brd/BRD_vFinal.md       → Qué necesita el negocio
        └── docs/prd/PRD_vFinal.md → Qué hace el producto (User Stories + Gherkin)
             └── docs/fsd/FSD_vFinal.md → Cómo lo implementa (casos de uso técnicos)
                  ├── docs/PROMPT_MAPPING.md → Trazabilidad Requerimiento→Prompt→Código
+                 ├── docs/GUIDE_AGENTS.md   → Guía maestra Skills & Agentes (SDD)
                  ├── docs/diagrams/         → Diagramas Mermaid por UC
                  └── docs/DTI.md            → DTI vFinal v2.0 (24 §) + ADRs 0001–0005
 ```

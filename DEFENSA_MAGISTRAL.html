@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BIOMED UMSS - Defensa Final DTI v2.0</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --umss-blue: #003770;
+            --umss-red: #E30613;
+            --accent: #00b4ff;
+            --cyan: #00ffe0;
+            --purple: #7c3aed;
+            --green: #00e676;
+            --orange: #ff6d00;
+            --bg: #060910;
+            --bg2: #0d1117;
+            --text: #e8eaf6;
+            --muted: #7986a3;
+            --glass: rgba(255,255,255,0.04);
+            --glass-border: rgba(255,255,255,0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--bg) 0%, #1a1f2e 100%);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* HEADER GLOBAL */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--glass-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 30px;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .logo-brand i {
+            color: var(--umss-red);
+            font-size: 20px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 30px;
+        }
+
+        .nav-tab {
+            padding: 8px 0;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .nav-tab:hover {
+            color: var(--text);
+        }
+
+        .nav-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* CONTAINER */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .container {
+            margin-top: 60px;
+            height: calc(100vh - 60px);
+            overflow: hidden;
+        }
+
+        .section {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+            overflow: auto;
+        }
+
+        .section.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* PRESENTACIÓN (SLIDES) */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .slides-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+            overflow: auto;
+            padding: 60px 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .slide.active {
+            opacity: 1;
+            z-index: 10;
+        }
+
+        .slide-number {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            font-size: 12px;
+            color: var(--muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* SLIDE 1: HERO */
+        .slide-hero {
+            background: linear-gradient(135deg, var(--umss-blue), var(--purple));
+            text-align: center;
+        }
+
+        .slide-hero h1 {
+            font-size: 56px;
+            font-weight: 900;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #fff, var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .slide-hero .subtitle {
+            font-size: 22px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 40px;
+        }
+
+        .slide-hero .badges {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        /* SLIDE CONTENT */
+        .slide-content h2 {
+            font-size: 40px;
+            margin-bottom: 40px;
+            color: var(--accent);
+        }
+
+        .slide-content p {
+            font-size: 16px;
+            line-height: 1.8;
+            margin-bottom: 20px;
+            color: var(--text);
+        }
+
+        .slide-content ul {
+            list-style: none;
+            margin: 30px 0;
+        }
+
+        .slide-content li {
+            padding: 12px 0;
+            padding-left: 30px;
+            position: relative;
+            font-size: 15px;
+        }
+
+        .slide-content li:before {
+            content: '▸';
+            position: absolute;
+            left: 0;
+            color: var(--accent);
+            font-size: 20px;
+        }
+
+        /* DIAGRAMA C4 */
+        .c4-diagram {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .c4-box {
+            padding: 20px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .c4-box:hover {
+            background: rgba(0, 180, 255, 0.1);
+            border-color: var(--accent);
+        }
+
+        .c4-box-title {
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .c4-box-desc {
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        /* SLIDE CONTROLS */
+        .slide-controls {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            z-index: 50;
+            background: var(--bg2);
+            padding: 15px 25px;
+            border: 1px solid var(--glass-border);
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+        }
+
+        .slide-btn {
+            width: 40px;
+            height: 40px;
+            border: 1px solid var(--glass-border);
+            background: var(--glass);
+            color: var(--text);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+
+        .slide-btn:hover {
+            background: rgba(0, 180, 255, 0.2);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .slide-counter {
+            color: var(--muted);
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            min-width: 60px;
+            text-align: center;
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* CORRECCIÓN DE CARIOTIPO */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .correction-panel {
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+            padding: 30px;
+            height: 100%;
+            overflow: auto;
+        }
+
+        .image-viewer {
+            background: var(--bg2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 400px;
+        }
+
+        .image-placeholder {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, var(--glass), transparent);
+            border: 2px dashed var(--glass-border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 15px;
+            color: var(--muted);
+        }
+
+        .image-placeholder i {
+            font-size: 48px;
+            color: var(--accent);
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            overflow: auto;
+        }
+
+        .panel {
+            background: var(--bg2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .panel-title {
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 15px;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        .chromosome-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .chromosome-item {
+            padding: 10px;
+            background: var(--glass);
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid var(--glass-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chromosome-item:hover {
+            background: rgba(0, 180, 255, 0.1);
+            border-color: var(--accent);
+        }
+
+        .confidence {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--green);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: 1px solid var(--glass-border);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: var(--bg);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 20px rgba(0, 180, 255, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--glass);
+            color: var(--text);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 180, 255, 0.1);
+            border-color: var(--accent);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* INFORME / REPORTE */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        .report-container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 30px;
+            overflow: auto;
+            height: 100%;
+        }
+
+        .report-header {
+            background: linear-gradient(135deg, var(--umss-blue), var(--purple));
+            padding: 40px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .report-title {
+            font-size: 28px;
+            font-weight: 900;
+            margin-bottom: 10px;
+        }
+
+        .report-meta {
+            font-size: 13px;
+            opacity: 0.9;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .report-section {
+            background: var(--bg2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+        }
+
+        .report-section-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .karyotype-display {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--glass);
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 14px;
+            margin: 15px 0;
+            color: var(--cyan);
+            overflow-x: auto;
+            border: 1px solid var(--glass-border);
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin: 15px 0;
+        }
+
+        .result-item {
+            background: var(--glass);
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .result-label {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .result-value {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        .validation-badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: var(--green);
+            color: var(--bg);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            margin: 5px 0;
+        }
+
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-export {
+            padding: 12px 20px;
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            flex: 1;
+        }
+
+        .btn-export:hover {
+            box-shadow: 0 0 20px rgba(0, 180, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* SCROLL */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--glass);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--accent);
+        }
+
+        /* ═══════════════════════════════════════════════════════════════ */
+        /* RESPONSIVO */
+        /* ═══════════════════════════════════════════════════════════════ */
+
+        @media (max-width: 1024px) {
+            .correction-panel {
+                grid-template-columns: 1fr;
+            }
+
+            .slide {
+                padding: 40px;
+            }
+
+            .slide-hero h1 {
+                font-size: 36px;
+            }
+
+            .c4-diagram {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .speaker-note {
+            margin-top: 24px;
+            padding: 14px 18px;
+            background: rgba(124, 58, 237, 0.15);
+            border-left: 3px solid var(--purple);
+            border-radius: 0 8px 8px 0;
+            font-size: 13px;
+            color: #c4b5fd;
+            display: none;
+        }
+
+        body.show-notes .speaker-note { display: block; }
+
+        .progress-bar {
+            position: fixed;
+            top: 60px;
+            left: 0;
+            height: 3px;
+            background: var(--accent);
+            z-index: 99;
+            transition: width 0.4s ease;
+        }
+
+        .trace-chain {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 24px 0;
+            font-size: 13px;
+        }
+
+        .trace-step {
+            padding: 10px 16px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            font-weight: 600;
+        }
+
+        .trace-arrow { color: var(--accent); font-size: 18px; }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            padding: 16px;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--green);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .metric-label { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+        .adr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            margin: 20px 0;
+        }
+
+        .adr-table th, .adr-table td {
+            padding: 10px 12px;
+            border: 1px solid var(--glass-border);
+            text-align: left;
+        }
+
+        .adr-table th { background: var(--glass); color: var(--accent); }
+
+        .help-hint {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            font-size: 10px;
+            color: var(--muted);
+            background: var(--bg2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--glass-border);
+            z-index: 40;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .confidence.warn { color: var(--orange); }
+        .correction-iframe {
+            width: 100%;
+            height: calc(100vh - 120px);
+            border: none;
+            border-radius: 12px;
+            background: #111;
+        }
+
+        .demo-banner {
+            padding: 12px 20px;
+            background: rgba(0, 230, 118, 0.1);
+            border-bottom: 1px solid rgba(0, 230, 118, 0.3);
+            font-size: 13px;
+            text-align: center;
+        }
+
+        .demo-banner a { color: var(--cyan); }
+
+        .btn-presenter {
+            padding: 6px 14px;
+            font-size: 11px;
+            font-weight: 600;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: var(--text);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-left: 12px;
+        }
+
+        .btn-presenter:hover, body.presenter-mode .btn-presenter {
+            background: rgba(124, 58, 237, 0.3);
+            border-color: var(--purple);
+            color: #e9d5ff;
+        }
+
+        #presentation.presentation-wrap {
+            display: block;
+        }
+
+        body.presenter-mode #presentation.presentation-wrap {
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 0;
+        }
+
+        body.presenter-mode .slides-wrapper .slide {
+            padding: 40px 50px;
+        }
+
+        body.presenter-mode .help-hint { display: none; }
+
+        .presenter-panel {
+            display: none;
+            flex-direction: column;
+            background: #0a0e14;
+            border-left: 1px solid var(--glass-border);
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body.presenter-mode .presenter-panel {
+            display: flex;
+        }
+
+        .presenter-panel-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(124, 58, 237, 0.12);
+        }
+
+        .presenter-panel-header h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--purple);
+            letter-spacing: 0.08em;
+        }
+
+        .presenter-slide-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text);
+            margin-top: 8px;
+        }
+
+        .presenter-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            font-size: 14px;
+            line-height: 1.75;
+            color: #b0bec5;
+        }
+
+        .presenter-body strong { color: var(--cyan); }
+
+        .presenter-timer {
+            padding: 12px 20px;
+            border-top: 1px solid var(--glass-border);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .presenter-timer span { color: var(--accent); font-weight: 700; }
+
+        .rubric-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 16px 0;
+        }
+
+        .rubric-item {
+            padding: 12px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 230, 118, 0.35);
+            background: rgba(0, 230, 118, 0.08);
+            font-size: 12px;
+        }
+
+        .rubric-item.oral {
+            border-color: rgba(0, 180, 255, 0.35);
+            background: rgba(0, 180, 255, 0.08);
+        }
+
+        .rubric-num {
+            display: inline-block;
+            width: 22px;
+            height: 22px;
+            line-height: 22px;
+            text-align: center;
+            background: var(--green);
+            color: var(--bg);
+            border-radius: 50%;
+            font-weight: 800;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+
+        .rubric-item.oral .rubric-num { background: var(--accent); }
+
+        .rubric-name { font-weight: 600; color: var(--text); display: block; margin: 6px 0 4px; }
+
+        .rubric-level {
+            color: var(--green);
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
+
+        .rubric-evidence { color: var(--muted); font-size: 10px; display: block; margin-top: 4px; }
+
+        .rubric-score-box {
+            margin-top: 20px;
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(0, 230, 118, 0.15), rgba(0, 180, 255, 0.1));
+            border-radius: 12px;
+            border: 1px solid rgba(0, 230, 118, 0.3);
+        }
+
+        .rubric-score-box .big {
+            font-size: 36px;
+            font-weight: 900;
+            color: var(--green);
+        }
+
+        .mermaid-wrap {
+            background: rgba(0,0,0,0.35);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 0;
+            overflow-x: auto;
+        }
+        .mermaid-wrap .mermaid { font-size: 11px; }
+        .slide-content.compact { padding: 40px 60px; }
+        .slide-content.compact h2 { font-size: 32px; margin-bottom: 20px; }
+        .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+        .compare-box { padding: 16px; border-radius: 10px; border: 1px solid var(--glass-border); background: var(--glass); font-size: 13px; }
+        .compare-box.win { border-color: var(--green); background: rgba(0,230,118,0.08); }
+
+        @media (max-width: 640px) {
+            .header {
+                padding: 0 15px;
+            }
+
+            .nav-tabs {
+                gap: 15px;
+            }
+
+            .nav-tab {
+                font-size: 11px;
+            }
+
+            .slide {
+                padding: 20px;
+            }
+
+            .slide-hero h1 {
+                font-size: 28px;
+            }
+
+            .result-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progress-bar" style="width: 8%"></div>
+    <div class="help-hint" id="help-hint">← → slides · N notas · P presentador · 1-3 secciones</div>
+    <!-- HEADER -->
+    <div class="header">
+        <div class="logo-brand">
+            <i class="fas fa-dna"></i>
+            BIOMED UMSS — Defensa Final
+        </div>
+        <div style="display: flex; align-items: center;">
+        <div class="nav-tabs">
+            <div class="nav-tab active" data-section="presentation">📊 Presentación</div>
+            <div class="nav-tab" data-section="correction">✏️ Corrección</div>
+            <div class="nav-tab" data-section="report">📄 Informe</div>
+        </div>
+        <button type="button" class="btn-presenter" id="toggle-presenter" title="Modo presentador (P)">🎤 Modo P</button>
+        </div>
+    </div>
+
+    <!-- CONTAINER -->
+    <div class="container">
+        <!-- SECCIÓN 1: PRESENTACIÓN -->
+        <div id="presentation" class="section active presentation-wrap">
+            <div class="slides-wrapper">
+            <div class="slides-container">
+                <!-- SLIDE 1: HERO -->
+                <div class="slide active slide-hero" data-script="Saludo. Presentarse (G04, Guillermo Mamani). Decir que la entrega evaluada es exclusivamente release/2.0.0 en GitHub. No abrir main ni otras ramas.">
+                    <h1>BIOMED UMSS</h1>
+                    <p class="subtitle">Intelligent Karyotyping Platform</p>
+                    <p class="subtitle" style="font-size: 16px; opacity: 0.8; font-weight: 300;">Análisis Citogenético con IA</p>
+                    <div class="badges" style="margin-top: 40px;">
+                        <div class="badge">G04 — BIOMED UMSS</div>
+                        <div class="badge">Módulo 4 · Arquitectura con IA</div>
+                        <div class="badge">release/2.0.0</div>
+                        <div class="badge">Ing. Guillermo Mamani Chambi — G04</div>
+                    </div>
+                    <p class="subtitle" style="font-size: 13px; margin-top: 24px; opacity: 0.7;">
+                        <a href="https://github.com/guillemc92/karyoumss/tree/release/2.0.0" target="_blank" rel="noopener" style="color: var(--cyan);">github.com/guillemc92/karyoumss</a>
+                    </p>
+                    <div class="speaker-note">⏱ ~1 min · Abrir con rama evaluada release/2.0.0 en GitHub.</div>
+                    <div class="slide-number">01 / 18</div>
+                </div>
+
+                <!-- SLIDE 2: TRAZABILIDAD -->
+                <div class="slide slide-content">
+                    <h2>Trazabilidad Documental</h2>
+                    <p>MRD → PRD → FSD → DTI (criterio rúbrica #1)</p>
+                    <div class="trace-chain">
+                        <span class="trace-step">MRD_vFinal</span>
+                        <span class="trace-arrow">→</span>
+                        <span class="trace-step">PRD_vFinal</span>
+                        <span class="trace-arrow">→</span>
+                        <span class="trace-step">FSD_vFinal</span>
+                        <span class="trace-arrow">→</span>
+                        <span class="trace-step">DTI vFinal v2.0</span>
+                        <span class="trace-arrow">→</span>
+                        <span class="trace-step">PROMPT_MAPPING</span>
+                    </div>
+                    <ul>
+                        <li><strong>DTI:</strong> 24 secciones (§0–§23) — C4, hexagonal, event-driven, AWS</li>
+                        <li><strong>AGENTS.md</strong> v1.2 sincronizado con rutas vFinal</li>
+                        <li><strong>12 diagramas</strong> <code>.mmd</code> en <code>docs/diagrams/</code></li>
+                    </ul>
+                    <div class="speaker-note">⏱ ~1 min · Mencionar que la entrega evaluada es solo el branch, no main.</div>
+                    <div class="slide-number">02 / 18</div>
+                </div>
+
+                <!-- SLIDE 3: PROBLEMA -->
+                <div class="slide slide-content" data-script="Contexto UMSS/IIBISMED. Métricas defendibles: 45-60 min actual vs ≤15 min objetivo. Software legacy: no interoperable, costoso, sin IA explicable.">
+                    <h2>Problema — Defendible (MRD / PRD)</h2>
+                    <div class="metrics-grid" style="margin-bottom:20px;">
+                        <div class="metric-card"><div class="metric-value" style="color:var(--orange);">45–60</div><div class="metric-label">min/muestra HOY</div></div>
+                        <div class="metric-card"><div class="metric-value">≤15</div><div class="metric-label">min objetivo TTK</div></div>
+                        <div class="metric-card"><div class="metric-value" style="font-size:20px;">~13%</div><div class="metric-label">cromosomas naranjas (HITL)</div></div>
+                    </div>
+                    <ul>
+                        <li>🏥 Laboratorios UMSS: especialista escaso, fatiga, error humano</li>
+                        <li>💾 <strong>Legacy:</strong> LIS cerrados, sin HL7/FHIR, sin trazabilidad IA</li>
+                        <li>💰 Soluciones comerciales: licencias altas, sin barandillas clínicas RN-02</li>
+                        <li>🔒 Riesgo legal: PII en cloud sin CHN (violación RN-03)</li>
+                    </ul>
+                    <div class="speaker-note">⏱ ~1 min · No genérico: citar TTK medible.</div>
+                    <div class="slide-number">03 / 18</div>
+                </div>
+
+                <!-- SLIDE 4: OBJETIVOS -->
+                <div class="slide slide-content" data-script="Objetivos técnicos alineados al PRD: IA aumentada, no autónoma. Hexagonal + 5 agentes de procesamiento. Entrega release/2.0.0.">
+                    <h2>Objetivos del Sistema</h2>
+                    <ul>
+                        <li>⚡ Reducir <strong>TTK</strong> de 45 min a ≤15 min (NFR-01: inferencia &lt;15 s)</li>
+                        <li>🤝 <strong>Human-in-the-loop</strong> obligatorio — umbral confianza 0.85 (RN-02)</li>
+                        <li>🏗️ <strong>Arquitectura hexagonal</strong> + pipeline <strong>multi-agente</strong> event-driven</li>
+                        <li>🔐 <strong>Privacidad por diseño</strong> — CHN antes de cualquier transmisión cloud</li>
+                        <li>📋 Trazabilidad <strong>MRD→PRD→FSD→DTI→código</strong> (PROMPT_MAPPING)</li>
+                    </ul>
+                    <div class="slide-number">04 / 18</div>
+                </div>
+
+                <!-- SLIDE 5: FSD UC -->
+                <div class="slide slide-content">
+                    <h2>FSD — Caso de Uso Destacado</h2>
+                    <p><strong>FSD-UC-002:</strong> Pipeline IA (segmentación → clasificación → borrador)</p>
+                    <ul>
+                        <li><strong>Aviso-contrato:</strong> <code>prompts/PR-UC02-SEM.md</code> — semaforización &lt;85%</li>
+                        <li><strong>Flujo:</strong> POST muestra → CHN → S3 → Celery → WebSocket "Borrador listo"</li>
+                        <li><strong>Salida:</strong> 46 cromosomas con <code>confidence_score</code> sin redondear</li>
+                    </ul>
+                    <p style="color: var(--cyan); margin-top: 20px;"><i class="fas fa-link"></i> Trazado en <code>docs/PROMPT_MAPPING.md</code> (UC-02, RN-02)</p>
+                    <div class="speaker-note">⏱ ~2 min · Criterio 8–25% de la guía de presentación.</div>
+                    <div class="slide-number">05 / 18</div>
+                </div>
+
+                <!-- SLIDE 6: SOLUCIÓN -->
+                <div class="slide slide-content">
+                    <h2>Pipeline de Solución</h2>
+                    <p><strong>Stack definitivo (FSD vFinal + AGENTS.md):</strong></p>
+                    <ul>
+                        <li>🤖 <strong>Segmentación U-Net</strong> + tiling 1024×64 (ADR-0001) — IoU POC: <span style="color: var(--green);">0.92</span></li>
+                        <li>🧬 <strong>Clasificación EfficientNet-B3</strong> — F1 POC: <span style="color: var(--green);">0.94</span></li>
+                        <li>👀 <strong>XAI Grad-CAM</strong> — fidelity POC: <span style="color: var(--green);">0.92</span></li>
+                        <li>⚡ <strong>Async</strong> Redis + Celery (ADR-0002) — API &lt;100 ms</li>
+                        <li>🔐 <strong>CHN</strong> en borde antes de cloud (ADR-0003, RN-03)</li>
+                    </ul>
+                    <div class="slide-number">06 / 18</div>
+                </div>
+
+                <!-- SLIDE 7: C4 MERMAID -->
+                <div class="slide slide-content compact" data-script="C4 Nivel 2: contenedores desacoplados. Core hexagonal en FastAPI. Satélites GPU para inferencia. Evidencia DTI §2-§3.">
+                    <h2>C4 Nivel 2 — Contenedores</h2>
+                    <div class="mermaid-wrap">
+                        <pre class="mermaid">flowchart TB
+    subgraph Users["Actores"]
+        A[Analista]
+        S[Supervisor MFA]
+    end
+    subgraph System["BIOMED UMSS"]
+        UI[React SPA Konva]
+        API[FastAPI Hexagonal Core]
+        Q[Redis Celery]
+        ML[TorchServe GPU]
+        DB[(PostgreSQL)]
+        ST[(S3 CHN)]
+    end
+    A --> UI
+    S --> UI
+    UI --> API
+    API --> Q
+    Q --> ML
+    API --> DB
+    ML --> ST
+    API --> ST</pre>
+                    </div>
+                    <div class="slide-number">07 / 18</div>
+                </div>
+
+                <!-- SLIDE 8: HEXAGONAL MERMAID -->
+                <div class="slide slide-content compact" data-script="Puertos In: CreateSample, ValidateChrom, GenerateReport. Out: Repository, TaskPublisher, WebSocket. Adaptadores: REST, Redis, Postgres. Testabilidad: mock de puertos.">
+                    <h2>Arquitectura Hexagonal — Core</h2>
+                    <div class="mermaid-wrap">
+                        <pre class="mermaid">flowchart LR
+    subgraph AdIn["Adaptadores In"]
+        REST[samples_router.py]
+        WS[websocket_manager]
+    end
+    subgraph Core["Dominio"]
+        UC1[CreateSampleUC]
+        UC2[ValidateChromUC]
+        UC3[GenerateReportUC]
+    end
+    subgraph AdOut["Adaptadores Out"]
+        PG[postgres_adapter]
+        RD[redis_adapter]
+        WSP[websocket_publisher]
+    end
+    REST --> UC1
+    REST --> UC2
+    WS --> UC3
+    UC1 --> RD
+    UC2 --> PG
+    UC3 --> WSP</pre>
+                    </div>
+                    <p style="font-size:12px;color:var(--cyan);">Extensibilidad: cambiar U-Net→otro modelo sin tocar dominio (ModelPort)</p>
+                    <div class="slide-number">08 / 18</div>
+                </div>
+
+                <!-- SLIDE 9: 5 AGENTES -->
+                <div class="slide slide-content compact" data-script="NO es monolito distribuido: 5 agentes con responsabilidad única, despliegue independiente vía Celery queues. Orquestador coordina saga. DTI §3.5 y §9.">
+                    <h2>5 Agentes de Procesamiento (Pipeline IA)</h2>
+                    <div class="mermaid-wrap">
+                        <pre class="mermaid">flowchart LR
+    O[1 Orquestador Celery] -->|evento| S[2 Segmentador U-Net]
+    S -->|tiles| C[3 Clasificador EfficientNet]
+    C -->|scores| E[4 Ensamblador NMS]
+    E -->|46 chr| V[5 Validador QC 85%]
+    V -->|WebSocket| UI[Mesa HITL FSD-UC-003]</pre>
+                    </div>
+                    <ul style="font-size:13px;margin-top:10px;">
+                        <li>Comunicación <strong>event-driven</strong> (Redis pub/sub) — ADR-0002</li>
+                        <li>Cada agente = worker escalable independiente (ECS task)</li>
+                    </ul>
+                    <div class="slide-number">09 / 18</div>
+                </div>
+
+                <!-- SLIDE 10: STRANGLER -->
+                <div class="slide slide-content" data-script="Strangler Pattern: monolito modular absorbe legacy gradualmente. Evitamos distributed monolith: agentes solo vía cola async, no llamadas síncronas entre servicios. ADR-0004.">
+                    <h2>Diferenciación — Strangler Pattern</h2>
+                    <div class="compare-grid">
+                        <div class="compare-box">
+                            <strong>❌ Monolito clásico</strong>
+                            <ul style="margin-top:8px;font-size:12px;">
+                                <li>IA acoplada al controller</li>
+                                <li>Sin despliegue independiente GPU</li>
+                                <li>Imposible escalar inferencia</li>
+                            </ul>
+                        </div>
+                        <div class="compare-box win">
+                            <strong>✅ BIOMED (multi-agente + hexagonal)</strong>
+                            <ul style="margin-top:8px;font-size:12px;">
+                                <li>Core domain aislado (ports)</li>
+                                <li>Agentes GPU como satélites</li>
+                                <li>Strangler: reemplaza pasos legacy uno a uno</li>
+                                <li>Sin distributed monolith: async only</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="slide-number">10 / 18</div>
+                </div>
+
+                <!-- SLIDE 11: BARANDILLAS -->
+                <div class="slide slide-content">
+                    <h2>IA + Barandillas Clínicas</h2>
+                    <ul>
+                        <li>🟠 <strong>RN-02:</strong> <code>confidence_score &lt; 0.85</code> → revisión obligatoria (naranja)</li>
+                        <li>🚫 <strong>RN-01 / BR-R5:</strong> sin emisión de informe si naranjas sin validar</li>
+                        <li>🔒 <strong>RN-03:</strong> CHN antes de S3/TorchServe — cero PII en cloud</li>
+                        <li>📋 <strong>RN-04:</strong> ISCN read-only post-generación</li>
+                        <li>🔍 <strong>RN-08:</strong> auditoría aleatoria 5% de verdes</li>
+                    </ul>
+                    <div class="speaker-note">⏱ ~1 min · Human-in-the-loop no negociable (BRD).</div>
+                    <div class="slide-number">11 / 18</div>
+                </div>
+
+                <!-- SLIDE 12: AWS -->
+                <div class="slide slide-content">
+                    <h2>AWS — ADR-0005</h2>
+                    <ul>
+                        <li>🌍 <strong>Región:</strong> us-east-1 (soberanía de datos Bolivia)</li>
+                        <li>📦 <strong>Contenedor:</strong> ECS Fargate (sin infraestructura)</li>
+                        <li>⚙️ <strong>Auto-scaling:</strong> 2-10 réplicas según carga</li>
+                        <li>🔒 <strong>Compliance:</strong> HIPAA BAA + 21 CFR Part 11</li>
+                        <li>💾 <strong>Backup:</strong> Multi-AZ RDS + S3 replication</li>
+                        <li>💰 <strong>Costo estimado:</strong> $2,000–3,500/mes (producción)</li>
+                    </ul>
+                    <div class="slide-number">12 / 18</div>
+                </div>
+
+                <!-- SLIDE 13: POCs -->
+                <div class="slide slide-content">
+                    <h2>POCs Ejecutadas (evidencia en repo)</h2>
+                    <div class="metrics-grid">
+                        <div class="metric-card"><div class="metric-value">0.92</div><div class="metric-label">POC-01 U-Net IoU</div></div>
+                        <div class="metric-card"><div class="metric-value">0.94</div><div class="metric-label">POC-02 F1-score</div></div>
+                        <div class="metric-card"><div class="metric-value">0.92</div><div class="metric-label">POC-03 Grad-CAM</div></div>
+                        <div class="metric-card"><div class="metric-value">100%</div><div class="metric-label">POC-04 Merkle</div></div>
+                        <div class="metric-card"><div class="metric-value">387ms</div><div class="metric-label">POC-05 p95 API</div></div>
+                    </div>
+                    <p><code>pocs/POC-XX/metrics.json</code> + README · Aprendizaje: tiling esencial en &gt;4K.</p>
+                    <div class="speaker-note">⏱ ~1 min · Criterio rúbrica #4 Excelente (≥2 POC).</div>
+                    <div class="slide-number">13 / 18</div>
+                </div>
+
+                <!-- SLIDE 14: ADRs -->
+                <div class="slide slide-content">
+                    <h2>ADRs — Trade-offs Explícitos</h2>
+                    <table class="adr-table">
+                        <thead><tr><th>ADR</th><th>Decisión</th><th>Trade-off</th></tr></thead>
+                        <tbody>
+                            <tr><td>0001</td><td>Tiling + NMS</td><td>Latencia vs GPU OOM</td></tr>
+                            <tr><td>0002</td><td>Redis + Celery</td><td>Simplicidad vs Kafka</td></tr>
+                            <tr><td>0003</td><td>CHN en borde</td><td>Privacidad vs latencia local</td></tr>
+                            <tr><td>0004</td><td>Monolito modular</td><td>Velocidad vs microservicios</td></tr>
+                            <tr><td>0005</td><td>AWS ECS + RDS</td><td>Vendor lock-in vs CapEx on-prem</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="slide-number">14 / 18</div>
+                </div>
+
+                <!-- SLIDE 15: ROADMAP -->
+                <div class="slide slide-content" data-script="Cerrar ciclo S12: lecciones aprendidas alimentan roadmap. Fase 2 = firma MFA, ISCN, audit trail. Fase 3 = FHIR y escala enterprise. Enfatizar: IA aumentada, nunca autónoma.">
+                    <h2>Roadmap y Lecciones (S12)</h2>
+                    <ul>
+                        <li><strong>Fase 2:</strong> Firma MFA, ISCN 2024, audit trail hash chain, auditoría 5%</li>
+                        <li><strong>Fase 3:</strong> HL7 FHIR, Triton GPU, dashboard calidad modelo</li>
+                        <li><strong>Lección:</strong> IA aumentada, no autónoma — barandillas RN-01/02</li>
+                    </ul>
+                    <p style="margin-top: 20px; font-size: 13px; color: var(--muted);">Fuente: <code>docs/roadmap.md</code></p>
+                    <div class="slide-number">15 / 18</div>
+                </div>
+
+                <!-- SLIDE 16: RÚBRICA -->
+                <div class="slide slide-content" data-script="Mostrar al docente que el repo cumple la rúbrica antes de la nota oral. Criterio 5 se evalúa en vivo. Invitar a revisar release/2.0.0 en GitHub si lo desea.">
+                    <h2>Auto-evaluación — Rúbrica Defensa Final</h2>
+                    <p style="font-size: 13px; color: var(--muted); margin-bottom: 12px;">Rama evaluada: <code>release/2.0.0</code> · Entrega = el branch</p>
+                    <div class="rubric-grid">
+                        <div class="rubric-item">
+                            <span class="rubric-num">1</span>
+                            <span class="rubric-name">Coherencia MRD→PRD→FSD→DTI</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">DTI 24 § · vFinal · 12 .mmd</span>
+                        </div>
+                        <div class="rubric-item">
+                            <span class="rubric-num">2</span>
+                            <span class="rubric-name">Arquitectura + AWS + ADR-0005</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">C4 · hexagonal · trade-offs</span>
+                        </div>
+                        <div class="rubric-item">
+                            <span class="rubric-num">3</span>
+                            <span class="rubric-name">AGENTS.md sincronizado</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">v1.2 · skill-read-context</span>
+                        </div>
+                        <div class="rubric-item">
+                            <span class="rubric-num">4</span>
+                            <span class="rubric-name">POCs ejecutadas</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">5 POC · metrics.json</span>
+                        </div>
+                        <div class="rubric-item oral">
+                            <span class="rubric-num">5</span>
+                            <span class="rubric-name">Defensa oral + Q&amp;A</span>
+                            <span class="rubric-level" style="color: var(--accent);">✓ Preparado</span>
+                            <span class="rubric-evidence">15 min + demo FSD-UC-003 + guion Modo P</span>
+                        </div>
+                        <div class="rubric-item">
+                            <span class="rubric-num">6</span>
+                            <span class="rubric-name">PROMPT_MAPPING</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">Tabla símbolo→archivo→métricas</span>
+                        </div>
+                        <div class="rubric-item">
+                            <span class="rubric-num">7</span>
+                            <span class="rubric-name">Diagramas .mmd</span>
+                            <span class="rubric-level">✓ Excelente</span>
+                            <span class="rubric-evidence">12 versionados en Git</span>
+                        </div>
+                    </div>
+                    <div class="rubric-score-box">
+                        <div class="big">7 / 7 Excelente</div>
+                        <div style="font-size: 13px; color: var(--muted); margin-top: 8px;">Meta defensa: <strong style="color: var(--green);">100 / 100</strong> · Evidencia en <code>release/2.0.0</code></div>
+                    </div>
+                    <div class="speaker-note">Úsala 1 min antes de la demo. No sustituye la evaluación del docente.</div>
+                    <div class="slide-number">16 / 18</div>
+                </div>
+
+                <!-- SLIDE 17: Q&A -->
+                <div class="slide slide-content" data-script="Q&A: Strangler vs monolith, consistencia eventual Celery, ADR-0005 lock-in, RN-02 demo en vivo.">
+                    <h2>Q&amp;A — Respuestas Preparadas</h2>
+                    <table class="adr-table">
+                        <thead><tr><th>Pregunta</th><th>Respuesta</th></tr></thead>
+                        <tbody>
+                            <tr><td>¿Microservicios?</td><td>ADR-0004 monolito modular + Strangler; dominio hexagonal</td></tr>
+                            <tr><td>¿Distributed monolith?</td><td>No: solo cola async entre agentes</td></tr>
+                            <tr><td>¿Consistencia?</td><td>Eventual en pipeline; ACID en PostgreSQL</td></tr>
+                            <tr><td>¿RN-01?</td><td>Demo: informe bloqueado hasta validar naranjas</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="slide-number">17 / 18</div>
+                </div>
+
+                <!-- SLIDE 18: CIERRE -->
+                <div class="slide slide-hero" style="background: linear-gradient(135deg, var(--umss-red), var(--orange));" data-script="Demo demo-fsd-uc003: validar Chr 18,5,13. Tecla 2. Luego Informe CHN.">
+                    <h1 style="font-size: 48px;">Demo en vivo (5 min)</h1>
+                    <p class="subtitle">Pestaña <strong>Corrección</strong> → <code>demo-fsd-uc003.html</code> (RN-01/02)</p>
+                    <p class="subtitle" style="font-size: 14px; opacity: 0.8; margin-top: 24px;">Pestaña <strong>Informe</strong> → CHN + ISCN + audit trail</p>
+                    <div class="slide-number">18 / 18</div>
+                </div>
+            </div>
+
+            <!-- CONTROLES DE SLIDES -->
+            <div class="slide-controls">
+                <button class="slide-btn" id="prev-slide" title="Anterior"><i class="fas fa-chevron-left"></i></button>
+                <span class="slide-counter"><span id="current-slide">1</span> / <span id="total-slides">18</span></span>
+                <button class="slide-btn" id="next-slide" title="Siguiente"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            </div><!-- slides-wrapper -->
+
+            <!-- PANEL MODO PRESENTADOR (solo visible con P) -->
+            <aside class="presenter-panel" id="presenter-panel" aria-label="Notas del presentador">
+                <div class="presenter-panel-header">
+                    <h3><i class="fas fa-user-tie"></i> Modo presentador</h3>
+                    <div class="presenter-slide-title" id="presenter-slide-title">Slide 1</div>
+                </div>
+                <div class="presenter-body" id="presenter-body">
+                    <p>Activa con <strong>P</strong> o el botón <strong>Modo P</strong>. Aquí verás el guion ampliado de cada slide.</p>
+                </div>
+                <div class="presenter-timer">
+                    Bloque presentación: <span id="presenter-block-time">~15 min</span> · Slide <span id="presenter-slide-num">1</span>/<span id="presenter-total">18</span>
+                </div>
+            </aside>
+        </div>
+
+        <!-- SECCIÓN 2: CORRECCIÓN DE CARIOTIPO (DEMO) -->
+        <div id="correction" class="section">
+            <div class="demo-banner">
+                <strong>Demo 5 min · FSD-UC-003</strong> — Validar cromosomas naranjas (RN-02) → desbloquear informe (RN-01)
+                · <code>PROMPT_MAPPING.md</code> → <code>demo-fsd-uc003.html</code>
+                · <a href="demo-fsd-uc003.html" target="_blank" rel="noopener">Abrir en ventana nueva</a>
+            </div>
+            <iframe class="correction-iframe" src="demo-fsd-uc003.html" title="Mesa HITL BIOMED UMSS FSD-UC-003"></iframe>
+        </div>
+
+        <!-- SECCIÓN 3: INFORME / REPORTE -->
+        <div id="report" class="section">
+            <div class="report-container">
+                <div class="report-header">
+                    <div class="report-title">Reporte de Cariotipo</div>
+                    <div class="report-meta">
+                        <span>BIOMED UMSS v2.0</span>
+                        <span>29/05/2026</span>
+                        <span>CHN-2026-05-29-0001</span>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-section-title">Datos de la Muestra</div>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-label">Código CHN (RN-03)</div>
+                            <div class="result-value">CHN-2026-05-29-0001</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Fecha Procesamiento</div>
+                            <div class="result-value">29/05/2026 14:32</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Analista (JWT)</div>
+                            <div class="result-value">UUID analista · sin PII</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Estado informe</div>
+                            <div class="result-value">pending_signature</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-section-title">Resultado Citogenético</div>
+                    <div class="karyotype-display">
+                        46, XY [100]<br>
+                        <span style="font-size: 12px; color: var(--muted);">// Cariotipo normal, 46 cromosomas, sexo masculino</span>
+                    </div>
+                    <div style="margin: 15px 0;">
+                        <div class="validation-badge"><i class="fas fa-check-circle"></i> NORMAL</div>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-section-title">Análisis IA</div>
+                    <div class="result-grid">
+                        <div class="result-item">
+                            <div class="result-label">Segmentación U-Net (IoU)</div>
+                            <div class="result-value">0.92</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Clasificación (F1)</div>
+                            <div class="result-value">0.94</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Explicabilidad</div>
+                            <div class="result-value">0.92</div>
+                        </div>
+                        <div class="result-item">
+                            <div class="result-label">Confianza Media</div>
+                            <div class="result-value">94%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-section-title">Interpretación Clínica</div>
+                    <p style="font-size: 14px; line-height: 1.8; color: var(--text);">
+                        Análisis citogenético mediante técnica de bandeo G en interfase (FISH) sobre linfocitos periféricos. 
+                        Se observa <strong>cariotipo de 46 cromosomas</strong> con <strong>sexo cromosómico XY</strong>, 
+                        resultado compatible con <strong>sexo genético masculino normal</strong>. 
+                        No se detectan anomalías de número ni estructura cromosómica visible al microscopio óptico con resolución de bandeo G.
+                    </p>
+                </div>
+
+                <div class="report-section">
+                    <div class="report-section-title">Audit Trail (Merkle Hash Chain)</div>
+                    <div class="karyotype-display" style="color: var(--cyan); font-size: 11px;">
+                        Hash[0]: 0x7a3f9e2b1d4c8a5f...<br>
+                        Hash[1]: 0x9c2b4d8f1a6e3c5f...<br>
+                        Hash[Final]: 0x4e8a1f3d7b9c2a6e...<br>
+                        <span style="color: var(--green);">✓ Cadena válida (100% integridad)</span>
+                    </div>
+                </div>
+
+                <div class="export-buttons">
+                    <button class="btn-export" onclick="alert('📥 Descargando PDF...')">
+                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                    </button>
+                    <button class="btn-export" onclick="alert('🖨️ Enviando a imprimir...')">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                    <button class="btn-export" onclick="alert('📧 Enviando por email...')">
+                        <i class="fas fa-envelope"></i> Enviar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════
+        // NAVEGACIÓN ENTRE SECCIONES
+        // ═══════════════════════════════════════════════════════════════
+
+        const navTabs = document.querySelectorAll('.nav-tab');
+        const sections = document.querySelectorAll('.section');
+
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const sectionId = tab.dataset.section;
+
+                navTabs.forEach(t => t.classList.remove('active'));
+                sections.forEach(s => s.classList.remove('active'));
+
+                tab.classList.add('active');
+                document.getElementById(sectionId).classList.add('active');
+
+                if (sectionId === 'presentation') {
+                    updateSlideCounter();
+                }
+            });
+        });
+
+        // ═══════════════════════════════════════════════════════════════
+        // NAVEGACIÓN DE SLIDES
+        // ═══════════════════════════════════════════════════════════════
+
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+
+        mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' });
+
+        const SLIDE_TIMES = ['1','1','1','1','2','1','2','2','2','2','1','2','1','1','1','1','1','demo'];
+
+        const PRESENTER_SCRIPTS = [
+            'Saludo G04. Entrega = release/2.0.0 únicamente en GitHub.',
+            'MRD→PRD→FSD→DTI→PROMPT_MAPPING. DTI 24§, 12 .mmd, AGENTS v1.2.',
+            'Problema defendible: 45-60 min vs ≤15 min. Legacy no interoperable.',
+            'Objetivos: TTK, HITL, hexagonal, 5 agentes, CHN, trazabilidad.',
+            'FSD-UC-002 + PR-UC02-SEM.md. CHN → S3 → Celery → WebSocket.',
+            'Stack U-Net IoU 0.92, EfficientNet F1 0.94, Grad-CAM, ADR-0002/0003.',
+            'C4 Nivel 2: React, FastAPI, Redis, TorchServe, RDS, S3.',
+            'Hexagonal: ports In/Out, adaptadores REST/Redis/Postgres. Mock testable.',
+            '5 agentes: Orquestador→Segmentador→Clasificador→Ensamblador→Validador QC.',
+            'Strangler Pattern vs monolito. NO distributed monolith (async only).',
+            'RN-02 naranja <85%, RN-01 bloqueo informe, RN-03 CHN, RN-04 ISCN RO.',
+            'ADR-0005 AWS ECS, HIPAA, $2-3.5K/mes. Trade-off lock-in vs CapEx.',
+            '5 POCs metrics.json: IoU, F1, Grad-CAM, Merkle 100%, p95 387ms.',
+            'ADRs 0001-0005 trade-offs explícitos.',
+            'Roadmap Fase 2-3. IA aumentada no autónoma.',
+            'Rúbrica 7/7 Excelente — invitar verificar repo.',
+            'Q&A: Strangler, consistencia eventual, RN-01 demo.',
+            'Demo: validar Chr 18,5,13 → generar ISCN. Tecla 2.'
+        ];
+
+        async function renderMermaidOnSlide() {
+            const slide = slides[currentSlide];
+            const blocks = slide.querySelectorAll('pre.mermaid:not([data-processed])');
+            for (const block of blocks) {
+                const id = 'mmd-' + currentSlide + '-' + Math.random().toString(36).slice(2, 7);
+                try {
+                    const { svg } = await mermaid.render(id, block.textContent.trim());
+                    block.outerHTML = '<div class="mermaid-wrap">' + svg + '</div>';
+                } catch (e) { console.warn('Mermaid:', e); }
+            }
+        }
+
+        function updatePresenterPanel() {
+            const slide = slides[currentSlide];
+            const titleEl = slide.querySelector('h1, h2');
+            const title = titleEl ? titleEl.textContent : 'Slide ' + (currentSlide + 1);
+            const script = slide.dataset.script || PRESENTER_SCRIPTS[currentSlide] || '';
+            const noteEl = slide.querySelector('.speaker-note');
+            const note = noteEl ? noteEl.textContent.replace(/^⏱\s*/, '') : '';
+
+            document.getElementById('presenter-slide-title').textContent = title;
+            document.getElementById('presenter-slide-num').textContent = currentSlide + 1;
+            document.getElementById('presenter-total').textContent = totalSlides;
+            document.getElementById('presenter-block-time').textContent =
+                '~' + SLIDE_TIMES[currentSlide] + ' (total presentación ~15 min)';
+
+            let html = '<p><strong>Guion:</strong> ' + script + '</p>';
+            if (note) html += '<p style="margin-top:16px;color:#c4b5fd;"><strong>Nota:</strong> ' + note + '</p>';
+            if (currentSlide === 15) {
+                html += '<p style="margin-top:16px;font-size:12px;color:var(--green);">✓ Meta 100/100 — verificar criterios en GitHub release/2.0.0</p>';
+            }
+            document.getElementById('presenter-body').innerHTML = html;
+        }
+
+        function showSlide() {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[currentSlide].classList.add('active');
+            updateSlideCounter();
+            updatePresenterPanel();
+            const pct = ((currentSlide + 1) / totalSlides) * 100;
+            document.getElementById('progress-bar').style.width = pct + '%';
+            renderMermaidOnSlide();
+        }
+
+        function nextSlide() {
+            currentSlide = (currentSlide + 1) % totalSlides;
+            showSlide();
+        }
+
+        function prevSlide() {
+            currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+            showSlide();
+        }
+
+        function togglePresenterMode() {
+            document.body.classList.toggle('presenter-mode');
+            document.body.classList.add('show-notes');
+        }
+
+        function updateSlideCounter() {
+            document.getElementById('current-slide').textContent = currentSlide + 1;
+            document.getElementById('total-slides').textContent = totalSlides;
+        }
+
+        document.getElementById('next-slide').addEventListener('click', nextSlide);
+        document.getElementById('prev-slide').addEventListener('click', prevSlide);
+
+        // Teclado
+        document.addEventListener('keydown', (e) => {
+            const pres = document.getElementById('presentation').classList.contains('active');
+            if (pres) {
+                if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+                if (e.key === 'ArrowLeft') prevSlide();
+            }
+            if (e.key === 'n' || e.key === 'N') document.body.classList.toggle('show-notes');
+            if (e.key === 'p' || e.key === 'P') togglePresenterMode();
+            if (e.key === '1') navTabs[0].click();
+            if (e.key === '2') navTabs[1].click();
+            if (e.key === '3') navTabs[2].click();
+        });
+
+        document.getElementById('toggle-presenter').addEventListener('click', togglePresenterMode);
+
+        // Ocultar controles fuera de presentación
+        const slideControls = document.querySelector('.slide-controls');
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                slideControls.style.display = tab.dataset.section === 'presentation' ? 'flex' : 'none';
+            });
+        });
+
+        // Inicializar
+        showSlide();
+    </script>
+</body>
+</html>
