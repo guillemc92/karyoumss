@@ -1,0 +1,63 @@
+/* Tokens visuales mínimos — por ahora solo lo necesario para que la UI no colapse. */
+:root {
+  --biomed-bg: #f6f7fb;
+  --biomed-surface: #ffffff;
+  --biomed-border: #d8dde6;
+  --biomed-text: #1c2434;
+  --biomed-text-muted: #5b6478;
+  --biomed-primary: #1a73e8;
+  --biomed-primary-hover: #1558b0;
+  --biomed-danger: #d93025;
+  --biomed-danger-hover: #a52714;
+  --biomed-success: #1e8e3e;
+  --biomed-warning: #f9ab00;
+  --biomed-radius: 6px;
+  --biomed-shadow: 0 1px 2px rgba(28, 36, 52, 0.08);
+  --biomed-font:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: var(--biomed-bg);
+  color: var(--biomed-text);
+  font-family: var(--biomed-font);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.biomed-admin {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.biomed-admin__header {
+  margin-bottom: 24px;
+}
+
+.biomed-admin__header h1 {
+  font-size: 22px;
+  margin: 0 0 4px;
+}
+
+.biomed-admin__subtitle {
+  color: var(--biomed-text-muted);
+  margin: 0;
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.9em;
+  background: rgba(28, 36, 52, 0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
