@@ -17,7 +17,7 @@ Auth bridge con FastAPI (clinical): ver `docs/AUTH_BRIDGE.md`.
 | **F4** | **Bootstrap frontend-admin** | **✅ este PR** |
 | **F5** | **Componentes React** | **✅ este PR** |
 | **F6** | **Tests Vitest+MSW con RN-09 ≥90%** | **🟡 parcial — F6.1 client+componentes ✅; F6.2 E2E pendiente** |
-| F7 | Auth_bridge real FastAPI↔Django | ⏳ |
+| F7 | Auth_bridge real FastAPI↔Django | ✅ (backend E2E in-process, 12 tests nuevos) |
 | F8 | docker-compose | ⏳ |
 | F9 | Smoke E2E | ⏳ |
 | F10 | Docs (AGENTS §3, CHANGELOG) | ⏳ |
