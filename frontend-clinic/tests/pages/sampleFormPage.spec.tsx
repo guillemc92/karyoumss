@@ -50,4 +50,13 @@ describe('SampleFormPage', () => {
     await userEvent.click(screen.getByText('Cancelar'));
     await waitFor(() => expect(screen.getByText('Gestión de Muestras')).toBeInTheDocument());
   });
+
+  it('modo edit: guardar cambios navega de vuelta a la lista', async () => {
+    renderEdit('00000000-0000-0000-0000-000000000442');
+    await waitFor(() => expect(screen.getByLabelText(/Paciente/)).toHaveValue('ANON-442'));
+    await userEvent.clear(screen.getByLabelText(/Paciente/));
+    await userEvent.type(screen.getByLabelText(/Paciente/), 'ANON-442-EDITADO');
+    await userEvent.click(screen.getByText('Guardar Muestra'));
+    await waitFor(() => expect(screen.getByText('Gestión de Muestras')).toBeInTheDocument());
+  });
 });

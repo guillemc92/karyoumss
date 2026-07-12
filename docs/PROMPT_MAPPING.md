@@ -800,5 +800,197 @@ Refs: SPEC-007, FSD-UC-ADMIN-001 §4.8, ADR-0013 §Plan F4-F6, DD-ADMIN-002 §P1
 
 ---
 
+## PM-REGISTRO-MUESTRA-001 — Feature "Registro de Muestras" (paciente + captura de metafases)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-REGISTRO-MUESTRA-001 |
+| **Título** | Registro de Muestras: formulario paciente + historial clínico + captura de metafases (cámara/archivo) + disparo de análisis IA |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado — pendiente commit |
+| **Fecha** | 2026-07-12 |
+
+### Input (Artefacto Origen)
+
+- `registrarmuestrafinal.html` (raíz del repo, 1062 líneas) — UI Contract del flujo, botón "+ Nueva Muestra" en `SampleListPage`
+- `docs/adr/0015-derogacion-parcial-0013.md` (stack Django+React del bounded context clínico)
+- `docs/specs/SPEC-008-crud-muestra-react.md` (CRUD de muestra ya existente — excluye explícitamente paciente/historial/imágenes de su alcance)
+- `AGENTS.md` §3 (RN-01 a RN-08), §11 (modelos permitidos: U-Net + EfficientNet-B3, prohíbe Mask R-CNN/ResNet50)
+- Prompt del arquitecto 2026-07-12 (flujo obligatorio de 11 pasos + principio de Antirracionalización)
+- Plan aprobado `sorted-seeking-thompson.md` (10 decisiones técnicas confirmadas vía AskUserQuestion)
+
+### Gap detectado (Paso 2, confirmado por código — no simulado)
+
+Ningún ADR cubría el registro de muestra con paciente/historial/imágenes: `ADR-0015`/`SPEC-008` cubren solo edición de una muestra ya creada (3 campos: CHN, paciente, path de imagen). El HTML Contract exige paciente completo, historial clínico, tipo de análisis, galería de metafases y disparo de IA — funcionalidad sin ADR, sin modelo, sin endpoint. Además el HTML original refería "Mask R-CNN" en el modal de progreso, en conflicto directo con AGENTS §11 (modelo real: U-Net).
+
+### Prompt
+
+```
+Role: Arquitecto de software senior con dominio de Django+DRF, React+TS,
+      cifrado at-rest y el flujo AI-SDLC de este repo (BRD→FSD→ADR→SPEC
+      →DD→Code→Tests→PROMPT_MAPPING→DTI).
+
+Task: Implementar el módulo "Registro de Muestras" activado desde el
+      botón "+ Nueva Muestra", reemplazando el modal CRUD simple actual.
+      Aplicar el principio de Antirracionalización: prohibido inventar
+      lógica de negocio, omitir validaciones, saltar documentación,
+      crear código sin evidencia, modificar el diseño aprobado o cambiar
+      la arquitectura. Cada etapa debe generar evidencia verificable
+      antes de continuar (Pasos 1-11 obligatorios del arquitecto).
+
+Context: `registrarmuestrafinal.html` es el UI Contract aprobado (1062
+      líneas) y debe replicarse EXACTO (layout, campos, flujo, textos)
+      salvo por: (a) el texto "Mask R-CNN" corregido a "U-Net" (viola
+      AGENTS §11 tal cual estaba) y (b) el modal de simulación IA
+      (setInterval falso) conectado al polling real ya existente en el
+      repo (`useStatusPolling`/`pipeline_client.py`, RN-07) en vez de un
+      timer fijo — la percepción visual no cambia, solo deja de ser
+      attrezzo. El HTML captura PII real de paciente, en tensión directa
+      con RN-03 (zero PII leakage) — se resuelve con una bóveda cifrada
+      (`PatientVault`, Fernet at-rest) separada de `Sample`, vinculada
+      por `chn_code` (clave de negocio, NO ForeignKey, para que ningún
+      `select_related`/serializer filtre PII por accidente).
+
+Reasoning: (1) Verificar que el ADR/SPEC/DD no existan ya (gap real,
+      confirmado con 3 agentes Explore + lectura completa del HTML).
+      (2) Sin ADR aprobado (Paso 2) no se toca `models.py` ni ningún
+      componente React. (3) Sin SPEC (Paso 4) no se escribe código.
+      (4) Backend obligatorio Django+DRF con lógica en Services, nunca
+      en Views. (5) Frontend obligatorio React+TS replicando el HTML
+      campo por campo, sin simplificar ni rediseñar. (6) RN-09 exige
+      cobertura ≥90% con evidencia de ejecución real, no estimada.
+
+Stop Condition: (a) ADR-0016 aceptado antes de cualquier código.
+      (b) SPEC-009 completo con Gherkin y contratos JSON antes de
+      código. (c) DD actualizado con el nuevo flujo. (d) Backend Django
+      con Services, sin lógica de negocio en Views. (e) Frontend React
+      replica el HTML sin alterar layout/campos/flujo. (f) Las 8
+      funcionalidades del HTML implementadas: paciente, datos de
+      muestra, historial clínico, tipo de análisis, captura por cámara,
+      subida de archivo, galería con eliminar, guardar borrador/
+      cancelar/registrar con disparo de IA. (g) Cobertura backend y
+      frontend ≥90% con evidencia de ejecución. (h) PROMPT_MAPPING y
+      DTI actualizados.
+
+Output Format: (1) ADR-0016 (Context/Decision/Consequences/
+      Alternatives/Architectural Impact, 10 decisiones D1-D10).
+      (2) SPEC-009 (Gherkin, mapeo campo-por-campo HTML→JSON, CA-1..
+      CA-8). (3) DD-REGISTRO-MUESTRA-001.md (nuevo, complementario a
+      DD-CRUD-MUESTRA-001.md). (4) Backend: fields.py (EncryptedTextField
+      Fernet), models.py (PatientVault, SampleImage, Sample extendido +
+      DRAFT), serializers.py, services.py (SampleRegistrationService,
+      transacción atómica), pipeline_client.py (circuit breaker RN-07,
+      no existía pese a estar referenciado), views.py, permissions.py,
+      urls.py, migraciones, tests ≥90%. (5) Frontend: 6 componentes de
+      sección + SampleRegisterPage + hooks (useCamera, useSampleRegistration)
+      + CSS calcado del HTML + tests ≥90%. (6) Verificación E2E con
+      backend real (curl + JWT) confirmando PII cifrada en SQLite crudo.
+      (7) PROMPT_MAPPING + DTI + AGENTS.md §5 actualizados. (8) Commit
+      conventional con evidencia.
+```
+
+### Cambios aplicados
+
+| Archivo | Tipo | Justificación |
+|---|---|---|
+| `docs/adr/0016-registro-muestras-captura-metafases.md` | A | ADR con D1-D10: PatientVault cifrada, SampleImage 1:N, DRAFT status, corrección Mask R-CNN→U-Net, endpoint compuesto |
+| `docs/specs/SPEC-009-registro-muestra.md` | A | Gherkin, contratos JSON, mapeo HTML→modelo, CA-1..CA-8 |
+| `docs/design/DD-REGISTRO-MUESTRA-001.md` | A | DD complementario al de CRUD (flujo de creación vs. edición) |
+| `docs/design/DD-CRUD-MUESTRA-001.md` | M | Referencia cruzada al nuevo DD |
+| `backend-clinic/apps/samples/fields.py` | A | `EncryptedTextField` (Fernet, RN-03) |
+| `backend-clinic/apps/samples/models.py` | M | `DRAFT` en `SampleStatus`, 8 campos nuevos en `Sample`, `PatientVault`, `SampleImage` |
+| `backend-clinic/apps/samples/migrations/0002_*.py` | A | Migración de los modelos/campos nuevos |
+| `backend-clinic/apps/samples/serializers.py` | M | `PatientDataSerializer`, `SampleDataSerializer`, `ClinicalHistorySerializer`, `SampleImageInputSerializer`, `SampleRegisterSerializer` |
+| `backend-clinic/apps/samples/pipeline_client.py` | A | Circuit breaker RN-07 — referenciado en ADR-0015/SPEC-008 pero nunca implementado |
+| `backend-clinic/apps/samples/services.py` | A | `SampleRegistrationService` (transacción atómica, gate draft/no-draft, `sample_code` autogenerado) |
+| `backend-clinic/apps/samples/permissions.py` | A | `CanRegisterSample` |
+| `backend-clinic/apps/samples/views.py` | M | `SampleRegisterView` (`POST /register/`) |
+| `backend-clinic/apps/samples/urls.py` | M | Ruta `samples/register/` |
+| `backend-clinic/clinic_backend/settings.py` | M | `PATIENT_VAULT_KEY` (env, `required=True`) |
+| `backend-clinic/requirements.txt` | A | No existía; fijado con `cryptography`, `httpx`, DRF, SimpleJWT |
+| `backend-clinic/pytest.ini` | M | `--cov-fail-under=90` |
+| `backend-clinic/apps/samples/tests/test_fields.py`, `test_services.py`, `test_register_view.py`, `test_pipeline_client.py` | A | 31 tests nuevos |
+| `frontend-clinic/src/clinic/types/registration.ts` | A | Tipos del flujo compuesto |
+| `frontend-clinic/src/clinic/types/sample.ts` | M | `SampleStatus` agrega `'DRAFT'` |
+| `frontend-clinic/src/clinic/api/registrationClient.ts` | A | Cliente `POST /register/` |
+| `frontend-clinic/src/clinic/hooks/useSampleRegistration.ts`, `useCamera.ts` | A | Mutation + encapsulado `getUserMedia`/canvas |
+| `frontend-clinic/src/clinic/components/PatientInfoSection.tsx`, `SampleInfoSection.tsx`, `ClinicalHistorySection.tsx`, `AnalysisRequestSection.tsx`, `MetaphaseCaptureSection.tsx`, `RegisterProcessingModal.tsx` | A | 6 secciones del HTML Contract |
+| `frontend-clinic/src/clinic/pages/SampleRegisterPage.tsx` | A | Orquestación completa |
+| `frontend-clinic/src/clinic/pages/SampleListPage.tsx` | M | Botón navega a `/clinic/samples/register` |
+| `frontend-clinic/src/routes.tsx` | M | Ruta nueva |
+| `frontend-clinic/src/clinic/styles/tokens.css` | M | CSS calcado de `registrarmuestrafinal.html` |
+| `frontend-clinic/src/clinic/msw/handlers.ts` | M | Handler `POST .../register/` (draft/no-draft, CHN_DUPLICATE) |
+| `frontend-clinic/tests/components/*.spec.tsx` (6), `tests/pages/sampleRegisterPage.spec.tsx`, `tests/api/registrationClient.spec.ts`, `tests/hooks/useCamera.spec.ts` | A | Suite nueva del flujo |
+| `frontend-clinic/tests/pages/sampleDetailPage.spec.tsx`, `sampleListPage.spec.tsx`, `sampleFormPage.spec.tsx` | M | Tests adicionales sobre páginas preexistentes para sostener el umbral global de funciones ≥90% |
+
+### Bugs encontrados y corregidos durante el desarrollo (evidencia, no reportados por el usuario)
+
+1. **Race condition en subida múltiple de archivos** (`MetaphaseCaptureSection.tsx`): cada callback `FileReader.onload` cerraba sobre el mismo `images` stale del render, así que subir 3 archivos dejaba solo 1 en el estado final. Detectado por test propio, corregido con `Promise.all` + `readFileAsDataUrl`. Test de regresión agregado.
+2. **`pipeline_client.py` inexistente**: referenciado por ADR-0015/SPEC-008/tipos frontend pero nunca implementado — se construyó como prerequisito, con circuit breaker (RN-07).
+3. **MSW handler con ramas ternarias idénticas** (`status: body.is_draft ? 'PENDING_AI' : 'PENDING_AI'`) — copy-paste bug, corregido a `'DRAFT' : 'PROCESSING'`.
+
+### Output (verificación)
+
+- **Backend:** 31/31 tests verde, **98% coverage** (threshold 90%)
+- **Frontend:** 168/168 tests verde, **99.61% stmts / 93.42% branches / 90.00% funcs / 99.61% lines** (threshold 90/88/90/90 — funciones exactamente en el umbral)
+- **Verificación runtime (no simulada):** servidor Django real + POST real vía `curl` con JWT real → cursor SQLite crudo confirma que `PatientVault.full_name` está cifrado (token Fernet), mientras el ORM lo descifra transparentemente
+- **Corrección AGENTS §11:** texto "Mask R-CNN" → "U-Net" en `RegisterProcessingModal.tsx`, con comentario de trazabilidad al ADR-0016 D1
+- **RN-03:** PII aislada en `PatientVault` (sin FK a `Sample`, sin exposición en listados), cifrada at-rest con Fernet
+- **RN-09 ≥90%:** ✅ cumplido en ambos bounded contexts (backend 98%, frontend 90.00% funcs exacto)
+- **Commit:** pendiente (T17)
+
+### Criterios de Aceptación (Gherkin)
+
+```gherkin
+Dado un analista autenticado en /clinic/samples
+Cuando hace click en "+ Nueva Muestra"
+Entonces navega a /clinic/samples/register con las 5 secciones del HTML Contract
+
+Dado el formulario de registro con CHN válido y nombre de paciente
+Y menos de 3 metafases capturadas
+Cuando hace click en "Registrar y analizar con IA"
+Entonces el envío se bloquea (regla replicada exacta del HTML: mínimo 3 para enviar, 20 sugeridas)
+
+Dado el formulario con CHN válido, paciente y >=3 metafases
+Cuando hace click en "Registrar y analizar con IA"
+Entonces se crea Sample+PatientVault+SampleImages en una transacción atómica
+Y se dispara pipeline_client.trigger_processing()
+Y se abre RegisterProcessingModal con datos reales de polling (no timer falso)
+
+Dado el mismo formulario con "Guardar borrador"
+Cuando se envía con solo CHN completo
+Entonces se crea la muestra con status DRAFT sin disparar IA
+
+Dado un chn_code ya registrado y activo
+Cuando se intenta registrar de nuevo
+Entonces la API responde 409 CHN_DUPLICATE
+
+Dado el dato PatientVault.full_name almacenado
+Cuando se lee la fila directamente por cursor SQL crudo (sin pasar por el ORM)
+Entonces el valor es un token Fernet cifrado, no el nombre en texto plano
+```
+
+### Trazabilidad
+
+```
+Prompt del arquitecto (2026-07-12) "Feature: Registro de Muestras" + Antirracionalización
+  → Paso 1-3: análisis docs + verificación ADRs + confirmación HTML Contract existe
+    → Gap detectado: sin ADR, PII sin resolver, "Mask R-CNN" viola AGENTS §11
+      → 4 decisiones confirmadas (AskUserQuestion): U-Net, PatientVault cifrada, SampleImage, DRAFT
+        → ADR-0016 (accepted)
+          → SPEC-009
+            → DD-REGISTRO-MUESTRA-001.md
+              → Backend Django (fields/models/serializers/services/views) — 31/31 tests, 98%
+                → Frontend React (6 secciones + page + hooks) — 168/168 tests, 90.00% funcs
+                  → Verificación E2E real (curl + JWT + cursor SQLite crudo)
+                    → RN-09 ≥90% cumplido (ambos bounded contexts)
+                      → PROMPT_MAPPING + DTI + AGENTS.md §5 (en curso)
+```
+
+Refs: ADR-0016, SPEC-009, DD-REGISTRO-MUESTRA-001.md, DD-CRUD-MUESTRA-001.md, ADR-0015, SPEC-008, AGENTS.md §3 (RN-03/RN-07/RN-09) y §11 (modelos permitidos).
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*

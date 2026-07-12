@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Routes, Route } from 'react-router-dom';
 import { SampleDetailPage } from '../../src/clinic/pages/SampleDetailPage';
+import { SampleFormPage } from '../../src/clinic/pages/SampleFormPage';
 import { renderWithProviders } from '../testUtils';
 
 const SAMPLE_ID = '00000000-0000-0000-0000-000000000442';
@@ -34,5 +36,25 @@ describe('SampleDetailPage', () => {
   it('id inexistente muestra mensaje de error', async () => {
     renderDetail('nonexistent-id');
     await waitFor(() => expect(screen.getByText(/no encontrada/)).toBeInTheDocument());
+  });
+
+  it('click en Editar navega a la página de edición', async () => {
+    renderWithProviders(
+      <Routes>
+        <Route path="/clinic/samples/:id" element={<SampleDetailPage />} />
+        <Route path="/clinic/samples/:id/edit" element={<SampleFormPage />} />
+      </Routes>,
+      { route: `/clinic/samples/${SAMPLE_ID}` },
+    );
+    await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('Editar'));
+    await waitFor(() => expect(screen.getByText('Editar Muestra')).toBeInTheDocument());
+  });
+
+  it('link "Ver cariotipo" apunta al visor vanilla con el sample id', async () => {
+    renderDetail(SAMPLE_ID);
+    await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
+    const link = screen.getByText(/Ver cariotipo/);
+    expect(link).toHaveAttribute('href', `/correccion de cariotipo.html?sample=${SAMPLE_ID}`);
   });
 });

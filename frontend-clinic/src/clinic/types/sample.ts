@@ -1,4 +1,4 @@
-export type SampleStatus = 'PENDING_AI' | 'PROCESSING' | 'READY' | 'VALIDATED' | 'REJECTED';
+export type SampleStatus = 'DRAFT' | 'PENDING_AI' | 'PROCESSING' | 'READY' | 'VALIDATED' | 'REJECTED';
 
 export interface SampleMetadata {
   gender?: 'M' | 'F';

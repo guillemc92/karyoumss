@@ -27,6 +27,12 @@ adrs_vigentes:
   - "docs/adr/0003-chn-anonymization.md"
   - "docs/adr/0004-Estrategia-Evolucion-Arquitectonica.md"
   - "docs/adr/0005-cloud-provider-y-estilo-de-despliegue.md"
+  - "docs/adr/0006-semaforizacion-visual.md"
+  - "docs/adr/0007-microservicio-inferencia.md"
+  - "docs/adr/0008-audit-trail-merkle.md"
+  - "docs/adr/0009-websocket-celery-notifications.md"
+  - "docs/adr/0010-testing-strategy.md"
+  - "docs/adr/0011-rol-administrador.md"
 skills_aplicados:
   - ".cursor/skills/skill-read-context/README.md"
 release_objetivo: "release/2.0.0"
@@ -90,7 +96,7 @@ El análisis citogenético tradicional presenta tres fallas estructurales:
 ### 1.3 Propuesta de Valor
 * **Atención dirigida:** Solo el ~13% de pares cromosómicos requieren revisión manual.
 * **Transparencia algorítmica:** Puntuación de confianza (Softmax) y explicabilidad Grad-CAM por cromosoma.
-* **Human-in-the-loop:** Bloqueo de emisión de informes hasta resolver todos los cromosomas naranja (<85% confianza) según la regla clínica **RN-09 / BR-R5**.
+* **Human-in-the-loop:** Bloqueo de emisión de informes hasta resolver todos los cromosomas naranja (<85% confianza) según la regla clínica **BR-R5**.
 
 ### 1.4 Métricas de Éxito
 * **NS-01: TTK (Time to Karyotype):** Reducción de 45 minutos (baseline) a **≤15 minutos** (meta).
@@ -99,7 +105,7 @@ El análisis citogenético tradicional presenta tres fallas estructurales:
 
 ### 1.5 Restricciones de Negocio Clave
 * **RC1:** Ningún informe puede emitirse sin validación manual del analista de TODOS los cromosomas naranjas y la firma del supervisor.
-* **RC2 (RN-09 / BR-R5):** Bloqueo estricto de generación/exportación de reportes si existe al menos un cromosoma con confianza <85% sin validar.
+* **RC2 (BR-R5):** Bloqueo estricto de generación/exportación de reportes si existe al menos un cromosoma con confianza <85% sin validar.
 * **RC3:** Los datos de pacientes (PII) deben anonimizarse localmente (Código CHN) antes de ser transmitidos a la nube.
 
 ---
@@ -132,6 +138,7 @@ graph TD
 ### 2.2 Actores Externos y Dependencias
 * **Analista (Humano):** Carga imágenes, valida y corrige cariotipos en la mesa de edición.
 * **Supervisor (Humano):** Audita el 5% aleatorio de cromosomas verdes y firma digitalmente con MFA.
+* **Administrador institucional / Personal de TI (Humano):** Gestiona usuarios, configura parámetros globales (umbral de confianza) y monitorea logs — **sin acceso a datos clínicos** (ver ADR-0011; persistencia del CRUD de cuentas en PostgreSQL schema dedicado según ADR-0012).
 * **TorchServe (Sistema externo):** Realiza inferencia de visión artificial sobre GPU. SLA: <15s por metafase.
 * **Amazon S3 (Sistema externo):** Almacenamiento duradero de imágenes por código CHN. SLA: <3s.
 
@@ -142,7 +149,7 @@ graph TD
 ### 3.1 Estilo Arquitectónico Adoptado
 Se implementa una **Arquitectura Híbrida** que combina **Arquitectura Hexagonal (Puertos y Adaptadores)** en el núcleo del backend para desacoplar el dominio clínico de las bases de datos y la IA; combinada con un pipeline asíncrono **Event-Driven (Redis + Celery)** para orquestar la inferencia en GPU en segundo plano.
 
-**Justificación:** El desacoplamiento garantiza que la lógica de negocio (como el bloqueo de informes RN-09 y la nomenclatura ISCN) no dependa del proveedor cloud (AWS S3) ni de las librerías específicas de ML. Además, el procesamiento asíncrono evita bloqueos en el hilo HTTP principal durante la segmentación (que puede tardar hasta 15 segundos).
+**Justificación:** El desacoplamiento garantiza que la lógica de negocio (como el bloqueo de informes BR-R5 y la nomenclatura ISCN) no dependa del proveedor cloud (AWS S3) ni de las librerías específicas de ML. Además, el procesamiento asíncrono evita bloqueos en el hilo HTTP principal durante la segmentación (que puede tardar hasta 15 segundos).
 
 ### 3.2 Diagrama C4 Nivel 2 (Contenedores)
 ```mermaid
@@ -209,10 +216,10 @@ graph LR
 4. **Contexto de Reportes y Auditoría:** Motor de nomenclatura ISCN 2024, firma con MFA y auditoría aleatoria del 5%.
 
 ### 4.2 Entidades, Value Objects y Aggregates
-* **Sample (Aggregate Root):** Representa la muestra. Invariante: Su código CHN debe ser único. Estados: `Queued`, `Processing`, `Ready`, `Blocked_Conf`, `Analyst_Validated`, `Reported`.
+* **Sample (Aggregate Root):** Representa la muestra. Invariante: Su código CHN debe ser único. Estados (vocabulario conceptual): `Queued`, `Processing`, `Ready`, `Blocked_Conf`, `Analyst_Validated`, `Reported`. *Nota de implementación:* el bounded context clínico Django (`backend-clinic`, ADR-0015) implementa un enum concreto propio (`DRAFT`, `PENDING_AI`, `PROCESSING`, `READY`, `VALIDATED`, `REJECTED`) que no es un mapeo 1:1 de este vocabulario conceptual — ver ADR-0016 D5 para el detalle de `SampleStatus.DRAFT` y los campos de registro/captura de metafases.
 * **CHNCode (Value Object):** Código inmutable en formato `CHN-YYYY-MM-DD-NNNN`. No contiene PII.
 * **Chromosome (Entity):** Cromosoma detectado. Invariantes: Si `confidenceScore < 0.85`, el semáforo es naranja y `requiresReview` es verdadero.
-* **Report (Aggregate Root):** Informe clínico final. Invariante: No puede crearse si `unresolved_orange_count > 0` (bloqueo RN-09 / BR-R5).
+* **Report (Aggregate Root):** Informe clínico final. Invariante: No puede crearse si `unresolved_orange_count > 0` (bloqueo BR-R5).
 * **EditTrail (Entity):** Registro de auditoría inalterable. Solo se permite `INSERT` (ADR-0004).
 
 ### 4.3 DTOs Principales
@@ -482,6 +489,19 @@ Se monitorean los siguientes indicadores:
 * **[ADR-0003 (Anonimización)](file:///c:/Users/qubits/Documents/maestria/mod4/desarrollo/karyoumss-main/docs/adr/0003-chn-anonymization.md):** Privacidad por diseño en el borde.
 * **[ADR-0004 (Evolución)](file:///c:/Users/qubits/Documents/maestria/mod4/desarrollo/karyoumss-main/docs/adr/0004-Estrategia-Evolucion-Arquitectonica.md):** Monolito modular con satélites de procesamiento.
 * **[ADR-0005 (Cloud)](file:///c:/Users/qubits/Documents/maestria/mod4/desarrollo/karyoumss-main/docs/adr/0005-cloud-provider-y-estilo-de-despliegue.md):** Despliegue Container-Native en AWS.
+* **[ADR-0006 (Semaforización)](docs/adr/0006-semaforizacion-visual.md):** Indicador visual por confidence score (verde ≥0.85, naranja <0.85) — RN-02.
+* **[ADR-0007 (Microservicio Inferencia)](docs/adr/0007-microservicio-inferencia.md):** Plan de extracción de AI Inference a satélite (Fase 2 de ADR-0004; hoy se mantiene Fase 1).
+* **[ADR-0008 (Audit Trail Merkle)](docs/adr/0008-audit-trail-merkle.md):** Hash chain lineal + extensión Merkle para pruebas de inclusión en `edits`.
+* **[ADR-0009 (WebSocket)](docs/adr/0009-websocket-celery-notifications.md):** Detalle operativo del push Celery → Redis PubSub → WSManager → Frontend (implementación de ADR-0002).
+* **[ADR-0010 (Testing)](docs/adr/0010-testing-strategy.md):** Estrategia TDD + Gherkin + Integración Clínica con cobertura ≥90% (RN-09).
+* **[ADR-0011 (Rol Administrador)](docs/adr/0011-rol-administrador.md):** Diseño del Rol Administrador TI, separado del flujo clínico (RN-06, FSD §3).
+* **[ADR-0012 (Persistencia Admin PostgreSQL)](docs/adr/0012-persistencia-admin-postgres.md):** Migración del CRUD de cuentas institucionales de `localStorage` a PostgreSQL schema `admin` + API REST FastAPI + soft-delete + `user_audit_log` Append-Only. Supersede alcance MVP de PR-IMPL-ADMIN-001 sin romperlo.
+* **[ADR-0013 (Stack Admin Django+React)](docs/adr/0013-stack-django-react-admin.md):** Stack acotado al bounded context admin: React 18 + Vite + TS en frontend-admin, Django 5 + DRF + django-auditlog + django-guardian en backend-admin, PostgreSQL schema admin. División por bounded context: clínico sigue en FastAPI, admin migra a Django. Auth bridge FastAPI JWT ↔ Django Token.
+* **[ADR-0014 (Port Panel Configuración a React+Backend real)](docs/adr/0014-configuracion-panel-react-real-backend.md):** Port incremental del panel "Configuración del Sistema" desde `configuracion.html` (MVP) a React conectado a backend Django real, creando `apps/config` (Perfil, Seguridad 2FA, Modelos IA, Notificaciones, Integraciones, Apariencia) en 6 fases P1–P6 + shell P7. Plan 53h, una PR por fase, cobertura RN-09 ≥90% por fase. Descarte del estado `localStorage` del MVP con banner one-shot de migración.
+* **[ADR-0015 (Derogación parcial de ADR-0013)](docs/adr/0015-derogacion-parcial-0013.md):** El bounded context clínico (muestras, cariotipado) migra de FastAPI/vanilla a Django+DRF/React+TS (`backend-clinic`/`frontend-clinic`), separado del contexto admin. Deroga el alcance "todo FastAPI" implícito en decisiones previas; JWT propio con secreto independiente del admin.
+* **[ADR-0016 (Registro de Muestras — captura de metafases)](docs/adr/0016-registro-muestras-captura-metafases.md):** Módulo de registro de muestra activado desde "+ Nueva Muestra": `PatientVault` cifrada at-rest con Fernet (RN-03, vinculada por `chn_code`, no FK, para evitar leakage de PII por `select_related`), `SampleImage` (galería 1:N de metafases), `SampleStatus.DRAFT`, endpoint compuesto `POST /api/clinic/samples/register/` (transacción atómica), y corrección del texto "Mask R-CNN" → "U-Net" en el modal de progreso (AGENTS §11).
+
+> **Nota de cobertura:** Los ADRs 0006-0012 fueron redactados/ajustados durante junio 2026 y aún no figuraban en este índice. Esta fila los integra formalmente para auditoría.
 
 ---
 

@@ -53,6 +53,13 @@ autores:
 > original y para mantener la trazabilidad SDD (§1 → §8 intactos). El
 > detalle técnico de la implementación Django/React está en
 > `docs/specs/SPEC-008-crud-muestra-react.md`.
+>
+> **Feature hermano (2026-07-12):** el flujo de **creación** de una
+> muestra desde cero (formulario de paciente + historial clínico +
+> captura de metafases) se documenta por separado en
+> `docs/design/DD-REGISTRO-MUESTRA-001.md` (ADR-0016, SPEC-009). Este
+> DD-CRUD-MUESTRA-001 sigue cubriendo solo edición/listado/soft-delete
+> de una muestra ya existente.
 
 ---
 

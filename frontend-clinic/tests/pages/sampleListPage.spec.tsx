@@ -18,6 +18,13 @@ describe('SampleListPage', () => {
     expect(totalCard).toHaveTextContent('8');
   });
 
+  it('búsqueda sin coincidencias muestra el empty-state', async () => {
+    renderWithProviders(<SampleListPage />);
+    await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
+    await userEvent.type(screen.getByLabelText('Buscar por CHN'), 'CHN-NO-EXISTE');
+    await waitFor(() => expect(screen.getByText('No hay muestras que coincidan con los filtros.')).toBeInTheDocument());
+  });
+
   it('filtro por status VALIDATED reduce el listado', async () => {
     renderWithProviders(<SampleListPage />);
     await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());

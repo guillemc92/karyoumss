@@ -44,7 +44,7 @@ export function SampleListPage() {
           <h1><i className="fas fa-flask"></i> Gestión de Muestras</h1>
           <p>Administre todas las muestras del sistema (CRUD completo)</p>
         </div>
-        <button type="button" className="btn-primary" onClick={() => navigate('/clinic/samples/new')}>
+        <button type="button" className="btn-primary" onClick={() => navigate('/clinic/samples/register')}>
           <i className="fas fa-plus"></i> Nueva Muestra
         </button>
       </div>

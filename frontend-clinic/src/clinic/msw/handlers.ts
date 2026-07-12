@@ -5,6 +5,7 @@
 import { http, HttpResponse } from 'msw';
 import { initialSamples } from './seedData';
 import type { SampleCreateRequest, SampleListItem, SampleRead, SampleUpdateRequest } from '../types/sample';
+import type { SampleRegistrationData } from '../types/registration';
 
 let samples: SampleRead[] = [...initialSamples];
 let forceDegraded = false;
@@ -54,6 +55,59 @@ export const handlers = [
     if (status) filtered = filtered.filter((s) => s.status === status);
     if (chnQuery) filtered = filtered.filter((s) => s.chn_code.toLowerCase().includes(chnQuery.toLowerCase()));
     return HttpResponse.json(filtered.map(toListItem));
+  }),
+
+  http.post(`${API}/samples/register/`, async ({ request }) => {
+    const body = (await request.json()) as SampleRegistrationData;
+    const chnCode = body.sample.chn_code;
+
+    if (!chnCode) {
+      return HttpResponse.json({ code: 'CHN_REQUIRED', detail: 'CHN requerido' }, { status: 400 });
+    }
+    if (!body.is_draft) {
+      if (!/^CHN-\d{4}-\d{2}-\d{2}-\d{4}$/.test(chnCode)) {
+        return HttpResponse.json({ code: 'INVALID_CHN_FORMAT', detail: 'Formato de CHN inválido' }, { status: 400 });
+      }
+      if (!body.patient.full_name) {
+        return HttpResponse.json({ code: 'PATIENT_NAME_REQUIRED', detail: 'Nombre del paciente requerido' }, { status: 400 });
+      }
+      if (body.images.length < 3) {
+        return HttpResponse.json({ code: 'INSUFFICIENT_IMAGES', detail: 'Se requieren al menos 3 imágenes' }, { status: 400 });
+      }
+    }
+    if (samples.some((s) => s.chn_code === chnCode)) {
+      return HttpResponse.json({ code: 'CHN_DUPLICATE', detail: 'CHN ya existe' }, { status: 409 });
+    }
+
+    const newSample: SampleRead = {
+      id: crypto.randomUUID(),
+      chn_code: chnCode,
+      patient_ref: body.patient.full_name,
+      image_path: '',
+      status: body.is_draft ? 'DRAFT' : 'PROCESSING',
+      analyst: 1,
+      analyst_name: 'Dra. García',
+      supervisor: null,
+      supervisor_name: '',
+      metadata: body.sample.gender === 'M' || body.sample.gender === 'F' ? { gender: body.sample.gender } : {},
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    samples = [newSample, ...samples];
+
+    return HttpResponse.json(
+      {
+        id: newSample.id,
+        chn_code: newSample.chn_code,
+        sample_code: `BM-${Date.now()}`,
+        status: body.is_draft ? 'DRAFT' : 'PENDING_AI',
+        task_id: body.is_draft || forceDegraded ? null : 'mock-register-task-1',
+        image_count: body.images.length,
+        degraded: !body.is_draft && forceDegraded,
+        created_at: newSample.created_at,
+      },
+      { status: 201 },
+    );
   }),
 
   http.post(`${API}/samples/`, async ({ request }) => {

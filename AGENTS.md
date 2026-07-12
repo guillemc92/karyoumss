@@ -1,7 +1,7 @@
 # AGENTS.md — BIOMED UMSS Intelligent Karyotyping Platform
 ## Contrato Funcional para Agentes IA (Claude · Cursor · Copilot)
 
-**Versión:** v1.2 | **Fecha:** Mayo 2026 | **Grupo:** G04 | **Release:** `release/2.0.0`
+**Versión:** v1.3 | **Fecha:** Junio 2026 | **Grupo:** G04 | **Release:** `release/2.0.0`
 **Autor:** Ing. Guillermo Mamani Chambi | **Estado:** Aprobado
 
 > **Regla de oro:** Este archivo es la fuente de verdad para cualquier agente IA que trabaje en este repositorio. Si una decisión arquitectónica no está aquí o en los docs/ referenciados, no existe y no debe asumirse.
@@ -33,14 +33,33 @@ El agente debe operar bajo el paradigma de **Desarrollo Guiado por Especificacio
 | `/plan` | Descomponer una especificación (`.md`) en tareas granulares y testeables | `/plan docs/specs/SPEC-003.md` |
 | `/skill-generate-prompt` | Crear un prompt de sistema optimizado desde un UC del FSD | `@skill-generate-prompt FSD-UC-003` |
 | `/skill-sync-diagrams` | Sincronizar diagramas Mermaid con la implementación actual | `@skill-sync-diagrams` |
-| `/skill-validation-agent` | Validar un Pull Request contra los requerimientos del FSD, incluyendo la regla clínica de no-emisión RN-09 / BR-R5 | `@skill-validation-agent PR-123` |
+| `/skill-validation-agent` | Validar un Pull Request contra los requerimientos del FSD, incluyendo la regla clínica de no-emisión BR-R5 | `@skill-validation-agent PR-123` |
 
 ### 2.2 Flujo de Trabajo Obligatorio
 1. **Análisis de Contexto:** Leer `docs/fsd/FSD_vFinal.md` $\to$ `docs/brd/BRD_vFinal.md` $\to$ `docs/DTI.md` $\to$ AGENTS.md.
 2. **Definición de Spec (`/spec`):** Crear la especificación técnica con Capa 1 (Funcional) y Capa 2 (Técnica/ADR).
 3. **Planificación de Tareas (`/plan`):** Descomponer la spec en tareas atómicas (máx 3h) en un archivo de seguimiento (ej. `TASKS.md`).
 4. **Implementación Incremental:** Ejecutar tareas siguiendo el orden de prioridad, aplicando tests unitarios por cada tarea.
-5. **Validación de Spec (`/skill-validation-agent`):** Verificar que el código implementado satisface el 100% de la especificación inicial y que cumple reglas clínicas críticas como RN-09 / BR-R5 de bloqueo de emisión de informe.
+5. **Validación de Spec (`/skill-validation-agent`):** Verificar que el código implementado satisface el 100% de la especificación inicial y que cumple reglas clínicas críticas como **BR-R5** de bloqueo de emisión de informe (ver FSD §10 BR-R5, anclada a RN-02 + RN-01).
+
+### 2.3 Actores y Roles del Sistema
+
+> **Trazabilidad SDD:** BRD §3.2 (Personal de TI Institucional) → FSD §3 (Actores y roles) → ADR-0011 (Diseño del Rol de Administrador) → esta sección.
+
+| Rol | Tipo | Responsabilidad principal | Permisos clave | ADR/RN anclados |
+|:--|:--|:--|:--|:--|
+| **Analista Citogenetista** | humano | Cargar imágenes, validar naranjas, corregir clasificaciones, pasar caso a Supervisor | `case:upload`, `case:edit`, `case:pass_to_supervisor` | FSD-UC-001/002/003/004, RN-01 |
+| **Supervisor Clínico** | humano | Auditar 5 % aleatorio (RN-08), firmar con MFA (RN-01), editar ISCN manualmente | `case:audit`, `case:sign`, `case:override_iscn` | FSD-UC-005/006, RN-01, RN-06, RN-08 |
+| **Administrador institucional (TI)** | humano | Gestionar usuarios, configurar parámetros (umbral de confianza), monitorear logs y uso, **sin acceso a datos clínicos** | `admin:*` (limitado) | **ADR-0011**, FSD §3 línea 109, BRD §3.2 |
+| **Sistema IA (Agente clasificador)** | agente IA | Segmentar, clasificar, generar `confidence_score`, producir mapas Grad-CAM | `ml:inference` | ADR-0001/0007, RN-02 |
+| **Sistema Audit Trail** | sistema | Registrar acciones inmutables, mantener hash chain, verificar integridad | `audit:write`, `audit:read`, `audit:verify` | ADR-0008, RN-05, 21 CFR Part 11 |
+
+**Reglas de segregación (no-negociables):**
+- **RN-06:** El Supervisor y el Analista NO pueden ser el mismo usuario en casos críticos.
+- **ADR-0011 §Decisión:** El Administrador TI está **separado** del Supervisor Clínico y del Analista. Principio de menor privilegio. No accede a datos clínicos.
+- **BRD §3.2 nota:** En laboratorios con un solo especialista, Analista+Supervisor no pueden ser la misma persona en casos críticos → escalado al Director del Laboratorio.
+
+> **Bounded context admin (ADR-0011, ADR-0013, ADR-0014):** conviven `backend-admin` (Django 5 + DRF + django-auditlog, PostgreSQL schema `admin`) y `frontend-admin` (React 18 + Vite + MSW). Apps Django activas: `users` (auth + AdminUser CRUD), `audit` (LogEntry), y — desde ADR-0014 — `config` (Perfil, Seguridad 2FA, Modelos IA, Notificaciones, Integraciones, Apariencia). El stack clínico (sección 3 abajo) sigue en FastAPI/Konva y no se ve afectado.
 
 ---
 
@@ -109,6 +128,15 @@ RN-07: El sistema opera en "modo degradado elegante" si la IA falla:
 
 RN-08: Auditoría aleatoria del 5% de cromosomas con score ≥ 86% (anti-sesgo).
         El supervisor revisa este 5% incluso si fueron marcados como "verde".
+
+RN-09: Cobertura de tests ≥ 90% (lines/funcs/branches/statements) en componentes
+        clínicos críticos (semaforización, bloqueo de informe, CHN anonymizer,
+        audit trail, generación ISCN). Medición con Vitest + provider v8 (frontend)
+        o pytest + coverage (backend). El umbral 90% es no-negociable: una regresión
+        que oculte un caso de borde en el threshold 0.85 puede llevar a emitir un
+        informe con un falso positivo sin que el analista lo revise. Si el 90%
+        fuerza mockeo excesivo que oculta defectos reales, crear ADR-0012 con
+        el trade-off documentado. Ver FSD §10 NFR-013.
 ```
 
 ---
@@ -122,6 +150,17 @@ RN-08: Auditoría aleatoria del 5% de cromosomas con score ≥ 86% (anti-sesgo).
 | ADR-0003 | CHN Anonimización en el borde antes de transmisión cloud | `docs/adr/0003-chn-anonymization.md` |
 | ADR-0004 | Estrategia de evolución arquitectónica: monolito modular + satélites | `docs/adr/0004-Estrategia-Evolucion-Arquitectonica.md` |
 | ADR-0005 | Proveedor cloud AWS y estrategia de despliegue (ECS, RDS, S3) | `docs/adr/0005-cloud-provider-y-estilo-de-despliegue.md` |
+| ADR-0006 | Semaforización visual basada en confidence score (RN-02) | `docs/adr/0006-semaforizacion-visual.md` |
+| ADR-0007 | Plan de extracción de AI Inference a satélite (Fase 2 de ADR-0004, hoy se mantiene Fase 1) | `docs/adr/0007-microservicio-inferencia.md` |
+| ADR-0008 | Audit Trail: hash chain lineal + extensión Merkle para pruebas de inclusión | `docs/adr/0008-audit-trail-merkle.md` |
+| ADR-0009 | Detalles operativos del push WebSocket (implementación de ADR-0002) | `docs/adr/0009-websocket-celery-notifications.md` |
+| ADR-0010 | Estrategia de Testing (TDD + Gherkin + Integración Clínica) | `docs/adr/0010-testing-strategy.md` |
+| ADR-0011 | Diseño del Rol de Administrador (Inicio Simple) | `docs/adr/0011-rol-administrador.md` |
+| ADR-0012 | Persistencia de Usuarios Administrador en PostgreSQL con API dedicada (post-MVP, supersede localStorage de ADR-0011) | `docs/adr/0012-persistencia-admin-postgres.md` |
+| ADR-0013 | Stack acotado al bounded context admin: React 18 + Django REST + PostgreSQL schema admin (clínico sigue FastAPI) | `docs/adr/0013-stack-django-react-admin.md` |
+| ADR-0014 | Port del panel "Configuración del Sistema" desde `configuracion.html` a React con backend Django real (apps/config + 6 secciones: Perfil, Seguridad, Modelos, Notificaciones, Integraciones, Apariencia) | `docs/adr/0014-configuracion-panel-react-real-backend.md` |
+| ADR-0015 | Derogación parcial de ADR-0013: el bounded context clínico (muestras, cariotipado) migra de FastAPI/vanilla a Django+DRF/React+TS (`backend-clinic`/`frontend-clinic`), JWT independiente del admin | `docs/adr/0015-derogacion-parcial-0013.md` |
+| ADR-0016 | Registro de Muestras (captura de metafases): `PatientVault` cifrada Fernet at-rest (RN-03, vinculada por `chn_code`, no FK), `SampleImage` galería 1:N, `SampleStatus.DRAFT`, endpoint compuesto `POST /register/` atómico, corrección "Mask R-CNN"→"U-Net" (AGENTS §11) | `docs/adr/0016-registro-muestras-captura-metafases.md` |
 
 **Regla para el agente:** Si se te pide cambiar estas decisiones, solicita confirmación explícita del arquitecto y documenta el nuevo ADR antes de codificar.
 
@@ -317,6 +356,9 @@ docs/brd/BRD_vFinal.md       → Qué necesita el negocio
 - **Prompt Coverage:** % de User Stories del PRD con al menos 1 PM en `docs/PROMPT_MAPPING.md` $\to$ Target $\ge 80\%$
 - **Spec Fidelity:** % de contratos API del FSD implementados con firma exacta $\to$ Target $\ge 95\%$
 - **Gherkin Coverage:** % de casos de uso críticos con escenarios Gherkin verificables $\to$ Target $\ge 100\%$
+- **Coverage Threshold:** cobertura de tests en componentes clínicos críticos
+  (Vitest v8 o pytest-cov) $\to$ Target $\ge 90\%$ lines/funcs/branches/statements.
+  Ver regla **RN-09** en §4 y FSD §10 NFR-013.
 
 ---
 
@@ -328,5 +370,59 @@ docs/brd/BRD_vFinal.md       → Qué necesita el negocio
 4. **Commits:** `feat:` `fix:` `docs:` `test:` `refactor:` según conventional commits
 5. **Branch:** trabajar en `feature/<nombre>` \to PR a `release/2.0.0`
 
-*AGENTS.md v1.2 — Fuente de verdad para Claude, Cursor Agent, Copilot y agentes custom*
-*Actualizar este archivo ante cualquier cambio arquitectónico significativo*
+*AGENTS.md v1.3 — Fuente de verdad para Claude, Cursor Agent, Copilot y agentes custom*
+## 14. Modelo de Orquestación Dual
+
+El sistema BIOMED UMSS opera bajo dos capas de orquestación independientes pero alineadas:
+
+```mermaid
+flowchart TD
+    %% === NIVEL USUARIO ===
+    Usuario["👤 Usuario / Desarrollador"]
+
+    %% === ORQUESTACIÓN EN DESARROLLO ===
+    subgraph "🛠️ Orquestación en DESARROLLO (AI-SDLC)"
+        OrchestratorDev["Skill-Orchestrator\n(El Jefe del Desarrollo)"]
+    end
+
+    Usuario --> OrchestratorDev
+
+    OrchestratorDev --> SkillRead["skill-read-context"]
+    OrchestratorDev --> SkillPrompt["skill-generate-prompt"]
+    OrchestratorDev --> SkillValidate["skill-validation-agent"]
+    OrchestratorDev --> SkillSync["skill-sync-diagrams"]
+    OrchestratorDev --> SkillADR["skill-adr-global-integrator"]
+
+    %% === ORQUESTACIÓN EN PRODUCCIÓN ===
+    subgraph "🚀 Orquestación en PRODUCCIÓN (La App)"
+        OrchestratorProd["Agent Orchestrator\n(FastAPI + Celery)"]
+    end
+
+    OrchestratorProd --> AgentSeg["Agent Segmentador\n(U-Net)"]
+    OrchestratorProd --> AgentClas["Agent Clasificador\n(EfficientNet-B3)"]
+    OrchestratorProd --> AgentXAI["Agent XAI\n(Grad-CAM)"]
+    OrchestratorProd --> AgentHITL["Agent Validador HITL"]
+```
+
+| Capa | Orquestador | Responsabilidad | Herramientas / Stack |
+|:---|:---|:---|:---|
+| **Desarrollo (AI-SDLC)** | `Skill-Orchestrator` | Garantizar la trazabilidad BRD $\to$ Código y el cumplimiento de RNs durante la construcción. | `.cursor/skills/`, `PROMPT_MAPPING.md`, SDD |
+| **Producción (The App)** | `Agent Orchestrator` | Gestionar el pipeline de inferencia IA, la concurrencia de muestras y la notificación al analista. | FastAPI, Celery, Redis, TorchServe |
+
+# Ponytail - Modo Full (Óptimo para ahorrar tokens)
+
+Eres un desarrollador senior extremadamente eficiente. El mejor código es el que nunca se escribe.
+
+**Reglas permanentes:**
+- Siempre sigue la escalera: 1. ¿Necesita existir? (YAGNI) → 2. ¿Ya existe en el proyecto? → 3. Stdlib / vanilla JS → 4. Feature nativa del navegador → 5. Una sola línea si funciona → 6. Mínimo código necesario.
+- Nunca agregues librerías nuevas a menos que sea estrictamente necesario.
+- Prefiere HTML5 nativo, CSS vanilla y JavaScript puro.
+- Elimina código duplicado y boilerplate siempre que sea posible.
+- Salida: Código primero. Luego máximo 2-3 líneas explicando qué se saltó y por qué.
+- Mantén todo funcional, accesible y seguro. No recortes validaciones importantes.
+
+Comandos:
+/ponytail full|ultra|off   → cambia modo
+/ponytail-review          → revisa el código actual buscando sobre-ingeniería
+
+Activo en todas las respuestas hasta que diga "stop ponytail".
