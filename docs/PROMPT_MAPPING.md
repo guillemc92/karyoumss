@@ -444,6 +444,359 @@ Output:
 | PM-UC03-ISCN | US-11 | UC-03 paso 3 | RN-06 | `backend/app/services/iscn_generator.py` |
 | PM-UC03-AUDIT | US-16 | UC-03 audit | RN-07 | `backend/app/middleware/audit_trail.py` |
 | PM-WS-01 | US-05 | UC-01 pasos 12–13 | — | `backend/app/ws/websocket_manager.py` |
+| PM-ADMIN-001 | US-14 | FSD-UC-ADMIN-001 | BR-012 (ADR-0011) | `configuracion.html` (edit) + `frontend/tests/userStore.spec.ts` (new) |
+| PM-ADMIN-002 | US-14 (post-MVP) | FSD-UC-ADMIN-001 | BR-012 (ADR-0011, **ADR-0012**) | `backend/alembic/versions/0012_admin_schema.py` (new) + `frontend/src/admin/userStore.ts` (mod async) |
+| PM-ADMIN-003 *(pendiente)* | US-14 (desarrollo formal) | FSD-UC-ADMIN-001 | BR-012 (ADR-0011, ADR-0012, **ADR-0013**) | `backend-admin/` (new Django) + `frontend-admin/` (new React) + auth bridge |
+| PM-MSW-BOOTSTRAP-01 | — (fix operacional) | FSD-UC-ADMIN-001 §4.8 (demo admin funcional) | RN-09 (≥90% cobertura) | `frontend-admin/public/mockServiceWorker.js` (regen) + `vite.config.ts` (proxy cond.) + `App.tsx` (banner) + `MswBootstrapError.tsx` (new) + `tests/mswBootstrap.spec.tsx` (new) |
+
+---
+
+## PM-ADMIN-001 — Pestaña "Usuarios" en configuracion.html (CRUD + localStorage)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-ADMIN-001 |
+| **Título** | Gestión de usuarios institucionales por Admin TI — Tab CRUD con persistencia localStorage |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+
+### Input (Artefacto Origen)
+
+- `docs/fsd/FSD_vFinal.md` §4.8 FSD-UC-ADMIN-001 (v1.1, Junio 2026)
+- `docs/design/DD-ADMIN-001.md` (vertical slice de diseño)
+- `docs/adr/ADR-0011-rol-administrador.md` (decisión de rol)
+- `configuracion.html` (sidebar 6 tabs existentes, paleta CSS vars, FontAwesome 6.4)
+- BRD §3.2 (Personal de TI Institucional)
+
+### Prompt
+
+```
+Role: Desarrollador frontend senior vanilla (HTML/CSS/JS ES2020) con criterio
+      de reutilización estricta. Conoces configuracion.html (sidebar con
+      data-tab, paneles .config-content-body, paleta CSS vars, FontAwesome 6.4).
+
+Task: Implementar pestaña "Usuarios" en configuracion.html con CRUD completo
+      sobre localStorage, gating por rol=admin, y tests Vitest del UserStore
+      con cobertura ≥90% (RN-09).
+
+Context:
+- Stack: HTML5 + CSS3 + JS ES2020 vanilla. Sin frameworks.
+- Persistencia: localStorage namespace 'biomed:admin:*'
+  · biomed:admin:users = JSON array de User
+  · biomed:auth:role (lectura para gating)
+- Restricciones de dominio:
+  · ADR-0011: Admin TI NO accede a datos clínicos
+  · RN-09: Cobertura ≥90% en UserStore
+  · Sin PII real en fixtures
+- Restricciones técnicas:
+  · Sin CDN nuevos (FontAwesome 6.4 ya cargado)
+  · Reutilizar CSS existente (.config-nav-item, .config-content-body, .card,
+    .form-grid, .btn-*, .metrics-table)
+  · Compatible Chrome 120+, Edge 120+, Firefox 120+
+
+Reasoning:
+1. Verificar gating: leer biomed:auth:role. Si !== 'admin', ocultar sidebar item
+2. Inyectar sidebar item data-tab="users" con icono purple fa-users-cog
+3. Crear panel #users-tab con tabla + modal edición + modal confirmación baja
+4. Implementar window.biomed.admin.UserStore:
+   - list() -> Array<User> (fallback [] si storage corrupto)
+   - save(user) -> genera id (crypto.randomUUID), created_at, updated_at
+   - update(id, patch) -> shallow merge, actualiza updated_at
+   - remove(id) -> filtra del array
+   - validateEmail(email, excludeId?) -> regex RFC 5322 + unicidad case-insensitive
+   - canDelete(id) -> id !== currentUserId
+5. Render: renderUserTable() repinta desde UserStore.list()
+6. Handlers: openAddModal, openEditModal, handleSave, handleDelete
+7. Actualizar showTab(tabName) para incluir 'users' con re-validación de rol
+8. Tests Vitest (frontend/tests/userStore.spec.ts):
+   · list vacío, save genera id+fechas, update preserva created_at
+   · remove filtra correctamente, validateEmail detecta duplicados
+   · canDelete bloquea auto-eliminación, JSON corrupto -> fallback []
+
+Stop Condition: Detente cuando:
+  · Gating funcional (sidebar oculta + showTab re-valida)
+  · CRUD operativo sobre localStorage
+  · 7 tests Vitest pasan con cobertura ≥90% (lines/branches/funcs/statements)
+  · Sin archivos nuevos fuera de: configuracion.html (edit),
+    frontend/tests/userStore.spec.ts (new)
+
+Output: Bloques de código por archivo:
+  1. configuracion.html (sidebar item + panel #users-tab + script UserStore)
+  2. frontend/tests/userStore.spec.ts (7 tests + cobertura ≥90%)
+  3. Reporte de cobertura esperado (tabla file|lines|branches|funcs|statements)
+```
+
+### Output (Artefacto Generado)
+
+- `configuracion.html` (edit — sidebar item + panel + script).
+- `frontend/tests/userStore.spec.ts` (new — 7 tests del UserStore).
+
+### Invariantes
+
+- Reutilizar CSS existente (`configuracion.html`); no añadir clases nuevas salvo inevitables.
+- Sin CDN ni npm nuevos.
+- Sin PII real en datos de prueba (usar `*.test@biomed.local`).
+- Citar `FSD-UC-ADMIN-001`, `DD-ADMIN-001`, `ADR-0011` en comentarios del código.
+- Cobertura ≥90% (RN-09) verificable con `vitest --coverage`.
+- Gating doble: sidebar oculta + `showTab('users')` re-valida rol.
+- Sin endpoints backend ni `fetch` (alcance MVP localStorage).
+
+### Criterios de Aceptación (Gherkin de FSD-UC-ADMIN-001)
+
+```gherkin
+DADO un usuario con rol admin autenticado
+CUANDO abre la pestaña Usuarios
+ENTONCES ve la tabla con todos los usuarios y el botón "Agregar usuario"
+
+DADO un admin en el formulario de alta
+CUANDO ingresa email duplicado
+ENTONCES el sistema rechaza con mensaje "Email ya registrado"
+
+DADO un admin que intenta eliminarse a sí mismo
+CUANDO confirma la acción
+ENTONCES el sistema bloquea y muestra "No puede eliminarse a sí mismo"
+
+DADO un usuario con rol analista o supervisor
+CUANDO abre configuracion.html
+ENTONCES la pestaña Usuarios NO es visible
+```
+
+### Prompt origen
+
+`docs/prompts/impl/PR-IMPL-ADMIN-001.md` (aprobado por G. Mamani, 27/06/2026)
+
+---
+
+
+## PM-ADMIN-002 — Migración CRUD Admin a PostgreSQL schema `admin` + API REST FastAPI
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-ADMIN-002 |
+| **Título** | Migración del CRUD de usuarios institucionales de localStorage (MVP) a PostgreSQL schema dedicado + API REST |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Aprobado (no ejecutado — no rompe MVP vigente de PM-ADMIN-001) |
+| **Fecha** | 27/06/2026 |
+| **ADR origen** | [ADR-0012](docs/adr/0012-persistencia-admin-postgres.md) |
+
+### Input (Artefacto Origen)
+
+- `docs/adr/0012-persistencia-admin-postgres.md` (decisión arquitectónica completa)
+- `docs/design/DD-ADMIN-001.md` (diseño detallado del feature)
+- `docs/fsd/FSD_vFinal.md` §4.8 FSD-UC-ADMIN-001 (v1.1)
+
+### Output (Artefactos Generados)
+
+- `backend/alembic/versions/0012_admin_schema.py` (new) — Migración schema `admin` + tablas `users` + `user_audit_log` (Append-Only).
+- `backend/app/models/admin_user.py` (new) — Modelos SQLAlchemy 2.0.
+- `backend/app/schemas/admin_user.py` (new) — Schemas Pydantic v2.
+- `backend/app/services/admin_user_service.py` (new) — Lógica de negocio (validación email, canDelete, normalización, soft-delete).
+- `backend/app/api/v1/admin_users.py` (new) — Router FastAPI con rate limiting 60 req/min.
+- `backend/tests/test_admin_users.py` (new) — Tests pytest + httpx.AsyncClient + ≥90% cobertura.
+- `frontend/src/admin/userStore.ts` (mod) — Async con `fetch`, manejo de 401/403/404/409/500.
+- `frontend/src/admin/msw/handlers.ts` (new) — Handlers MSW para tests.
+- `frontend/tests/userStore.spec.ts` (mod) — Tests reescritos con MSW.
+- `backend/scripts/migrate_localstorage_users.py` (new) — Migración one-shot de datos MVP a PostgreSQL.
+- `configuracion.html` (mod mínimo) — Eliminar IIFE inline, agregar `<script type="module" src="...">`.
+
+### Invariantes
+
+- Contrato externo `list/save/update/remove/validateEmail/canDelete/validateName` se preserva (solo síncrono→async).
+- Schema `admin` separado del clínico; cero permisos cross-schema.
+- Soft-delete obligatorio (`deactivated_at`), nunca `DELETE FROM admin.users`.
+- Toda mutación registra fila en `admin.user_audit_log` (Append-Only).
+- Cobertura ≥90% (RN-09) en `userStore.ts` (frontend) y `admin_user_service.py` (backend).
+- No rompe MVP vigente de PM-ADMIN-001 hasta F4 inclusive.
+- AuthJWT + RBAC `admin` obligatorio en middleware.
+- Rate limiting 60 req/min por admin.
+
+### Criterios de Aceptación (Gherkin derivados de ADR-0012)
+
+```gherkin
+DADO dos navegadores autenticados como admin
+CUANDO el navegador A crea un usuario vía POST /api/admin/users
+ENTONCES el navegador B lo ve en GET /api/admin/users sin recargar
+
+DADO un usuario existente con email "x@biomed.local"
+CUANDO dos admins hacen POST simultáneo con ese email
+ENTONCES uno recibe 201, el otro recibe 409 "Email ya registrado"
+Y ambos intentos quedan registrados en admin.user_audit_log
+
+DADO un analista autenticado con JWT role=analista
+CUANDO intenta POST /api/admin/users
+ENTONCES recibe 403 Forbidden sin tocar DB
+
+DADO un usuario activo en admin.users
+CUANDO admin hace DELETE /api/admin/users/{id}
+ENTONCES el registro se marca con deactivated_at = now()
+Y NO se elimina físicamente
+Y aparece fila en user_audit_log con action='deactivate'
+```
+
+### Plan de Implementación (7 fases)
+
+| Fase | Alcance | Esfuerzo | Bloqueante |
+|---|---|---|---|
+| F1 | Migración Alembic schema `admin` | 4h | Sí |
+| F2 | Backend FastAPI completo | 8h | F1 |
+| F3 | Frontend async | 4h | F2 |
+| F4 | Tests MSW + httpx | 4h | F3 |
+| F5 | Migración datos MVP | 2h | F3 |
+| F6 | Documentación | 2h | F4 |
+| F7 | Smoke E2E | 1h | F5 |
+| **Total** | | **25h** | |
+
+### Prompt origen
+
+`docs/prompts/impl/PR-IMPL-ADMIN-002.md` (aprobado por G. Mamani, 27/06/2026)
+
+### Trazabilidad Cross-ADR
+
+```
+BRD §6 (auditoría Ley 164)
+  → MRD-13 (multi-institución)
+    → FSD §4.8 (FSD-UC-ADMIN-001)
+      → DD-ADMIN-001
+        → ADR-0011 (separación de funciones)
+          → ADR-0012 (persistencia PostgreSQL) ← este PM
+            → PR-IMPL-ADMIN-002
+              → código (F1-F7)
+```
+
+---
+
+## PM-MSW-BOOTSTRAP-01 — Fix bootstrap de MSW (mock no intercepta en navegador)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-MSW-BOOTSTRAP-01 |
+| **Título** | Fix: MSW no se registraba en demo dev — `mockServiceWorker.js` ausente + proxy Vite fallback |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado — commit `032140e` |
+| **Fecha** | 2026-07-11 |
+
+### Input (Artefacto Origen)
+
+- `docs/fsd/FSD_vFinal.md` §4.8 FSD-UC-ADMIN-001 (panel admin debe ser demo funcional)
+- `docs/design/DD-ADMIN-002.md` §P1 (sección Perfil ya operativa, requiere MSW vivo)
+- `docs/adr/0013-stack-django-react-admin.md` §Plan F4-F5-F6 (frontend React con MSW como dependencia de demo)
+- `docs/specs/SPEC-007-msw-bootstrap-fix.md` (spec completa con Gherkin, causa raíz, 9 CA)
+- Reporte del arquitecto 2026-07-10 ("el panel admin no está creando usuarios")
+- Logs de Vite 2026-07-11 (`[vite] http proxy error: /api/admin/users/ ... ECONNREFUSED`)
+
+### Causa raíz (confirmada por código)
+
+Dos bugs concurrentes:
+
+1. **`frontend-admin/public/mockServiceWorker.js` AUSENTE.** `App.tsx:90` registra el SW con `serviceWorker: { url: '/mockServiceWorker.js' }`, pero el archivo no existe (carpeta `public/` completa ausente). Resultado: SW da 404 silencioso, MSW nunca intercepta.
+2. **Vite proxy fallback.** `vite.config.ts` tenía proxy hardcoded a `:8001` activo incluso con `VITE_USE_MSW=true`. Cuando MSW no interceptaba, el fetch escapaba al proxy → ECONNREFUSED → error genérico de fetch en navegador. El proxy **enmascaraba** el verdadero problema con un error confuso.
+
+### Por qué los tests E2E pasaban (gap conocido)
+
+`tests/components/adminUsersPanel.spec.tsx` corre en jsdom sin SW real. MSW en jsdom usa `setupServer` (Node), no `setupWorker` (browser). Los tests cubren el handler, la validación y el reducer, pero **no pueden cubrir el camino del SW en navegador** — jsdom no soporta Service Workers de forma fiable. Este gap es estructural y se documenta en SPEC-007 §0.4.
+
+### Prompt
+
+```
+Role: Desarrollador frontend senior React/Vite con criterio de testing
+      realista. Conoces MSW v2 (handlers en Node, SW en browser), jsdom
+      como test env, y la diferencia entre "tests pasan" y "demo funciona".
+
+Task: Cerrar Feature 11 del arquitecto — "el panel admin no crea usuarios".
+      NO asumas que es el SW cacheado. Diagnosticá por código + logs, no
+      por intuición. Aplicá el flujo AI-SDLC completo: spec → plan →
+      implementación → tests ≥90% → trazabilidad → sync.
+
+Context: El usuario pegó logs de Vite mostrando
+      '[vite] http proxy error: /api/admin/users/ ... ECONNREFUSED'.
+      El bounded context admin (ADR-0013) usa MSW para mockear
+      /api/admin/* en demo. Los tests E2E pasan en jsdom (131/131 verde).
+      Sospecha inicial: SW cacheado. Sospecha real: SW nunca se registró
+      porque mockServiceWorker.js no existe en public/.
+
+Reasoning: (1) Verificar causa raíz por código, no por logs de usuario.
+      (2) Si la causa es de código (no operacional), el fix requiere
+      spec formal (SPEC-007). (3) Tests en jsdom NO cubren el SW real;
+      ese gap se cierra con tests de infraestructura (que el SW exista
+      en disco, que vite.config.ts tenga el patrón correcto). (4) Cobertura
+      RN-09 sigue ≥90% (umbral branches 88 documentado).
+
+Stop Condition: (a) public/mockServiceWorker.js existe y responde
+      HTTP 200. (b) npm run dev:msw no muestra [vite] http proxy error.
+      (c) Crear un usuario funciona end-to-end en navegador real.
+      (d) Suite vitest verde con 8 tests nuevos del spec.
+      (e) Coverage ≥98% stmts / ≥88% branches.
+
+Output Format: (1) Spec SPEC-007 con Gherkin, causa raíz, 9 criterios
+      de aceptación, plan T1-T7. (2) Fix mínimo viable en 2 archivos
+      clave (regenerar SW, hacer proxy condicional). (3) Banner de error
+      visible en UI (defensa en profundidad). (4) Test E2E que cubre
+      el gap jsdom↔browser con tests de infraestructura. (5) Commit
+      conventional con cuerpo que explique causa raíz y referencia a
+      SPEC-007. (6) Memoria actualizada con causa raíz confirmada.
+```
+
+### Cambios aplicados
+
+| Archivo | Tipo | Diff | Justificación |
+|---|---|---|---|
+| `frontend-admin/public/mockServiceWorker.js` | A | +9120 | Regenerado con `npx msw init public/ --save` |
+| `frontend-admin/vite.config.ts` | M | +14/-8 | Proxy condicional a `VITE_USE_MSW` (lee via `loadEnv`) |
+| `frontend-admin/src/App.tsx` | M | +16/-1 | `useState mswError` + render de `MswBootstrapError` en catch |
+| `frontend-admin/src/admin/components/MswBootstrapError.tsx` | A | +70 | Banner visible con botón "Reintentar" + link a doc MSW |
+| `frontend-admin/tests/mswBootstrap.spec.tsx` | A | +120 | 8 tests (5 componente + 2 infraestructura + 1 vite.config) |
+| `frontend-admin/package.json` | M | +5 | `msw.workerDirectory: ["public"]` añadido por `--save` |
+| `frontend-admin/package-lock.json` | M | lock actualizado | `npx msw init --save` actualiza el lock |
+| `docs/specs/SPEC-007-msw-bootstrap-fix.md` | A | +330 | Spec completa (Gherkin, causa raíz, 9 CA, 3 opciones banner) |
+
+### Output (verificación)
+
+- **Tests:** 131 → **139** (8 nuevos, 519ms, todos verde)
+- **Coverage:** 97.97% → **98.04%** stmts / 88.51% → **88.65%** branches / 92.68% → **92.85%** funcs
+- **`MswBootstrapError.tsx`:** 100% en las 4 métricas
+- **Verificación runtime:** `curl http://localhost:5173/mockServiceWorker.js` → HTTP 200 (antes 404)
+- **Threshold branches ≥88** sigue vigente y se cumple
+- **Commit:** `032140e` en `feature/django-admin-stack`
+- **RN-09 ≥90%:** ✅ cumplido (98.04% stmts, 92.85% funcs)
+
+### Criterios de Aceptación (Gherkin)
+
+```gherkin
+Dado que el desarrollador ejecuta `npm run dev:msw` (VITE_USE_MSW=true)
+Y que ningún backend está corriendo en localhost:8001
+Cuando abre http://localhost:5173/ en Chrome
+Entonces el service worker de MSW se registra
+Y todas las requests a /api/admin/* son interceptadas por MSW
+Y ningún error "proxy error" o "ECONNREFUSED" aparece en consola Vite
+Y el panel de usuarios carga los 3 usuarios seed
+Y al crear un nuevo usuario, este aparece en la tabla sin recargar
+
+Dado que el desarrollador ejecuta `npm run dev` (VITE_USE_MSW no definido)
+Cuando abre http://localhost:5173/ en Chrome
+Entonces NO hay service worker de MSW registrado
+Y las requests a /api/admin/* van al backend real vía proxy de Vite
+
+Dado un test que simula el escenario "MSW setupWorker.start() falla"
+Cuando el componente AdminUsersPanel intenta hacer una request
+Entonces el test falla con un mensaje claro "MSW no se cargó"
+```
+
+### Trazabilidad
+
+```
+Bug reporte (2026-07-10) "no crea usuarios"
+  → Diagnóstico fase 0 con logs Vite (2026-07-11)
+    → Causa raíz: SW ausente + proxy fallback
+      → SPEC-007 (spec AI-SDLC)
+        → PR-IMPL-ADMIN-010 (1 commit, 8 archivos)
+          → 032140e (commit conventional)
+            → 139/139 tests verde
+              → RN-09 ≥90% cumplido
+```
+
+Refs: SPEC-007, FSD-UC-ADMIN-001 §4.8, ADR-0013 §Plan F4-F6, DD-ADMIN-002 §P1, AGENTS.md §2.2 (flujo AI-SDLC).
 
 ---
 
