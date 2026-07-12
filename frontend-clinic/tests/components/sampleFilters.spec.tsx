@@ -4,18 +4,24 @@ import userEvent from '@testing-library/user-event';
 import { SampleFilters } from '../../src/clinic/components/SampleFilters';
 
 describe('SampleFilters', () => {
-  it('cambiar el select de estado llama onChange', async () => {
+  it('click en un filter-chip de estado llama onChange', async () => {
     const onChange = vi.fn();
     render(<SampleFilters value={{}} onChange={onChange} />);
-    await userEvent.selectOptions(screen.getByLabelText('Filtrar por estado'), 'READY');
+    await userEvent.click(screen.getByText('⚠️ Revisión'));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ status: 'READY' }));
   });
 
   it('volver a "Todas" limpia el filtro de status', async () => {
     const onChange = vi.fn();
     render(<SampleFilters value={{ status: 'READY' }} onChange={onChange} />);
-    await userEvent.selectOptions(screen.getByLabelText('Filtrar por estado'), '');
+    await userEvent.click(screen.getByText('Todas'));
     expect(onChange).toHaveBeenCalledWith(expect.objectContaining({ status: undefined }));
+  });
+
+  it('el chip activo refleja el filtro actual', () => {
+    render(<SampleFilters value={{ status: 'VALIDATED' }} onChange={vi.fn()} />);
+    expect(screen.getByText('✓ Completadas')).toHaveClass('active');
+    expect(screen.getByText('Todas')).not.toHaveClass('active');
   });
 
   it('cambiar fecha desde llama onChange', async () => {

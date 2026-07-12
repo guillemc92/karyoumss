@@ -37,7 +37,7 @@ describe('SampleFormPage', () => {
     await userEvent.type(screen.getByLabelText(/CHN/), 'CHN-FORM-001');
     await userEvent.type(screen.getByLabelText(/Paciente/), 'ANON-FORM');
     await userEvent.click(screen.getByText('Guardar Muestra'));
-    await waitFor(() => expect(screen.getByText(/muestras registradas/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Gestión de Muestras')).toBeInTheDocument());
   });
 
   it('modo edit: carga los datos existentes de la muestra', async () => {
@@ -48,6 +48,6 @@ describe('SampleFormPage', () => {
   it('click en Cancelar navega de vuelta a la lista', async () => {
     renderCreate();
     await userEvent.click(screen.getByText('Cancelar'));
-    await waitFor(() => expect(screen.getByText(/muestras registradas/)).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Gestión de Muestras')).toBeInTheDocument());
   });
 });

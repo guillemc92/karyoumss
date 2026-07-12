@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BiomedShell } from '../components/BiomedShell';
+import { SampleStats } from '../components/SampleStats';
 import { SampleFilters } from '../components/SampleFilters';
 import { SampleTable } from '../components/SampleTable';
 import { SamplePagination } from '../components/SamplePagination';
@@ -40,11 +41,15 @@ export function SampleListPage() {
     <BiomedShell>
       <div className="page-header">
         <div>
-          <h1>Gestión de Muestras</h1>
-          <p>{items.length} muestras registradas</p>
+          <h1><i className="fas fa-flask"></i> Gestión de Muestras</h1>
+          <p>Administre todas las muestras del sistema (CRUD completo)</p>
         </div>
-        <button type="button" onClick={() => navigate('/clinic/samples/new')}>+ Nueva Muestra</button>
+        <button type="button" className="btn-primary" onClick={() => navigate('/clinic/samples/new')}>
+          <i className="fas fa-plus"></i> Nueva Muestra
+        </button>
       </div>
+
+      <SampleStats items={items} />
 
       <SampleFilters value={filters} onChange={(f) => { setFilters(f); setPage(1); }} />
 

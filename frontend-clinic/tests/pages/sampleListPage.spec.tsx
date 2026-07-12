@@ -8,13 +8,20 @@ describe('SampleListPage', () => {
   it('renderiza las 8 muestras del seed tras cargar', async () => {
     renderWithProviders(<SampleListPage />);
     await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
-    expect(screen.getByText(/8 muestras registradas/)).toBeInTheDocument();
+    expect(screen.getByText('Gestión de Muestras')).toBeInTheDocument();
   });
 
-  it('filtro por status READY reduce el listado', async () => {
+  it('las stat cards reflejan los conteos por estado', async () => {
     renderWithProviders(<SampleListPage />);
     await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
-    await userEvent.selectOptions(screen.getByLabelText('Filtrar por estado'), 'VALIDATED');
+    const totalCard = screen.getByText('Total muestras').closest('.stat-card');
+    expect(totalCard).toHaveTextContent('8');
+  });
+
+  it('filtro por status VALIDATED reduce el listado', async () => {
+    renderWithProviders(<SampleListPage />);
+    await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
+    await userEvent.click(screen.getByText('✓ Completadas'));
     await waitFor(() => {
       expect(screen.queryByText('CHN-2026-04-09-0441')).not.toBeInTheDocument();
     });
@@ -35,7 +42,7 @@ describe('SampleListPage', () => {
 
   it('click en Nueva Muestra navega al formulario (verificado por presencia del botón)', () => {
     renderWithProviders(<SampleListPage />);
-    expect(screen.getByText('+ Nueva Muestra')).toBeInTheDocument();
+    expect(screen.getByText(/Nueva Muestra/)).toBeInTheDocument();
   });
 
   it('click en Eliminar (rol admin no aplica en analista) no muestra confirm porque el botón está oculto', async () => {
@@ -74,6 +81,6 @@ describe('SampleListPage', () => {
     if (!nextButton.hasAttribute('disabled')) {
       await userEvent.click(nextButton);
     }
-    expect(screen.getByText(/muestras registradas/)).toBeInTheDocument();
+    expect(screen.getByText('Gestión de Muestras')).toBeInTheDocument();
   });
 });
