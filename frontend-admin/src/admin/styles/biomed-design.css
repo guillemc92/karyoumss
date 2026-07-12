@@ -1,0 +1,1028 @@
+/* ===================================================================
+   Biomed UMSS — Sistema de diseño
+   Migrado del configuracion.html (FSD-UC-ADMIN-001 · ADR-0013)
+   Mantener 1:1 con la paleta y el layout del shell vanilla.
+   =================================================================== */
+
+:root {
+  --umss-blue: #003770;
+  --umss-red: #E30613;
+  --blue-hover: #003265;
+  --blue-light: #e6ebf1;
+  --green-success: #1e8868;
+  --green-light: #e9f3f0;
+  --orange-warning: #d45100;
+  --orange-light: #fbeee6;
+  --gray-bg: #f8f9fa;
+  --gray-text: #64748b;
+  --white: #ffffff;
+  --border-light: #e2e8f0;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 55, 112, 0.12);
+  --shadow-lg: 0 8px 24px rgba(0, 55, 112, 0.15);
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1e293b;
+  background: linear-gradient(135deg, var(--gray-bg) 0%, var(--blue-light) 100%);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ===================================================================
+   NAVBAR SUPERIOR
+   =================================================================== */
+.biomed-navbar {
+  background: var(--umss-blue);
+  min-height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  color: white;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.biomed-nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  text-decoration: none;
+  color: white;
+}
+
+.biomed-nav-brand h1 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.biomed-nav-brand small {
+  font-size: 0.6rem;
+  font-weight: 500;
+  opacity: 0.85;
+  letter-spacing: 0.5px;
+}
+
+.biomed-nav-tag {
+  background: rgba(255, 255, 255, 0.15);
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.biomed-nav-links {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.biomed-nav-link {
+  color: #cbd5e1;
+  text-decoration: none;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: 0.3s;
+  cursor: pointer;
+  padding: 8px 0;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+
+.biomed-nav-link.active {
+  color: white;
+  font-weight: 600;
+  border-bottom: 2px solid var(--umss-red);
+}
+
+.biomed-nav-link:hover {
+  color: white;
+}
+
+.biomed-user-info {
+  text-align: right;
+}
+
+.biomed-user-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.biomed-user-role {
+  font-size: 0.6rem;
+  color: #cbd5e1;
+}
+
+/* ===================================================================
+   LAYOUT PRINCIPAL
+   =================================================================== */
+.biomed-app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.biomed-main {
+  max-width: 1400px;
+  margin: 1.5rem auto;
+  padding: 0 1.5rem;
+  width: 100%;
+}
+
+.biomed-page-header {
+  margin-bottom: 1.5rem;
+}
+
+.biomed-page-header h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--umss-blue);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.biomed-page-header p {
+  color: var(--gray-text);
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+/* ===================================================================
+   CONFIG LAYOUT (sidebar + content)
+   =================================================================== */
+.biomed-config-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1.5rem;
+}
+
+/* Sidebar */
+.biomed-config-sidebar {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+  height: fit-content;
+  position: sticky;
+  top: 90px;
+}
+
+.biomed-config-nav {
+  padding: 1rem;
+}
+
+.biomed-config-nav-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-text);
+  margin-bottom: 1rem;
+  padding: 0 0.5rem;
+}
+
+.biomed-config-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  margin-bottom: 0.25rem;
+  transition: all 0.2s;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  font-size: inherit;
+}
+
+.biomed-config-nav-item:hover {
+  background: var(--gray-bg);
+}
+
+.biomed-config-nav-item.active {
+  background: var(--blue-light);
+  color: var(--umss-blue);
+}
+
+.biomed-config-nav-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.biomed-config-nav-icon.blue { background: var(--umss-blue); color: white; }
+.biomed-config-nav-icon.green { background: var(--green-light); color: var(--green-success); }
+.biomed-config-nav-icon.yellow { background: var(--orange-light); color: var(--orange-warning); }
+.biomed-config-nav-icon.light-blue { background: #e3f2fd; color: #2196f3; }
+.biomed-config-nav-icon.red { background: #fce8e9; color: var(--umss-red); }
+.biomed-config-nav-icon.purple { background: #f3e5f5; color: #9c27b0; }
+.biomed-config-nav-icon.neural { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+
+.biomed-config-nav-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.biomed-config-nav-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+}
+
+.biomed-config-nav-sublabel {
+  font-size: 0.7rem;
+  color: var(--gray-text);
+}
+
+.biomed-config-version {
+  padding: 1rem;
+  border-top: 1px solid var(--border-light);
+  margin-top: 1rem;
+}
+
+.biomed-config-version-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--gray-text);
+  margin-bottom: 0.75rem;
+}
+
+.biomed-config-version-number {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--umss-blue);
+}
+
+.biomed-config-version-date {
+  font-size: 0.7rem;
+  color: var(--gray-text);
+  margin-bottom: 0.75rem;
+}
+
+.biomed-config-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.5rem 0.75rem;
+  background: var(--green-light);
+  border-radius: var(--radius-md);
+}
+
+.biomed-config-status-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--green-success);
+  border-radius: 50%;
+}
+
+.biomed-config-status-text {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--green-success);
+}
+
+/* Content */
+.biomed-config-content {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  border: 1px solid var(--border-light);
+}
+
+.biomed-config-content-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border-light);
+  background: linear-gradient(135deg, var(--gray-bg) 0%, var(--white) 100%);
+}
+
+.biomed-config-content-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--umss-blue);
+}
+
+.biomed-config-content-subtitle {
+  font-size: 0.75rem;
+  color: var(--gray-text);
+  margin-top: 4px;
+}
+
+.biomed-config-content-body {
+  padding: 1.5rem;
+}
+
+/* ===================================================================
+   PANEL TOOLBAR (counter + actions)
+   =================================================================== */
+.biomed-panel-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.biomed-panel-counter {
+  font-size: 0.8rem;
+  color: var(--gray-text);
+}
+
+.biomed-panel-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* ===================================================================
+   BOTONES PILL
+   =================================================================== */
+.biomed-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 40px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1.5px solid transparent;
+  background: var(--gray-bg);
+  color: var(--text-primary, #1e293b);
+}
+
+.biomed-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.biomed-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.biomed-btn--primary {
+  background: var(--umss-blue);
+  color: white;
+  border-color: var(--umss-blue);
+}
+.biomed-btn--primary:hover:not(:disabled) {
+  background: var(--blue-hover);
+  border-color: var(--blue-hover);
+}
+
+.biomed-btn--outline {
+  background: transparent;
+  color: var(--umss-blue);
+  border-color: var(--umss-blue);
+}
+.biomed-btn--outline:hover:not(:disabled) {
+  background: var(--blue-light);
+}
+
+.biomed-btn--success {
+  background: var(--green-success);
+  color: white;
+  border-color: var(--green-success);
+}
+.biomed-btn--success:hover:not(:disabled) {
+  background: #156b50;
+  border-color: #156b50;
+}
+
+.biomed-btn--danger {
+  background: var(--umss-red);
+  color: white;
+  border-color: var(--umss-red);
+}
+.biomed-btn--danger:hover:not(:disabled) {
+  background: #b8050f;
+  border-color: #b8050f;
+}
+
+.biomed-btn--ghost {
+  background: transparent;
+  color: var(--gray-text);
+  border-color: transparent;
+  padding: 4px 10px;
+}
+.biomed-btn--ghost:hover:not(:disabled) {
+  background: var(--gray-bg);
+  color: var(--text-primary, #1e293b);
+}
+
+.biomed-btn--icon {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.85rem;
+}
+
+/* ===================================================================
+   FORMULARIOS
+   =================================================================== */
+.biomed-form-section {
+  margin-bottom: 1.5rem;
+}
+
+.biomed-form-section-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--umss-blue);
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--umss-red);
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.biomed-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.biomed-form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.biomed-form-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--umss-blue);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.biomed-form-input,
+.biomed-form-select {
+  padding: 0.75rem;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  background: var(--white);
+  transition: all 0.2s;
+  font-family: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+.biomed-form-input:focus,
+.biomed-form-select:focus {
+  outline: none;
+  border-color: var(--umss-blue);
+  box-shadow: 0 0 0 3px rgba(0, 55, 112, 0.1);
+}
+
+.biomed-form-input[readonly] {
+  background: var(--gray-bg);
+  color: var(--gray-text);
+  cursor: not-allowed;
+}
+
+.biomed-form-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 36px;
+}
+
+.biomed-form-hint {
+  font-size: 0.7rem;
+  color: var(--gray-text);
+  margin-top: 0.25rem;
+}
+
+.biomed-form-error {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--umss-red);
+  font-weight: 600;
+  margin-top: 0.25rem;
+}
+
+.biomed-form-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-light);
+  flex-wrap: wrap;
+}
+
+/* Modal form wrapper */
+.biomed-user-form {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  max-width: 560px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.biomed-user-form h2 {
+  color: var(--umss-blue);
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+/* ===================================================================
+   STATUS TOGGLE (switch visual, no checkbox nativo)
+   =================================================================== */
+.biomed-status-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.biomed-status-toggle input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.biomed-status-toggle .biomed-toggle-track {
+  width: 48px;
+  height: 24px;
+  background: var(--gray-text);
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.biomed-status-toggle .biomed-toggle-track::after {
+  content: '';
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.biomed-status-toggle .biomed-toggle-track.active {
+  background: var(--green-success);
+}
+
+.biomed-status-toggle .biomed-toggle-track.active::after {
+  left: 26px;
+}
+
+.biomed-status-toggle .biomed-toggle-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #1e293b);
+}
+
+.biomed-status-toggle.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.biomed-status-toggle.disabled .biomed-toggle-track {
+  cursor: not-allowed;
+}
+
+/* ===================================================================
+   MODAL
+   =================================================================== */
+.biomed-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.5);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: biomed-fade-in 0.2s ease;
+}
+
+@keyframes biomed-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.biomed-modal {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  padding: 1.5rem;
+  max-width: 520px;
+  width: 90%;
+  box-shadow: var(--shadow-lg);
+  animation: biomed-modal-in 0.2s ease;
+}
+
+@keyframes biomed-modal-in {
+  from { transform: translateY(-12px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.biomed-modal h2 {
+  margin: 0 0 0.75rem;
+  color: var(--umss-blue);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.biomed-modal p {
+  color: var(--gray-text);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.biomed-modal--danger h2 {
+  color: var(--umss-red);
+}
+
+/* ===================================================================
+   TABLA
+   =================================================================== */
+.biomed-table-wrapper {
+  background: var(--gray-bg);
+  border-radius: var(--radius-lg);
+  padding: 0.5rem;
+  margin-top: 1rem;
+  overflow-x: auto;
+}
+
+.biomed-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  background: var(--white);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.biomed-table thead {
+  background: linear-gradient(135deg, var(--blue-light) 0%, var(--white) 100%);
+}
+
+.biomed-table th {
+  text-align: left;
+  padding: 0.85rem 1rem;
+  font-weight: 700;
+  color: var(--umss-blue);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-light);
+  white-space: nowrap;
+}
+
+.biomed-table td {
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--border-light);
+  color: var(--text-primary, #1e293b);
+  vertical-align: middle;
+}
+
+.biomed-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.biomed-table tbody tr:hover {
+  background: var(--gray-bg);
+}
+
+.biomed-table td code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8em;
+  background: rgba(28, 36, 52, 0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.biomed-table-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+/* ===================================================================
+   STATUS PILL (badge activo/inactivo)
+   =================================================================== */
+.biomed-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.biomed-status-pill--on {
+  background: var(--green-light);
+  color: var(--green-success);
+}
+
+.biomed-status-pill--off {
+  background: var(--gray-bg);
+  color: var(--gray-text);
+}
+
+.biomed-status-pill::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ===================================================================
+   ROLE BADGE
+   =================================================================== */
+.biomed-role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.biomed-role-badge--analista {
+  background: var(--blue-light);
+  color: var(--umss-blue);
+}
+.biomed-role-badge--supervisor {
+  background: var(--green-light);
+  color: var(--green-success);
+}
+.biomed-role-badge--admin {
+  background: #f3e5f5;
+  color: #9c27b0;
+}
+
+/* ===================================================================
+   EMPTY STATE
+   =================================================================== */
+.biomed-empty-state {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  background: var(--gray-bg);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-light);
+}
+
+.biomed-empty-state__icon {
+  font-size: 2.5rem;
+  color: var(--gray-text);
+  margin-bottom: 0.75rem;
+  opacity: 0.6;
+}
+
+.biomed-empty-state__title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary, #1e293b);
+  margin-bottom: 0.25rem;
+}
+
+.biomed-empty-state__hint {
+  font-size: 0.8rem;
+  color: var(--gray-text);
+}
+
+/* ===================================================================
+   TOAST / BANNERS
+   =================================================================== */
+.biomed-banner {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.biomed-banner--error {
+  background: #fce8e9;
+  color: var(--umss-red);
+  border: 1px solid #f8c4c8;
+}
+
+.biomed-banner--info {
+  background: var(--blue-light);
+  color: var(--umss-blue);
+  border: 1px solid #c5d4e3;
+}
+
+/* ===================================================================
+   HISTORY LIST
+   =================================================================== */
+.biomed-history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem 0;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.biomed-history-item {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border-light);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8rem;
+}
+
+.biomed-history-item:last-child {
+  border-bottom: none;
+}
+
+.biomed-history-item__action {
+  font-weight: 700;
+  color: var(--umss-blue);
+  text-transform: uppercase;
+  font-size: 0.7rem;
+  letter-spacing: 0.5px;
+}
+
+.biomed-history-item__meta {
+  color: var(--gray-text);
+  font-size: 0.75rem;
+}
+
+/* ===================================================================
+   PLACEHOLDER (secciones no implementadas aún)
+   =================================================================== */
+.biomed-placeholder {
+  padding: 4rem 1.5rem;
+  text-align: center;
+  background: var(--gray-bg);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--border-light);
+}
+
+.biomed-placeholder__icon {
+  font-size: 3rem;
+  color: var(--gray-text);
+  opacity: 0.4;
+  margin-bottom: 1rem;
+}
+
+.biomed-placeholder__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--umss-blue);
+  margin-bottom: 0.5rem;
+}
+
+.biomed-placeholder__hint {
+  font-size: 0.85rem;
+  color: var(--gray-text);
+}
+
+/* ===================================================================
+   LOGIN (ADR-0017) — calcado de index.html #loginModal (líneas 487-597,
+   724-750), portado como página de ruta completa en vez de overlay.
+   =================================================================== */
+.biomed-login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.biomed-login-card {
+  background: var(--white);
+  border-radius: var(--radius-xl);
+  width: 100%;
+  max-width: 420px;
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+  animation: biomed-login-fade-in 0.3s ease;
+}
+
+@keyframes biomed-login-fade-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.biomed-login-header {
+  background: var(--umss-blue);
+  padding: 1.5rem;
+  text-align: center;
+  color: white;
+}
+.biomed-login-header h3 { font-size: 1.3rem; margin-bottom: 4px; }
+.biomed-login-header p { font-size: 0.7rem; opacity: 0.8; }
+
+.biomed-login-body {
+  padding: 1.5rem;
+}
+
+.biomed-login-role-selector {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1.5rem;
+}
+
+.biomed-login-role-option {
+  flex: 1;
+  padding: 10px;
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-md);
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: var(--white);
+  font-family: inherit;
+}
+.biomed-login-role-option.selected {
+  border-color: var(--umss-blue);
+  background: var(--blue-light);
+}
+.biomed-login-role-option i { font-size: 1.2rem; display: block; margin-bottom: 5px; }
+.biomed-login-role-option span { font-size: 0.7rem; font-weight: 600; }
+
+.biomed-login-submit {
+  width: 100%;
+  margin-top: 1rem;
+  border-radius: var(--radius-md);
+}
+
+/* ===================================================================
+   RESPONSIVE
+   =================================================================== */
+@media (max-width: 900px) {
+  .biomed-config-layout { grid-template-columns: 1fr; }
+  .biomed-navbar { flex-direction: column; height: auto; padding: 1rem; text-align: center; }
+  .biomed-nav-links { justify-content: center; }
+  .biomed-form-grid { grid-template-columns: 1fr; }
+  .biomed-config-sidebar { position: static; }
+}

@@ -992,5 +992,183 @@ Refs: ADR-0016, SPEC-009, DD-REGISTRO-MUESTRA-001.md, DD-CRUD-MUESTRA-001.md, AD
 
 ---
 
+## PM-AUTH-001 — Sistema de Autenticación (Login) unificado
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-AUTH-001 |
+| **Título** | Login real con JWT: `backend-admin` como autoridad única de `/api/auth/*`, `AuthContext`/`PrivateRoute` en `frontend-admin`, redirecciones por rol |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado — pendiente commit |
+| **Fecha** | 2026-07-12 |
+
+### Input (Artefacto Origen)
+
+- `index.html` (raíz del repo) — UI Contract, modal `#loginModal` líneas 724-811
+- `backend-admin/apps/users/models.py` — `CustomUser`+`role` ya existente (ADR-0011/0012)
+- `docs/AUTH_BRIDGE.md` (no trackeado) — exchange F0, detectado desactualizado
+- `docs/adr/0015-derogacion-parcial-0013.md` — precedente de namespaces de token separados
+- Prompt del arquitecto 2026-07-12 (flujo obligatorio de 12 pasos, stack Django+DRF+SimpleJWT / React+TS+React Router)
+
+### Gap detectado (Paso 1-2, confirmado por agente Explore + lectura directa)
+
+Tres sistemas de auth en paralelo, ninguno con login real conectado: (a) `index.html` con credenciales hardcodeadas en JS + `localStorage`; (b) `backend-admin` con un "exchange" que asume un FastAPI clínico inexistente en el repo; (c) `backend-clinic` con SimpleJWT nativo pero sin `CustomUser`/`role`. El prompt pedía además el rol "especialista" (no documentado en ningún BRD/FSD/AGENTS.md/código — todos usan `analista`) y endpoints `/api/auth/*` sin prefijo de bounded context, lo que no encajaba en ninguno de los dos backends sin una decisión arquitectónica explícita.
+
+### Prompt
+
+```
+Role: Arquitecto de software senior con dominio de Django+DRF+SimpleJWT,
+      React+TS+React Router, y el flujo AI-SDLC de este repo (BRD→FSD→ADR
+      →SPEC→DD→Code→Tests→PROMPT_MAPPING→DTI).
+
+Task: Implementar el "Sistema de Autenticación (Login)" bajo el principio
+      de Antirracionalización: prohibido inventar lógica de negocio, roles
+      o endpoints no documentados; prohibido modificar el HTML aprobado o
+      la UX sin ADR; prohibido escribir código antes del SPEC.
+
+Context: Existen TRES sistemas de auth en paralelo sin login real
+      conectado (ver Gap arriba). El prompt pide roles admin/especialista/
+      supervisor y endpoints /api/auth/* sin prefijo de contexto — ninguno
+      de los dos backends Django existentes (`backend-admin`, ADR-0013;
+      `backend-clinic`, ADR-0015) encaja literalmente sin decidir cuál es
+      la autoridad. "especialista" no está documentado en ningún lado
+      (BRD/FSD/AGENTS.md/código usan `analista`).
+
+Reasoning: (1) Investigar el estado real de auth en ambos backends antes
+      de proponer nada (agente Explore, 8 puntos de verificación factual).
+      (2) Presentar el fork arquitectónico real al arquitecto vía
+      AskUserQuestion con opciones recomendadas y evidencia, no decidir
+      unilateralmente un cambio de esta magnitud. (3) Entrar en Plan Mode
+      dado el tamaño del cambio (nuevo modelo de auth, nueva dependencia
+      react-router-dom, reestructuración de App.tsx). (4) Backend Django
+      con lógica en services/serializers, no en Views. (5) Frontend React
+      replica el modal del HTML exactamente, con el selector de rol vuelto
+      cosmético (no puede seguir siendo un gate funcional una vez que hay
+      backend real — se documenta como decisión, no como descuido).
+
+Stop Condition: (a) ADR-0017 aceptado antes de tocar settings.py/models.py
+      /componentes React. (b) SPEC-010 completo antes de código. (c) DD-
+      AUTH-001.md + nota de desactualización en AUTH_BRIDGE.md. (d) Backend:
+      login/logout/refresh/me reales con JWT+blacklist, sin romper el
+      exchange F0 existente (regresión verificada y corregida). (e)
+      Frontend: LoginPage replica el modal, AuthContext con hidratación+
+      auto-refresh, PrivateRoute con allowedRoles, botón "Salir" real.
+      (f) Cobertura backend y frontend ≥90% con evidencia de ejecución.
+      (g) Verificación E2E con servidor real (no solo MSW/tests).
+
+Output Format: (1) ADR-0017 (9 decisiones D1-D9, tabla de tensión con
+      reglas del proyecto, alternativas rechazadas). (2) SPEC-010 (Gherkin,
+      contratos JSON de 4 endpoints, mapeo HTML→request). (3) DD-AUTH-001.md.
+      (4) Backend: auth_serializers.py, auth_views.py, auth_urls.py,
+      SIMPLE_JWT+token_blacklist en settings, factories con password real,
+      tests ≥90%. (5) Frontend: authClient/AuthContext/PrivateRoute/
+      roleRedirect + LoginPage + CSS calcada + botón Salir + MSW handlers
+      con identidad real (no admin hardcodeado) + tests ≥90%. (6)
+      Verificación E2E real con curl (login→access/refresh→me→refresh
+      rotado→logout→blacklist confirmado). (7) PROMPT_MAPPING+DTI+
+      AGENTS.md §5 actualizados. (8) Commit con evidencia.
+```
+
+### Decisiones confirmadas por el arquitecto (AskUserQuestion, 3 preguntas, 3 recomendadas aceptadas)
+
+1. `backend-admin` es la autoridad única de `/api/auth/*` (reutiliza el único `CustomUser`+`role` real del repo).
+2. Vocabulario de rol: `analista` (se descarta "especialista", no documentado en ningún lado).
+3. Redirecciones: `admin`→raíz `frontend-admin`; `analista`→`frontend-clinic` `/clinic/samples`; `supervisor`→`supervisor.html` legacy (gap documentado, sin módulo React de Supervisor).
+
+### Cambios aplicados
+
+| Archivo | Tipo | Justificación |
+|---|---|---|
+| `docs/adr/0017-sistema-autenticacion-login.md` | A | 9 decisiones D1-D9, gaps documentados (SSO cross-backend, provisión de password, módulo Supervisor) |
+| `docs/specs/SPEC-010-autenticacion-login.md` | A | Gherkin, contratos JSON, mapeo modal HTML→request, CA-1..CA-8 |
+| `docs/design/DD-AUTH-001.md` | A | Arquitectura de componentes, diagrama de flujo JWT |
+| `docs/AUTH_BRIDGE.md` | M | Nota de desactualización — exchange F0 deja de ser el mecanismo primario |
+| `backend-admin/admin_backend/settings.py` | M | `SIMPLE_JWT`, `AUTH_ADMIN_JWT_SECRET`, `token_blacklist` app, `JWTAuthentication` aditivo, throttle scope `login` |
+| `backend-admin/admin_backend/settings_test.py` | M | Secret determinístico para tests, `JWTAuthentication` en el override de test |
+| `backend-admin/admin_backend/urls.py` | M | `path('api/auth/', include('apps.users.auth_urls'))` |
+| `backend-admin/apps/users/auth_serializers.py` | A | `AdminTokenObtainPairSerializer` (+role/email/full_name en respuesta), `MeSerializer` |
+| `backend-admin/apps/users/auth_views.py` | A | `LoginView`, `LogoutView` (blacklist), `MeView` |
+| `backend-admin/apps/users/auth_urls.py` | A | `login/`, `logout/`, `refresh/`, `me/` |
+| `backend-admin/apps/users/views.py` | M | `auth_exchange_view` fijado a `authentication_classes([TokenAuthentication])` — fix de regresión (ver Bugs) |
+| `backend-admin/apps/users/factories.py` | M | `UserFactory` con `set_password()` real |
+| `backend-admin/apps/users/tests/test_auth_login.py`, `test_auth_logout.py`, `test_auth_me.py`, `test_auth_serializers.py` | A | 26 tests nuevos |
+| `backend-admin/requirements.txt`, `.env`, `.env.example` | M | `djangorestframework-simplejwt`, `AUTH_ADMIN_JWT_SECRET` |
+| `frontend-admin/package.json` | M | `react-router-dom` agregado (no existía) |
+| `frontend-admin/src/admin/auth/{authClient,AuthContext,PrivateRoute,roleRedirect,types}.ts(x)` | A | Módulo de auth completo |
+| `frontend-admin/src/admin/pages/LoginPage.tsx` | A | Replica el modal de `index.html`, selector de rol cosmético (ADR-0017 D8) |
+| `frontend-admin/src/admin/components/BiomedNavbar.tsx` | M | Botón "Salir" (replica `configuracion.html:728`) |
+| `frontend-admin/src/App.tsx` | M | `BrowserRouter`+rutas `/login` pública + `/*` con `PrivateRoute allowedRoles={['admin']}` |
+| `frontend-admin/src/admin/styles/biomed-design.css` | M | Clases `.biomed-login-*` calcadas del modal |
+| `frontend-admin/src/admin/msw/handlers.ts` | M | Handlers de los 4 endpoints con identidad real por token (no admin hardcodeado — ver Bugs) |
+| `frontend-admin/tests/auth/*.spec.ts(x)`, `tests/pages/loginPage.spec.tsx`, `tests/components/biomedShell.spec.tsx` (M) | A/M | Suite nueva + fix de wrapping con `AuthProvider`/`MemoryRouter` |
+
+### Bugs encontrados y corregidos durante el desarrollo (evidencia, no reportados por el usuario)
+
+1. **Regresión real en `auth_exchange_view`**: agregar `JWTAuthentication` globalmente rompió el exchange F0 existente (9 tests, `test_auth_bridge_e2e.py` + `test_views.py::TestAuthExchange`) — el endpoint recibe un `Authorization: Bearer <fastapi_jwt>` ajeno (firmado con `AUTH_BRIDGE_SECRET`, no `AUTH_ADMIN_JWT_SECRET`) que `JWTAuthentication` intentaba validar y fallaba, abortando la cadena de autenticación ANTES de que el cuerpo de la vista se ejecutara. Corregido con `authentication_classes([TokenAuthentication])` explícito en esa vista.
+2. **Throttle mal configurado**: `LoginView` redeclaraba `throttle_classes` explícitamente, ignorando el override de test (`DEFAULT_THROTTLE_CLASSES=[]`) y crasheando con `ImproperlyConfigured` por falta de rate para el scope `login`. Corregido quitando la redeclaración (hereda el default global, igual patrón que `AdminUserViewSet`).
+3. **MSW `/me/` devolvía siempre la cuenta admin**, sin importar qué cuenta demo había iniciado sesión — hacía que `PrivateRoute` con roles no-admin nunca redirigiera correctamente en tests/demo. Corregido rastreando el dueño real de cada access/refresh token emitido por el mock.
+4. **Stub de `window.location` en tests rompía `fetch` de URLs relativas** (`TypeError: Invalid base URL`) porque el reemplazo dejaba `href=''` en vez de un origin válido — MSW/fetch necesitan una base URL real para resolver rutas relativas como `/api/auth/login/`.
+
+### Output (verificación)
+
+- **Backend:** 212/212 tests verde, **99% coverage** (threshold 90%) — incluye regresión de `auth_exchange` resuelta y confirmada en verde
+- **Frontend:** 173/173 tests verde, **97.72% stmts / 88.53% branches / 94.49% funcs / 97.72% lines** (threshold 90/88/90/90)
+- **Verificación E2E real (no simulada):** servidor Django real (`runserver 8001`) + usuario real (`User.objects.create_user` + `set_password`) + curl real:
+  - `POST /api/auth/login/` → 200, `{access, refresh, role:"admin", email, full_name:null}`
+  - `GET /api/auth/me/` con el access real → 200, identidad correcta
+  - `POST /api/auth/login/` con password incorrecta → 401 `{"detail":"Credenciales inválidas"}`
+  - `POST /api/auth/refresh/` → 200, access+refresh nuevos (rotación confirmada, refresh distinto del original)
+  - `POST /api/auth/logout/` con el refresh rotado → 205
+  - `POST /api/auth/refresh/` reintentando el mismo refresh → 401 `{"detail":"El token está en lista negra"}` — **blacklist real confirmado**, no solo limpieza de localStorage en cliente
+- **RN-09 ≥90%:** ✅ cumplido en ambos bounded contexts
+
+### Criterios de Aceptación (Gherkin)
+
+```gherkin
+Dado un usuario con role=admin real en base de datos
+Cuando se loguea en /login con email y password correctos
+Entonces recibe access+refresh+role+email+full_name
+Y permanece en frontend-admin (PrivateRoute lo deja pasar)
+
+Dado un usuario con role=analista
+Cuando se loguea exitosamente
+Entonces la app navega (window.location.href) a frontend-clinic /clinic/samples,
+  sin importar qué tab de rol haya seleccionado en el modal (D8: cosmético)
+
+Dado credenciales inválidas (password incorrecta o email inexistente)
+Cuando se intenta login
+Entonces la API responde 401 con el MISMO mensaje genérico en ambos casos
+
+Dado un refresh token ya usado en /logout/
+Cuando se reintenta usar ese mismo refresh en /refresh/
+Entonces la API responde 401 "token en lista negra" (blacklist real)
+
+Dado un usuario autenticado con role≠admin que navega a frontend-admin
+Entonces PrivateRoute lo redirige afuera antes de renderizar BiomedShell
+```
+
+### Trazabilidad
+
+```
+Prompt del arquitecto (2026-07-12) "Sistema de Autenticación (Login)" + Antirracionalización
+  → Paso 1-3: agente Explore (8 puntos) + lectura directa de index.html
+    → Gap detectado: 3 sistemas de auth paralelos sin login real, vocabulario "especialista" no documentado
+      → 3 decisiones confirmadas (AskUserQuestion): backend-admin autoridad única, rol analista, redirecciones D7
+        → Plan Mode (cambio grande: nueva dependencia, reestructuración App.tsx) → aprobado
+          → ADR-0017 (accepted)
+            → SPEC-010
+              → DD-AUTH-001.md + nota AUTH_BRIDGE.md
+                → Backend Django (auth_serializers/views/urls + fix regresión exchange) — 212/212 tests, 99%
+                  → Frontend React (auth module + LoginPage + PrivateRoute + Salir) — 173/173 tests, 88.53% branches
+                    → Verificación E2E real (curl: login→me→refresh rotado→logout→blacklist confirmado)
+                      → RN-09 ≥90% cumplido (ambos bounded contexts)
+                        → PROMPT_MAPPING + DTI + AGENTS.md §5 (en curso)
+```
+
+Refs: ADR-0017, SPEC-010, DD-AUTH-001.md, docs/AUTH_BRIDGE.md, ADR-0011, ADR-0012, ADR-0013, ADR-0015, AGENTS.md §2.3 (Actores y Roles) y §3 (RN-06, RN-09).
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*

@@ -3,17 +3,26 @@
  * (navbar superior + sidebar izquierdo + slot de contenido) dentro del
  * bounded context admin (ADR-0013).
  *
+ * ADR-0017: agrega enrutamiento real (react-router-dom) — ruta pública
+ * `/login` y el resto de la SPA protegido por `PrivateRoute
+ * allowedRoles={['admin']}`. El bootstrap de MSW envuelve TODO (incluida
+ * `/login`), porque en demo el propio POST de login debe ser interceptado.
+ *
  * Demo mode: si VITE_USE_MSW=true al hacer `npm run dev:msw`, el Service
  * Worker de MSW arranca antes de montar React y mockea los endpoints de
- * /api/admin/*. En prod real MSW está deshabilitado y se conecta al
- * backend via proxy de Vite.
+ * /api/admin/* y /api/auth/*. En prod real MSW está deshabilitado y se
+ * conecta al backend via proxy de Vite.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AdminUsersPanel } from './admin/components/AdminUsersPanel';
 import { AdminUsersProvider } from './admin/state/adminUsersStore';
+import { AuthProvider, useAuth } from './admin/auth/AuthContext';
+import { PrivateRoute } from './admin/auth/PrivateRoute';
 import { BiomedShell } from './admin/components/BiomedShell';
 import { SidebarSection } from './admin/components/BiomedSidebar';
-import { SessionProvider } from './admin/state/useSession';
+import { SessionProvider, useSession } from './admin/state/useSession';
+import { LoginPage } from './admin/pages/LoginPage';
 import { ProfileSection } from './admin/components/ProfileSection';
 import { MswBootstrapError } from './admin/components/MswBootstrapError';
 
@@ -77,7 +86,32 @@ function renderSection(section: SidebarSection) {
   return <Placeholder {...cfg} />;
 }
 
-export default function App() {
+/** Sincroniza el rol/nombre reales de AuthContext hacia useSession (gating de UI ya existente en BiomedShell/BiomedSidebar/BiomedNavbar). */
+function SessionSync() {
+  const { user } = useAuth();
+  const session = useSession();
+
+  useEffect(() => {
+    if (user) {
+      session.setRole(user.role);
+      session.setUserName(user.fullName ?? user.email);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  return null;
+}
+
+function AdminShellRoute() {
+  return (
+    <SessionProvider>
+      <SessionSync />
+      <BiomedShell>{(active) => renderSection(active)}</BiomedShell>
+    </SessionProvider>
+  );
+}
+
+function MswBootstrapGate({ children }: { children: ReactNode }) {
   const [mswReady, setMswReady] = useState(!USE_MSW);
   // SPEC-007 §2.3: si el SW falla, mostrar banner en vez de quedarse en
   // "Inicializando…" eternamente. `null` = bootstrap no intentado todavía.
@@ -140,9 +174,27 @@ export default function App() {
     );
   }
 
+  return <>{children}</>;
+}
+
+export default function App() {
   return (
-    <SessionProvider forceAdminOnMount={USE_MSW}>
-      <BiomedShell>{(active) => renderSection(active)}</BiomedShell>
-    </SessionProvider>
+    <BrowserRouter>
+      <MswBootstrapGate>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/*"
+              element={
+                <PrivateRoute allowedRoles={['admin']}>
+                  <AdminShellRoute />
+                </PrivateRoute>
+              }
+            />
+          </Routes>
+        </AuthProvider>
+      </MswBootstrapGate>
+    </BrowserRouter>
   );
 }

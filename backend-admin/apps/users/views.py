@@ -7,8 +7,15 @@ ViewSets para CRUD de AdminUser + vista custom para auth bridge.
 import jwt
 from django.utils import timezone
 from rest_framework import status, viewsets
+from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import action, api_view, permission_classes, throttle_classes
+from rest_framework.decorators import (
+    action,
+    api_view,
+    authentication_classes,
+    permission_classes,
+    throttle_classes,
+)
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
@@ -156,6 +163,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
 
 
 @api_view(['POST'])
+@authentication_classes([TokenAuthentication])
 @permission_classes([AllowAny])
 @throttle_classes([ScopedRateThrottle])
 def auth_exchange_view(request):
@@ -164,6 +172,16 @@ def auth_exchange_view(request):
     Headers: Authorization: Bearer <fastapi_jwt>
     Body: (vacío)
     Response 200: { "token": "<django_token>", "role": "admin", "expires_at": "..." }
+
+    ADR-0017: `authentication_classes` se fija explícitamente a solo
+    TokenAuthentication (excluyendo el JWTAuthentication global agregado por
+    ADR-0017) porque este endpoint recibe un JWT ajeno (firmado con
+    AUTH_BRIDGE_SECRET, no con AUTH_ADMIN_JWT_SECRET) en el header
+    `Authorization: Bearer`, que se parsea manualmente más abajo — no como
+    credencial de autenticación de este propio backend. Sin este override,
+    JWTAuthentication intenta validar ese Bearer como su propio JWT, falla la
+    firma, y aborta la cadena de autenticación completa con 401 antes de que
+    el cuerpo de esta vista llegue a ejecutarse.
     """
     if not getattr(request, 'throttle_classes', None):
         request.throttle_classes = [ScopedRateThrottle]

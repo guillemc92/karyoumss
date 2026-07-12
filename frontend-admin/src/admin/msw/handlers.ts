@@ -50,6 +50,39 @@ const initialUsers: AdminUser[] = [
 
 let baseUsers: AdminUser[] = [...initialUsers];
 
+/**
+ * Perfil mock mutable por userId (1:1 con el User logueado).
+ * DD-ADMIN-002 P1: usado por los handlers GET/PATCH /api/admin/me/profile/.
+ * Reset por test: server.resetHandlers() no lo limpia porque vive a scope
+ * de módulo; el `resetMockData()` que ya existe debe re-asignarlo desde
+ * `initialProfile` (ver abajo).
+ */
+interface MockProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  specialty: string;
+  professional_license: string;
+  phone: string;
+  location: string;
+  avatar_url: string;
+  updated_at: string;
+}
+
+const initialProfile: MockProfile = {
+  id: 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
+  full_name: 'María García López',
+  email: 'maria.garcia@biomed.umss.bo',
+  specialty: 'Citogenética Clínica',
+  professional_license: 'MED-4452-BO',
+  phone: '+591 2 2154847',
+  location: 'UMSS · Hospital del Norte',
+  avatar_url: '',
+  updated_at: '2026-06-15T10:00:00Z',
+};
+
+const mockProfiles: Record<string, MockProfile> = { '1': { ...initialProfile } };
+
 const initialAuditLog: Record<string, AuditLogEntry[]> = {
   '11111111-1111-1111-1111-111111111111': [
     {
@@ -65,13 +98,60 @@ const initialAuditLog: Record<string, AuditLogEntry[]> = {
 
 let auditLog: Record<string, AuditLogEntry[]> = { ...initialAuditLog };
 
+// ===========================================================================
+// ADR-0017 — Login unificado /api/auth/*
+// ===========================================================================
+
+interface DemoAccount {
+  email: string;
+  password: string;
+  role: 'admin' | 'analista' | 'supervisor';
+  full_name: string | null;
+}
+
+/** Cuentas demo — únicas credenciales que aceptan /api/auth/login/ en MSW. */
+const DEMO_ACCOUNTS: DemoAccount[] = [
+  { email: 'demo_admin@biomed.umss.bo', password: 'demo12345', role: 'admin', full_name: 'Demo Admin' },
+  { email: 'demo_analista@biomed.umss.bo', password: 'demo12345', role: 'analista', full_name: 'Demo Analista' },
+  { email: 'demo_supervisor@biomed.umss.bo', password: 'demo12345', role: 'supervisor', full_name: 'Demo Supervisor' },
+];
+
+let tokenCounter = 0;
+/** access/refresh token → cuenta demo dueña de ese token, para que /me/ y el
+ * rotado de /refresh/ devuelvan SIEMPRE el usuario realmente logueado (no
+ * un admin hardcodeado) — mismo comportamiento que el backend real. */
+let accessTokenOwners = new Map<string, DemoAccount>();
+let refreshTokenOwners = new Map<string, DemoAccount>();
+
+/** Fabrica un JWT con forma válida (header.payload.signature) para que authClient.decodeExp() lo lea. */
+function makeFakeJwt(expSecondsFromNow: number): string {
+  const header = btoa(JSON.stringify({ alg: 'none', typ: 'JWT' }));
+  const payload = btoa(
+    JSON.stringify({ exp: Math.floor(Date.now() / 1000) + expSecondsFromNow, jti: `${tokenCounter++}` }),
+  );
+  return `${header}.${payload}.mock-signature`;
+}
+
+function issueTokens(account: DemoAccount): { access: string; refresh: string } {
+  const access = makeFakeJwt(30 * 60);
+  const refresh = makeFakeJwt(24 * 60 * 60);
+  accessTokenOwners.set(access, account);
+  refreshTokenOwners.set(refresh, account);
+  return { access, refresh };
+}
+
 /** Restaura la base de datos mock al estado inicial. Tests lo llaman en beforeEach. */
 export function resetMockData(): void {
   nextId = 4;
   baseUsers = initialUsers.map((u) => ({ ...u }));
+  // mockProfiles también vive a scope de módulo (DD-ADMIN-002 P1): re-asignar
+  // desde `initialProfile` para que cada test vea el estado original.
+  mockProfiles['1'] = { ...initialProfile };
   auditLog = Object.fromEntries(
     Object.entries(initialAuditLog).map(([k, v]) => [k, v.map((e) => ({ ...e }))]),
   );
+  accessTokenOwners = new Map<string, DemoAccount>();
+  refreshTokenOwners = new Map<string, DemoAccount>();
 }
 
 export const handlers = [
@@ -162,5 +242,106 @@ export const handlers = [
       return HttpResponse.json({ detail: 'JWT inválido' }, { status: 400 });
     }
     return HttpResponse.json({ token: 'mocked-django-token-1234567890' });
+  }),
+
+  // ===========================================================================
+  // DD-ADMIN-002 P1 — /api/admin/me/profile/
+  // ===========================================================================
+  // mockProfiles está declarado a scope de módulo (ver arriba) para que
+  // GET y PATCH compartan estado mutable entre handlers.
+
+  http.get('/api/admin/me/profile/', () => {
+    // En demo MSW siempre devolvemos el perfil del userId=1.
+    return HttpResponse.json(mockProfiles['1']);
+  }),
+
+  http.patch('/api/admin/me/profile/', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    // Validación mock: full_name 3-80, email formato básico
+    if (typeof body.full_name === 'string' &&
+        (body.full_name.length < 3 || body.full_name.length > 80)) {
+      return HttpResponse.json(
+        { full_name: ['Nombre 3-80 caracteres'] },
+        { status: 400 },
+      );
+    }
+    if (typeof body.email === 'string' && !/^[^@]+@[^@]+\.[^@]+$/.test(body.email)) {
+      return HttpResponse.json({ email: ['Email inválido'] }, { status: 400 });
+    }
+    if (typeof body.phone === 'string' && body.phone !== '' &&
+        !/^\+?[\d\s\-()]{6,30}$/.test(body.phone)) {
+      return HttpResponse.json({ phone: ['Teléfono inválido'] }, { status: 400 });
+    }
+    const current = mockProfiles['1'];
+    const updated = {
+      ...current,
+      ...Object.fromEntries(
+        Object.entries(body).filter(([, v]) => v !== undefined),
+      ),
+      updated_at: new Date().toISOString(),
+    };
+    mockProfiles['1'] = updated as typeof current;
+    return HttpResponse.json(updated);
+  }),
+
+  // ===========================================================================
+  // ADR-0017 — Login unificado /api/auth/*
+  // ===========================================================================
+
+  http.post('/api/auth/login/', async ({ request }) => {
+    const body = (await request.json()) as { email?: string; password?: string };
+    const account = DEMO_ACCOUNTS.find(
+      (a) => a.email === body.email && a.password === body.password,
+    );
+    if (!account) {
+      return HttpResponse.json({ detail: 'Credenciales inválidas' }, { status: 401 });
+    }
+    const { access, refresh } = issueTokens(account);
+    return HttpResponse.json({
+      access,
+      refresh,
+      role: account.role,
+      email: account.email,
+      full_name: account.full_name,
+    });
+  }),
+
+  http.post('/api/auth/logout/', async ({ request }) => {
+    const body = (await request.json()) as { refresh?: string };
+    if (!body.refresh) {
+      return HttpResponse.json({ detail: 'refresh requerido' }, { status: 400 });
+    }
+    if (!refreshTokenOwners.has(body.refresh)) {
+      return HttpResponse.json({ detail: 'Token inválido' }, { status: 400 });
+    }
+    refreshTokenOwners.delete(body.refresh);
+    return new HttpResponse(null, { status: 205 });
+  }),
+
+  http.post('/api/auth/refresh/', async ({ request }) => {
+    const body = (await request.json()) as { refresh?: string };
+    const account = body.refresh ? refreshTokenOwners.get(body.refresh) : undefined;
+    if (!account) {
+      return HttpResponse.json({ detail: 'Token is invalid or expired' }, { status: 401 });
+    }
+    // Rotación: el refresh usado se invalida, se emite uno nuevo para la MISMA cuenta.
+    refreshTokenOwners.delete(body.refresh as string);
+    const { access, refresh } = issueTokens(account);
+    return HttpResponse.json({ access, refresh });
+  }),
+
+  http.get('/api/auth/me/', ({ request }) => {
+    const auth = request.headers.get('Authorization');
+    const token = auth?.startsWith('Bearer ') ? auth.slice('Bearer '.length) : null;
+    const account = token ? accessTokenOwners.get(token) : undefined;
+    if (!account) {
+      return HttpResponse.json({ detail: 'Authentication credentials were not provided.' }, { status: 401 });
+    }
+    return HttpResponse.json({
+      email: account.email,
+      role: account.role,
+      full_name: account.full_name,
+      username: account.email,
+    });
   }),
 ];

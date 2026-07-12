@@ -28,6 +28,7 @@ from .settings import *  # noqa: F401, F403
 # Valores por defecto para tests si .env no los provee (evita RuntimeError en CI).
 os.environ.setdefault('DJANGO_SECRET_KEY', 'test-secret-key-not-for-production-' + 'x' * 40)
 os.environ.setdefault('AUTH_BRIDGE_SECRET', 'test-bridge-secret-' + 'b' * 50)
+os.environ.setdefault('AUTH_ADMIN_JWT_SECRET', 'test-admin-jwt-secret-' + 'c' * 40)
 os.environ.setdefault('POSTGRES_PASSWORD', 'test')
 
 # ----------------------------------------------------------------------------
@@ -72,11 +73,21 @@ AUTH_BRIDGE_REQUIRED_CLAIMS = ['sub', 'email', 'role', 'exp']
 AUTH_BRIDGE_VALID_ROLES = ['analista', 'supervisor', 'admin']
 
 # ----------------------------------------------------------------------------
+# Login unificado (ADR-0017): secret fijo determinístico, igual criterio que
+# AUTH_BRIDGE_SECRET arriba. Se reconstruye SIMPLE_JWT porque su SIGNING_KEY
+# ya quedó fijado con el valor de import-time en `from .settings import *`.
+# ----------------------------------------------------------------------------
+AUTH_ADMIN_JWT_SECRET = 'test-admin-jwt-secret-' + 'c' * 40
+SIMPLE_JWT = {**SIMPLE_JWT, 'SIGNING_KEY': AUTH_ADMIN_JWT_SECRET}  # noqa: F405
+
+# ----------------------------------------------------------------------------
 # DRF — sin throttling en tests para no flaky. Default 60/min podría bloquear.
+# JWTAuthentication se mantiene (ADR-0017 login real se testea con JWT, no Token).
 # ----------------------------------------------------------------------------
 REST_FRAMEWORK = {  # noqa: F405
     **REST_FRAMEWORK,  # noqa: F405
     'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.TokenAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [

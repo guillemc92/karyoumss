@@ -5,6 +5,7 @@ Stack: Django 5 + DRF + django-auditlog + django-guardian + PostgreSQL schema 'a
 Auth bridge: PyJWT HS256 compartido con FastAPI (ver docs/AUTH_BRIDGE.md).
 """
 
+from datetime import timedelta
 from pathlib import Path
 import os
 
@@ -42,12 +43,15 @@ INSTALLED_APPS = [
     # Third-party
     'rest_framework',
     'rest_framework.authtoken',
+    'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'auditlog',
     'guardian',
 
     # Local apps (bounded context admin)
     'apps.users',
     'apps.audit',
+    'apps.config',
 ]
 
 MIDDLEWARE = [
@@ -89,6 +93,14 @@ WSGI_APPLICATION = 'admin_backend.wsgi.application'
 
 DATABASES = {
     'default': {
+        # === DEMO-ONLY OVERRIDE (2026-07-01) ============================================
+        # Postgres local no está disponible. Forzando SQLite para que el demo levante.
+        # Esto ELIMINA el aislamiento de schema 'admin' vs 'public' (regla ADR-0012).
+        # RESTAURAR LA CONFIGURACIÓN POSTGRES ANTES DE COMMIT/CI.
+        # Marcado: settings.py:91 — quitar este bloque si DB_ENGINE != 'sqlite'.
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'demo_admin.sqlite3',
+    } if env('DB_ENGINE', 'postgres') == 'sqlite' else {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': env('POSTGRES_DB', 'biomed'),
         'USER': env('POSTGRES_USER', 'biomed_admin_service'),
@@ -124,7 +136,12 @@ AUTH_PASSWORD_VALIDATORS = [
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.TokenAuthentication',  # Django Token
+        # ADR-0017: JWTAuthentication se agrega ANTES de TokenAuthentication.
+        # Es aditivo, no reemplaza — DRF prueba cada clase en orden hasta que
+        # una produzca una credencial válida. auth_exchange (Token) sigue
+        # funcionando sin cambios.
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',  # Django Token (exchange F0)
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -141,11 +158,13 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'admin_users': env('ADMIN_API_RATE_LIMIT', '60/min'),
         'auth_exchange': '10/min',
+        'login': '10/min',
     },
 }
 
 # ============================================================================
-# Auth Bridge (F0) — secret compartido con FastAPI
+# Auth Bridge (F0) — secret compartido con FastAPI (ver nota de desactualización
+# en docs/AUTH_BRIDGE.md — ADR-0017 introduce el login primario, ver bloque siguiente)
 # ============================================================================
 
 AUTH_BRIDGE_SECRET = env('AUTH_BRIDGE_SECRET', required=True)
@@ -154,6 +173,22 @@ AUTH_BRIDGE_ALGORITHM = 'HS256'
 AUTH_BRIDGE_REQUIRED_CLAIMS = ['sub', 'email', 'role', 'exp']
 # Roles válidos (DRF los usa para validación adicional)
 AUTH_BRIDGE_VALID_ROLES = ['analista', 'supervisor', 'admin']
+
+# ============================================================================
+# Login unificado (ADR-0017) — SimpleJWT con secret PROPIO
+# ============================================================================
+
+AUTH_ADMIN_JWT_SECRET = env('AUTH_ADMIN_JWT_SECRET', required=True)
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': AUTH_ADMIN_JWT_SECRET,
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 # ============================================================================
 # django-auditlog

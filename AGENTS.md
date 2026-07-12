@@ -161,6 +161,7 @@ RN-09: Cobertura de tests ≥ 90% (lines/funcs/branches/statements) en component
 | ADR-0014 | Port del panel "Configuración del Sistema" desde `configuracion.html` a React con backend Django real (apps/config + 6 secciones: Perfil, Seguridad, Modelos, Notificaciones, Integraciones, Apariencia) | `docs/adr/0014-configuracion-panel-react-real-backend.md` |
 | ADR-0015 | Derogación parcial de ADR-0013: el bounded context clínico (muestras, cariotipado) migra de FastAPI/vanilla a Django+DRF/React+TS (`backend-clinic`/`frontend-clinic`), JWT independiente del admin | `docs/adr/0015-derogacion-parcial-0013.md` |
 | ADR-0016 | Registro de Muestras (captura de metafases): `PatientVault` cifrada Fernet at-rest (RN-03, vinculada por `chn_code`, no FK), `SampleImage` galería 1:N, `SampleStatus.DRAFT`, endpoint compuesto `POST /register/` atómico, corrección "Mask R-CNN"→"U-Net" (AGENTS §11) | `docs/adr/0016-registro-muestras-captura-metafases.md` |
+| ADR-0017 | Sistema de Autenticación (Login): `backend-admin` como autoridad única de `/api/auth/login\|logout\|refresh\|me`, SimpleJWT+blacklist con secreto propio `AUTH_ADMIN_JWT_SECRET` (aditivo sobre `TokenAuthentication`, no lo reemplaza), `AuthContext`/`PrivateRoute` en `frontend-admin`, redirecciones por rol, selector de rol del modal vuelto cosmético (D8) | `docs/adr/0017-sistema-autenticacion-login.md` |
 
 **Regla para el agente:** Si se te pide cambiar estas decisiones, solicita confirmación explícita del arquitecto y documenta el nuevo ADR antes de codificar.
 

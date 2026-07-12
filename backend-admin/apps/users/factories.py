@@ -26,6 +26,9 @@ class UserFactory(DjangoModelFactory):
     is_active = True
     is_staff = False
     is_superuser = False
+    # ADR-0017: password real (no el flujo "sin password" del exchange F0),
+    # necesario para tests de login por email/password.
+    password = factory.PostGenerationMethodCall('set_password', 'demo12345')
 
 
 class AdminUserFactory(DjangoModelFactory):
