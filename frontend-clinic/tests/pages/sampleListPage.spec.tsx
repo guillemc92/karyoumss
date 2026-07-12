@@ -48,18 +48,18 @@ describe('SampleListPage', () => {
   it('click en Eliminar (rol admin no aplica en analista) no muestra confirm porque el botón está oculto', async () => {
     renderWithProviders(<SampleListPage />);
     await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
-    expect(screen.queryByText('Eliminar')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Eliminar/)).not.toBeInTheDocument();
   });
 
   it('rol admin: flujo completo de eliminar muestra funciona', async () => {
     renderWithProviders(<SampleListPage />, { asAdmin: true });
     await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
 
-    const deleteButtons = screen.getAllByText('Eliminar');
+    const deleteButtons = screen.getAllByText(/Eliminar/);
     await userEvent.click(deleteButtons[0]);
     expect(screen.getByText(/¿Está seguro/)).toBeInTheDocument();
 
-    const confirmButton = document.querySelector('.btn-danger') as HTMLButtonElement;
+    const confirmButton = screen.getByRole('dialog').querySelector('.btn-danger') as HTMLButtonElement;
     await userEvent.click(confirmButton);
     await waitFor(() => expect(screen.getByText('Muestra eliminada correctamente')).toBeInTheDocument());
   });
@@ -68,7 +68,7 @@ describe('SampleListPage', () => {
     renderWithProviders(<SampleListPage />, { asAdmin: true });
     await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
 
-    const deleteButtons = screen.getAllByText('Eliminar');
+    const deleteButtons = screen.getAllByText(/Eliminar/);
     await userEvent.click(deleteButtons[0]);
     await userEvent.click(screen.getByText('Cancelar'));
     expect(screen.queryByText(/¿Está seguro/)).not.toBeInTheDocument();

@@ -56,15 +56,19 @@ export function SampleListPage() {
       {isLoading && <Skeleton rows={5} />}
       {isError && <p role="alert">Error al cargar muestras. <button type="button" onClick={() => window.location.reload()}>Reintentar</button></p>}
 
-      {!isLoading && !isError && (
-        <>
+      {!isLoading && !isError && items.length === 0 && (
+        <p className="empty-state">No hay muestras que coincidan con los filtros.</p>
+      )}
+
+      {!isLoading && !isError && items.length > 0 && (
+        <div className="table-container">
           <SampleTable
             items={paginated}
             onEdit={(id) => navigate(`/clinic/samples/${id}/edit`)}
             onDelete={(id) => setDeleteTargetId(id)}
           />
           <SamplePagination page={page} pageSize={PAGE_SIZE} total={items.length} onPageChange={setPage} />
-        </>
+        </div>
       )}
 
       {deleteTarget && (

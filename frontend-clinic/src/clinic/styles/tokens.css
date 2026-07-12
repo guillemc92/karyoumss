@@ -104,7 +104,7 @@ body {
 
 /* Tabla (CSS grid, mismo layout que crudmuestra.html) */
 .table-container { background: var(--white); border-radius: var(--radius-xl); border: 1px solid var(--border-light); overflow: hidden; box-shadow: var(--shadow-sm); }
-.table-header, .table-row { display: grid; grid-template-columns: 150px 130px 110px 110px 130px 1fr; gap: 0.5rem; padding: 0.9rem 1rem; align-items: center; }
+.table-header, .table-row { display: grid; grid-template-columns: 170px 1fr 120px 140px 110px 190px; gap: 0.5rem; padding: 0.9rem 1rem; align-items: center; }
 .table-header { background: var(--gray-bg); border-bottom: 1px solid var(--border-light); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--umss-blue); }
 .table-row { border-bottom: 1px solid var(--border-light); transition: background 0.2s; }
 .table-row:last-child { border-bottom: none; }
@@ -119,7 +119,8 @@ body {
 .status-badge[data-status="PENDING_AI"] { background: var(--gray-bg); color: var(--gray-text); }
 .status-badge[data-status="REJECTED"] { background: var(--orange-light); color: var(--umss-red); }
 
-.actions { display: flex; gap: 0.5rem; }
+.actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.actions .btn-outline, .actions .btn-danger { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 
 /* Paginación */
 .pagination { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-top: 1px solid var(--border-light); }

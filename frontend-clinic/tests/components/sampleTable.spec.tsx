@@ -33,14 +33,14 @@ describe('SampleTable', () => {
   it('click en Editar llama onEdit con el id correcto', async () => {
     const onEdit = vi.fn();
     renderWithProviders(<SampleTable items={items} onEdit={onEdit} onDelete={vi.fn()} />);
-    const editButtons = screen.getAllByText('Editar');
+    const editButtons = screen.getAllByText(/Editar/);
     await userEvent.click(editButtons[0]);
     expect(onEdit).toHaveBeenCalledWith('1');
   });
 
   it('analista (rol por defecto en forceAnalystOnMount) NO ve botón Eliminar (RN-06 gating)', () => {
     renderWithProviders(<SampleTable items={items} onEdit={vi.fn()} onDelete={vi.fn()} />);
-    expect(screen.queryByText('Eliminar')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Eliminar/)).not.toBeInTheDocument();
   });
 
   it('el link de CHN apunta al detalle de la muestra', () => {

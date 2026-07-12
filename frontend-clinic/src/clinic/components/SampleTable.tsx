@@ -22,40 +22,42 @@ export function SampleTable({ items, onEdit, onDelete }: SampleTableProps) {
   }
 
   return (
-    <table className="sample-table">
-      <thead>
-        <tr>
-          <th>CHN</th>
-          <th>Paciente</th>
-          <th>Estado</th>
-          <th>Analista</th>
-          <th>Fecha</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody>
+    <>
+      <div className="table-header">
+        <div>CHN</div>
+        <div>Paciente</div>
+        <div>Estado</div>
+        <div>Analista</div>
+        <div>Fecha</div>
+        <div>Acciones</div>
+      </div>
+      <div>
         {items.map((item) => (
-          <tr key={item.id} data-testid={`sample-row-${item.id}`}>
-            <td>
-              <Link to={`/clinic/samples/${item.id}`}>{item.chn_code}</Link>
-            </td>
-            <td>{item.patient_ref}</td>
-            <td>
+          <div className="table-row" key={item.id} data-testid={`sample-row-${item.id}`}>
+            <div>
+              <Link to={`/clinic/samples/${item.id}`}><strong>{item.chn_code}</strong></Link>
+            </div>
+            <div>{item.patient_ref}</div>
+            <div>
               <span className="status-badge" data-status={item.status}>
                 {STATUS_LABELS[item.status] ?? item.status}
               </span>
-            </td>
-            <td>{item.analyst_name}</td>
-            <td>{new Date(item.created_at).toLocaleDateString('es-BO')}</td>
-            <td className="actions">
-              <button type="button" onClick={() => onEdit(item.id)}>Editar</button>
+            </div>
+            <div>{item.analyst_name}</div>
+            <div>{new Date(item.created_at).toLocaleDateString('es-BO')}</div>
+            <div className="actions">
+              <button type="button" className="btn-outline" onClick={() => onEdit(item.id)}>
+                <i className="fas fa-edit"></i> Editar
+              </button>
               <RequireRole roles={['admin']}>
-                <button type="button" onClick={() => onDelete(item.id)}>Eliminar</button>
+                <button type="button" className="btn-danger" onClick={() => onDelete(item.id)}>
+                  <i className="fas fa-trash"></i> Eliminar
+                </button>
               </RequireRole>
-            </td>
-          </tr>
+            </div>
+          </div>
         ))}
-      </tbody>
-    </table>
+      </div>
+    </>
   );
 }
