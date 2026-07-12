@@ -952,6 +952,115 @@ Refs: ADR-0015, DD-CRUD-MUESTRA-001.md, SPEC-008, `crudmuestra.html`, AGENTS.md 
 
 ---
 
+## PM-CRUD-MUESTRA-002 — Permisos por rol en backend-clinic (cierre de SPEC-008 §6)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-CRUD-MUESTRA-002 |
+| **Título** | Modelo de rol analista/supervisor/admin en `backend-clinic` (`is_staff`/`is_superuser`) + `SampleDetailView` (GET/PATCH/DELETE) |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado — pendiente commit |
+| **Fecha** | 2026-07-13 |
+| **ADR origen** | [ADR-0018](docs/adr/0018-permisos-rol-backend-clinic.md) |
+
+### Input (Artefacto Origen)
+
+- `docs/specs/SPEC-008-crud-muestra-react.md` §6 — tabla de 3 roles × 6 endpoints, nunca cerrada en código (confirmado leyendo `views.py`/`permissions.py`/`settings.py` reales)
+- Solicitud del arquitecto: revisión y mejora del PR #1, ítem "Agregar permisos por rol en backend"
+- Precedente ADR-0017 (mismo criterio de "menor invención posible" al derivar rol de campos ya existentes)
+
+### Gap detectado (confirmado por código, no por suposición)
+
+`clinic_backend/settings.py` no define `AUTH_USER_MODEL`; `SampleListCreateView.get_queryset()` solo distingue `is_staff` (colapsa supervisor y admin); `CanRegisterSample` no tiene relación con rol; no existían `GET`/`PATCH`/`DELETE /samples/{id}/`. El commit `d2eba8f` ya dejaba esto anotado como "T9-T25 restante" sin cerrar.
+
+### Prompt
+
+```
+Role: Desarrollador backend Django/DRF senior, con criterio de mínima
+      invención arquitectónica y trazabilidad AI-SDLC estricta.
+
+Task: Cerrar el ítem "Agregar permisos por rol en backend" del pedido de
+      revisión del PR #1, sin inventar un modelo de rol nuevo si SPEC-008
+      ya especificaba uno.
+
+Context: SPEC-008 §6 define 3 roles × 6 endpoints con DELETE admin-only
+      y scoping "solo propias" para analista, pero backend-clinic nunca
+      implementó ese modelo — no hay AUTH_USER_MODEL propio, is_staff se
+      usa como proxy binario tosco, y los endpoints GET/PATCH/DELETE por
+      id no existen. El arquitecto confirmó (AskUserQuestion) reusar
+      is_staff/is_superuser en vez de agregar un campo role nuevo, para
+      no reabrir la pregunta de sincronización cross-backend con
+      backend-admin (fuera de alcance, ya diferida en ADR-0017 D7).
+
+Reasoning: (1) Verificar el gap por código antes de proponer nada.
+      (2) Presentar la decisión arquitectónica (is_staff/is_superuser vs
+      campo role nuevo) al arquitecto antes de escribir código — no
+      decidir unilateralmente un cambio de modelo de datos. (3) Redactar
+      ADR-0018 documentando la decisión antes de tocar permissions.py/
+      views.py. (4) Implementar solo lo que SPEC-008 §6 ya especificaba
+      (GET/PATCH/DELETE por id) — no expandir a process/status, fuera de
+      alcance del pedido. (5) Cobertura RN-09 ≥90% con evidencia real.
+
+Stop Condition: (a) ADR-0018 aceptado antes de código. (b) SPEC-008 §6.1
+      documenta el mapeo rol→campos Django. (c) role_for_user()+
+      IsClinicRole+IsAdminRole implementados y testeados con los 3 roles.
+      (d) SampleDetailView expone GET/PATCH (scoped)/DELETE (admin-only,
+      rechaza VALIDATED). (e) Cobertura backend ≥90% con evidencia de
+      ejecución. (f) Verificación E2E real con 3 usuarios de rol distinto
+      contra un servidor Django real (no solo tests).
+
+Output Format: (1) ADR-0018. (2) SPEC-008 §6.1 (addendum). (3)
+      permissions.py (role_for_user, IsClinicRole, IsAdminRole). (4)
+      views.py (SampleDetailView) + urls.py (ruta nueva). (5) Tests
+      (permisos por rol × 3, scoping analista, DELETE admin-only,
+      rechazo VALIDATED). (6) Verificación E2E con curl y 3 usuarios
+      reales (analista/supervisor/admin). (7) PROMPT_MAPPING + DTI +
+      AGENTS.md §5 actualizados. (8) Commit con evidencia.
+```
+
+### Cambios aplicados
+
+| Archivo | Tipo | Justificación |
+|---|---|---|
+| `docs/adr/0018-permisos-rol-backend-clinic.md` | A | Decisión: mapeo is_staff/is_superuser, sin migración nueva |
+| `docs/specs/SPEC-008-crud-muestra-react.md` | M | §6.1 mapeo rol→campos Django |
+| `backend-clinic/apps/samples/permissions.py` | M | `role_for_user()`, `IsClinicRole`, `IsAdminRole` |
+| `backend-clinic/apps/samples/views.py` | M | `SampleDetailView` (GET/PATCH/DELETE scoped) |
+| `backend-clinic/apps/samples/urls.py` | M | Ruta `samples/<uuid:pk>/` |
+| `backend-clinic/apps/samples/tests/test_permissions.py`, `test_detail_view.py` | A | Tests de los 3 roles × 3 verbos nuevos |
+
+### Output (verificación)
+
+- **Backend:** 59/59 tests verde, **99% cobertura** (threshold 90%) — incluye 24 tests nuevos (`test_permissions.py` + `test_detail_view.py`) sin romper ninguno de los 35 preexistentes.
+- **Verificación E2E real (no simulada):** servidor Django real (`runserver 8002`) + 3 usuarios reales (`e2e_analista`/`e2e_supervisor`/`e2e_admin`, creados con `is_staff`/`is_superuser` reales, no mockeados) + `curl` contra los endpoints reales:
+  - `GET /samples/{id}/` propia (analista) → `200`
+  - `GET /samples/{id}/` ajena vía supervisor → `200` (ve todas)
+  - `GET /samples/{id}/` ajena vía analista → `403` (`NOT_OWNER`, `IsOwnerOrStaff`)
+  - `PATCH /samples/{id}/` con `{"status": "VALIDATED"}` → `400 {"status":["FIELD_NOT_ALLOWED"]}`
+  - `DELETE /samples/{id}/` por analista → `403`
+  - `DELETE /samples/{id}/` por supervisor → `403`
+  - `DELETE /samples/{id}/` por admin → `204`, y `GET` posterior → `404` (soft-delete confirmado, no queda visible)
+  - `DELETE /samples/{id}/` por admin sobre una muestra `VALIDATED` → `409 {"code":"SAMPLE_VALIDATED"}`
+- **RN-09 ≥90%:** ✅ cumplido, sin regresión sobre la suite existente de CRUD/Registro/Login.
+
+### Trazabilidad
+
+```
+SPEC-008 §6 (tabla de roles, nunca cerrada en código)
+  → Auditoría de trazabilidad del PR #1 (2026-07-13)
+    → AskUserQuestion: is_staff/is_superuser vs campo role nuevo → confirmado is_staff/is_superuser
+      → ADR-0018 (accepted)
+        → SPEC-008 §6.1 (addendum)
+          → permissions.py + views.py + urls.py + tests
+            → RN-09 ≥90% + verificación E2E con 3 roles reales
+              → PROMPT_MAPPING + DTI + AGENTS.md §5
+```
+
+Refs: ADR-0018, SPEC-008 §6/§6.1, ADR-0015, ADR-0017 D7 (SSO cross-backend diferido), AGENTS.md §3 (RN-06).
+
+---
+
 ## PM-REGISTRO-MUESTRA-001 — Feature "Registro de Muestras" (paciente + captura de metafases)
 
 | Campo | Valor |

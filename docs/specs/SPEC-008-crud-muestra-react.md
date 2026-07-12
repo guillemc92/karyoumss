@@ -543,6 +543,26 @@ Feature: Estado del pipeline (GET /api/clinic/samples/{id}/status/)
 > supervisor en casos críticos (validado a nivel DB por FKs distintos
 > `analyst_id` vs `supervisor_id`).
 
+### §6.1 Mapeo rol → campos Django (ADR-0018, cierre de este gap 2026-07-13)
+
+Esta tabla estuvo sin cerrar en código desde la redacción original de esta
+spec — `backend-clinic` no tenía `AUTH_USER_MODEL` propio ni campo `role`.
+ADR-0018 resuelve derivando el rol de los campos ya existentes del `User`
+por defecto de Django (sin migración nueva):
+
+| Rol (esta tabla) | `is_staff` | `is_superuser` | Permission class aplicada |
+|---|:---:|:---:|---|
+| `analista` | `False` | `False` | `IsClinicRole` + scoping `analyst=request.user` |
+| `supervisor` | `True` | `False` | `IsClinicRole` (ve todas, no puede `DELETE`) |
+| `admin` | `True` | `True` | `IsClinicRole` + `IsAdminRole` (único que puede `DELETE`) |
+
+`GET /samples/{id}/` y `PATCH /samples/{id}/` (antes inexistentes) y
+`DELETE /samples/{id}/` (antes inexistente) se implementan en
+`SampleDetailView` per ADR-0018. `POST /process/` y `GET /status/` de la
+tabla de arriba permanecen fuera de alcance — no se exponen como endpoints
+de re-proceso sobre una muestra existente (el disparo de IA para una
+muestra nueva ya existe vía `SampleRegisterView`, ADR-0016).
+
 ## §7. Casos de aceptación (CA-1 a CA-6)
 
 | # | Caso | Pasos | Esperado |

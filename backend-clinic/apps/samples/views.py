@@ -1,10 +1,17 @@
-from rest_framework import generics, permissions, status
+from django.utils import timezone
+from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Sample
-from .permissions import CanRegisterSample
-from .serializers import SampleCreateSerializer, SampleListItemSerializer, SampleRegisterSerializer
+from .models import Sample, SampleStatus
+from .permissions import CanRegisterSample, IsAdminRole, IsClinicRole, IsOwnerOrStaff
+from .serializers import (
+    SampleCreateSerializer,
+    SampleListItemSerializer,
+    SampleReadSerializer,
+    SampleRegisterSerializer,
+    SampleUpdateSerializer,
+)
 from .services import ChnDuplicateError, sample_registration_service
 
 
@@ -15,7 +22,7 @@ class SampleListCreateView(generics.ListCreateAPIView):
     Vertical slice: sin filtros de status/chn/fecha todavía (T13 completo los agrega).
     """
 
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [IsClinicRole]
 
     def get_queryset(self):
         qs = Sample.objects.filter(is_active=True)
@@ -31,6 +38,41 @@ class SampleListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         serializer.save(analyst=self.request.user)
+
+
+class SampleDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """GET/PATCH/DELETE /api/clinic/samples/{id}/ (ADR-0018, cierre SPEC-008 §6).
+
+    - GET/PATCH: los 3 roles clínicos, scoped por objeto (analista solo
+      propias -> 403 NOT_OWNER si no es dueño; supervisor/admin cualquiera).
+    - DELETE: solo admin (is_superuser). Soft-delete; rechaza con 409 si la
+      muestra ya está VALIDATED (irreversible por diseño, RN-04/05 spirit).
+    """
+
+    queryset = Sample.objects.filter(is_active=True)
+    lookup_field = 'pk'
+
+    def get_permissions(self):
+        if self.request.method == 'DELETE':
+            return [IsAdminRole()]
+        return [IsClinicRole(), IsOwnerOrStaff()]
+
+    def get_serializer_class(self):
+        if self.request.method in ('PATCH', 'PUT'):
+            return SampleUpdateSerializer
+        return SampleReadSerializer
+
+    def destroy(self, request, *args, **kwargs):
+        sample = self.get_object()
+        if sample.status == SampleStatus.VALIDATED:
+            return Response(
+                {'code': 'SAMPLE_VALIDATED', 'detail': 'No se puede eliminar una muestra validada'},
+                status=status.HTTP_409_CONFLICT,
+            )
+        sample.is_active = False
+        sample.deleted_at = timezone.now()
+        sample.save(update_fields=['is_active', 'deleted_at'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class SampleRegisterView(APIView):

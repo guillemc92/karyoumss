@@ -20,6 +20,16 @@ def supervisor_user(db):
 
 
 @pytest.fixture
+def admin_user(db):
+    """ADR-0018: admin = is_staff + is_superuser."""
+    user = User.objects.create_user(username='admin_rojas', password='testpass123')
+    user.is_staff = True
+    user.is_superuser = True
+    user.save()
+    return user
+
+
+@pytest.fixture
 def api_client():
     return APIClient()
 
@@ -39,3 +49,8 @@ def analyst_client(analyst_user):
 @pytest.fixture
 def supervisor_client(supervisor_user):
     return auth_client(supervisor_user)
+
+
+@pytest.fixture
+def admin_client(admin_user):
+    return auth_client(admin_user)
