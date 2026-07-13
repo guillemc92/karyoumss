@@ -1024,6 +1024,7 @@ Output Format: (1) ADR-0018. (2) SPEC-008 §6.1 (addendum). (3)
 | Archivo | Tipo | Justificación |
 |---|---|---|
 | `docs/adr/0018-permisos-rol-backend-clinic.md` | A | Decisión: mapeo is_staff/is_superuser, sin migración nueva |
+| `docs/design/DD-PERMISOS-ROL-001.md` | A | Arquitectura de componentes, complementario a DD-CRUD-MUESTRA-001 |
 | `docs/specs/SPEC-008-crud-muestra-react.md` | M | §6.1 mapeo rol→campos Django |
 | `backend-clinic/apps/samples/permissions.py` | M | `role_for_user()`, `IsClinicRole`, `IsAdminRole` |
 | `backend-clinic/apps/samples/views.py` | M | `SampleDetailView` (GET/PATCH/DELETE scoped) |
@@ -1051,13 +1052,13 @@ SPEC-008 §6 (tabla de roles, nunca cerrada en código)
   → Auditoría de trazabilidad del PR #1 (2026-07-13)
     → AskUserQuestion: is_staff/is_superuser vs campo role nuevo → confirmado is_staff/is_superuser
       → ADR-0018 (accepted)
-        → SPEC-008 §6.1 (addendum)
+        → DD-PERMISOS-ROL-001.md + SPEC-008 §6.1 (addendum)
           → permissions.py + views.py + urls.py + tests
             → RN-09 ≥90% + verificación E2E con 3 roles reales
               → PROMPT_MAPPING + DTI + AGENTS.md §5
 ```
 
-Refs: ADR-0018, SPEC-008 §6/§6.1, ADR-0015, ADR-0017 D7 (SSO cross-backend diferido), AGENTS.md §3 (RN-06).
+Refs: ADR-0018, DD-PERMISOS-ROL-001.md, SPEC-008 §6/§6.1, ADR-0015, ADR-0017 D7 (SSO cross-backend diferido), AGENTS.md §3 (RN-06).
 
 ---
 

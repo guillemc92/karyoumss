@@ -114,8 +114,9 @@ No se implementan en este ADR `POST /process/` ni `GET /status/` (SPEC-008 §6, 
 ## Trazabilidad
 
 - **Sube a:** SPEC-008 §6 (tabla de roles/permisos, nunca cerrada en código) → **este ADR-0018**.
-- **Genera:** `apps/samples/permissions.py` (`role_for_user`, `IsClinicRole`, `IsAdminRole`), `apps/samples/views.py` (`SampleDetailView`), `apps/samples/urls.py` (ruta `samples/<uuid:pk>/`), tests.
+- **Genera:** `docs/design/DD-PERMISOS-ROL-001.md` (arquitectura de componentes), `apps/samples/permissions.py` (`role_for_user`, `IsClinicRole`, `IsAdminRole`, `IsOwnerOrStaff`), `apps/samples/views.py` (`SampleDetailView`), `apps/samples/urls.py` (ruta `samples/<uuid:pk>/`), tests.
 - **Impacta:**
+  - `docs/design/DD-PERMISOS-ROL-001.md` (nuevo, complementario a `DD-CRUD-MUESTRA-001.md`)
   - `docs/specs/SPEC-008-crud-muestra-react.md` (§6.1 nuevo, mapeo rol→campos Django)
   - `docs/PROMPT_MAPPING.md` (`PM-CRUD-MUESTRA-002`)
   - `docs/DTI.md` §21, `AGENTS.md` §5
