@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 
 from .models import Sample, SampleStatus
 from .permissions import CanRegisterSample, IsAdminRole, IsClinicRole, IsOwnerOrStaff
+from .pipeline_client import MLDegradedError, pipeline_client
 from .serializers import (
     SampleCreateSerializer,
     SampleListItemSerializer,
@@ -19,7 +20,9 @@ class SampleListCreateView(generics.ListCreateAPIView):
     """GET /api/clinic/samples/  POST /api/clinic/samples/
 
     RN-06: analista ve solo sus propias muestras; staff (supervisor/admin) ve todas.
-    Vertical slice: sin filtros de status/chn/fecha todavía (T13 completo los agrega).
+    Filtros server-side (SPEC-008 UC-S-002): status, chn_query, date_from, date_to.
+    Shape de respuesta: array plano (el frontend pagina client-side, decisión
+    2026-07-16 para no romper SampleListPage/useSamples ya construidos).
     """
 
     permission_classes = [IsClinicRole]
@@ -29,6 +32,20 @@ class SampleListCreateView(generics.ListCreateAPIView):
         user = self.request.user
         if not user.is_staff:
             qs = qs.filter(analyst=user)
+
+        params = self.request.query_params
+        status_param = params.get('status')
+        if status_param:
+            qs = qs.filter(status=status_param)
+        chn_query = params.get('chn_query')
+        if chn_query:
+            qs = qs.filter(chn_code__icontains=chn_query)
+        date_from = params.get('date_from')
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        date_to = params.get('date_to')
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
         return qs
 
     def get_serializer_class(self):
@@ -109,3 +126,83 @@ class SampleRegisterView(APIView):
         if isinstance(sample_errors, dict) and 'chn_code' in sample_errors:
             return 'CHN_REQUIRED'
         return 'VALIDATION_ERROR'
+
+
+def _get_owned_sample_or_none(pk, user):
+    """Busca la muestra activa por pk. Devuelve (sample, None) o (None, error_response)."""
+    try:
+        sample = Sample.objects.get(pk=pk, is_active=True)
+    except Sample.DoesNotExist:
+        return None, Response({'code': 'NOT_FOUND', 'detail': 'Muestra no encontrada'}, status=status.HTTP_404_NOT_FOUND)
+    if not user.is_staff and sample.analyst_id != user.id:
+        return None, Response({'code': 'NOT_OWNER', 'detail': 'No es dueño de esta muestra'}, status=status.HTTP_403_FORBIDDEN)
+    return sample, None
+
+
+class SampleProcessView(APIView):
+    """POST /api/clinic/samples/{id}/process/ — encola el pipeline FastAPI (SPEC-008 UC-S-006).
+
+    RN-06: analista solo puede procesar sus propias muestras (403 NOT_OWNER).
+    RN-07: si el FastAPI clínico está degradado, retorna 503 ML_DEGRADED sin
+    romper el flujo (la muestra sigue existiendo, se puede reintentar).
+    """
+
+    permission_classes = [IsClinicRole]
+
+    def post(self, request, pk):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+
+        force_reprocess = bool(request.data.get('force_reprocess', False))
+        if sample.status == SampleStatus.PROCESSING:
+            return Response({'code': 'ALREADY_PROCESSING', 'detail': 'La muestra ya está en procesamiento'}, status=status.HTTP_409_CONFLICT)
+
+        try:
+            result = pipeline_client.trigger_processing(str(sample.id), force_reprocess=force_reprocess)
+        except MLDegradedError:
+            return Response(
+                {'code': 'ML_DEGRADED', 'detail': 'Pipeline de IA no disponible. Use el modo manual.', 'retry_after_seconds': 60},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        sample.status = SampleStatus.PROCESSING
+        sample.save(update_fields=['status', 'updated_at'])
+        return Response(
+            {'sample_id': str(sample.id), 'task_id': result.get('task_id'), 'status': 'queued'},
+            status=status.HTTP_202_ACCEPTED,
+        )
+
+
+class SampleStatusView(APIView):
+    """GET /api/clinic/samples/{id}/status/ — estado del pipeline (SPEC-008 UC-S-007, polling).
+
+    Mismo scoping que SampleProcessView (RN-06). Read-only: sin circuit
+    breaker propio, delega en pipeline_client.get_status().
+    """
+
+    permission_classes = [IsClinicRole]
+
+    def get(self, request, pk):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+
+        try:
+            result = pipeline_client.get_status(str(sample.id))
+        except MLDegradedError:
+            return Response(
+                {'code': 'ML_DEGRADED', 'detail': 'Pipeline de IA no disponible.', 'retry_after_seconds': 60},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response(
+            {
+                'sample_id': str(sample.id),
+                'status': result.get('status', sample.status),
+                'progress': result.get('progress'),
+                'chromosome_count': result.get('chromosome_count'),
+                'confidence_avg': result.get('confidence_avg'),
+            },
+            status=status.HTTP_200_OK,
+        )

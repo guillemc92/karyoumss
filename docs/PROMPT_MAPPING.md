@@ -1062,6 +1062,149 @@ Refs: ADR-0018, DD-PERMISOS-ROL-001.md, SPEC-008 §6/§6.1, ADR-0015, ADR-0017 D
 
 ---
 
+## PM-CRUD-MUESTRA-003 — Filtros server-side + endpoints process/status (cierre de SPEC-008 §6.1)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-CRUD-MUESTRA-003 |
+| **Título** | Filtros de listado (status/chn/fecha) + `POST /process/` + `GET /status/` en backend-clinic |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado E2E |
+| **Fecha** | 2026-07-16 |
+
+### Input (Artefacto Origen)
+
+- `docs/specs/SPEC-008-crud-muestra-react.md` UC-S-002 (filtros), UC-S-006
+  (process), UC-S-007 (status polling)
+- `docs/specs/SPEC-008-crud-muestra-react.md` §6.1 — contenía un gap de
+  redacción: decía que `POST /process/` y `GET /status/` "permanecen
+  fuera de alcance", pero `frontend-clinic` ya los consumía desde su
+  primera versión (`samplesClient.ts`, `useSampleMutations`,
+  `useStatusPolling`) y UC-S-006/UC-S-007 de la misma spec los
+  especificaban con Gherkin completo
+- `frontend-clinic/src/clinic/api/samplesClient.ts` (contrato ya
+  construido, sin cambios en esta entrada)
+- `apps/samples/pipeline_client.py` (ya existía con `trigger_processing`
+  y `get_status`, sin endpoints HTTP que los expusieran)
+
+### Discrepancia resuelta (decisión del arquitecto, AskUserQuestion 2026-07-16)
+
+1. **¿Implementar process/status pese al §6.1?** → Sí. El frontend ya
+   depende de ellos; §6.1 era un gap de redacción anterior a que el
+   frontend los consumiera, no una decisión vigente.
+2. **¿Shape de `list()` — array plano o `{items,total,page,page_size}`
+   de la spec?** → Mantener array plano + agregar solo filtros
+   server-side, sin paginación server-side. El frontend (`useSamples`,
+   `SampleListPage`, `SamplePagination`) ya pagina client-side con
+   `.slice()` y tiene 96 tests verdes sobre ese contrato — migrar el
+   shape habría exigido tocar componentes ya cerrados sin necesidad.
+
+### Prompt
+
+```
+Role: Desarrollador backend Django/DRF senior, con criterio de no
+      romper contratos de frontend ya construidos y verificados.
+
+Task: Completar backend-clinic (T9+ del plan post-ADR-0015): agregar
+      filtros server-side al listado de muestras y exponer los
+      endpoints process/status que el pipeline_client.py ya soporta
+      mas no tenía vista HTTP.
+
+Context: SPEC-008 firmada especifica filtros (status/chn_query/
+      date_from/date_to), paginación server-side, y los endpoints
+      POST /process/ + GET /status/. El código real (backend-clinic)
+      tenía filtros y esos 2 endpoints sin implementar — pero el
+      frontend-clinic YA los consumía. Existía una contradicción en
+      la propia spec (§6.1 decía "fuera de alcance", §2/§7/UC-S-006/
+      UC-S-007 los especificaban con detalle).
+
+Reasoning: (1) No decidir unilateralmente una discrepancia
+      arquitectónica — usar AskUserQuestion para que el arquitecto
+      resuelva ambas contradicciones antes de codear. (2) Reusar el
+      patrón de scoping RN-06 ya validado en SampleDetailView (403
+      NOT_OWNER via has_object_permission) en vez de reinventar.
+      (3) Verificar E2E con servidor Django real + curl, no solo con
+      tests unitarios — el patrón de la sesión de Feature 11 (MSW)
+      enseñó que "tests pasan" no es equivalente a "funciona en
+      runtime real".
+
+Stop Condition: (a) pytest --cov-fail-under=90 pasa con los tests
+      nuevos. (b) curl contra servidor Django real confirma: filtro
+      status funciona, filtro chn_query funciona, POST /process/
+      devuelve 503 ML_DEGRADED cuando FastAPI no existe (RN-07
+      correcto, no un bug), 403 NOT_OWNER cuando otro analista
+      intenta procesar una muestra ajena. (c) SPEC-008 §6.1
+      actualizada para reflejar la decisión vigente.
+
+Output Format: (1) Filtros en SampleListCreateView.get_queryset().
+      (2) SampleProcessView y SampleStatusView nuevas, con helper
+      compartido _get_owned_sample_or_none() para el scoping RN-06.
+      (3) 2 rutas nuevas en urls.py. (4) Tests nuevos:
+      test_process_status_view.py (16 tests) + TestSampleListFilters
+      en test_views.py (5 tests). (5) Verificación E2E manual con
+      curl contra servidor real (login real, 2 usuarios distintos).
+      (6) SPEC-008 §6.1 corregida con nota de "Corrección 2026-07-16".
+      (7) Esta entrada en PROMPT_MAPPING.md.
+```
+
+### Cambios aplicados
+
+| Archivo | Tipo | Cambio |
+|---|---|---|
+| `backend-clinic/apps/samples/views.py` | M | Filtros en `get_queryset()` + `SampleProcessView` + `SampleStatusView` + helper `_get_owned_sample_or_none()` |
+| `backend-clinic/apps/samples/urls.py` | M | 2 rutas nuevas: `samples/<uuid:pk>/process/`, `samples/<uuid:pk>/status/` |
+| `backend-clinic/apps/samples/tests/test_process_status_view.py` | A | 16 tests nuevos (process: 7, status: 6, fixtures: 3) |
+| `backend-clinic/apps/samples/tests/test_views.py` | M | +5 tests `TestSampleListFilters` (status, chn_query, fecha, combinados, sin filtros) |
+| `docs/specs/SPEC-008-crud-muestra-react.md` | M | §6.1 corregida — nota "Corrección 2026-07-16" documentando el gap y su cierre |
+
+### Output (verificación)
+
+- **Tests:** 59 → **78** (21 nuevos), todos verde
+- **Coverage:** 99.00% → **99.22%** (backend-clinic global)
+- **Verificación E2E real** (servidor Django `:8002`, sin MSW, 2 usuarios reales):
+  - `GET /samples/?status=READY` → `[]` (correcto, sin muestras READY)
+  - `GET /samples/?chn_query=2026-07` → 1 muestra (correcto)
+  - `POST /samples/{id}/process/` (dueño) → `503 ML_DEGRADED` (correcto —
+    el FastAPI clínico no existe en el repo, RN-07 funciona como se espera)
+  - `GET /samples/{id}/status/` (dueño) → `503 ML_DEGRADED` (mismo motivo)
+  - `POST /samples/{id}/process/` (NO dueño) → `403 NOT_OWNER` (RN-06 correcto)
+
+### Criterios de aceptación (Gherkin, subset de SPEC-008 UC-S-002/006/007)
+
+```gherkin
+Dado un analista dueño de una muestra en PENDING_AI
+Cuando hace POST /samples/{id}/process/ con FastAPI clínico caído
+Entonces recibe 503 con code ML_DEGRADED
+Y la muestra permanece en PENDING_AI (no se corrompe el estado)
+
+Dado un analista que NO es dueño de una muestra
+Cuando hace POST /samples/{id}/process/ o GET /samples/{id}/status/
+Entonces recibe 403 con code NOT_OWNER
+
+Dado que existen muestras con distintos status y CHN
+Cuando se filtra por status=READY o chn_query=<substring>
+Entonces la lista devuelta es la intersección exacta de esos filtros
+Y un analista solo ve las suyas (scoping RN-06 se mantiene bajo filtros)
+```
+
+### Trazabilidad
+
+```
+SPEC-008 §6.1 (gap de redacción, decía "fuera de alcance")
+  → frontend-clinic ya consumía process/status (contradicción detectada)
+    → AskUserQuestion (2 decisiones: implementar sí/no, shape de list())
+      → implementación (views.py, urls.py)
+        → 21 tests nuevos, 99.22% cobertura
+          → verificación E2E con curl (servidor real, 2 usuarios)
+            → SPEC-008 §6.1 corregida
+              → PROMPT_MAPPING (esta entrada)
+```
+
+Refs: SPEC-008 §2/§6.1/§7/UC-S-002/UC-S-006/UC-S-007, ADR-0015, ADR-0018 (scoping RN-06 reusado), PM-CRUD-MUESTRA-002 (permisos base).
+
+---
+
 ## PM-REGISTRO-MUESTRA-001 — Feature "Registro de Muestras" (paciente + captura de metafases)
 
 | Campo | Valor |

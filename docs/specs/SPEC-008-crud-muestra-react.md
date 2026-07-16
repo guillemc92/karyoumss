@@ -558,10 +558,23 @@ por defecto de Django (sin migración nueva):
 
 `GET /samples/{id}/` y `PATCH /samples/{id}/` (antes inexistentes) y
 `DELETE /samples/{id}/` (antes inexistente) se implementan en
-`SampleDetailView` per ADR-0018. `POST /process/` y `GET /status/` de la
-tabla de arriba permanecen fuera de alcance — no se exponen como endpoints
-de re-proceso sobre una muestra existente (el disparo de IA para una
-muestra nueva ya existe vía `SampleRegisterView`, ADR-0016).
+`SampleDetailView` per ADR-0018.
+
+> **Corrección 2026-07-16:** el párrafo original de este §6.1 decía que
+> `POST /process/` y `GET /status/` "permanecen fuera de alcance". Eso
+> quedó desactualizado: `frontend-clinic` ya los consume desde su
+> primera versión (`samplesClient.ts`, `useSampleMutations`,
+> `useStatusPolling`) y UC-S-006/UC-S-007 de esta misma spec los
+> especifican con Gherkin completo. Eran un gap de redacción, no una
+> decisión vigente. **Se implementan** en `SampleProcessView` y
+> `SampleStatusView` (`apps/samples/views.py`), con el mismo scoping
+> RN-06 (`_get_owned_sample_or_none`: 403 `NOT_OWNER` si no es dueño ni
+> staff) que ya usa `SampleDetailView`. Ver
+> `PM-CRUD-MUESTRA-003` en `PROMPT_MAPPING.md` para la trazabilidad
+> completa de este cierre. (El disparo de IA para una muestra *nueva*,
+> distinto de re-procesar una existente, sigue viviendo en
+> `SampleRegisterView`, ADR-0016 — ambos caminos usan el mismo
+> `pipeline_client`.)
 
 ## §7. Casos de aceptación (CA-1 a CA-6)
 
