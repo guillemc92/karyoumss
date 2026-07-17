@@ -5,3 +5,6 @@ class SamplesConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'apps.samples'
     label = 'samples'
+
+    def ready(self):
+        from . import signals  # noqa: F401

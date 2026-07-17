@@ -1205,6 +1205,174 @@ Refs: SPEC-008 §2/§6.1/§7/UC-S-002/UC-S-006/UC-S-007, ADR-0015, ADR-0018 (sco
 
 ---
 
+## PM-RBAC-001 — RBAC jerárquico portado del módulo Security/ real (TipoObjeto→Objeto→Opción, Grupos + excepción individual)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-RBAC-001 |
+| **Título** | RBAC jerárquico configurable en backend-clinic, port fiel del código C# real compartido por el arquitecto (carpeta `Security/`) |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado E2E |
+| **Fecha** | 2026-07-17 |
+
+### Input (Artefacto Origen)
+
+- `script.sql` (esquema legado MetaClass, `SCAFuncionalidades`/`SCARoles`/
+  `SCAFuncionalidad_Rol`/`SCAUsuarios_Roles`) + `ayuda.pdf` (manual de
+  usuario MetaClass 3.0, §2.4.9 "Users profile")
+- `Security/*.cs` — código fuente C# real (proyecto WinForms `iibismed`,
+  fragmento sin `.csproj`): `frmUsuarios(+Edit)`, `frmGrupos(+Edit)`,
+  `frmObjetos(+Edit)`, `frmOpciones(+Edit)`, `frmTiposObjeto(+Edit)`,
+  `frmLogin`, `frmUsuarioPwd`, `frmReporteSession`, `frmReporteSql`
+- `Security/sqlaserca.sql` (esquema real del framework de seguridad
+  genérico, distinto de `script.sql`/MetaClass — 29 tablas, UTF-16)
+- `docs/adr/0019-rbac-granular-funcionalidad-rol.md`,
+  `docs/design/DD-RBAC-001.md`
+
+### Discrepancia resuelta durante el proceso (el hallazgo central de esta feature)
+
+Un primer borrador de ADR-0019/DD-RBAC-001 se redactó **solo a partir
+de `script.sql`** (esquema sin lógica) y asumió un modelo de 3 niveles
+de acceso resuelto por "máximo privilegio" entre roles de un usuario.
+Al leer el **código C# real** que el arquitecto compartió después, se
+confirmó que el modelo real es:
+
+1. **Binario** (`bit`: 0/1), no de 3 niveles — `plp_val`/`pri_val` en
+   `sqlaserca.sql` son `bit`.
+2. Resuelto por **deny-overrides entre grupos** (basta que un grupo
+   del usuario deniegue una opción para bloquearla, aunque otro grupo
+   la permita) **+ excepción individual que SIEMPRE gana** (sea para
+   dar o quitar acceso), confirmado leyendo literalmente
+   `frmUsuariosEdit.cs::nodeValue()` y `createArrayGrupos()`.
+
+Ambos documentos se reescribieron completos con el modelo real. Ver
+ADR-0019 "Historial de revisión" para el registro explícito del giro
+(no se ocultó el cambio).
+
+### Prompt
+
+```
+Role: Desarrollador backend Django senior, con criterio de fidelidad
+      al código fuente real por sobre la interpretación de un esquema
+      SQL sin lógica de negocio.
+
+Task: Portar el modelo de permisos granular del módulo de seguridad
+      C# real (carpeta Security/) a backend-clinic, priorizando
+      robustez operativa porque es "el punto de entrada de navegación
+      para todo el sistema" (instrucción explícita del arquitecto).
+
+Context: Primer borrador basado solo en script.sql asumió un modelo
+      incorrecto (3 niveles, máximo privilegio). El código C# real
+      reveló un modelo binario con deny-overrides entre grupos +
+      excepción individual absoluta. ADR-0018 (is_staff/is_superuser,
+      3 roles fijos) sigue vigente y no se deroga — este RBAC agrega
+      una capa configurable de "qué puede hacer cada rol en cada
+      acción", no cambia de dónde sale el rol de un usuario base.
+
+Reasoning: (1) Leer el código fuente completo antes de comprometerse
+      a una regla de resolución — un esquema sin lógica es insuficiente
+      para decidir esto (lección ya documentada para bugs en
+      feedback-aisdlc-applied-to-bug, confirmada aquí también para
+      diseño). (2) El seed debe reproducir ADR-0018 exactamente — cero
+      cambio de comportamiento observable el día del despliegue.
+      (3) Todo usuario nuevo necesita un grupo asignado automáticamente
+      (gap real detectado en tests) para no quedar sin ningún permiso
+      por el diseño fail-closed. (4) La robustez pedida por el
+      arquitecto se traduce en: tests exhaustivos de cada combinación
+      de la regla de resolución, y resaltado visual en el Admin cuando
+      una excepción individual contradice el grupo del usuario (mismo
+      criterio que el C# original coloreaba rojo/azul).
+
+Stop Condition: (a) Suite completa 120/120 verde, ≥90% cobertura
+      (98.20% real). (b) Seed verificado idéntico a la matriz de
+      ADR-0018 D3. (c) Verificación E2E con servidor Django real +
+      Playwright: login al Admin, ver los 3 grupos con conteos
+      correctos, ver la matriz completa de privilegios con badges
+      verde/rojo, crear una excepción individual real vía shell y
+      confirmar que tiene_opcion() cambia el resultado Y que el Admin
+      la resalta como "DIFIERE del grupo" en rojo. (d) Cero regresión
+      en los 78 tests preexistentes.
+
+Output Format: (1) 7 modelos nuevos (models_rbac.py). (2) Migración de
+      schema + migración de datos separada con 3 seeds (jerarquía de
+      Opciones, Grupos+asignación de usuarios existentes, matriz de
+      privilegios). (3) Signal de auto-asignación de grupo para
+      usuarios nuevos (gap detectado durante implementación,
+      documentado como addendum DD-RBAC-001 §5.4). (4) tiene_opcion()
+      + HasOpcion (permission class DRF). (5) admin.py con ModelAdmin
+      para las 7 tablas, inlines para editar la matriz sin salir de
+      pantalla, y resaltado de color en el efecto de excepciones
+      individuales. (6) Vistas existentes migradas de IsClinicRole/
+      IsAdminRole a HasOpcion. (7) 42 tests nuevos (tiene_opcion,
+      modelos/seed/constraints, admin). (8) Verificación E2E real con
+      capturas de pantalla.
+```
+
+### Cambios aplicados
+
+| Archivo | Tipo | Detalle |
+|---|---|---|
+| `backend-clinic/apps/samples/models_rbac.py` | A | 7 modelos: `TipoObjeto`, `Objeto`, `Opcion`, `Grupo`, `PrivilegioGrupo`, `UsuarioGrupo`, `PrivilegioIndividual` |
+| `backend-clinic/apps/samples/models.py` | M | Re-exporta los modelos RBAC para que Django los detecte como parte de la app |
+| `backend-clinic/apps/samples/migrations/0003_rbac_jerarquico.py` | A | Schema de las 7 tablas + 4 constraints |
+| `backend-clinic/apps/samples/migrations/0004_rbac_seed.py` | A | `RunPython` con 3 seeds (jerarquía, grupos+usuarios existentes, matriz de privilegios) + reverse simétrico |
+| `backend-clinic/apps/samples/permissions.py` | M | `tiene_opcion()` (port literal de `nodeValue()`), `HasOpcion` |
+| `backend-clinic/apps/samples/signals.py` | A | Auto-asignación de grupo `Analista` a usuarios nuevos (gap detectado en implementación) |
+| `backend-clinic/apps/samples/apps.py` | M | Registra el signal en `ready()` |
+| `backend-clinic/apps/samples/admin.py` | A | `ModelAdmin` para las 7 tablas, inlines, badges de color, resaltado de conflicto excepción/grupo |
+| `backend-clinic/apps/samples/views.py` | M | `SampleListCreateView`/`SampleDetailView`/`SampleProcessView`/`SampleStatusView` migran a `HasOpcion('sample.X')` |
+| `backend-clinic/apps/samples/tests/conftest.py` | M | Fixtures `supervisor_user`/`admin_user` ahora asignan el grupo RBAC correcto (no solo `is_staff`/`is_superuser`) |
+| `backend-clinic/apps/samples/tests/test_tiene_opcion.py` | A | 15 tests: fail-closed, resolución por grupo, deny-overrides multi-grupo, excepción individual (4 variantes) |
+| `backend-clinic/apps/samples/tests/test_rbac_models.py` | A | 16 tests: seed, signal, constraints, `__str__` |
+| `backend-clinic/apps/samples/tests/test_rbac_admin.py` | A | 11 tests: métodos calculados de cada `ModelAdmin`, incluido el resaltado rojo/azul |
+| `docs/adr/0019-rbac-granular-funcionalidad-rol.md` | A | Reescrito completo tras leer el código real, con sección "Historial de revisión" |
+| `docs/design/DD-RBAC-001.md` | A | Reescrito completo, incluye addendum §5.4 (signal) |
+
+### Output (verificación)
+
+- **Tests:** 78 → **120** (+42), todos verde
+- **Coverage:** 99.22% → **98.20%** global backend-clinic (leve baja por volumen de código nuevo, sigue ≥90% ampliamente; `models_rbac.py`/`permissions.py` 100%)
+- **Verificación E2E real** (servidor Django `:8002`, Playwright, sin mocks):
+  - Login al Django Admin real → 3 grupos con conteos correctos (Admin: 6 opciones permitidas, Supervisor/Analista: 5 cada uno — refleja `sample.delete` bloqueado)
+  - Listado `PrivilegioGrupo` → 18 filas con badges verde (SI) / rojo (NO) correctos, `sample.delete` en rojo para Analista/Supervisor y verde para Admin
+  - Excepción individual real creada vía shell (`demo_analista` + `sample.delete` + `permitido=True`) → `tiene_opcion()` cambió de `False` a `True`
+  - El listado del Admin resaltó automáticamente: **"DIFIERE del grupo → resultado final: SI"** en rojo
+  - Cero errores de consola del navegador en todo el recorrido
+
+### Gap operativo detectado y cerrado durante la implementación
+
+El seed de migración (§5.2/§5.3 del DD) solo asigna grupo a usuarios
+**que ya existían** al momento de correr la migración. Se detectó al
+correr los tests existentes (fixtures `analyst_user`/`supervisor_user`/
+`admin_user` se crean en cada test, después del seed) que un usuario
+nuevo sin grupo asignado queda con `tiene_opcion()` fail-closed para
+**todo**, incluso acciones básicas como `sample.list` sobre sus propias
+muestras. Se agregó un signal `post_save` sobre `User` que asigna
+automáticamente el grupo `Analista` (menor privilegio) a todo usuario
+nuevo sin grupo — documentado como addendum DD-RBAC-001 §5.4, no como
+ADR aparte (es una consecuencia operativa de D7, no una decisión
+arquitectónica nueva).
+
+### Trazabilidad
+
+```
+script.sql + ayuda.pdf (MetaClass, esquema sin lógica)
+  → primer borrador ADR-0019/DD-RBAC-001 (modelo incorrecto: 3 niveles, MAX)
+    → arquitecto comparte Security/*.cs + sqlaserca.sql (código real)
+      → lectura del código revela: binario + deny-overrides + excepción absoluta
+        → ADR-0019/DD-RBAC-001 reescritos completos (con "Historial de revisión")
+          → implementación (7 modelos, seed, tiene_opcion, HasOpcion, admin.py)
+            → gap detectado: usuarios nuevos sin grupo → signal agregado
+              → 42 tests nuevos, 120/120 verde, 98.20% cobertura
+                → verificación E2E real con Playwright (Admin + shell + resaltado visual)
+                  → PROMPT_MAPPING (esta entrada)
+```
+
+Refs: ADR-0019, DD-RBAC-001, ADR-0018 (extendido, no derogado), `reference-metaclass-legacy-schema`, `feedback-aisdlc-applied-to-bug` (mismo patrón de lección aplicado a diseño).
+
+---
+
 ## PM-REGISTRO-MUESTRA-001 — Feature "Registro de Muestras" (paciente + captura de metafases)
 
 | Campo | Valor |

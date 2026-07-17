@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Sample, SampleStatus
-from .permissions import CanRegisterSample, IsAdminRole, IsClinicRole, IsOwnerOrStaff
+from .permissions import CanRegisterSample, HasOpcion, IsOwnerOrStaff
 from .pipeline_client import MLDegradedError, pipeline_client
 from .serializers import (
     SampleCreateSerializer,
@@ -25,7 +25,9 @@ class SampleListCreateView(generics.ListCreateAPIView):
     2026-07-16 para no romper SampleListPage/useSamples ya construidos).
     """
 
-    permission_classes = [IsClinicRole]
+    def get_permissions(self):
+        codigo = 'sample.create' if self.request.method == 'POST' else 'sample.list'
+        return [HasOpcion(codigo)]
 
     def get_queryset(self):
         qs = Sample.objects.filter(is_active=True)
@@ -71,8 +73,9 @@ class SampleDetailView(generics.RetrieveUpdateDestroyAPIView):
 
     def get_permissions(self):
         if self.request.method == 'DELETE':
-            return [IsAdminRole()]
-        return [IsClinicRole(), IsOwnerOrStaff()]
+            return [HasOpcion('sample.delete')]
+        codigo = 'sample.edit' if self.request.method in ('PATCH', 'PUT') else 'sample.view'
+        return [HasOpcion(codigo), IsOwnerOrStaff()]
 
     def get_serializer_class(self):
         if self.request.method in ('PATCH', 'PUT'):
@@ -147,7 +150,8 @@ class SampleProcessView(APIView):
     romper el flujo (la muestra sigue existiendo, se puede reintentar).
     """
 
-    permission_classes = [IsClinicRole]
+    def get_permissions(self):
+        return [HasOpcion('sample.process')]
 
     def post(self, request, pk):
         sample, error = _get_owned_sample_or_none(pk, request.user)
@@ -178,10 +182,14 @@ class SampleStatusView(APIView):
     """GET /api/clinic/samples/{id}/status/ — estado del pipeline (SPEC-008 UC-S-007, polling).
 
     Mismo scoping que SampleProcessView (RN-06). Read-only: sin circuit
-    breaker propio, delega en pipeline_client.get_status().
+    breaker propio, delega en pipeline_client.get_status(). Usa la
+    opción 'sample.view' (ver estado es parte de ver la muestra, no
+    hay una opción RBAC dedicada para polling — ADR-0019 no la definió
+    como acción separada).
     """
 
-    permission_classes = [IsClinicRole]
+    def get_permissions(self):
+        return [HasOpcion('sample.view')]
 
     def get(self, request, pk):
         sample, error = _get_owned_sample_or_none(pk, request.user)

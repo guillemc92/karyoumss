@@ -3,7 +3,20 @@ from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.samples.models_rbac import Grupo, UsuarioGrupo
+
 User = get_user_model()
+
+
+def _set_grupo_rbac(user, nombre_grupo):
+    """El signal asignar_grupo_analista_por_defecto (DD-RBAC-001 §5.4)
+    pone a todo usuario nuevo en 'Analista' al crearse. Los fixtures de
+    supervisor/admin necesitan el grupo RBAC correcto (no solo
+    is_staff/is_superuser) para que HasOpcion se comporte igual que
+    ADR-0018 en los tests de regresión."""
+    UsuarioGrupo.objects.filter(usuario=user).delete()
+    grupo, _ = Grupo.objects.get_or_create(nombre=nombre_grupo)
+    UsuarioGrupo.objects.create(usuario=user, grupo=grupo)
 
 
 @pytest.fixture
@@ -16,6 +29,7 @@ def supervisor_user(db):
     user = User.objects.create_user(username='sup_lopez', password='testpass123')
     user.is_staff = True
     user.save()
+    _set_grupo_rbac(user, 'Supervisor')
     return user
 
 
@@ -26,6 +40,7 @@ def admin_user(db):
     user.is_staff = True
     user.is_superuser = True
     user.save()
+    _set_grupo_rbac(user, 'Admin')
     return user
 
 

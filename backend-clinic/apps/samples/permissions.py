@@ -1,5 +1,7 @@
 from rest_framework.permissions import BasePermission
 
+from .models_rbac import Opcion, PrivilegioGrupo, PrivilegioIndividual
+
 RoleLiteral = str  # 'analista' | 'supervisor' | 'admin'
 
 
@@ -59,3 +61,54 @@ class IsOwnerOrStaff(BasePermission):
 # (ADR-0016) y desde su suite de tests — renombrar rompería ambos sin
 # aportar valor.
 CanRegisterSample = IsClinicRole
+
+
+def tiene_opcion(user, opcion_code: str) -> bool:
+    """RBAC jerárquico (ADR-0019, DD-RBAC-001) — port literal de
+    Seguridad.TieneOpcion()/nodeValue() del módulo C# real compartido
+    por el arquitecto (carpeta Security/).
+
+    Regla de resolución (idéntica al original, no una reinterpretación):
+    1. Si el usuario tiene una excepción individual (PrivilegioIndividual
+       con permitido != None) para esta opción, esa excepción SIEMPRE
+       gana — sea para dar acceso (True) o quitarlo (False) aunque el
+       grupo diga lo contrario.
+    2. Si no hay excepción, se combina el resultado de TODOS los grupos
+       del usuario con deny-overrides: basta que un grupo deniegue
+       (permitido=False) para que el resultado combinado sea False,
+       sin importar que otro grupo la permita.
+    3. Si el usuario no pertenece a ningún grupo que defina esta opción,
+       o la Opcion no existe (seed no ejecutado), el resultado es False
+       (fail-closed — más seguro que fail-open ante un seed faltante).
+    """
+    opcion = Opcion.objects.filter(codigo=opcion_code).first()
+    if opcion is None:
+        return False
+
+    individual = PrivilegioIndividual.objects.filter(usuario=user, opcion=opcion).first()
+    if individual is not None and individual.permitido is not None:
+        return individual.permitido
+
+    privilegios_grupo = list(
+        PrivilegioGrupo.objects.filter(
+            opcion=opcion, grupo__usuarios__usuario=user,
+        ).values_list('permitido', flat=True)
+    )
+    if not privilegios_grupo:
+        return False
+    return all(privilegios_grupo)
+
+
+class HasOpcion(BasePermission):
+    """Permission class DRF parametrizable, envuelve tiene_opcion().
+
+    Uso: permission_classes = [HasOpcion('sample.delete')]
+    """
+
+    def __init__(self, opcion_code: str):
+        self.opcion_code = opcion_code
+
+    def has_permission(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return False
+        return tiene_opcion(request.user, self.opcion_code)

@@ -121,3 +121,17 @@ class SampleImage(models.Model):
 
     def __str__(self):
         return f'SampleImage({self.sample_id}, order={self.order})'
+
+
+# RBAC jerárquico (ADR-0019, DD-RBAC-001) — re-exportado para que Django
+# los detecte como parte de esta app sin fusionar el archivo (models_rbac.py
+# se mantiene separado por volumen: 7 modelos nuevos vs. los 3 existentes).
+from .models_rbac import (  # noqa: E402,F401
+    Grupo,
+    Objeto,
+    Opcion,
+    PrivilegioGrupo,
+    PrivilegioIndividual,
+    TipoObjeto,
+    UsuarioGrupo,
+)
