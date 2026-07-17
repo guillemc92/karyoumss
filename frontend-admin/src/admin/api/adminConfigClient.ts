@@ -25,6 +25,9 @@ const DEFAULT_BASE_URL =
   (import.meta.env.VITE_ADMIN_API_BASE as string | undefined) ?? '/api/admin';
 
 const TOKEN_STORAGE_KEY = 'biomed.admin.token';
+/** JWT de sesión del login unificado (ADR-0017) — ver adminClient.ts
+ * para el mismo patrón y su justificación completa. */
+const SESSION_ACCESS_KEY = 'biomed.auth.access';
 
 function safeReadToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -33,6 +36,24 @@ function safeReadToken(): string | null {
   } catch {
     return null;
   }
+}
+
+function safeReadSessionAccess(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(SESSION_ACCESS_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Prioridad: JWT de sesión (Bearer) primero, token de exchange F0 (Token) como fallback. */
+function buildAuthHeader(): string | null {
+  const sessionAccess = safeReadSessionAccess();
+  if (sessionAccess) return `Bearer ${sessionAccess}`;
+  const exchangeToken = safeReadToken();
+  if (exchangeToken) return `Token ${exchangeToken}`;
+  return null;
 }
 
 interface RequestOptions {
@@ -81,8 +102,8 @@ async function parseError(status: number, payload: unknown): Promise<AdminApiErr
 async function request<T>(base: string, path: string, opts: RequestOptions = {}): Promise<T> {
   const url = buildUrl(base, path);
   const headers: Record<string, string> = { Accept: 'application/json' };
-  const token = safeReadToken();
-  if (token) headers['Authorization'] = `Token ${token}`;
+  const authHeader = buildAuthHeader();
+  if (authHeader) headers['Authorization'] = authHeader;
   let body: BodyInit | undefined;
   if (opts.body !== undefined) {
     headers['Content-Type'] = 'application/json';

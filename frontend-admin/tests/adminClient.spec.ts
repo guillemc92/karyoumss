@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../src/admin/msw/server';
 import { createAdminClient, getAuthToken, setAuthToken } from '../src/admin/api/adminClient';
@@ -245,7 +245,11 @@ describe('adminClient', () => {
   });
 
   describe('auth token', () => {
-    it('envía Authorization Token header cuando hay token', async () => {
+    afterEach(() => {
+      localStorage.removeItem('biomed.auth.access');
+    });
+
+    it('envía Authorization Token header cuando solo hay token de exchange F0 (sin sesión)', async () => {
       let seenAuth: string | null = null;
       server.use(
         http.get('/api/admin/users/', ({ request }) => {
@@ -256,6 +260,32 @@ describe('adminClient', () => {
       setAuthToken('django-tok-test');
       await client.list();
       expect(seenAuth).toBe('Token django-tok-test');
+    });
+
+    it('prioriza el JWT de sesión (login unificado ADR-0017) sobre el token de exchange F0', async () => {
+      let seenAuth: string | null = null;
+      server.use(
+        http.get('/api/admin/users/', ({ request }) => {
+          seenAuth = request.headers.get('Authorization');
+          return HttpResponse.json([]);
+        }),
+      );
+      setAuthToken('django-tok-test');
+      localStorage.setItem('biomed.auth.access', 'jwt-session-test');
+      await client.list();
+      expect(seenAuth).toBe('Bearer jwt-session-test');
+    });
+
+    it('sin token de exchange F0 ni sesión, no envía Authorization', async () => {
+      let seenAuth: string | null = null;
+      server.use(
+        http.get('/api/admin/users/', ({ request }) => {
+          seenAuth = request.headers.get('Authorization');
+          return HttpResponse.json([]);
+        }),
+      );
+      await client.list();
+      expect(seenAuth).toBeNull();
     });
 
     it('logout limpia el token', () => {

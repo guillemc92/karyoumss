@@ -3,7 +3,7 @@
  * Cubre las ramas del manejo de errores: 204, 5xx, payload no-JSON,
  * fetch que lanza (network), 401/403/404/409, 400 con fieldErrors.
  */
-import { describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach, afterEach } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { server } from '../src/admin/msw/server';
 import { createAdminConfigClient } from '../src/admin/api/adminConfigClient';
@@ -13,6 +13,24 @@ import { setAuthToken } from '../src/admin/api/adminClient';
 describe('adminConfigClient', () => {
   beforeEach(() => {
     setAuthToken(null);
+  });
+
+  afterEach(() => {
+    localStorage.removeItem('biomed.auth.access');
+  });
+
+  it('envía Bearer con el JWT de sesión (login unificado ADR-0017), no requiere token de exchange F0', async () => {
+    let seenAuth: string | null = null;
+    server.use(
+      http.get('/api/admin/me/profile/', ({ request }) => {
+        seenAuth = request.headers.get('Authorization');
+        return HttpResponse.json({ full_name: 'x' });
+      }),
+    );
+    localStorage.setItem('biomed.auth.access', 'jwt-session-test');
+    const client = createAdminConfigClient('/api/admin');
+    await client.getProfile();
+    expect(seenAuth).toBe('Bearer jwt-session-test');
   });
 
   it('getProfile devuelve el payload del MSW', async () => {

@@ -31,6 +31,10 @@ const DEFAULT_BASE_URL =
   (import.meta.env.VITE_ADMIN_API_BASE as string | undefined) ?? '/api/admin';
 
 const TOKEN_STORAGE_KEY = 'biomed.admin.token';
+/** JWT de sesión del login unificado (ADR-0017). Fuente primaria de auth
+ * para AdminUsersPanel — el backend acepta JWTAuthentication antes que
+ * TokenAuthentication (admin_backend/settings.py). */
+const SESSION_ACCESS_KEY = 'biomed.auth.access';
 
 function safeReadToken(): string | null {
   if (typeof window === 'undefined') return null;
@@ -63,6 +67,30 @@ export function getAuthToken(): string | null {
 
 export function setAuthToken(token: string | null): void {
   safeWriteToken(token);
+}
+
+function safeReadSessionAccess(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    return window.localStorage.getItem(SESSION_ACCESS_KEY);
+  } catch (_err) {
+    return null;
+  }
+}
+
+/**
+ * Construye el header Authorization con prioridad: JWT de sesión del
+ * login unificado (ADR-0017, Bearer) primero; si no hay sesión activa,
+ * cae al token del exchange F0 (Token DRF) para no romper ese flujo
+ * legacy. AdminUsersPanel se autentica hoy vía login unificado — el
+ * exchange F0 queda como fallback, no como camino principal.
+ */
+function buildAuthHeader(): string | null {
+  const sessionAccess = safeReadSessionAccess();
+  if (sessionAccess) return `Bearer ${sessionAccess}`;
+  const exchangeToken = safeReadToken();
+  if (exchangeToken) return `Token ${exchangeToken}`;
+  return null;
 }
 
 interface RequestOptions {
@@ -129,8 +157,8 @@ async function request<T>(base: string, path: string, opts: RequestOptions = {})
   const headers: Record<string, string> = {
     Accept: 'application/json',
   };
-  const token = getAuthToken();
-  if (token) headers['Authorization'] = `Token ${token}`;
+  const authHeader = buildAuthHeader();
+  if (authHeader) headers['Authorization'] = authHeader;
   let body: BodyInit | undefined;
   if (opts.body !== undefined) {
     headers['Content-Type'] = 'application/json';
