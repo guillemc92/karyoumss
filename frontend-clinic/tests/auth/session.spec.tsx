@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import { render, renderHook, screen, waitFor } from '@testing-library/react';
 import { SessionProvider, useSession, RequireRole } from '../../src/clinic/auth';
 import * as authClient from '../../src/clinic/api/authClient';
@@ -57,5 +57,44 @@ describe('authClient.getAccessToken robustez', () => {
     });
     expect(authClient.getAccessToken()).toBeNull();
     spy.mockRestore();
+  });
+});
+
+describe('SSO (ADR-0020) — sesión leída de un JWT ya presente en localStorage', () => {
+  function fakeJwt(claims: Record<string, unknown>): string {
+    const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+    const payload = btoa(JSON.stringify(claims));
+    return `${header}.${payload}.mock-signature`;
+  }
+
+  afterEach(() => {
+    localStorage.removeItem('biomed.auth.access');
+  });
+
+  it('decodifica role y email del JWT sin llamar a authClient.login()', () => {
+    localStorage.setItem('biomed.auth.access', fakeJwt({ email: 'sup@biomed.umss.bo', role: 'supervisor' }));
+    const { result } = renderHook(() => useSession(), {
+      wrapper: ({ children }) => <SessionProvider>{children}</SessionProvider>,
+    });
+    expect(result.current.isAuthenticated).toBe(true);
+    expect(result.current.role).toBe('supervisor');
+    expect(result.current.username).toBe('sup@biomed.umss.bo');
+  });
+
+  it('sin token en localStorage, la sesión no está autenticada (sin pedir login propio)', () => {
+    const { result } = renderHook(() => useSession(), {
+      wrapper: ({ children }) => <SessionProvider>{children}</SessionProvider>,
+    });
+    expect(result.current.isAuthenticated).toBe(false);
+    expect(result.current.role).toBeNull();
+  });
+
+  it('token con formato inválido (no JWT) no autentica', () => {
+    localStorage.setItem('biomed.auth.access', 'no-es-un-jwt-valido');
+    const { result } = renderHook(() => useSession(), {
+      wrapper: ({ children }) => <SessionProvider>{children}</SessionProvider>,
+    });
+    expect(result.current.isAuthenticated).toBe(true); // token existe, isAuthenticated solo mira presencia
+    expect(result.current.role).toBeNull(); // pero no se pudo decodificar el claim role
   });
 });

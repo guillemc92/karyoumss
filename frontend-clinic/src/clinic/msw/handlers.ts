@@ -34,13 +34,25 @@ function toListItem(s: SampleRead): SampleListItem {
 
 const API = '/api/clinic';
 
+/** SSO (ADR-0020): SessionProvider decodifica el payload del JWT para
+ * leer role/email — el mock necesita un JWT con 3 segmentos reales
+ * (header.payload.signature), no un string plano. La firma no se
+ * verifica en el cliente, solo se decodifica, así que un valor
+ * cualquiera alcanza para el segmento de firma. */
+function fakeJwt(claims: Record<string, unknown>): string {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const payload = btoa(JSON.stringify(claims));
+  return `${header}.${payload}.mock-signature`;
+}
+
 export const handlers = [
   http.post(`${API}/auth/login/`, async ({ request }) => {
     const body = (await request.json()) as { username: string; password: string };
     if (!body.username || !body.password) {
       return HttpResponse.json({ detail: 'Credenciales requeridas' }, { status: 400 });
     }
-    return HttpResponse.json({ access: 'mock-access-token', refresh: 'mock-refresh-token' });
+    const access = fakeJwt({ email: body.username, role: 'analista' });
+    return HttpResponse.json({ access, refresh: 'mock-refresh-token' });
   }),
 
   http.post(`${API}/auth/refresh/`, () => {

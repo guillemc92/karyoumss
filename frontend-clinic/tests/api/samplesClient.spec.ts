@@ -5,7 +5,7 @@ import { ClinicApiException } from '../../src/clinic/types/sample';
 const client = createSamplesClient('/api/clinic');
 
 beforeEach(() => {
-  localStorage.setItem('biomed.clinic.access', 'mock-token');
+  localStorage.setItem('biomed.auth.access', 'mock-token');
 });
 
 describe('samplesClient', () => {

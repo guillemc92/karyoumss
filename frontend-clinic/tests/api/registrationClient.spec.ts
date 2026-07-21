@@ -19,7 +19,7 @@ const VALID_PAYLOAD: SampleRegistrationData = {
 };
 
 beforeEach(() => {
-  localStorage.setItem('biomed.clinic.access', 'mock-token');
+  localStorage.setItem('biomed.auth.access', 'mock-token');
 });
 
 describe('registrationClient', () => {

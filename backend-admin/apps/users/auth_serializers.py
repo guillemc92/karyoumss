@@ -28,6 +28,17 @@ class AdminTokenObtainPairSerializer(TokenObtainPairSerializer):
         'no_active_account': 'Credenciales inválidas',
     }
 
+    @classmethod
+    def get_token(cls, user):
+        """SSO (ADR-0020): embebe email/role DENTRO del JWT firmado (no
+        solo en el body de la respuesta HTTP) para que backend-clinic
+        pueda leerlos al validar el token con el secreto compartido
+        (SharedJWTAuthentication) sin depender de una llamada adicional."""
+        token = super().get_token(user)
+        token['email'] = user.email
+        token['role'] = user.role
+        return token
+
     def validate(self, attrs):
         data = super().validate(attrs)
         data['role'] = self.user.role

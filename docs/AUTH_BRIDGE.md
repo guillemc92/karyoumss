@@ -12,6 +12,16 @@
 > El endpoint `POST /api/admin/auth/exchange` descrito abajo **sigue existiendo en
 > código** (`apps/users/views.py::auth_exchange_view`) y no se elimina, pero queda como
 > mecanismo secundario sin uso activo. Ver ADR-0017 D1-D2 y DD-AUTH-001 §0.
+>
+> ⚠️ **Ver también (2026-07-20, ADR-0020):** el patrón de "shared JWT HS256 con clave
+> simétrica compartida" descrito en este documento (§2) para FastAPI↔Django admin es
+> **el mismo patrón** que [ADR-0020](adr/0020-sso-backend-admin-autoridad-jwt.md) aplica
+> ahora entre `backend-admin`↔`backend-clinic` (Django↔Django) — `backend-admin` firma
+> con `AUTH_ADMIN_JWT_SECRET`, `backend-clinic` valida con la misma clave vía
+> `SharedJWTAuthentication` (`backend-clinic/apps/samples/auth_bridge.py`, nombre de
+> archivo igual a este mecanismo por design, pero es código nuevo y distinto — no
+> reemplaza ni se apoya en el exchange F0 descrito abajo). Ver DD-SSO-001 para el
+> diseño completo de este SSO más reciente.
 
 ---
 

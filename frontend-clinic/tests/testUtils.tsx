@@ -10,16 +10,22 @@ interface RenderOptions {
   asAdmin?: boolean;
 }
 
+/** SSO (ADR-0020): SessionProvider decodifica role/email del payload del
+ * JWT en 'biomed.auth.access' — un JWT falso con 3 segmentos alcanza
+ * para tests (la firma no se verifica en el cliente). */
+function fakeJwt(claims: Record<string, unknown>): string {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const payload = btoa(JSON.stringify(claims));
+  return `${header}.${payload}.mock-signature`;
+}
+
 export function renderWithProviders(ui: ReactElement, { route = '/clinic/samples', asAdmin = false }: RenderOptions = {}) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
 
   if (asAdmin) {
-    localStorage.setItem('biomed.clinic.access', 'mock-access-token');
-    localStorage.setItem('biomed.clinic.refresh', 'mock-refresh-token');
-    localStorage.setItem('biomed.clinic.role', 'admin');
-    localStorage.setItem('biomed.clinic.username', 'demo_admin');
+    localStorage.setItem('biomed.auth.access', fakeJwt({ email: 'demo_admin', role: 'admin' }));
   }
 
   function Wrapper({ children }: { children: ReactNode }) {

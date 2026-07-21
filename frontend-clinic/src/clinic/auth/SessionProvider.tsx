@@ -16,8 +16,29 @@ export interface SessionContextValue extends Session {
 
 export const SessionContext = createContext<SessionContextValue | undefined>(undefined);
 
-const ROLE_KEY = 'biomed.clinic.role';
-const USERNAME_KEY = 'biomed.clinic.username';
+/** SSO (ADR-0020): storage real, compartido con frontend-admin. */
+const SESSION_ACCESS_KEY = 'biomed.auth.access';
+
+/** Decodifica el payload de un JWT sin verificar firma — la firma ya la
+ * valida el backend; acá solo se leen claims para UX (mismo patrón que
+ * frontend-admin/src/admin/auth/authClient.ts::decodeExp()). */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split('.')[1];
+    return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+  } catch {
+    return null;
+  }
+}
+
+function sessionFromToken(): Session {
+  const token = localStorage.getItem(SESSION_ACCESS_KEY);
+  if (!token) return { isAuthenticated: false, role: null, username: null };
+  const claims = decodeJwtPayload(token);
+  const role = (claims?.role as ClinicRole) ?? null;
+  const username = (claims?.email as string) ?? null;
+  return { isAuthenticated: true, role, username };
+}
 
 interface SessionProviderProps {
   children: ReactNode;
@@ -26,23 +47,17 @@ interface SessionProviderProps {
 }
 
 export function SessionProvider({ children, forceAnalystOnMount = false }: SessionProviderProps) {
-  const [session, setSession] = useState<Session>(() => ({
-    isAuthenticated: authClient.isAuthenticated(),
-    role: (localStorage.getItem(ROLE_KEY) as ClinicRole) ?? null,
-    username: localStorage.getItem(USERNAME_KEY),
-  }));
+  const [session, setSession] = useState<Session>(() => sessionFromToken());
 
   const doLogin = useCallback(async (username: string, password: string, role: ClinicRole) => {
+    // Solo alcanzable en modo demo MSW (ver authClient.ts) — el login real
+    // ocurre en frontend-admin, no acá.
     await authClient.login(username, password);
-    localStorage.setItem(ROLE_KEY, role);
-    localStorage.setItem(USERNAME_KEY, username);
     setSession({ isAuthenticated: true, role, username });
   }, []);
 
   const doLogout = useCallback(() => {
     authClient.logout();
-    localStorage.removeItem(ROLE_KEY);
-    localStorage.removeItem(USERNAME_KEY);
     setSession({ isAuthenticated: false, role: null, username: null });
   }, []);
 

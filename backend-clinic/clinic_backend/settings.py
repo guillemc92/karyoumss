@@ -95,12 +95,17 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # ============================================================================
-# DRF + SimpleJWT (ADR-0015 #5 — secret INDEPENDIENTE del admin y de FastAPI)
+# DRF + SimpleJWT — SSO (ADR-0020): backend-admin es la ÚNICA autoridad de
+# JWT del sistema. backend-clinic ya NO emite tokens de login propio (D1);
+# solo VALIDA los de backend-admin, con el mismo secreto compartido.
+# SharedJWTAuthentication (apps/samples/auth_bridge.py) sincroniza el User
+# local a partir de los claims {email, role} del token (D2). Deroga
+# parcialmente ADR-0015 D5 ("JWT independiente del admin, por diseño").
 # ============================================================================
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'apps.samples.auth_bridge.SharedJWTAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -114,10 +119,13 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
+    # ACCESS/REFRESH_TOKEN_LIFETIME deben coincidir con backend-admin/
+    # admin_backend/settings.py — un token válido en uno no debe expirar
+    # "antes" en el otro. Si se cambia acá, cambiar también allá.
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': env('AUTH_CLINIC_SECRET', required=True),
+    'SIGNING_KEY': env('AUTH_ADMIN_JWT_SECRET', required=True),  # compartido con backend-admin, antes: AUTH_CLINIC_SECRET
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
 

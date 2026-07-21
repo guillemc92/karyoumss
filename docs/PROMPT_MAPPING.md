@@ -1373,6 +1373,154 @@ Refs: ADR-0019, DD-RBAC-001, ADR-0018 (extendido, no derogado), `reference-metac
 
 ---
 
+## PM-SSO-001 — SSO real: backend-admin autoridad única de JWT, 2 SPAs con sesión compartida
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-SSO-001 |
+| **Título** | Login único para todo el sistema: backend-admin firma, backend-clinic valida, Caddy comparte el origen entre frontend-admin/frontend-clinic |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado E2E |
+| **Fecha** | 2026-07-20 |
+
+### Input (Artefacto Origen)
+
+- Pedido explícito del arquitecto (2026-07-20): "debería ser un solo
+  logueo y con esa sesión navegar todo el sistema"
+- `docs/adr/0020-sso-backend-admin-autoridad-jwt.md` — deroga
+  parcialmente ADR-0015 D5, resuelve el gap diferido en ADR-0017 D7
+- `docs/design/DD-SSO-001.md`
+- `backend-admin/apps/users/auth_bridge.py` (exchange F0 existente) —
+  plantilla del patrón reutilizado en dirección inversa
+
+### Discrepancia/gap resuelto
+
+El sistema tenía **dos backends con JWT completamente independiente**
+por diseño explícito (ADR-0015 D5). El arquitecto pidió reabrir esa
+decisión para lograr un solo login real. Se decidió:
+1. `backend-admin` pasa a ser la única autoridad — firma el único JWT
+   real del sistema, con claims `email`/`role` embebidos.
+2. `backend-clinic` deja de emitir tokens (elimina sus endpoints
+   `/auth/login/`/`/auth/refresh/`) y solo **valida** el JWT
+   compartido, sincronizando su `User` local vía
+   `SharedJWTAuthentication` (mismo patrón que `auth_bridge.py` del
+   exchange F0, en dirección inversa).
+3. `frontend-admin`/`frontend-clinic` siguen siendo 2 SPAs distintas
+   (no se fusionan) pero comparten `localStorage` vía un reverse proxy
+   Caddy que las sirve bajo el mismo origen (`:3000`, `/` y `/clinic/`).
+
+### Prompt
+
+```
+Role: Desarrollador full-stack senior Django/React, con criterio de
+      reutilizar infraestructura de auth ya construida en vez de
+      inventar un mecanismo nuevo.
+
+Task: Implementar SSO real entre backend-admin y backend-clinic —
+      un solo login (en backend-admin) autentica en todo el sistema,
+      sin tocar el RBAC ya construido (ADR-0018/0019) ni fusionar las
+      2 SPAs existentes.
+
+Context: backend-admin y backend-clinic firman JWT con secretos
+      HS256 independientes (AUTH_ADMIN_JWT_SECRET vs
+      AUTH_CLINIC_SECRET) — decisión original de ADR-0015 D5. El
+      arquitecto pidió reabrir esto. Ya existe auth_bridge.py en
+      backend-admin (exchange F0, FastAPI→backend-admin) que resuelve
+      un problema estructuralmente idéntico en la dirección opuesta:
+      valida JWT externo, get_or_create de User local.
+
+Reasoning: (1) Reutilizar AUTH_ADMIN_JWT_SECRET como el único secreto
+      compartido — HS256 es simétrico, backend-clinic necesita la
+      MISMA clave para validar, no una propia. (2) get_token() de
+      SimpleJWT necesita override para embeber email/role EN el JWT
+      firmado, no solo en el body de la respuesta HTTP — confirmado
+      con test que el access_token derivado SÍ hereda esos claims.
+      (3) SharedJWTAuthentication sincroniza is_staff/is_superuser en
+      CADA request, no solo al crear el usuario — un cambio de rol en
+      backend-admin se refleja sin re-login. (4) Dos SPAs separadas
+      con Caddy como reverse proxy resuelve compartir localStorage sin
+      el costo de fusionar 2 proyectos Vite maduros. (5) Gap real
+      encontrado en implementación: VITE_BASE_PATH es obligatorio en
+      frontend-clinic detrás de Caddy, si no los assets (/@vite/client,
+      /src/main.tsx) se piden sin el prefijo /clinic/ y Caddy los
+      enruta al catch-all equivocado (frontend-admin) — confirmado
+      con curl inspeccionando el HTML servido antes/después del fix.
+
+Stop Condition: (a) Suite completa de los 2 backends + frontend-clinic
+      en verde, RN-09 ≥90% (backend-admin 214/214 99%, backend-clinic
+      130/130 98.32%, frontend-clinic 171/171 99.62%), cero regresión.
+      (b) Verificación E2E real con Playwright + Caddy real corriendo:
+      login único en frontend-admin, navegar a frontend-clinic SIN
+      pedir login de nuevo, confirmar que el navbar muestra el mismo
+      usuario/rol, confirmar en el backend que el User se sincronizó
+      con is_staff/is_superuser correctos para ese role.
+
+Output Format: (1) ADR-0020 + DD-SSO-001. (2) get_token() override en
+      AdminTokenObtainPairSerializer (backend-admin). (3)
+      SharedJWTAuthentication nuevo (backend-clinic/apps/samples/
+      auth_bridge.py). (4) settings.py/urls.py de backend-clinic
+      ajustados (secreto compartido, login/refresh eliminados). (5)
+      Caddyfile.dev + VITE_BASE_PATH en frontend-clinic/vite.config.ts.
+      (6) authClient.ts/SessionProvider.tsx de frontend-clinic
+      leyendo el storage compartido y decodificando claims del JWT.
+      (7) Tests en los 3 proyectos afectados. (8) Verificación E2E
+      documentada con capturas.
+```
+
+### Cambios aplicados
+
+| Archivo | Tipo | Detalle |
+|---|---|---|
+| `backend-admin/apps/users/auth_serializers.py` | M | `get_token()` override — embebe `email`/`role` en el JWT firmado |
+| `backend-admin/apps/users/tests/test_auth_serializers.py` | M | +2 tests, confirmando que el `access_token` derivado hereda los claims custom |
+| `backend-clinic/apps/samples/auth_bridge.py` | A | `SharedJWTAuthentication` — valida JWT compartido, sincroniza `User` local |
+| `backend-clinic/clinic_backend/settings.py` | M | `SIGNING_KEY` ahora `AUTH_ADMIN_JWT_SECRET` (compartido); `DEFAULT_AUTHENTICATION_CLASSES` usa `SharedJWTAuthentication` |
+| `backend-clinic/clinic_backend/urls.py` | M | Elimina `TokenObtainPairView`/`TokenRefreshView` — login/refresh propios ya no existen |
+| `backend-clinic/.env` / `.env.example` | M | `AUTH_CLINIC_SECRET` → `AUTH_ADMIN_JWT_SECRET` (mismo valor que `backend-admin/.env`) |
+| `backend-clinic/apps/samples/tests/conftest.py` | M | `auth_client()` genera tokens con claims `email`/`role` (antes genéricos) |
+| `backend-clinic/apps/samples/tests/test_shared_jwt_auth.py` | A | 9 tests: fail-closed, creación/reutilización de usuario, sincronización de rol, endpoints eliminados, integración con `tiene_opcion()` |
+| `Caddyfile.dev` | A | Reverse proxy dev — `/` → frontend-admin, `/clinic/*` → frontend-clinic, `/api/*` → backends respectivos |
+| `frontend-clinic/vite.config.ts` | M | `base: env.VITE_BASE_PATH \|\| '/'` — permite servir bajo `/clinic/` |
+| `frontend-clinic/.env.example` | M | Documenta `VITE_BASE_PATH` |
+| `frontend-clinic/src/clinic/api/authClient.ts` | M | `getAccessToken()`/`isAuthenticated()` leen `biomed.auth.access` (storage compartido); `login()`/`refresh()` quedan solo para modo demo MSW |
+| `frontend-clinic/src/clinic/auth/SessionProvider.tsx` | M | Decodifica `role`/`email` del JWT en vez de leer claves de storage separadas |
+| `frontend-clinic/src/clinic/msw/handlers.ts` | M | El mock de login devuelve un JWT real (3 segmentos) con claims, no un string plano |
+| `frontend-clinic/tests/*` (5 archivos) | M | Ajustados a `biomed.auth.access`; 3 tests nuevos de decodificación de sesión desde JWT preexistente |
+
+### Output (verificación)
+
+- **Tests:** `backend-admin` 212→**214** (99% cov), `backend-clinic` 120→**130** (98.32% cov), `frontend-clinic` 168→**171** (99.62% cov). Cero regresión en los 3.
+- **Verificación E2E real** (5 procesos reales: 2 backends Django, 2 frontends Vite, Caddy — sin mocks, con Playwright):
+  1. Login único en `http://localhost:3000/` (frontend-admin, vía Caddy) con `demo_admin@biomed.umss.bo` → JWT de 296 chars guardado en `biomed.auth.access`
+  2. Navegación directa a `http://localhost:3000/clinic/samples` (frontend-clinic, mismo origen) → **sin pedir login de nuevo**
+  3. Navbar de `frontend-clinic` muestra `demo_admin@biomed.umss.bo` / rol "Administrador" — el mismo usuario de la sesión de `frontend-admin`
+  4. Confirmado en `backend-clinic` real: `User.objects.get(username='demo_admin@biomed.umss.bo')` tiene `is_staff=True, is_superuser=True` — sincronizado correctamente por `SharedJWTAuthentication` a partir del claim `role=admin`
+  5. Cero errores de consola en todo el recorrido
+
+### Bug real encontrado y corregido durante la implementación
+
+`VITE_BASE_PATH` faltante en el primer intento de levantar `frontend-clinic` detrás de Caddy: Vite servía los assets (`/@vite/client`, `/src/main.tsx`) sin el prefijo `/clinic/`, así que Caddy los enrutaba al catch-all (`frontend-admin`, `:5173`) en vez de a `frontend-clinic` (`:5174`) — el HTML inicial era correcto (confirmado con `curl`, título "CRUD de Muestras") pero los assets cargaban la app equivocada. Confirmado con `curl` inspeccionando el HTML crudo antes/después del fix, no solo con la captura de pantalla.
+
+### Trazabilidad
+
+```
+Pedido del arquitecto (2026-07-20): "un solo logueo, navegar todo el sistema"
+  → ADR-0020 (accepted, deroga parcialmente ADR-0015 D5)
+    → DD-SSO-001 (diseño de componentes)
+      → backend-admin: get_token() embebe claims
+        → backend-clinic: SharedJWTAuthentication (mismo patrón que auth_bridge.py F0)
+          → Caddyfile.dev + VITE_BASE_PATH (gap real detectado y corregido)
+            → frontend-clinic: SessionProvider decodifica JWT compartido
+              → 3 suites de tests, cero regresión
+                → verificación E2E real con Playwright + Caddy (5 procesos)
+                  → PROMPT_MAPPING (esta entrada)
+```
+
+Refs: ADR-0020, DD-SSO-001, ADR-0015 (D5 derogado parcialmente), ADR-0017 (D7 resuelto), ADR-0018/0019 (preservados sin cambios), `docs/AUTH_BRIDGE.md` (exchange F0, patrón reutilizado).
+
+---
+
 ## PM-REGISTRO-MUESTRA-001 — Feature "Registro de Muestras" (paciente + captura de metafases)
 
 | Campo | Valor |

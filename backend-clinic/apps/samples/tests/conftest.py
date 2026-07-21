@@ -50,8 +50,17 @@ def api_client():
 
 
 def auth_client(user):
+    """SSO (ADR-0020): SharedJWTAuthentication exige los claims email/role
+    en el token (son los que backend-admin embebe vía
+    AdminTokenObtainPairSerializer.get_token()). Los tests generan el
+    token localmente con RefreshToken.for_user() + los mismos claims,
+    para no depender de un backend-admin real corriendo en la suite de
+    backend-clinic."""
     client = APIClient()
     token = RefreshToken.for_user(user)
+    token['email'] = user.username  # username=email en el User sincronizado real
+    role = 'admin' if user.is_superuser else ('supervisor' if user.is_staff else 'analista')
+    token['role'] = role
     client.credentials(HTTP_AUTHORIZATION=f'Bearer {token.access_token}')
     return client
 
