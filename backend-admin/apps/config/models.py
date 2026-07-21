@@ -3,8 +3,10 @@ Modelos de apps/config (DD-ADMIN-002).
 
 P0: skeleton con helper re-exportado.
 P1: AdminProfile (este modelo).
-P2–P6: PasswordHistory, ModelConfig, ModelMetric, NotificationPreference,
-       Integration, AppearancePreference.
+P2: PasswordHistory (este archivo). two_factor_enabled/two_factor_secret/
+    password_changed_at viven en apps.users.models.User, no acá.
+P3–P6: ModelConfig, ModelMetric, NotificationPreference, Integration,
+       AppearancePreference — pendiente.
 """
 import uuid
 import re
@@ -86,3 +88,29 @@ class AdminProfile(models.Model):
 
     def __str__(self):
         return f'Perfil<{self.user.email}>'
+
+
+# =============================================================================
+# P2 — PasswordHistory (DD-ADMIN-002 §3.3)
+# =============================================================================
+
+class PasswordHistory(models.Model):
+    """Historial de hashes de contraseña para forzar no-reutilización.
+
+    services.py::rotate_password rechaza una nueva contraseña si su hash
+    coincide con cualquiera de las últimas 5 entradas de este historial.
+    """
+    id = models.BigAutoField(primary_key=True)
+    user = models.ForeignKey(
+        'users.User', on_delete=models.CASCADE, related_name='password_history',
+    )
+    password_hash = models.CharField(max_length=128)
+    changed_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = _admin_schema_table('admin_password_history')
+        indexes = [models.Index(fields=['user', '-changed_at'])]
+        ordering = ['-changed_at']
+
+    def __str__(self):
+        return f'PasswordHistory<{self.user.email}, {self.changed_at}>'

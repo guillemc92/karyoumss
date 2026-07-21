@@ -3,13 +3,20 @@ URL routing for apps/config (DD-ADMIN-002).
 
 P0: config/health/ (público, smoke check).
 P1: me/profile/ (autenticado, RetrieveUpdate).
+P2: me/password/, me/2fa/setup/, me/2fa/toggle/ (autenticado, action endpoints).
 
 Namespace: 'config'. Se monta en admin_backend/urls.py con prefijo
 '/api/admin/' (igual que apps/users y apps/audit).
 """
 from django.urls import path
 
-from .views import config_health_view, MeProfileView
+from .views import (
+    config_health_view,
+    ChangePasswordView,
+    MeProfileView,
+    TwoFactorSetupView,
+    TwoFactorToggleView,
+)
 
 
 app_name = 'config'
@@ -23,4 +30,12 @@ urlpatterns = [
     # GET   /api/admin/me/profile/  → detalle (crea si no existe)
     # PATCH /api/admin/me/profile/  → edición parcial
     path('me/profile/', MeProfileView.as_view(), name='me-profile'),
+
+    # P2 — Seguridad: cambio de contraseña y 2FA.
+    # POST /api/admin/me/password/    → rota la contraseña
+    # POST /api/admin/me/2fa/setup/   → genera secret TOTP + QR
+    # POST /api/admin/me/2fa/toggle/  → activa/desactiva 2FA (exige código)
+    path('me/password/', ChangePasswordView.as_view(), name='me-password'),
+    path('me/2fa/setup/', TwoFactorSetupView.as_view(), name='me-2fa-setup'),
+    path('me/2fa/toggle/', TwoFactorToggleView.as_view(), name='me-2fa-toggle'),
 ]

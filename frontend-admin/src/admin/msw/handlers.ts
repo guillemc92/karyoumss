@@ -67,6 +67,8 @@ interface MockProfile {
   location: string;
   avatar_url: string;
   updated_at: string;
+  /** P2 — DD-ADMIN-002 §3.2. */
+  two_factor_enabled: boolean;
 }
 
 const initialProfile: MockProfile = {
@@ -79,9 +81,26 @@ const initialProfile: MockProfile = {
   location: 'UMSS · Hospital del Norte',
   avatar_url: '',
   updated_at: '2026-06-15T10:00:00Z',
+  two_factor_enabled: false,
 };
 
 const mockProfiles: Record<string, MockProfile> = { '1': { ...initialProfile } };
+
+/**
+ * Estado mock de 2FA (P2 — DD-ADMIN-002 §3.4). MSW no implementa TOTP real
+ * (no hay librería cliente): /2fa/setup/ genera un secret+QR fijo y
+ * /2fa/toggle/ acepta un código mágico ('123456') como "válido" — el
+ * backend real sí valida contra pyotp/RFC 6238, esto es solo para que la
+ * UI de demo pueda ejercitar el flujo completo sin backend.
+ */
+const MOCK_VALID_TOTP_CODE = '123456';
+const MOCK_TOTP_SECRET = 'JBSWY3DPEHPK3PXP';
+// PNG 1x1 transparente en base64 — suficiente para <img> renderizar sin 404.
+const MOCK_QR_CODE_B64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+let mockTwoFactorSetupPending = false;
+/** Contraseña actual "conocida" por el mock — usada por /me/password/. */
+const MOCK_CURRENT_PASSWORD = 'CurrentPass1';
 
 const initialAuditLog: Record<string, AuditLogEntry[]> = {
   '11111111-1111-1111-1111-111111111111': [
@@ -147,6 +166,7 @@ export function resetMockData(): void {
   // mockProfiles también vive a scope de módulo (DD-ADMIN-002 P1): re-asignar
   // desde `initialProfile` para que cada test vea el estado original.
   mockProfiles['1'] = { ...initialProfile };
+  mockTwoFactorSetupPending = false;
   auditLog = Object.fromEntries(
     Object.entries(initialAuditLog).map(([k, v]) => [k, v.map((e) => ({ ...e }))]),
   );
@@ -282,6 +302,48 @@ export const handlers = [
     };
     mockProfiles['1'] = updated as typeof current;
     return HttpResponse.json(updated);
+  }),
+
+  // ===========================================================================
+  // DD-ADMIN-002 P2 — /api/admin/me/password/ y /api/admin/me/2fa/*
+  // ===========================================================================
+
+  http.post('/api/admin/me/password/', async ({ request }) => {
+    const body = (await request.json()) as { current?: string; new?: string; confirm?: string };
+    if (body.current !== MOCK_CURRENT_PASSWORD) {
+      return HttpResponse.json({ current: ['Contraseña actual incorrecta'] }, { status: 400 });
+    }
+    if (body.new !== body.confirm) {
+      return HttpResponse.json({ confirm: ['No coincide con la nueva contraseña'] }, { status: 400 });
+    }
+    const pw = body.new ?? '';
+    if (pw.length < 12 || !/[A-Z]/.test(pw) || !/[0-9]/.test(pw)) {
+      return HttpResponse.json(
+        { new: ['Mínimo 12 caracteres, 1 mayúscula, 1 dígito'] },
+        { status: 400 },
+      );
+    }
+    return HttpResponse.json({ detail: 'Contraseña actualizada' });
+  }),
+
+  http.post('/api/admin/me/2fa/setup/', () => {
+    mockTwoFactorSetupPending = true;
+    return HttpResponse.json({ secret: MOCK_TOTP_SECRET, qr_code_b64: MOCK_QR_CODE_B64 });
+  }),
+
+  http.post('/api/admin/me/2fa/toggle/', async ({ request }) => {
+    const body = (await request.json()) as { enabled?: boolean; code?: string };
+    if (body.enabled && !mockTwoFactorSetupPending && !mockProfiles['1'].two_factor_enabled) {
+      return HttpResponse.json(
+        { code: ['No hay 2FA configurado. Ejecute el setup primero.'] },
+        { status: 400 },
+      );
+    }
+    if (body.code !== MOCK_VALID_TOTP_CODE) {
+      return HttpResponse.json({ code: ['Código de verificación inválido'] }, { status: 400 });
+    }
+    mockProfiles['1'].two_factor_enabled = Boolean(body.enabled);
+    return HttpResponse.json({ two_factor_enabled: mockProfiles['1'].two_factor_enabled });
   }),
 
   // ===========================================================================

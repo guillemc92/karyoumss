@@ -180,6 +180,12 @@ AUTH_BRIDGE_VALID_ROLES = ['analista', 'supervisor', 'admin']
 
 AUTH_ADMIN_JWT_SECRET = env('AUTH_ADMIN_JWT_SECRET', required=True)
 
+# ============================================================================
+# 2FA (P2, ADR-0014, DD-ADMIN-002 §3.2) — cifra two_factor_secret at-rest
+# ============================================================================
+
+TOTP_VAULT_KEY = env('TOTP_VAULT_KEY', required=True)
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),

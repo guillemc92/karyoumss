@@ -8,6 +8,10 @@ djangorestframework==3.15.2
 # Auth & RBAC
 django-guardian==2.4.0                    # RBAC per-object permissions
 djangorestframework-simplejwt==5.3.1      # Login unificado (ADR-0017)
+pyotp==2.10.0                             # TOTP RFC 6238 (2FA, ADR-0014 P2)
+qrcode==8.2                               # QR base64 para setup de 2FA
+Pillow==12.3.0                            # backend de imagen requerido por qrcode
+cryptography==49.0.0                      # Fernet cifrado reversible del secret TOTP
 
 # Audit Append-Only
 django-auditlog==3.0.0                    # Signals Django → LogEntry

@@ -24,6 +24,7 @@ import { SidebarSection } from './admin/components/BiomedSidebar';
 import { SessionProvider, useSession } from './admin/state/useSession';
 import { LoginPage } from './admin/pages/LoginPage';
 import { ProfileSection } from './admin/components/ProfileSection';
+import { SecuritySection } from './admin/components/SecuritySection';
 import { MswBootstrapError } from './admin/components/MswBootstrapError';
 
 const USE_MSW = import.meta.env.VITE_USE_MSW === 'true';
@@ -54,12 +55,12 @@ function renderSection(section: SidebarSection) {
     return <ProfileSection />;
   }
 
+  // P2 (DD-ADMIN-002): sección "security" ya tiene vista real.
+  if (section === 'security') {
+    return <SecuritySection />;
+  }
+
   const placeholders: Partial<Record<SidebarSection, { icon: string; title: string; hint: string }>> = {
-    security: {
-      icon: 'fa-lock',
-      title: 'Seguridad',
-      hint: 'Cambio de contraseña y 2FA. Vista demo.',
-    },
     modelos: {
       icon: 'fa-brain',
       title: 'Modelo IA',
@@ -82,7 +83,7 @@ function renderSection(section: SidebarSection) {
     },
   };
 
-  const cfg = placeholders[section] ?? placeholders.security!;
+  const cfg = placeholders[section] ?? placeholders.modelos!;
   return <Placeholder {...cfg} />;
 }
 

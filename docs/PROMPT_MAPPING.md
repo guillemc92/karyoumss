@@ -900,6 +900,67 @@ Refs: SPEC-007, FSD-UC-ADMIN-001 §4.8, ADR-0013 §Plan F4-F6, DD-ADMIN-002 §P1
 
 ---
 
+## PM-ADMIN-005 — Panel "Configuración del Sistema": sección Seguridad (P2)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-ADMIN-005 |
+| **Título** | Port de la sección Seguridad (cambio de contraseña + 2FA) de `configuracion.html` a React con backend Django real (P2 de 6 secciones) |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-07-20/21 |
+| **ADR origen** | [ADR-0014](docs/adr/0014-configuracion-panel-react-real-backend.md) §P2 |
+
+### Input (Artefacto Origen)
+
+- `docs/adr/0014-configuracion-panel-react-real-backend.md` §P2 (plan: extender `User`, `PasswordHistory`, endpoints password/2FA, `SecuritySection.tsx`, 8h)
+- `docs/design/DD-ADMIN-002.md` §3 (contrato detallado: `rotate_password` pseudocódigo, tests requeridos, componente)
+- `configuracion.html` líneas 868-911 (UI Contract: "CAMBIAR CONTRASEÑA" + "AUTENTICACIÓN" con toggle 2FA)
+
+### Corrección de diseño (durante implementación, no en el ADR/DD original)
+
+DD-ADMIN-002 §3.2 especificaba `two_factor_secret` **hasheado** (`make_password`). Al implementar `toggle_2fa`/`_verify_totp_code` se detectó que esto es criptográficamente imposible: TOTP (RFC 6238) necesita recalcular el código esperado en el servidor a partir del secret real, no de un digest irreversible — a diferencia de una contraseña, que solo se compara nunca se recalcula un HMAC sobre ella. Se corrigió a cifrado reversible **Fernet**, reutilizando 1:1 el patrón `EncryptedTextField` ya existente en `backend-clinic/apps/samples/fields.py` (ADR-0016 D2, `PATIENT_VAULT_KEY`). Se creó `apps/users/fields.py::EncryptedCharField` + `TOTP_VAULT_KEY` (env var nueva). Documentado inline en `apps/config/services.py::_verify_totp_code`.
+
+### Alcance ejecutado (P2 — Seguridad)
+
+- **Backend (`backend-admin/apps/users` + `apps/config`):**
+  - `User`: + `two_factor_enabled` (bool), `two_factor_secret` (`EncryptedCharField`, Fernet), `password_changed_at`.
+  - `PasswordHistory` (nuevo modelo, `apps/config/models.py`): últimas contraseñas para no-reutilización (profundidad 5).
+  - `apps/users/fields.py` (nuevo): `EncryptedCharField` + `decrypt_totp_secret`.
+  - `apps/config/services.py`: `rotate_password` (current/confirm/fortaleza ≥12+mayús+dígito/no-reutilización), `setup_2fa` (genera secret TOTP + QR PNG base64 vía `pyotp`+`qrcode`+`Pillow`), `toggle_2fa`/`_verify_totp_code` (exige código válido para activar Y desactivar).
+  - 3 endpoints: `POST /api/admin/me/password/`, `POST /api/admin/me/2fa/setup/`, `POST /api/admin/me/2fa/toggle/`.
+  - `AdminProfileSerializer` + campo `two_factor_enabled` (read-only, `source='user.two_factor_enabled'`) — reutiliza `/me/profile/` para que el frontend conozca el estado sin endpoint nuevo.
+  - Dependencias nuevas: `pyotp==2.10.0`, `qrcode==8.2`, `Pillow==12.3.0`, `cryptography==49.0.0`.
+- **Frontend (`frontend-admin`):**
+  - `types/config.ts`: `changePasswordSchema` (Zod, espejo de `rotate_password`), `totpCodeSchema`, `TwoFactorSetup`, `TwoFactorToggleResult`.
+  - `adminConfigClient.ts`: `changePassword`, `setup2FA`, `toggle2FA`.
+  - `SecuritySection.tsx` (nuevo): formulario de cambio de contraseña + bloque 2FA con `StatusToggle` reutilizado; el QR llega ya renderizado como PNG base64 del backend — **no se instaló ninguna librería TOTP cliente** (se descartó esa idea inicial del plan porque la verificación es 100% server-side).
+  - `App.tsx`: sección `security` conectada (reemplaza `Placeholder`).
+  - MSW: handlers de `/me/password/` y `/me/2fa/*` con código mágico `123456` (mock no implementa TOTP real).
+
+### Output (verificación)
+
+- **Backend:** 86/86 tests en `apps/config` verde (`apps/config/services.py`, `serializers.py`, `models.py` en 100%; `views.py` 98%; `permissions.py` 91%).
+- **Frontend:** 187/187 tests verde (18 archivos), coverage global 97.71% stmts / 88.5% branches / 95.34% funcs — `SecuritySection.tsx` 98.22%/90.9%/100%. Sin regresión en ningún archivo preexistente.
+- **E2E real (Playwright/Chromium, `npm run dev:msw`):** login → Configuración → Seguridad → contraseña actual incorrecta (rechazo real) → activar 2FA (QR+secret visibles) → código inválido rechazado → código válido activa 2FA → desactivar pide código directo (sin QR nuevo) → cambio de contraseña exitoso. Capturas verificadas visualmente, sin errores de consola no esperados.
+
+### Trazabilidad
+
+```
+FSD-UC-ADMIN-001 §5 (panel Configuración)
+  → ADR-0014 §P2 (Seguridad: password + 2FA)
+    → DD-ADMIN-002 §3 (corrección: hash→Fernet documentada in-line)
+      → apps/users/fields.py + apps/config/services.py|serializers.py|views.py (backend)
+        → types/config.ts + adminConfigClient.ts + SecuritySection.tsx (frontend)
+          → 86 tests backend + 11 tests SecuritySection (187 totales frontend)
+            → E2E Playwright verificado en navegador real
+```
+
+Refs: ADR-0014 §P2, DD-ADMIN-002 §3, PM-ADMIN-004 (P1, precedente de patrón), AGENTS.md §2.2 (flujo AI-SDLC).
+
+---
+
 ## PM-CRUD-MUESTRA-001 — CRUD de Muestras (bootstrap bounded context clínico Django+React)
 
 | Campo | Valor |

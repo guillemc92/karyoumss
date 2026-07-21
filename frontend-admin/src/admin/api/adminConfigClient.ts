@@ -19,6 +19,9 @@ import {
 import {
   AdminProfile,
   AdminProfileUpdate,
+  ChangePasswordInput,
+  TwoFactorSetup,
+  TwoFactorToggleResult,
 } from '../types/config';
 
 const DEFAULT_BASE_URL =
@@ -167,6 +170,29 @@ export function createAdminConfigClient(baseUrl: string = DEFAULT_BASE_URL) {
       return request<AdminProfile>(baseUrl, '/me/profile/', {
         method: 'PATCH',
         body: patch,
+      });
+    },
+
+    /** POST /api/admin/me/password/  → rota la contraseña (P2). */
+    changePassword(input: ChangePasswordInput): Promise<void> {
+      return request<void>(baseUrl, '/me/password/', {
+        method: 'POST',
+        body: input,
+      });
+    },
+
+    /** POST /api/admin/me/2fa/setup/  → genera secret TOTP + QR (P2). */
+    setup2FA(): Promise<TwoFactorSetup> {
+      return request<TwoFactorSetup>(baseUrl, '/me/2fa/setup/', {
+        method: 'POST',
+      });
+    },
+
+    /** POST /api/admin/me/2fa/toggle/  → activa/desactiva 2FA (P2). */
+    toggle2FA(enabled: boolean, code: string): Promise<TwoFactorToggleResult> {
+      return request<TwoFactorToggleResult>(baseUrl, '/me/2fa/toggle/', {
+        method: 'POST',
+        body: { enabled, code },
       });
     },
   };

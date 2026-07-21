@@ -31,6 +31,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from auditlog.registry import auditlog
 
+from .fields import EncryptedCharField
+
 
 # =============================================================================
 # Constantes
@@ -105,9 +107,18 @@ class User(AbstractUser):
     email = models.EmailField(unique=True)
     role = models.CharField(max_length=16, choices=ROLE_CHOICES, default='analista')
 
-    # AbstractUser ya provee: username, first_name, last_name, password (no usado),
+    # P2 — DD-ADMIN-002 §3.2 (sección Seguridad, ADR-0014). two_factor_secret
+    # se cifra at-rest con Fernet (reversible) vía EncryptedCharField — NO
+    # con hash: TOTP necesita el secret en claro para recalcular el código
+    # esperado del lado servidor. Ver apps/users/fields.py.
+    two_factor_enabled = models.BooleanField(default=False)
+    two_factor_secret = EncryptedCharField(max_length=255, blank=True, default='')
+    password_changed_at = models.DateTimeField(null=True, blank=True)
+
+    # AbstractUser ya provee: username, first_name, last_name, password,
     # is_active, is_staff, is_superuser, date_joined, last_login.
-    # Pero como nuestro flujo no usa password, redefinimos USERNAME_FIELD = email.
+    # ADR-0017 agregó login real con password (SimpleJWT) — el password SÍ
+    # se usa desde entonces, a pesar de lo que decía este comentario antes.
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username']  # Para createsuperuser (Django admin CLI)
