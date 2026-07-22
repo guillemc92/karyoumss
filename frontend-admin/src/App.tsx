@@ -27,6 +27,7 @@ import { ProfileSection } from './admin/components/ProfileSection';
 import { SecuritySection } from './admin/components/SecuritySection';
 import { ModelsSection } from './admin/components/ModelsSection';
 import { NotificationsSection } from './admin/components/NotificationsSection';
+import { AppearanceSection } from './admin/components/AppearanceSection';
 import { MswBootstrapError } from './admin/components/MswBootstrapError';
 
 const USE_MSW = import.meta.env.VITE_USE_MSW === 'true';
@@ -72,16 +73,17 @@ function renderSection(section: SidebarSection) {
     return <NotificationsSection />;
   }
 
+  // P6 (DD-ADMIN-002): sección "appearance" ya tiene vista real.
+  // P5 (integrations) diferida a propósito — ver ADR-0014 §Notas.
+  if (section === 'appearance') {
+    return <AppearanceSection />;
+  }
+
   const placeholders: Partial<Record<SidebarSection, { icon: string; title: string; hint: string }>> = {
     integrations: {
       icon: 'fa-plug',
       title: 'Integraciones',
       hint: 'Conexión con HIS, LIS, API. Vista demo.',
-    },
-    appearance: {
-      icon: 'fa-palette',
-      title: 'Visualización',
-      hint: 'Tema y preferencias visuales. Vista demo.',
     },
   };
 

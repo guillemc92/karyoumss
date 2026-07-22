@@ -19,6 +19,8 @@ import {
 import {
   AdminProfile,
   AdminProfileUpdate,
+  AppearancePreference,
+  AppearancePreferenceUpdate,
   ChangePasswordInput,
   ModelConfig,
   ModelConfigUpdate,
@@ -244,6 +246,22 @@ export function createAdminConfigClient(baseUrl: string = DEFAULT_BASE_URL) {
     /** PATCH /api/admin/me/notifications/  → edición parcial (P4). */
     updateNotifications(patch: NotificationPreferenceUpdate): Promise<NotificationPreference> {
       return request<NotificationPreference>(baseUrl, '/me/notifications/', {
+        method: 'PATCH',
+        body: patch,
+      });
+    },
+
+    /** GET /api/admin/me/appearance/  → detalle (crea si no existe). */
+    getAppearance(opts?: { signal?: AbortSignal }): Promise<AppearancePreference> {
+      return request<AppearancePreference>(baseUrl, '/me/appearance/', {
+        method: 'GET',
+        signal: opts?.signal,
+      });
+    },
+
+    /** PATCH /api/admin/me/appearance/  → edición parcial (P6). */
+    updateAppearance(patch: AppearancePreferenceUpdate): Promise<AppearancePreference> {
+      return request<AppearancePreference>(baseUrl, '/me/appearance/', {
         method: 'PATCH',
         body: patch,
       });

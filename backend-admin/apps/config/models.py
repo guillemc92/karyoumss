@@ -7,7 +7,9 @@ P2: PasswordHistory (este archivo). two_factor_enabled/two_factor_secret/
     password_changed_at viven en apps.users.models.User, no acá.
 P3: ModelConfig, ModelMetric (este archivo).
 P4: NotificationPreference (este archivo).
-P5–P6: Integration, AppearancePreference — pendiente.
+P6: AppearancePreference (este archivo). P5 (Integration) diferida —
+    ver ADR-0014 §Notas ("puede esperar a que aparezca la primera
+    integración real").
 """
 import uuid
 import re
@@ -277,3 +279,79 @@ class NotificationPreference(models.Model):
 
     def __str__(self):
         return f'NotificationPreference<{self.user.email}>'
+
+
+# =============================================================================
+# P6 — AppearancePreference (DD-ADMIN-002 §7)
+# =============================================================================
+
+THEME_CHOICES = [
+    ('light', 'Claro'),
+    ('dark', 'Oscuro'),
+    ('auto', 'Automático (sistema)'),
+]
+
+DENSITY_CHOICES = [
+    ('compact', 'Compacto'),
+    ('comfortable', 'Cómodo'),
+    ('spacious', 'Espacioso'),
+]
+
+LANGUAGE_CHOICES = [
+    ('es', 'Español'),
+    ('en', 'English'),
+    ('pt', 'Português'),
+]
+
+FONT_SIZE_CHOICES = [
+    ('sm', 'Pequeño'),
+    ('md', 'Mediano'),
+    ('lg', 'Grande'),
+]
+
+
+class AppearancePreference(models.Model):
+    """
+    Preferencias visuales por usuario (1:1): tema, densidad, idioma,
+    tamaño de fuente. El HTML legado (`configuracion.html` líneas
+    1146-1177) mostraba 3 toggles de comportamiento clínico del visor
+    ("auto-validar pares", "mostrar confidence scores") que NO
+    pertenecen a este modelo — son ajustes del visor de cariotipo, no
+    apariencia general de la UI admin. Se implementa fiel al contrato
+    real del DD (tema/densidad/idioma/fuente), no al mockup del HTML.
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        'users.User', on_delete=models.CASCADE, related_name='appearance_prefs',
+    )
+    theme = models.CharField(max_length=8, choices=THEME_CHOICES, default='light')
+    density = models.CharField(max_length=12, choices=DENSITY_CHOICES, default='comfortable')
+    language = models.CharField(max_length=5, choices=LANGUAGE_CHOICES, default='es')
+    font_size = models.CharField(max_length=4, choices=FONT_SIZE_CHOICES, default='md')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = _admin_schema_table('admin_appearance_prefs')
+        verbose_name = 'Preferencia de apariencia'
+        verbose_name_plural = 'Preferencias de apariencia'
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(theme__in=['light', 'dark', 'auto']),
+                name='admin_appearance_theme_valid',
+            ),
+            models.CheckConstraint(
+                check=models.Q(density__in=['compact', 'comfortable', 'spacious']),
+                name='admin_appearance_density_valid',
+            ),
+            models.CheckConstraint(
+                check=models.Q(language__in=['es', 'en', 'pt']),
+                name='admin_appearance_language_valid',
+            ),
+            models.CheckConstraint(
+                check=models.Q(font_size__in=['sm', 'md', 'lg']),
+                name='admin_appearance_font_size_valid',
+            ),
+        ]
+
+    def __str__(self):
+        return f'AppearancePreference<{self.user.email}, {self.theme}>'

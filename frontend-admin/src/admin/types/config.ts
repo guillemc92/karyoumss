@@ -123,6 +123,29 @@ export type NotificationPreferenceUpdate = Partial<
 >;
 
 // =============================================================================
+// Apariencia (P6 — DD-ADMIN-002 §7, ADR-0014)
+// Espejo de backend-admin/apps/config/models.py::AppearancePreference.
+// =============================================================================
+
+export type Theme = 'light' | 'dark' | 'auto';
+export type Density = 'compact' | 'comfortable' | 'spacious';
+export type Language = 'es' | 'en' | 'pt';
+export type FontSize = 'sm' | 'md' | 'lg';
+
+export interface AppearancePreference {
+  id: string;
+  theme: Theme;
+  density: Density;
+  language: Language;
+  font_size: FontSize;
+  updated_at: string;
+}
+
+export type AppearancePreferenceUpdate = Partial<
+  Omit<AppearancePreference, 'id' | 'updated_at'>
+>;
+
+// =============================================================================
 // Modelo IA (P3 — DD-ADMIN-002 §4, ADR-0014)
 // Espejo de backend-admin/apps/config/models.py::ModelConfig/ModelMetric.
 // =============================================================================

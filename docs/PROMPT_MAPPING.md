@@ -1143,6 +1143,102 @@ Refs: ADR-0014 §P4, DD-ADMIN-002 §5, PM-ADMIN-004/005/006 (P1/P2/P3, precedent
 
 ---
 
+## PM-ADMIN-008 — Panel "Configuración del Sistema": sección Visualización (P6)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-ADMIN-008 |
+| **Título** | Port de la sección Visualización (tema/densidad/idioma/fuente) de `configuracion.html` a React con backend Django real (P6 de 6 secciones — última fase de contenido antes del shell P7) |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-07-22 |
+| **ADR origen** | [ADR-0014](docs/adr/0014-configuracion-panel-react-real-backend.md) §P6 |
+
+### Elección de fase (P6 sobre P5)
+
+Se priorizó P6 (Visualización) sobre P5 (Integraciones) por la misma
+razón documentada en PM-ADMIN-007: el propio ADR-0014 marca a P5 como
+candidata a diferir hasta que exista una integración real que probar.
+Con P6 cerrado, de las 6 secciones del ADR solo queda pendiente P5
+(diferida a propósito, no por falta de tiempo) y el shell P7 (extraer
+`ConfigShell`/`ConfigContent` — ver nota de discrepancia abajo).
+
+### Desviación deliberada del port literal del HTML legado
+
+El HTML original (`configuracion.html` líneas 1146-1177) mostraba 3
+toggles de **comportamiento del visor de cariotipo** ("modo oscuro en
+el visor", "mostrar confidence scores", "auto-validar pares con alta
+confianza >95%") — ninguno pertenece al modelo real `AppearancePreference`
+(que es tema/densidad/idioma/tamaño de fuente de la UI **admin**, no
+del visor clínico). Se implementó fiel al contrato real del DD, no al
+mockup — mismo criterio que P3 (Modelo IA) y P4 (Notificaciones).
+
+### Nota de discrepancia con DD §7.4/§8 (no bloqueante)
+
+El DD asume que `SessionProvider` "ya carga la apariencia al montar"
+— **falso**: `useSession.tsx` solo gestiona `role`/`userName` (gating
+de auth), nunca tocó tema/densidad. Tampoco existe ningún CSS que
+consuma `[data-theme="dark"]` en `biomed-design.css`. Se implementó el
+gesto funcional real que pide el DD (`document.documentElement.dataset
+.theme` + `lang` seteados al montar y al guardar, vía `AppearanceSection`
+mismo, no vía `SessionProvider` global) sin fabricar un sistema de
+dark-mode completo que no fue pedido ni está en el alcance de 4h de
+esta fase. Documentado inline en `AppearanceSection.tsx`.
+
+Además, el DD §8 (P7) describe un `ConfigShell` nuevo anidado bajo un
+único ítem "Configuración" del sidebar externo — pero la arquitectura
+real ya construida en P1-P5 usa `BiomedSidebar` con las 7 secciones
+como ítems de primer nivel directamente (confirmado en las capturas
+E2E de cada PM anterior). P7 tal como está descrito en el DD parece ya
+estar subsumido por el diseño que efectivamente se construyó; no
+requiere trabajo adicional a menos que el usuario pida explícitamente
+la indirección de `ConfigShell`.
+
+### Alcance ejecutado (P6 — Visualización)
+
+- **Backend (`apps/config`):** `AppearancePreference` (1:1 con `User`,
+  theme/density/language/font_size con choices + CheckConstraints),
+  `MeAppearanceView` (mismo patrón `RetrieveUpdateAPIView`+`get_or_create`
+  que `MeProfileView`/`MeNotificationsView`).
+- **Frontend:** `AppearanceSection.tsx` — 4 selects, diff-based PATCH,
+  aplicación de `data-theme`/`lang` en `<html>` al montar y al guardar,
+  conectada en `App.tsx` reemplazando el placeholder.
+
+### Output (verificación)
+
+- **Backend:** 157/157 tests en `apps/config` verde; `models.py`,
+  `serializers.py`, `views.py` en 100%.
+- **Frontend:** 216/216 tests verde (21 archivos); `AppearanceSection.tsx`
+  100% stmts/lines, 91.66% branches, 100% funcs. Coverage global 98.29%
+  stmts / 88.75% branches / 96.04% funcs. Cero regresión.
+- **E2E real (Playwright/Chromium, `npm run dev:msw`):** login →
+  Configuración → Visualización → `data-theme=light`/`lang=es` al
+  montar → cambiar tema a Oscuro + guardar → `data-theme=dark`
+  confirmado → cambiar densidad/idioma/fuente + guardar → `lang=en`
+  confirmado → cambio no guardado revertido con Cancelar. Capturas
+  verificadas visualmente, sin errores de consola no esperados.
+
+### Trazabilidad
+
+```
+FSD-UC-CONF-006 (configurar tema, densidad e idioma)
+  → ADR-0014 §P6 (Visualización — priorizada sobre P5 diferida)
+    → DD-ADMIN-002 §7 (corrección: toggles del visor clínico→selects
+                        reales de tema/densidad/idioma/fuente;
+                        SessionProvider global→aplicación local honesta)
+      → apps/config/models.py|serializers.py|views.py (backend)
+        → types/config.ts + adminConfigClient.ts + AppearanceSection.tsx (frontend)
+          → 157 tests backend + 9 tests AppearanceSection (216 totales frontend)
+            → E2E Playwright verificado en navegador real
+```
+
+Refs: ADR-0014 §P6, DD-ADMIN-002 §7, PM-ADMIN-004/005/006/007 (P1-P4,
+precedente de patrón). Pendiente real: solo P5 (Integraciones, diferida)
+y P7 (shell, probablemente ya subsumido — confirmar con el usuario).
+
+---
+
 ## PM-CRUD-MUESTRA-001 — CRUD de Muestras (bootstrap bounded context clínico Django+React)
 
 | Campo | Valor |

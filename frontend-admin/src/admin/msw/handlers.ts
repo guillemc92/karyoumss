@@ -262,6 +262,27 @@ const initialNotificationPreference: MockNotificationPreference = {
 
 let mockNotificationPreference: MockNotificationPreference = { ...initialNotificationPreference };
 
+/** Mock de Apariencia (P6 — DD-ADMIN-002 §7). */
+interface MockAppearancePreference {
+  id: string;
+  theme: 'light' | 'dark' | 'auto';
+  density: 'compact' | 'comfortable' | 'spacious';
+  language: 'es' | 'en' | 'pt';
+  font_size: 'sm' | 'md' | 'lg';
+  updated_at: string;
+}
+
+const initialAppearancePreference: MockAppearancePreference = {
+  id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+  theme: 'light',
+  density: 'comfortable',
+  language: 'es',
+  font_size: 'md',
+  updated_at: '2026-06-15T10:00:00Z',
+};
+
+let mockAppearancePreference: MockAppearancePreference = { ...initialAppearancePreference };
+
 function issueTokens(account: DemoAccount): { access: string; refresh: string } {
   const access = makeFakeJwt(30 * 60);
   const refresh = makeFakeJwt(24 * 60 * 60);
@@ -282,6 +303,7 @@ export function resetMockData(): void {
   mockMetrics = _buildInitialMetrics();
   mockMetricNextId = mockMetrics.length + 1;
   mockNotificationPreference = { ...initialNotificationPreference };
+  mockAppearancePreference = { ...initialAppearancePreference };
   auditLog = Object.fromEntries(
     Object.entries(initialAuditLog).map(([k, v]) => [k, v.map((e) => ({ ...e }))]),
   );
@@ -558,6 +580,36 @@ export const handlers = [
       updated_at: new Date().toISOString(),
     } as MockNotificationPreference;
     return HttpResponse.json(mockNotificationPreference);
+  }),
+
+  // ===========================================================================
+  // DD-ADMIN-002 P6 — /api/admin/me/appearance/
+  // ===========================================================================
+
+  http.get('/api/admin/me/appearance/', () => {
+    return HttpResponse.json(mockAppearancePreference);
+  }),
+
+  http.patch('/api/admin/me/appearance/', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    const VALID = {
+      theme: ['light', 'dark', 'auto'],
+      density: ['compact', 'comfortable', 'spacious'],
+      language: ['es', 'en', 'pt'],
+      font_size: ['sm', 'md', 'lg'],
+    } as const;
+    for (const field of ['theme', 'density', 'language', 'font_size'] as const) {
+      const value = body[field];
+      if (value !== undefined && !(VALID[field] as readonly string[]).includes(value as string)) {
+        return HttpResponse.json({ [field]: [`"${value}" no es una elección válida.`] }, { status: 400 });
+      }
+    }
+    mockAppearancePreference = {
+      ...mockAppearancePreference,
+      ...body,
+      updated_at: new Date().toISOString(),
+    } as MockAppearancePreference;
+    return HttpResponse.json(mockAppearancePreference);
   }),
 
   // ===========================================================================

@@ -5,7 +5,7 @@ P1: AdminProfileSerializer (este archivo).
 P2: ChangePasswordSerializer, TwoFactorToggleSerializer (este archivo).
 P3: ModelConfigSerializer, ModelMetricSerializer (este archivo).
 P4: NotificationPreferenceSerializer (este archivo).
-P5–P6: Integration, AppearancePreference.
+P6: AppearancePreferenceSerializer (este archivo). P5 diferida.
 """
 from decimal import Decimal
 
@@ -13,6 +13,7 @@ from rest_framework import serializers
 
 from .models import (
     AdminProfile,
+    AppearancePreference,
     ModelConfig,
     ModelMetric,
     NotificationPreference,
@@ -150,4 +151,16 @@ class NotificationPreferenceSerializer(serializers.ModelSerializer):
             'quiet_hours_enabled', 'quiet_hours_start', 'quiet_hours_end',
             'updated_at',
         ]
+        read_only_fields = ['id', 'updated_at']
+
+
+class AppearancePreferenceSerializer(serializers.ModelSerializer):
+    """Serializer de preferencias visuales (P6 — DD-ADMIN-002 §7.3).
+    Las choices (theme/density/language/font_size) ya las valida DRF
+    contra `Field.choices` derivado del modelo; el CheckConstraint en
+    DB es la última línea de defensa."""
+
+    class Meta:
+        model = AppearancePreference
+        fields = ['id', 'theme', 'density', 'language', 'font_size', 'updated_at']
         read_only_fields = ['id', 'updated_at']

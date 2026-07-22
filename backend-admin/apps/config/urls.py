@@ -6,6 +6,7 @@ P1: me/profile/ (autenticado, RetrieveUpdate).
 P2: me/password/, me/2fa/setup/, me/2fa/toggle/ (autenticado, action endpoints).
 P3: models/active/, models/metrics/, models/metrics/latest/ (solo admin).
 P4: me/notifications/ (autenticado, RetrieveUpdate).
+P6: me/appearance/ (autenticado, RetrieveUpdate). P5 diferida.
 
 Namespace: 'config'. Se monta en admin_backend/urls.py con prefijo
 '/api/admin/' (igual que apps/users y apps/audit).
@@ -15,6 +16,7 @@ from django.urls import path
 from .views import (
     config_health_view,
     ChangePasswordView,
+    MeAppearanceView,
     MeNotificationsView,
     MeProfileView,
     ModelConfigView,
@@ -57,4 +59,9 @@ urlpatterns = [
     # GET   /api/admin/me/notifications/  → detalle (crea si no existe)
     # PATCH /api/admin/me/notifications/  → edición parcial
     path('me/notifications/', MeNotificationsView.as_view(), name='me-notifications'),
+
+    # P6 — Apariencia del usuario autenticado.
+    # GET   /api/admin/me/appearance/  → detalle (crea si no existe)
+    # PATCH /api/admin/me/appearance/  → edición parcial
+    path('me/appearance/', MeAppearanceView.as_view(), name='me-appearance'),
 ]

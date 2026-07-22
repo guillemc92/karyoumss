@@ -6,7 +6,7 @@ P1: MeProfileView (RetrieveUpdateAPIView con get_or_create).
 P2: ChangePasswordView, TwoFactorSetupView, TwoFactorToggleView (este archivo).
 P3: ModelConfigView, ModelMetricListCreateView, ModelMetricLatestView (este archivo).
 P4: MeNotificationsView (este archivo).
-P5–P6: vistas adicionales por sección.
+P6: MeAppearanceView (este archivo). P5 diferida.
 """
 from datetime import timedelta
 
@@ -21,9 +21,10 @@ from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdminRole
 
-from .models import AdminProfile, ModelConfig, ModelMetric, NotificationPreference
+from .models import AdminProfile, AppearancePreference, ModelConfig, ModelMetric, NotificationPreference
 from .serializers import (
     AdminProfileSerializer,
+    AppearancePreferenceSerializer,
     ChangePasswordSerializer,
     ModelConfigSerializer,
     ModelMetricSerializer,
@@ -53,8 +54,8 @@ def config_health_view(request):
     return Response({
         'status': 'ok',
         'app': 'config',
-        'version': '0.5.0-P4',
-        'sections': ['profile', 'security', 'modelos', 'notifications'],  # P1-P4 habilitados
+        'version': '0.6.0-P6',
+        'sections': ['profile', 'security', 'modelos', 'notifications', 'appearance'],  # P1-P4+P6 (P5 diferida)
     })
 
 
@@ -249,4 +250,19 @@ class MeNotificationsView(generics.RetrieveUpdateAPIView):
             # "20:00" y las siguientes "20:00:00" (mismo valor, formato
             # inconsistente para el frontend).
             prefs.refresh_from_db()
+        return prefs
+
+
+class MeAppearanceView(generics.RetrieveUpdateAPIView):
+    """
+    GET   /api/admin/me/appearance/  → detalle (crea si no existe)
+    PATCH /api/admin/me/appearance/  → edición parcial
+
+    P6 — DD-ADMIN-002 §7.3. Mismo patrón que MeProfileView/MeNotificationsView.
+    """
+    serializer_class = AppearancePreferenceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        prefs, _ = AppearancePreference.objects.get_or_create(user=self.request.user)
         return prefs
