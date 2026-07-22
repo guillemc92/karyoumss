@@ -25,6 +25,7 @@ import { SessionProvider, useSession } from './admin/state/useSession';
 import { LoginPage } from './admin/pages/LoginPage';
 import { ProfileSection } from './admin/components/ProfileSection';
 import { SecuritySection } from './admin/components/SecuritySection';
+import { ModelsSection } from './admin/components/ModelsSection';
 import { MswBootstrapError } from './admin/components/MswBootstrapError';
 
 const USE_MSW = import.meta.env.VITE_USE_MSW === 'true';
@@ -60,12 +61,12 @@ function renderSection(section: SidebarSection) {
     return <SecuritySection />;
   }
 
+  // P3 (DD-ADMIN-002): sección "modelos" ya tiene vista real.
+  if (section === 'modelos') {
+    return <ModelsSection />;
+  }
+
   const placeholders: Partial<Record<SidebarSection, { icon: string; title: string; hint: string }>> = {
-    modelos: {
-      icon: 'fa-brain',
-      title: 'Modelo IA',
-      hint: 'Gestión de modelos U-Net + EfficientNet-B3 + Grad-CAM. Vista demo.',
-    },
     notifications: {
       icon: 'fa-bell',
       title: 'Notificaciones',
@@ -83,7 +84,7 @@ function renderSection(section: SidebarSection) {
     },
   };
 
-  const cfg = placeholders[section] ?? placeholders.modelos!;
+  const cfg = placeholders[section] ?? placeholders.notifications!;
   return <Placeholder {...cfg} />;
 }
 

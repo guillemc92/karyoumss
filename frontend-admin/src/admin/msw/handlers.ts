@@ -102,6 +102,82 @@ let mockTwoFactorSetupPending = false;
 /** Contraseña actual "conocida" por el mock — usada por /me/password/. */
 const MOCK_CURRENT_PASSWORD = 'CurrentPass1';
 
+/**
+ * Mock de Modelo IA (P3 — DD-ADMIN-002 §4). `mockModelConfig` es el
+ * singleton `ModelConfig`; `mockMetrics` son snapshots `ModelMetric`
+ * append-only (más reciente primero, igual que `Meta.ordering` real).
+ */
+interface MockModelConfig {
+  id: string;
+  is_active: boolean;
+  unet_version: string;
+  unet_enabled: boolean;
+  classifier_version: string;
+  classifier_enabled: boolean;
+  confidence_threshold: string;
+  detection_sensitivity: string;
+  analysis_mode: 'fast' | 'balanced' | 'accurate';
+  log_level: 'WARNING' | 'INFO' | 'DEBUG';
+  updated_at: string;
+  updated_by: string | null;
+  compliance_warning: boolean;
+}
+
+interface MockModelMetric {
+  id: number;
+  measured_at: string;
+  precision_overall: string;
+  precision_per_class: Record<string, number>;
+  recall_overall: string;
+  f1_overall: string;
+  latency_p50_ms: number;
+  latency_p95_ms: number;
+  latency_p99_ms: number;
+  samples_evaluated: number;
+  created_at: string;
+}
+
+const initialModelConfig: MockModelConfig = {
+  id: 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+  is_active: true,
+  unet_version: 'u-net-v2.1',
+  unet_enabled: true,
+  classifier_version: 'efficientnet-b3-v1.4',
+  classifier_enabled: true,
+  confidence_threshold: '0.850',
+  detection_sensitivity: '0.500',
+  analysis_mode: 'balanced',
+  log_level: 'INFO',
+  updated_at: '2026-06-15T10:00:00Z',
+  updated_by: null,
+  compliance_warning: false,
+};
+
+function _buildInitialMetrics(): MockModelMetric[] {
+  // Orden más-reciente-primero, igual que Meta.ordering=['-measured_at'] del
+  // backend real — mockMetrics[0] siempre es el último snapshot.
+  const now = Date.now();
+  const days = [0, 10, 20];
+  const precisions = ['0.9720', '0.9650', '0.9580'];
+  return days.map((d, i) => ({
+    id: i + 1,
+    measured_at: new Date(now - d * 24 * 60 * 60 * 1000).toISOString(),
+    precision_overall: precisions[i],
+    precision_per_class: {},
+    recall_overall: '0.9680',
+    f1_overall: '0.9690',
+    latency_p50_ms: 92,
+    latency_p95_ms: 150,
+    latency_p99_ms: 210,
+    samples_evaluated: 500 + i * 50,
+    created_at: new Date(now - d * 24 * 60 * 60 * 1000).toISOString(),
+  }));
+}
+
+let mockModelConfig: MockModelConfig = { ...initialModelConfig };
+let mockMetrics: MockModelMetric[] = _buildInitialMetrics();
+let mockMetricNextId = mockMetrics.length + 1;
+
 const initialAuditLog: Record<string, AuditLogEntry[]> = {
   '11111111-1111-1111-1111-111111111111': [
     {
@@ -167,6 +243,9 @@ export function resetMockData(): void {
   // desde `initialProfile` para que cada test vea el estado original.
   mockProfiles['1'] = { ...initialProfile };
   mockTwoFactorSetupPending = false;
+  mockModelConfig = { ...initialModelConfig };
+  mockMetrics = _buildInitialMetrics();
+  mockMetricNextId = mockMetrics.length + 1;
   auditLog = Object.fromEntries(
     Object.entries(initialAuditLog).map(([k, v]) => [k, v.map((e) => ({ ...e }))]),
   );
@@ -344,6 +423,87 @@ export const handlers = [
     }
     mockProfiles['1'].two_factor_enabled = Boolean(body.enabled);
     return HttpResponse.json({ two_factor_enabled: mockProfiles['1'].two_factor_enabled });
+  }),
+
+  // ===========================================================================
+  // DD-ADMIN-002 P3 — /api/admin/models/*
+  // ===========================================================================
+
+  http.get('/api/admin/models/active/', () => {
+    return HttpResponse.json(mockModelConfig);
+  }),
+
+  http.patch('/api/admin/models/active/', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    if (
+      typeof body.analysis_mode === 'string' &&
+      !['fast', 'balanced', 'accurate'].includes(body.analysis_mode)
+    ) {
+      return HttpResponse.json({ analysis_mode: ['"' + body.analysis_mode + '" no es una elección válida.'] }, { status: 400 });
+    }
+    const patch: Record<string, unknown> = { ...body };
+    if (typeof body.confidence_threshold === 'number') {
+      const v = body.confidence_threshold;
+      if (v < 0 || v > 1) {
+        return HttpResponse.json({ confidence_threshold: ['Debe estar entre 0 y 1'] }, { status: 400 });
+      }
+      patch.confidence_threshold = v.toFixed(3);
+    }
+    if (typeof body.detection_sensitivity === 'number') {
+      const v = body.detection_sensitivity;
+      if (v < 0 || v > 1) {
+        return HttpResponse.json({ detection_sensitivity: ['Debe estar entre 0 y 1'] }, { status: 400 });
+      }
+      patch.detection_sensitivity = v.toFixed(3);
+    }
+    mockModelConfig = {
+      ...mockModelConfig,
+      ...patch,
+      updated_at: new Date().toISOString(),
+      updated_by: '1',
+      compliance_warning: parseFloat(String(patch.confidence_threshold ?? mockModelConfig.confidence_threshold)) < 0.85,
+    } as MockModelConfig;
+    return HttpResponse.json(mockModelConfig);
+  }),
+
+  http.get('/api/admin/models/metrics/', ({ request }) => {
+    const url = new URL(request.url);
+    const rawDays = url.searchParams.get('days') ?? '30';
+    let days = parseInt(rawDays, 10);
+    if (Number.isNaN(days)) days = 30;
+    days = Math.max(1, Math.min(days, 365));
+    const since = Date.now() - days * 24 * 60 * 60 * 1000;
+    const filtered = mockMetrics.filter((m) => new Date(m.measured_at).getTime() >= since);
+    return HttpResponse.json(filtered);
+  }),
+
+  http.post('/api/admin/models/metrics/', async ({ request }) => {
+    const body = (await request.json()) as Partial<MockModelMetric>;
+    if (body.precision_overall === undefined) {
+      return HttpResponse.json({ precision_overall: ['Este campo es requerido.'] }, { status: 400 });
+    }
+    const created: MockModelMetric = {
+      id: mockMetricNextId++,
+      measured_at: body.measured_at ?? new Date().toISOString(),
+      precision_overall: String(body.precision_overall),
+      precision_per_class: body.precision_per_class ?? {},
+      recall_overall: String(body.recall_overall ?? '0'),
+      f1_overall: String(body.f1_overall ?? '0'),
+      latency_p50_ms: body.latency_p50_ms ?? 0,
+      latency_p95_ms: body.latency_p95_ms ?? 0,
+      latency_p99_ms: body.latency_p99_ms ?? 0,
+      samples_evaluated: body.samples_evaluated ?? 0,
+      created_at: new Date().toISOString(),
+    };
+    mockMetrics = [created, ...mockMetrics];
+    return HttpResponse.json(created, { status: 201 });
+  }),
+
+  http.get('/api/admin/models/metrics/latest/', () => {
+    if (mockMetrics.length === 0) {
+      return new HttpResponse(null, { status: 204 });
+    }
+    return HttpResponse.json(mockMetrics[0]);
   }),
 
   // ===========================================================================

@@ -4,18 +4,34 @@ Vistas de apps/config (DD-ADMIN-002).
 P0: config_health_view (público, smoke check).
 P1: MeProfileView (RetrieveUpdateAPIView con get_or_create).
 P2: ChangePasswordView, TwoFactorSetupView, TwoFactorToggleView (este archivo).
-P3–P6: vistas adicionales por sección.
+P3: ModelConfigView, ModelMetricListCreateView, ModelMetricLatestView (este archivo).
+P4–P6: vistas adicionales por sección.
 """
+from datetime import timedelta
+
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import transaction
+from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import AdminProfile
-from .serializers import AdminProfileSerializer, ChangePasswordSerializer, TwoFactorToggleSerializer
+from apps.users.permissions import IsAdminRole
+
+from .models import AdminProfile, ModelConfig, ModelMetric
+from .serializers import (
+    AdminProfileSerializer,
+    ChangePasswordSerializer,
+    ModelConfigSerializer,
+    ModelMetricSerializer,
+    TwoFactorToggleSerializer,
+)
 from .services import rotate_password, setup_2fa, toggle_2fa
+
+DAYS_DEFAULT = 30
+DAYS_MAX = 365
 
 
 @api_view(['GET'])
@@ -35,8 +51,8 @@ def config_health_view(request):
     return Response({
         'status': 'ok',
         'app': 'config',
-        'version': '0.3.0-P2',
-        'sections': ['profile', 'security'],  # P1 + P2 habilitados
+        'version': '0.4.0-P3',
+        'sections': ['profile', 'security', 'modelos'],  # P1 + P2 + P3 habilitados
     })
 
 
@@ -139,3 +155,71 @@ class TwoFactorToggleView(APIView):
         except DjangoValidationError as exc:
             return _validation_error_response(exc)
         return Response({'two_factor_enabled': two_factor_enabled}, status=status.HTTP_200_OK)
+
+
+class ModelConfigView(APIView):
+    """
+    GET/PATCH /api/admin/models/active/ — P3, DD-ADMIN-002 §4.4.
+
+    Singleton lógico: la primera vez que se pide, se crea con defaults
+    (`get_or_create` semántico). `select_for_update` dentro de una
+    transacción reduce la ventana de race condition en creación
+    concurrente (DD §4.2, riesgo #6); el `UniqueConstraint` en el modelo
+    es la última línea de defensa si dos requests igual llegan a
+    intentar crear a la vez.
+    """
+    permission_classes = [IsAdminRole]
+
+    def _get_active(self) -> ModelConfig:
+        with transaction.atomic():
+            config = ModelConfig.objects.select_for_update().filter(is_active=True).first()
+            if config is None:
+                config = ModelConfig.objects.create(is_active=True)
+            return config
+
+    def get(self, request):
+        return Response(ModelConfigSerializer(self._get_active()).data)
+
+    def patch(self, request):
+        config = self._get_active()
+        serializer = ModelConfigSerializer(config, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(updated_by=request.user)
+        return Response(serializer.data)
+
+
+class ModelMetricListCreateView(generics.ListCreateAPIView):
+    """
+    GET  /api/admin/models/metrics/?days=30  → histórico filtrado
+    POST /api/admin/models/metrics/          → snapshot nuevo (append-only)
+
+    P3 — DD-ADMIN-002 §4.4. RN-05: no hay update/delete en este viewset
+    (`ListCreateAPIView` no los expone), así que una fila nunca se
+    modifica ni se borra tras crearse.
+    """
+    serializer_class = ModelMetricSerializer
+    permission_classes = [IsAdminRole]
+
+    def get_queryset(self):
+        raw_days = self.request.query_params.get('days', str(DAYS_DEFAULT))
+        try:
+            days = int(raw_days)
+        except (TypeError, ValueError):
+            days = DAYS_DEFAULT
+        days = max(1, min(days, DAYS_MAX))
+        since = timezone.now() - timedelta(days=days)
+        return ModelMetric.objects.filter(measured_at__gte=since)
+
+
+class ModelMetricLatestView(APIView):
+    """GET /api/admin/models/metrics/latest/ — último snapshot (P3).
+
+    204 sin body si todavía no hay ningún snapshot (demo/instalación nueva).
+    """
+    permission_classes = [IsAdminRole]
+
+    def get(self, request):
+        latest = ModelMetric.objects.first()  # Meta.ordering = ['-measured_at']
+        if latest is None:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(ModelMetricSerializer(latest).data)

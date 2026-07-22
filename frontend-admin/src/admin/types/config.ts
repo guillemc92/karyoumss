@@ -94,3 +94,59 @@ export const totpCodeSchema = z
 export interface TwoFactorToggleResult {
   two_factor_enabled: boolean;
 }
+
+// =============================================================================
+// Modelo IA (P3 — DD-ADMIN-002 §4, ADR-0014)
+// Espejo de backend-admin/apps/config/models.py::ModelConfig/ModelMetric.
+// =============================================================================
+
+export const analysisModeSchema = z.enum(['fast', 'balanced', 'accurate']);
+export type AnalysisMode = z.infer<typeof analysisModeSchema>;
+
+export const logLevelSchema = z.enum(['WARNING', 'INFO', 'DEBUG']);
+export type LogLevel = z.infer<typeof logLevelSchema>;
+
+/** Espejo de ModelConfigSerializer. Los campos Decimal de DRF serializan
+ * como string ("0.850"), no number — se parsean en el componente. */
+export interface ModelConfig {
+  id: string;
+  is_active: boolean;
+  unet_version: string;
+  unet_enabled: boolean;
+  classifier_version: string;
+  classifier_enabled: boolean;
+  confidence_threshold: string;
+  detection_sensitivity: string;
+  analysis_mode: AnalysisMode;
+  log_level: LogLevel;
+  updated_at: string;
+  updated_by: string | null;
+  compliance_warning: boolean;
+}
+
+/** Validación cliente del PATCH — espejo de ModelConfigSerializer
+ * (rangos 0-1 en services de confidence_threshold/detection_sensitivity). */
+export const modelConfigUpdateSchema = z.object({
+  unet_enabled: z.boolean().optional(),
+  classifier_enabled: z.boolean().optional(),
+  confidence_threshold: z.number().min(0, 'Debe estar entre 0 y 1').max(1, 'Debe estar entre 0 y 1').optional(),
+  detection_sensitivity: z.number().min(0, 'Debe estar entre 0 y 1').max(1, 'Debe estar entre 0 y 1').optional(),
+  analysis_mode: analysisModeSchema.optional(),
+  log_level: logLevelSchema.optional(),
+});
+export type ModelConfigUpdate = z.infer<typeof modelConfigUpdateSchema>;
+
+/** Espejo de ModelMetricSerializer (snapshot append-only). */
+export interface ModelMetric {
+  id: number;
+  measured_at: string;
+  precision_overall: string;
+  precision_per_class: Record<string, number>;
+  recall_overall: string;
+  f1_overall: string;
+  latency_p50_ms: number;
+  latency_p95_ms: number;
+  latency_p99_ms: number;
+  samples_evaluated: number;
+  created_at: string;
+}

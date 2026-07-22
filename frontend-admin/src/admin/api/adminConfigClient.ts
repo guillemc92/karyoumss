@@ -20,6 +20,9 @@ import {
   AdminProfile,
   AdminProfileUpdate,
   ChangePasswordInput,
+  ModelConfig,
+  ModelConfigUpdate,
+  ModelMetric,
   TwoFactorSetup,
   TwoFactorToggleResult,
 } from '../types/config';
@@ -193,6 +196,38 @@ export function createAdminConfigClient(baseUrl: string = DEFAULT_BASE_URL) {
       return request<TwoFactorToggleResult>(baseUrl, '/me/2fa/toggle/', {
         method: 'POST',
         body: { enabled, code },
+      });
+    },
+
+    /** GET /api/admin/models/active/  → configuración activa (P3, crea singleton si no existe). */
+    getActiveModel(opts?: { signal?: AbortSignal }): Promise<ModelConfig> {
+      return request<ModelConfig>(baseUrl, '/models/active/', {
+        method: 'GET',
+        signal: opts?.signal,
+      });
+    },
+
+    /** PATCH /api/admin/models/active/  → edición parcial (P3). */
+    updateActiveModel(patch: ModelConfigUpdate): Promise<ModelConfig> {
+      return request<ModelConfig>(baseUrl, '/models/active/', {
+        method: 'PATCH',
+        body: patch,
+      });
+    },
+
+    /** GET /api/admin/models/metrics/?days=N  → histórico filtrado (P3). */
+    getMetrics(days = 30, opts?: { signal?: AbortSignal }): Promise<ModelMetric[]> {
+      return request<ModelMetric[]>(baseUrl, `/models/metrics/?days=${days}`, {
+        method: 'GET',
+        signal: opts?.signal,
+      });
+    },
+
+    /** GET /api/admin/models/metrics/latest/  → último snapshot, undefined si no hay ninguno (204). */
+    getLatestMetric(opts?: { signal?: AbortSignal }): Promise<ModelMetric | undefined> {
+      return request<ModelMetric | undefined>(baseUrl, '/models/metrics/latest/', {
+        method: 'GET',
+        signal: opts?.signal,
       });
     },
   };

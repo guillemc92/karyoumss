@@ -961,6 +961,101 @@ Refs: ADR-0014 §P2, DD-ADMIN-002 §3, PM-ADMIN-004 (P1, precedente de patrón),
 
 ---
 
+## PM-ADMIN-006 — Panel "Configuración del Sistema": sección Modelo IA (P3)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-ADMIN-006 |
+| **Título** | Port de la sección Modelo IA (config del pipeline U-Net + EfficientNet-B3 + métricas) de `configuracion.html` a React con backend Django real (P3 de 6 secciones — la más compleja según el propio ADR) |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-07-22 |
+| **ADR origen** | [ADR-0014](docs/adr/0014-configuracion-panel-react-real-backend.md) §P3 |
+
+### Input (Artefacto Origen)
+
+- `docs/adr/0014-configuracion-panel-react-real-backend.md` §P3 (plan: `ModelConfig` + `ModelMetric`, 5 endpoints, `ModelsSection.tsx`, 10h — fase más compleja)
+- `docs/design/DD-ADMIN-002.md` §4 (contrato detallado: modelos, constraints, serializers, 5 form-sections del componente)
+- `configuracion.html` líneas 911-1074 (UI Contract de la sección Modelo IA)
+
+### Desviación deliberada del port literal del HTML legado
+
+El HTML original mostraba 3 modelos ficticios ("CarioNet v2.2/v2.3/v2.4")
+con métricas inventadas por card, y una sección "Entrenamiento y
+validación" con arquitectura **"ResNet-152 + Attention"** — dato que
+**contradice directamente AGENTS.md §9** (el pipeline real es U-Net +
+EfficientNet-B3, nunca Mask R-CNN/ResNet50; ver también la corrección
+equivalente ya documentada en ADR-0016 para "Mask R-CNN"→"U-Net"). El
+modelo real `ModelConfig` (DD §4.2) es además un **singleton** con solo
+2 componentes reales (segmentación + clasificación), no una lista de
+versiones seleccionables. Se implementó fiel al contrato real:
+- Card 1: **U-Net (segmentación)** + **EfficientNet-B3 (clasificación)**,
+  con su versión y toggle enabled/disabled reales de `ModelConfig`.
+- "Entrenamiento y validación" quedó como placeholder deshabilitado con
+  texto honesto ("se gestiona fuera de este panel"), sin fabricar
+  dataset/epochs/arquitectura — tal como el propio DD §4.6 punto 4 pide
+  ("no entra en este DD").
+- Corrección de typo del DD: `updated_at = models.ModelTimeField(...)`
+  no es un campo Django real → `models.DateTimeField(auto_now=True)`.
+
+### Alcance ejecutado (P3 — Modelo IA)
+
+- **Backend (`apps/config`):** `ModelConfig` (singleton vía
+  `UniqueConstraint(is_active=True)` + `select_for_update` anti-race),
+  `ModelMetric` (append-only, sin PATCH/DELETE expuesto), 5 endpoints
+  (`GET/PATCH /models/active/`, `GET/POST /models/metrics/?days=N`,
+  `GET /models/metrics/latest/`), `ModelConfigSerializer` con
+  `compliance_warning` (RN-02: threshold < 0.85).
+- **Frontend:** `ModelsSection.tsx` — 5 form-sections (modelos
+  disponibles, parámetros, métricas + sparkline SVG inline sin lib de
+  charting, entrenamiento placeholder, rendimiento), banner
+  `biomed-banner--warning` (nueva variante CSS, mismo patrón que
+  `--error`/`--info` ya existentes), diff-based PATCH (solo envía
+  campos modificados), carga de métricas independiente de la config
+  (degradación elegante RN-07: un fallo de métricas no bloquea la
+  edición).
+- **Bug real encontrado y corregido durante el propio desarrollo:**
+  el primer borrador llamaba a `onSaved()` (refresh de `ConfigSection`)
+  tras un PATCH exitoso, lo cual desmontaba todo el formulario mientras
+  recargaba y borraba el mensaje "Configuración guardada" antes de que
+  el usuario lo viera — detectado por un test que fallaba
+  consistentemente en 3 casos con el mismo síntoma. Se eliminó el
+  refresh innecesario (el componente ya tiene el estado fresco desde la
+  respuesta del propio PATCH).
+
+### Output (verificación)
+
+- **Backend:** 125/125 tests en `apps/config` verde; `models.py`,
+  `serializers.py`, `views.py` en 100%.
+- **Frontend:** 200/200 tests verde (19 archivos); `ModelsSection.tsx`
+  100% stmts / 90.56% branches / 100% funcs. Coverage global 98.02%
+  stmts / 88.49% branches / 95.89% funcs. Cero regresión.
+- **E2E real (Playwright/Chromium, `npm run dev:msw`):** login →
+  Configuración → Modelo IA → cards reales U-Net/EfficientNet-B3
+  visibles → métricas + sparkline cargadas → slider de confianza a 70%
+  + guardar → banner RN-02 visible → cambio de analysis_mode/log_level
+  persistido → toggle de U-Net desactivado y guardado. Capturas
+  verificadas visualmente, sin errores de consola no esperados.
+
+### Trazabilidad
+
+```
+FSD-UC-CONF-003 (configurar parámetros IA + consultar métricas)
+  → ADR-0014 §P3 (Modelo IA — fase más compleja)
+    → DD-ADMIN-002 §4 (corrección: ModelTimeField→DateTimeField;
+                        cards ficticias→U-Net/EfficientNet-B3 reales)
+      → apps/config/models.py|serializers.py|views.py (backend)
+        → types/config.ts + adminConfigClient.ts + ModelsSection.tsx (frontend)
+          → 125 tests backend + 13 tests ModelsSection (200 totales frontend)
+            → E2E Playwright verificado en navegador real
+```
+
+Refs: ADR-0014 §P3, DD-ADMIN-002 §4, AGENTS.md §9 (arquitectura IA real
+U-Net+EfficientNet-B3), PM-ADMIN-004/005 (P1/P2, precedente de patrón).
+
+---
+
 ## PM-CRUD-MUESTRA-001 — CRUD de Muestras (bootstrap bounded context clínico Django+React)
 
 | Campo | Valor |
