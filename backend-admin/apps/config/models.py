@@ -6,7 +6,8 @@ P1: AdminProfile (este modelo).
 P2: PasswordHistory (este archivo). two_factor_enabled/two_factor_secret/
     password_changed_at viven en apps.users.models.User, no acá.
 P3: ModelConfig, ModelMetric (este archivo).
-P4–P6: NotificationPreference, Integration, AppearancePreference — pendiente.
+P4: NotificationPreference (este archivo).
+P5–P6: Integration, AppearancePreference — pendiente.
 """
 import uuid
 import re
@@ -234,3 +235,45 @@ class ModelMetric(models.Model):
 
     def __str__(self):
         return f'ModelMetric<{self.measured_at:%Y-%m-%d}, precision={self.precision_overall}>'
+
+
+# =============================================================================
+# P4 — NotificationPreference (DD-ADMIN-002 §5)
+# =============================================================================
+
+class NotificationPreference(models.Model):
+    """
+    Preferencias de notificación por usuario (1:1). Matriz canal (email/
+    in-app) × categoría (revisión pendiente, validación supervisor,
+    errores de sistema, reentrenamiento completado) + horario silencioso
+    (RN-07: no notificar fuera de horario — el rango puede cruzar
+    medianoche, ej. 20:00-07:00, por eso no se valida start < end).
+    """
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.OneToOneField(
+        'users.User', on_delete=models.CASCADE, related_name='notification_prefs',
+    )
+
+    email_review_pending = models.BooleanField(default=True)
+    email_supervisor_validation = models.BooleanField(default=True)
+    email_system_errors = models.BooleanField(default=True)
+    email_training_completed = models.BooleanField(default=False)
+
+    inapp_review_pending = models.BooleanField(default=True)
+    inapp_supervisor_validation = models.BooleanField(default=True)
+    inapp_system_errors = models.BooleanField(default=True)
+    inapp_training_completed = models.BooleanField(default=True)
+
+    quiet_hours_enabled = models.BooleanField(default=False)
+    quiet_hours_start = models.TimeField(default='20:00')
+    quiet_hours_end = models.TimeField(default='07:00')
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = _admin_schema_table('admin_notification_prefs')
+        verbose_name = 'Preferencia de notificación'
+        verbose_name_plural = 'Preferencias de notificación'
+
+    def __str__(self):
+        return f'NotificationPreference<{self.user.email}>'

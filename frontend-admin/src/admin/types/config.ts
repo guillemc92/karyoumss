@@ -96,6 +96,33 @@ export interface TwoFactorToggleResult {
 }
 
 // =============================================================================
+// Notificaciones (P4 — DD-ADMIN-002 §5, ADR-0014)
+// Espejo de backend-admin/apps/config/models.py::NotificationPreference.
+// =============================================================================
+
+/** Espejo de NotificationPreferenceSerializer. quiet_hours_* llegan como
+ * "HH:MM:SS" (TimeField de DRF); <input type="time"> usa "HH:MM". */
+export interface NotificationPreference {
+  id: string;
+  email_review_pending: boolean;
+  email_supervisor_validation: boolean;
+  email_system_errors: boolean;
+  email_training_completed: boolean;
+  inapp_review_pending: boolean;
+  inapp_supervisor_validation: boolean;
+  inapp_system_errors: boolean;
+  inapp_training_completed: boolean;
+  quiet_hours_enabled: boolean;
+  quiet_hours_start: string;
+  quiet_hours_end: string;
+  updated_at: string;
+}
+
+export type NotificationPreferenceUpdate = Partial<
+  Omit<NotificationPreference, 'id' | 'updated_at'>
+>;
+
+// =============================================================================
 // Modelo IA (P3 — DD-ADMIN-002 §4, ADR-0014)
 // Espejo de backend-admin/apps/config/models.py::ModelConfig/ModelMetric.
 // =============================================================================

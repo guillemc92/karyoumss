@@ -5,7 +5,8 @@ P0: config_health_view (público, smoke check).
 P1: MeProfileView (RetrieveUpdateAPIView con get_or_create).
 P2: ChangePasswordView, TwoFactorSetupView, TwoFactorToggleView (este archivo).
 P3: ModelConfigView, ModelMetricListCreateView, ModelMetricLatestView (este archivo).
-P4–P6: vistas adicionales por sección.
+P4: MeNotificationsView (este archivo).
+P5–P6: vistas adicionales por sección.
 """
 from datetime import timedelta
 
@@ -20,12 +21,13 @@ from rest_framework.views import APIView
 
 from apps.users.permissions import IsAdminRole
 
-from .models import AdminProfile, ModelConfig, ModelMetric
+from .models import AdminProfile, ModelConfig, ModelMetric, NotificationPreference
 from .serializers import (
     AdminProfileSerializer,
     ChangePasswordSerializer,
     ModelConfigSerializer,
     ModelMetricSerializer,
+    NotificationPreferenceSerializer,
     TwoFactorToggleSerializer,
 )
 from .services import rotate_password, setup_2fa, toggle_2fa
@@ -51,8 +53,8 @@ def config_health_view(request):
     return Response({
         'status': 'ok',
         'app': 'config',
-        'version': '0.4.0-P3',
-        'sections': ['profile', 'security', 'modelos'],  # P1 + P2 + P3 habilitados
+        'version': '0.5.0-P4',
+        'sections': ['profile', 'security', 'modelos', 'notifications'],  # P1-P4 habilitados
     })
 
 
@@ -223,3 +225,28 @@ class ModelMetricLatestView(APIView):
         if latest is None:
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(ModelMetricSerializer(latest).data)
+
+
+class MeNotificationsView(generics.RetrieveUpdateAPIView):
+    """
+    GET   /api/admin/me/notifications/  → detalle (crea si no existe)
+    PATCH /api/admin/me/notifications/  → edición parcial
+
+    P4 — DD-ADMIN-002 §5.3. Mismo patrón que MeProfileView: preferencias
+    propias del usuario autenticado, get_or_create idempotente, sin
+    necesidad de IsOwnerOrAdmin a nivel de objeto porque el queryset ya
+    se filtra por `user=self.request.user`.
+    """
+    serializer_class = NotificationPreferenceSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_object(self):
+        prefs, created = NotificationPreference.objects.get_or_create(user=self.request.user)
+        if created:
+            # Los defaults de TimeField ('20:00') quedan como string crudo
+            # en la instancia recién creada hasta el próximo round-trip a
+            # la DB — sin este refresh, la primera respuesta serializa
+            # "20:00" y las siguientes "20:00:00" (mismo valor, formato
+            # inconsistente para el frontend).
+            prefs.refresh_from_db()
+        return prefs

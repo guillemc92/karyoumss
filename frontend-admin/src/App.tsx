@@ -26,6 +26,7 @@ import { LoginPage } from './admin/pages/LoginPage';
 import { ProfileSection } from './admin/components/ProfileSection';
 import { SecuritySection } from './admin/components/SecuritySection';
 import { ModelsSection } from './admin/components/ModelsSection';
+import { NotificationsSection } from './admin/components/NotificationsSection';
 import { MswBootstrapError } from './admin/components/MswBootstrapError';
 
 const USE_MSW = import.meta.env.VITE_USE_MSW === 'true';
@@ -66,12 +67,12 @@ function renderSection(section: SidebarSection) {
     return <ModelsSection />;
   }
 
+  // P4 (DD-ADMIN-002): sección "notifications" ya tiene vista real.
+  if (section === 'notifications') {
+    return <NotificationsSection />;
+  }
+
   const placeholders: Partial<Record<SidebarSection, { icon: string; title: string; hint: string }>> = {
-    notifications: {
-      icon: 'fa-bell',
-      title: 'Notificaciones',
-      hint: 'Preferencias de alertas. Vista demo.',
-    },
     integrations: {
       icon: 'fa-plug',
       title: 'Integraciones',
@@ -84,7 +85,7 @@ function renderSection(section: SidebarSection) {
     },
   };
 
-  const cfg = placeholders[section] ?? placeholders.notifications!;
+  const cfg = placeholders[section] ?? placeholders.integrations!;
   return <Placeholder {...cfg} />;
 }
 

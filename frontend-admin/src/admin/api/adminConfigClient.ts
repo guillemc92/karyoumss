@@ -23,6 +23,8 @@ import {
   ModelConfig,
   ModelConfigUpdate,
   ModelMetric,
+  NotificationPreference,
+  NotificationPreferenceUpdate,
   TwoFactorSetup,
   TwoFactorToggleResult,
 } from '../types/config';
@@ -228,6 +230,22 @@ export function createAdminConfigClient(baseUrl: string = DEFAULT_BASE_URL) {
       return request<ModelMetric | undefined>(baseUrl, '/models/metrics/latest/', {
         method: 'GET',
         signal: opts?.signal,
+      });
+    },
+
+    /** GET /api/admin/me/notifications/  → detalle (crea si no existe). */
+    getNotifications(opts?: { signal?: AbortSignal }): Promise<NotificationPreference> {
+      return request<NotificationPreference>(baseUrl, '/me/notifications/', {
+        method: 'GET',
+        signal: opts?.signal,
+      });
+    },
+
+    /** PATCH /api/admin/me/notifications/  → edición parcial (P4). */
+    updateNotifications(patch: NotificationPreferenceUpdate): Promise<NotificationPreference> {
+      return request<NotificationPreference>(baseUrl, '/me/notifications/', {
+        method: 'PATCH',
+        body: patch,
       });
     },
   };

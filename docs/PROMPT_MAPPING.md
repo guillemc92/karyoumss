@@ -1056,6 +1056,93 @@ U-Net+EfficientNet-B3), PM-ADMIN-004/005 (P1/P2, precedente de patrón).
 
 ---
 
+## PM-ADMIN-007 — Panel "Configuración del Sistema": sección Notificaciones (P4)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-ADMIN-007 |
+| **Título** | Port de la sección Notificaciones (matriz canal × categoría + horario silencioso) de `configuracion.html` a React con backend Django real (P4 de 6 secciones — la más simple de las 3 restantes) |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-07-22 |
+| **ADR origen** | [ADR-0014](docs/adr/0014-configuracion-panel-react-real-backend.md) §P4 |
+
+### Elección de fase (por qué P4 antes que P5/P6)
+
+El propio ADR-0014 (§Notas) marca **P5 (Integraciones)** como candidata a
+diferir — "puede esperar a que aparezca la primera integración real" —
+mientras que P4 no tiene esa salvedad y es la de menor esfuerzo (5h) sin
+dependencias externas (a diferencia de P5, que requiere cifrado de
+credenciales + llamadas HTTP reales con timeout). Se priorizó P4 sobre
+P6 (Visualización, 4h) por ser la siguiente en el orden natural del ADR
+y no tener ninguna razón documentada para saltarla.
+
+### Input (Artefacto Origen)
+
+- `docs/adr/0014-configuracion-panel-react-real-backend.md` §P4 (plan: `NotificationPreference`, 2 endpoints, `NotificationsSection.tsx`, 5h)
+- `docs/design/DD-ADMIN-002.md` §5 (contrato: matriz email/in-app × 4 categorías + horario silencioso)
+- `configuracion.html` líneas 1076-1107 (UI Contract simplificado — el DD es la fuente de verdad real, el HTML solo mostraba 3 toggles sueltos vs. la matriz completa del modelo)
+
+### Bug real encontrado y corregido durante el propio desarrollo
+
+Django no coacciona el `default` de un `TimeField` (`'20:00'`, string) a
+`datetime.time` en el momento de `Model.__init__` — solo lo hace en el
+round-trip a la base de datos. Resultado: la **primera vez** que
+`get_or_create()` creaba la fila de un usuario nuevo, la respuesta
+serializaba `quiet_hours_start: "20:00"` (sin segundos); en cualquier
+lectura posterior (tras guardar o releer), el mismo campo serializaba
+`"20:00:00"` (con segundos) — mismo valor, formato inconsistente para
+el frontend. Detectado probando el endpoint manualmente antes de
+escribir los tests (mismo hábito que encontró el bug de Fernet en P2 y
+el bug de refresh en P3). Fix: `prefs.refresh_from_db()` en
+`MeNotificationsView.get_object()` cuando `created=True`.
+
+### Alcance ejecutado (P4 — Notificaciones)
+
+- **Backend (`apps/config`):** `NotificationPreference` (1:1 con
+  `User`, 8 booleanos email/in-app × 4 categorías + horario
+  silencioso), `NotificationPreferenceSerializer`, `MeNotificationsView`
+  (mismo patrón `RetrieveUpdateAPIView` + `get_or_create` que
+  `MeProfileView`, sin necesidad de `IsOwnerOrAdmin` a nivel de objeto).
+- **Frontend:** `NotificationsSection.tsx` — tabla matriz 4×2 con
+  `StatusToggle` reutilizado por celda, bloque de horario silencioso
+  con `<input type="time">` (conversión `"HH:MM"` ↔ `"HH:MM:SS"`),
+  diff-based PATCH (solo envía campos modificados), conectada en
+  `App.tsx` reemplazando el placeholder.
+
+### Output (verificación)
+
+- **Backend:** 139/139 tests en `apps/config` verde; `models.py`,
+  `serializers.py`, `views.py` en 100%.
+- **Frontend:** 208/208 tests verde (20 archivos);
+  `NotificationsSection.tsx` 100% stmts / 92.68% branches / 93.33%
+  funcs. Coverage global 98.17% stmts / 88.61% branches / 95.7% funcs.
+  Cero regresión.
+- **E2E real (Playwright/Chromium, `npm run dev:msw`):** login →
+  Configuración → Notificaciones → matriz visible con defaults
+  correctos → toggle de "Reentrenamiento completado" (email) + guardar
+  → activar horario silencioso → cambiar horas (22:30/06:15) + guardar
+  → feedback "Preferencias guardadas" visible. Capturas verificadas
+  visualmente, sin errores de consola no esperados.
+
+### Trazabilidad
+
+```
+FSD-UC-CONF-004 (configurar preferencias de notificación)
+  → ADR-0014 §P4 (Notificaciones — priorizada sobre P5 por el propio ADR)
+    → DD-ADMIN-002 §5 (matriz canal×categoría + horario silencioso)
+      → apps/config/models.py|serializers.py|views.py (backend,
+                        + fix refresh_from_db en get_or_create)
+        → types/config.ts + adminConfigClient.ts + NotificationsSection.tsx (frontend)
+          → 139 tests backend + 8 tests NotificationsSection (208 totales frontend)
+            → E2E Playwright verificado en navegador real
+```
+
+Refs: ADR-0014 §P4, DD-ADMIN-002 §5, PM-ADMIN-004/005/006 (P1/P2/P3, precedente de patrón).
+
+---
+
 ## PM-CRUD-MUESTRA-001 — CRUD de Muestras (bootstrap bounded context clínico Django+React)
 
 | Campo | Valor |

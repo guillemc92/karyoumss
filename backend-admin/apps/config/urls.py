@@ -5,6 +5,7 @@ P0: config/health/ (público, smoke check).
 P1: me/profile/ (autenticado, RetrieveUpdate).
 P2: me/password/, me/2fa/setup/, me/2fa/toggle/ (autenticado, action endpoints).
 P3: models/active/, models/metrics/, models/metrics/latest/ (solo admin).
+P4: me/notifications/ (autenticado, RetrieveUpdate).
 
 Namespace: 'config'. Se monta en admin_backend/urls.py con prefijo
 '/api/admin/' (igual que apps/users y apps/audit).
@@ -14,6 +15,7 @@ from django.urls import path
 from .views import (
     config_health_view,
     ChangePasswordView,
+    MeNotificationsView,
     MeProfileView,
     ModelConfigView,
     ModelMetricLatestView,
@@ -50,4 +52,9 @@ urlpatterns = [
     path('models/active/', ModelConfigView.as_view(), name='models-active'),
     path('models/metrics/', ModelMetricListCreateView.as_view(), name='models-metrics'),
     path('models/metrics/latest/', ModelMetricLatestView.as_view(), name='models-metrics-latest'),
+
+    # P4 — Notificaciones del usuario autenticado.
+    # GET   /api/admin/me/notifications/  → detalle (crea si no existe)
+    # PATCH /api/admin/me/notifications/  → edición parcial
+    path('me/notifications/', MeNotificationsView.as_view(), name='me-notifications'),
 ]

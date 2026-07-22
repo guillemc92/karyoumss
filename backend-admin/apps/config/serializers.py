@@ -4,7 +4,8 @@ Serializers de apps/config (DD-ADMIN-002).
 P1: AdminProfileSerializer (este archivo).
 P2: ChangePasswordSerializer, TwoFactorToggleSerializer (este archivo).
 P3: ModelConfigSerializer, ModelMetricSerializer (este archivo).
-P4–P6: NotificationPreference, Integration, AppearancePreference.
+P4: NotificationPreferenceSerializer (este archivo).
+P5–P6: Integration, AppearancePreference.
 """
 from decimal import Decimal
 
@@ -14,6 +15,7 @@ from .models import (
     AdminProfile,
     ModelConfig,
     ModelMetric,
+    NotificationPreference,
     _validate_full_name,
     _normalize_email,
     _validate_phone,
@@ -129,3 +131,23 @@ class ModelMetricSerializer(serializers.ModelSerializer):
             'samples_evaluated', 'created_at',
         ]
         read_only_fields = ['id', 'created_at']
+
+
+class NotificationPreferenceSerializer(serializers.ModelSerializer):
+    """Serializer de preferencias de notificación (P4 — DD-ADMIN-002 §5.3).
+    Todos los campos son editables salvo id/updated_at; no hay reglas de
+    negocio adicionales (RN-07 de horario silencioso se aplica en el
+    servicio de envío de notificaciones, fuera de alcance de este DD)."""
+
+    class Meta:
+        model = NotificationPreference
+        fields = [
+            'id',
+            'email_review_pending', 'email_supervisor_validation',
+            'email_system_errors', 'email_training_completed',
+            'inapp_review_pending', 'inapp_supervisor_validation',
+            'inapp_system_errors', 'inapp_training_completed',
+            'quiet_hours_enabled', 'quiet_hours_start', 'quiet_hours_end',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'updated_at']

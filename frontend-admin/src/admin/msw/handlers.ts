@@ -227,6 +227,41 @@ function makeFakeJwt(expSecondsFromNow: number): string {
   return `${header}.${payload}.mock-signature`;
 }
 
+/** Mock de Notificaciones (P4 — DD-ADMIN-002 §5). */
+interface MockNotificationPreference {
+  id: string;
+  email_review_pending: boolean;
+  email_supervisor_validation: boolean;
+  email_system_errors: boolean;
+  email_training_completed: boolean;
+  inapp_review_pending: boolean;
+  inapp_supervisor_validation: boolean;
+  inapp_system_errors: boolean;
+  inapp_training_completed: boolean;
+  quiet_hours_enabled: boolean;
+  quiet_hours_start: string;
+  quiet_hours_end: string;
+  updated_at: string;
+}
+
+const initialNotificationPreference: MockNotificationPreference = {
+  id: 'cccccccc-cccc-cccc-cccc-cccccccccccc',
+  email_review_pending: true,
+  email_supervisor_validation: true,
+  email_system_errors: true,
+  email_training_completed: false,
+  inapp_review_pending: true,
+  inapp_supervisor_validation: true,
+  inapp_system_errors: true,
+  inapp_training_completed: true,
+  quiet_hours_enabled: false,
+  quiet_hours_start: '20:00:00',
+  quiet_hours_end: '07:00:00',
+  updated_at: '2026-06-15T10:00:00Z',
+};
+
+let mockNotificationPreference: MockNotificationPreference = { ...initialNotificationPreference };
+
 function issueTokens(account: DemoAccount): { access: string; refresh: string } {
   const access = makeFakeJwt(30 * 60);
   const refresh = makeFakeJwt(24 * 60 * 60);
@@ -246,6 +281,7 @@ export function resetMockData(): void {
   mockModelConfig = { ...initialModelConfig };
   mockMetrics = _buildInitialMetrics();
   mockMetricNextId = mockMetrics.length + 1;
+  mockNotificationPreference = { ...initialNotificationPreference };
   auditLog = Object.fromEntries(
     Object.entries(initialAuditLog).map(([k, v]) => [k, v.map((e) => ({ ...e }))]),
   );
@@ -504,6 +540,24 @@ export const handlers = [
       return new HttpResponse(null, { status: 204 });
     }
     return HttpResponse.json(mockMetrics[0]);
+  }),
+
+  // ===========================================================================
+  // DD-ADMIN-002 P4 — /api/admin/me/notifications/
+  // ===========================================================================
+
+  http.get('/api/admin/me/notifications/', () => {
+    return HttpResponse.json(mockNotificationPreference);
+  }),
+
+  http.patch('/api/admin/me/notifications/', async ({ request }) => {
+    const body = (await request.json()) as Record<string, unknown>;
+    mockNotificationPreference = {
+      ...mockNotificationPreference,
+      ...body,
+      updated_at: new Date().toISOString(),
+    } as MockNotificationPreference;
+    return HttpResponse.json(mockNotificationPreference);
   }),
 
   // ===========================================================================
