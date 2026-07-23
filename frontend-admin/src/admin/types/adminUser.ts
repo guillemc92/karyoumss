@@ -20,7 +20,15 @@ export interface AdminUser {
   created_by: string | null; // UUID del AdminUser creador (o null si seed)
 }
 
-export type AdminUserDraft = Pick<AdminUser, 'full_name' | 'email' | 'role' | 'active'>;
+/**
+ * `password` es obligatorio solo al crear (bug corregido 2026-07-23: el
+ * backend antes creaba la cuenta institucional sin ningún `users.User`
+ * vinculado, dejando al usuario sin forma real de loguearse). El path de
+ * edición (AdminUsersPanel.submitFromForm) nunca lee este campo del draft.
+ */
+export type AdminUserDraft = Pick<AdminUser, 'full_name' | 'email' | 'role' | 'active'> & {
+  password: string;
+};
 
 export interface AdminUserUpdate {
   full_name?: string;

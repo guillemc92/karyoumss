@@ -69,6 +69,7 @@ describe('adminUsersStore (puro, con client inyectado)', () => {
         email: sampleUser.email,
         role: sampleUser.role,
         active: true,
+        password: 'StrongPass1234',
       });
     });
     expect(result.current.state.users).toContainEqual(sampleUser);
@@ -184,6 +185,7 @@ describe('adminUsersStore (puro, con client inyectado)', () => {
         email: updated.email,
         role: updated.role,
         active: updated.active,
+        password: 'StrongPass1234',
       });
     });
     expect(result.current.state.users).toHaveLength(1);

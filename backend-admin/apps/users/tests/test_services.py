@@ -20,6 +20,8 @@ from apps.users.services import (
 
 pytestmark = pytest.mark.django_db
 
+STRONG_PW = 'StrongPass1234'
+
 
 class TestCreateAdminUser:
     def test_creates_with_valid_data(self):
@@ -27,6 +29,7 @@ class TestCreateAdminUser:
             full_name='Lucía Vargas',
             email='lucia@biomed.umss.bo',
             role='supervisor',
+            password=STRONG_PW,
             active=True,
         )
         assert u.pk is not None
@@ -39,6 +42,7 @@ class TestCreateAdminUser:
             full_name='Carlos Pinto',
             email='  Carlos.Pinto@BIOMED.umss.bo  ',
             role='analista',
+            password=STRONG_PW,
         )
         assert u.email == 'carlos.pinto@biomed.umss.bo'
 
@@ -47,6 +51,7 @@ class TestCreateAdminUser:
             full_name='  María López  ',
             email='maria@biomed.umss.bo',
             role='analista',
+            password=STRONG_PW,
         )
         assert u.full_name == 'María López'
 
@@ -55,6 +60,7 @@ class TestCreateAdminUser:
             full_name='Test Default',
             email='td@biomed.umss.bo',
             role='analista',
+            password=STRONG_PW,
         )
         assert u.active is True
 
@@ -64,6 +70,7 @@ class TestCreateAdminUser:
             full_name='Hijo de Creator',
             email='hijo@biomed.umss.bo',
             role='analista',
+            password=STRONG_PW,
             created_by=creator,
         )
         assert u.created_by_id == creator.pk
@@ -74,6 +81,7 @@ class TestCreateAdminUser:
                 full_name='ab',
                 email='short@biomed.umss.bo',
                 role='analista',
+                password=STRONG_PW,
             )
 
     def test_rejects_long_full_name(self):
@@ -82,6 +90,7 @@ class TestCreateAdminUser:
                 full_name='x' * 81,
                 email='long@biomed.umss.bo',
                 role='analista',
+                password=STRONG_PW,
             )
 
     def test_rejects_invalid_role(self):
@@ -90,6 +99,7 @@ class TestCreateAdminUser:
                 full_name='Bad Role',
                 email='badrole@biomed.umss.bo',
                 role='hacker',
+                password=STRONG_PW,
             )
         assert 'rol' in str(exc.value).lower() or 'role' in str(exc.value).lower()
 
@@ -100,8 +110,90 @@ class TestCreateAdminUser:
                 full_name='Duplicado',
                 email='dup@biomed.umss.bo',
                 role='analista',
+                password=STRONG_PW,
             )
         assert 'email' in str(exc.value).lower()
+
+    def test_rejects_weak_password(self):
+        with pytest.raises(ValidationError) as exc:
+            create_admin_user(
+                full_name='Weak Pw',
+                email='weakpw@biomed.umss.bo',
+                role='analista',
+                password='short1',
+            )
+        assert 'password' in exc.value.message_dict
+
+    def test_rejects_password_without_uppercase(self):
+        with pytest.raises(ValidationError):
+            create_admin_user(
+                full_name='No Upper',
+                email='noupper@biomed.umss.bo',
+                role='analista',
+                password='alllowercase123',
+            )
+
+    def test_rejects_password_without_digit(self):
+        with pytest.raises(ValidationError):
+            create_admin_user(
+                full_name='No Digit',
+                email='nodigit@biomed.umss.bo',
+                role='analista',
+                password='NoDigitsHereXX',
+            )
+
+    def test_creates_linked_authenticatable_user(self):
+        """Bug corregido 2026-07-23: el AdminUser creado debe tener un
+        users.User vinculado con la password recibida, para que el login
+        real (ADR-0017) funcione."""
+        u = create_admin_user(
+            full_name='Con Login',
+            email='conlogin@biomed.umss.bo',
+            role='analista',
+            password=STRONG_PW,
+        )
+        assert u.user is not None
+        assert u.user.check_password(STRONG_PW)
+        assert u.user.email == 'conlogin@biomed.umss.bo'
+        assert u.user.role == 'analista'
+
+    def test_inactive_user_creates_inactive_linked_user(self):
+        u = create_admin_user(
+            full_name='Inactivo',
+            email='inactivo@biomed.umss.bo',
+            role='analista',
+            password=STRONG_PW,
+            active=False,
+        )
+        assert u.user.is_active is False
+
+    def test_admin_role_sets_is_staff_on_linked_user(self):
+        u = create_admin_user(
+            full_name='Admin Nuevo',
+            email='adminnuevo@biomed.umss.bo',
+            role='admin',
+            password=STRONG_PW,
+        )
+        assert u.user.is_staff is True
+
+    def test_adopts_existing_orphan_user_same_email(self):
+        """Un User puede existir ya (ej. login/exchange previo) sin
+        AdminUser vinculado — create_admin_user debe adoptarlo, no
+        fallar por email duplicado en users.User."""
+        from apps.users.models import User
+        orphan = User.objects.create(email='huerfano@biomed.umss.bo', username='huerfano@biomed.umss.bo')
+        assert not hasattr(orphan, 'admin_profile') or True  # no AdminUser vinculado aún
+
+        u = create_admin_user(
+            full_name='Adoptado',
+            email='huerfano@biomed.umss.bo',
+            role='supervisor',
+            password=STRONG_PW,
+        )
+        orphan.refresh_from_db()
+        assert u.user_id == orphan.pk
+        assert orphan.check_password(STRONG_PW)
+        assert orphan.role == 'supervisor'
 
 
 class TestUpdateAdminUser:

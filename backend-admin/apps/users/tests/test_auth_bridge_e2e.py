@@ -250,6 +250,7 @@ class TestE2EPostExchange:
                 'email': 'carlos.lopez@biomed.umss.bo',
                 'role': 'analista',
                 'active': True,
+                'password': 'StrongPass1234',
             },
             format='json',
         )

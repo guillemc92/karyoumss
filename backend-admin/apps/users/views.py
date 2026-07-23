@@ -71,6 +71,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                 full_name=serializer.validated_data['full_name'],
                 email=serializer.validated_data['email'],
                 role=serializer.validated_data['role'],
+                password=serializer.validated_data['password'],
                 active=serializer.validated_data.get('active', True),
                 created_by=actor,
             )

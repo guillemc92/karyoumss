@@ -57,14 +57,28 @@ class AdminUserSerializer(serializers.ModelSerializer):
                 validated_data['created_by'] = AdminUser.objects.get(user=request.user)
             except AdminUser.DoesNotExist:
                 pass  # El actor puede no tener perfil AdminUser aún (edge case bootstrap)
+        # 'password' (declarado en AdminUserCreateSerializer) no es un campo
+        # de AdminUser — lo consume apps.users.views.AdminUserViewSet.create()
+        # llamando a services.create_admin_user() directamente (no vía
+        # serializer.save()). Se descarta acá para que este .create() siga
+        # siendo seguro de invocar directamente (ej. en tests).
+        validated_data.pop('password', None)
         return super().create(validated_data)
 
 
 class AdminUserCreateSerializer(AdminUserSerializer):
-    """Serializer específico para POST. Acepta solo los campos necesarios para alta."""
+    """
+    Serializer específico para POST. Acepta los campos necesarios para alta
+    MÁS `password`: crear un AdminUser sin contraseña dejaba el usuario sin
+    forma de loguearse (el login real valida contra `users.User`, no contra
+    `AdminUser`) — bug detectado en demo con cuentas creadas sin acceso.
+    `password` es write_only: nunca se refleja en la respuesta ni en
+    ningún GET/list posterior.
+    """
+    password = serializers.CharField(write_only=True, min_length=12, trim_whitespace=False)
 
     class Meta(AdminUserSerializer.Meta):
-        fields = ['full_name', 'email', 'role', 'active']
+        fields = ['full_name', 'email', 'role', 'active', 'password']
         read_only_fields = []
 
 

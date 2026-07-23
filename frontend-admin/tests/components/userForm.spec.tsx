@@ -3,6 +3,8 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { UserForm } from '../../src/admin/components/UserForm';
 
+const STRONG_PW = 'StrongPass1234';
+
 describe('UserForm — validación', () => {
   beforeEach(() => {});
 
@@ -33,8 +35,30 @@ describe('UserForm — validación', () => {
     expect(screen.getByTestId('error-email')).toHaveTextContent(/inválido/);
   });
 
-  it('llama onSubmit con draft válido', async () => {
-    let captured: { full_name: string; email: string; role: string; active: boolean } | null = null;
+  it('muestra error si la contraseña es débil (corta)', async () => {
+    const user = userEvent.setup();
+    render(<UserForm onSubmit={() => Promise.resolve()} onCancel={() => undefined} />);
+    await user.type(screen.getByTestId('input-full_name'), 'Válido Nombre');
+    await user.type(screen.getByTestId('input-email'), 'test@biomed.umss.bo');
+    await user.type(screen.getByTestId('input-password'), 'short1A');
+    await user.type(screen.getByTestId('input-confirm-password'), 'short1A');
+    await user.click(screen.getByTestId('submit-user'));
+    expect(screen.getByTestId('error-password')).toHaveTextContent(/12 caracteres/);
+  });
+
+  it('muestra error si la contraseña no coincide con la confirmación', async () => {
+    const user = userEvent.setup();
+    render(<UserForm onSubmit={() => Promise.resolve()} onCancel={() => undefined} />);
+    await user.type(screen.getByTestId('input-full_name'), 'Válido Nombre');
+    await user.type(screen.getByTestId('input-email'), 'test@biomed.umss.bo');
+    await user.type(screen.getByTestId('input-password'), STRONG_PW);
+    await user.type(screen.getByTestId('input-confirm-password'), 'Different1234');
+    await user.click(screen.getByTestId('submit-user'));
+    expect(screen.getByTestId('error-confirm-password')).toHaveTextContent(/no coincide/i);
+  });
+
+  it('llama onSubmit con draft válido (incluye password)', async () => {
+    let captured: { full_name: string; email: string; role: string; active: boolean; password: string } | null = null;
     const user = userEvent.setup();
     render(
       <UserForm
@@ -46,6 +70,8 @@ describe('UserForm — validación', () => {
     );
     await user.type(screen.getByTestId('input-full_name'), 'Lucía Vargas');
     await user.type(screen.getByTestId('input-email'), 'lucia@biomed.umss.bo');
+    await user.type(screen.getByTestId('input-password'), STRONG_PW);
+    await user.type(screen.getByTestId('input-confirm-password'), STRONG_PW);
     await user.selectOptions(screen.getByTestId('select-role'), 'supervisor');
     await user.click(screen.getByTestId('submit-user'));
     await waitFor(() => expect(captured).not.toBeNull());
@@ -54,10 +80,11 @@ describe('UserForm — validación', () => {
       email: 'lucia@biomed.umss.bo',
       role: 'supervisor',
       active: true,
+      password: STRONG_PW,
     });
   });
 
-  it('email es readOnly en modo edición', () => {
+  it('email es readOnly en modo edición y no muestra campos de password', () => {
     render(
       <UserForm
         editing={{
@@ -75,6 +102,8 @@ describe('UserForm — validación', () => {
       />,
     );
     expect(screen.getByTestId('input-email')).toHaveAttribute('readonly');
+    expect(screen.queryByTestId('input-password')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('input-confirm-password')).not.toBeInTheDocument();
   });
 
   it('llama onCancel al click en cancelar', async () => {
@@ -102,6 +131,8 @@ describe('UserForm — validación', () => {
     );
     await user.type(screen.getByTestId('input-full_name'), 'Válido Nombre');
     await user.type(screen.getByTestId('input-email'), 'ok@biomed.umss.bo');
+    await user.type(screen.getByTestId('input-password'), STRONG_PW);
+    await user.type(screen.getByTestId('input-confirm-password'), STRONG_PW);
     await user.click(screen.getByTestId('submit-user'));
     await waitFor(() =>
       expect(screen.getByTestId('error-general')).toHaveTextContent(/server caído/),
@@ -121,6 +152,8 @@ describe('UserForm — validación', () => {
     );
     await user.type(screen.getByTestId('input-full_name'), 'Válido Nombre');
     await user.type(screen.getByTestId('input-email'), 'ok@biomed.umss.bo');
+    await user.type(screen.getByTestId('input-password'), STRONG_PW);
+    await user.type(screen.getByTestId('input-confirm-password'), STRONG_PW);
     await user.click(screen.getByTestId('submit-user'));
     await waitFor(() =>
       expect(screen.getByTestId('error-general')).toHaveTextContent(/Error al guardar/),

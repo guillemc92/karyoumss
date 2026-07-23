@@ -1239,6 +1239,89 @@ y P7 (shell, probablemente ya subsumido — confirmar con el usuario).
 
 ---
 
+## PM-USER-PASSWORD-BUGFIX-01 — Usuarios creados por el CRUD no podían loguearse
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-USER-PASSWORD-BUGFIX-01 |
+| **Título** | Fix: el alta de usuarios institucionales (`AdminUser`) no creaba ningún `users.User` vinculado, dejando la cuenta sin forma real de acceder al sistema |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Sonnet |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-07-23 |
+
+### Reporte del usuario
+
+> "tengo 2 usuarios ana y bruno, pero veo que no tienen contraseña para
+> acceder al sistema, en crud de creación de usuario no existe password,
+> como solucionamos esto, por que si creo un usuario debería ser con
+> password mas para el acceso."
+
+### Causa raíz (confirmada por código, no por intuición)
+
+`apps/users/services.py::create_admin_user` (usado por `POST
+/api/admin/users/`, el CRUD de "Usuarios" del panel admin) creaba
+**únicamente** la fila `AdminUser` (cuenta institucional/dominio) — nunca
+un `users.User` (auth) vinculado. El login real (`POST /api/auth/login/`,
+ADR-0017) valida credenciales contra `users.User.password`, no contra
+`AdminUser`. Resultado: **todo usuario creado desde el CRUD quedaba sin
+ninguna forma de loguearse**, silenciosamente — ni el formulario
+(`UserForm.tsx`) ni el serializer (`AdminUserCreateSerializer`) tenían
+campo `password` en absoluto. `apps/users/factories.py` (solo test
+fixtures) sí creaba el `User` vinculado, lo que ocultó el bug en toda la
+suite de tests existente hasta ahora.
+
+### Decisión de diseño confirmada con el usuario
+
+Se preguntó explícitamente cómo asignar la contraseña inicial: **(a)** el
+admin la escribe directamente en el formulario, o **(b)** el sistema la
+genera y la muestra una sola vez (más seguro, requiere UI de "forzar
+cambio en primer login" que no existe todavía). El usuario eligió **(a)**
+por simplicidad — mismo patrón que P2 (Seguridad): política de fortaleza
+≥12 caracteres, 1 mayúscula, 1 dígito.
+
+### Cambios aplicados
+
+| Archivo | Tipo | Descripción |
+|---|---|---|
+| `backend-admin/apps/users/serializers.py` | M | `AdminUserCreateSerializer.password` (write_only, min_length=12); `.create()` descarta `password` antes de `super().create()` (no es campo de `AdminUser`) |
+| `backend-admin/apps/users/services.py` | M | `create_admin_user(..., password: str)`: valida fortaleza, `get_or_create` del `User` vinculado (adopta un `User` huérfano preexistente si ya existía por un exchange previo), `set_password`, `is_staff=(role=='admin')`, vincula `AdminUser.user` |
+| `backend-admin/apps/users/views.py` | M | `AdminUserViewSet.create` pasa `password` al servicio |
+| `backend-admin/apps/users/tests/test_services.py` | M | +5 tests nuevos (fortaleza débil/sin mayúscula/sin dígito, User vinculado autenticable, adopción de User huérfano, inactivo→User inactivo) + password agregado a los 9 tests preexistentes |
+| `backend-admin/apps/users/tests/test_views.py` | M | +3 tests nuevos (login funciona tras crear, sin password→400, password débil→400) |
+| `backend-admin/apps/users/tests/test_views_edges.py` | M | password agregado a 5 POSTs preexistentes (2 de ellos monkeypatchean el servicio — sin password válido, el request nunca llegaba a alcanzar el mock) |
+| `backend-admin/apps/users/tests/test_serializers.py` | M | password agregado a 2 tests + expectativa de campos del serializer actualizada |
+| `backend-admin/apps/users/tests/test_auth_bridge_e2e.py` | M | password agregado al POST del E2E de exchange+create |
+| `frontend-admin/src/admin/types/adminUser.ts` | M | `AdminUserDraft.password: string` (obligatorio) |
+| `frontend-admin/src/admin/components/UserForm.tsx` | M | Campos "Contraseña inicial" + "Confirmar contraseña" (solo en alta, ocultos al editar), validación de fortaleza + coincidencia |
+| `frontend-admin/src/admin/msw/handlers.ts` | M | POST `/api/admin/users/` valida password + `dynamicAccounts[]`: usuarios creados en demo quedan loguéables de verdad (cierra el círculo crear→loguearse en MSW) |
+| `frontend-admin/src/admin/components/NotificationsSection.tsx` | M | Fix de tipos no relacionado encontrado de paso: `values[cat.emailField]` tipaba `string \| boolean` en vez de `boolean` (`tsc --noEmit` lo señaló al revisar este fix) |
+| `frontend-admin/tests/components/userForm.spec.tsx` | M | +2 tests nuevos (fortaleza débil, mismatch confirmación) + password en tests de submit exitoso |
+| `frontend-admin/tests/components/adminUsersPanel.spec.tsx`, `coverageBoost.spec.tsx`, `tests/adminClient.spec.ts`, `tests/adminUsersStore.spec.tsx` | M | password agregado a los drafts de creación existentes |
+
+### Output (verificación)
+
+- **Backend:** 339/339 tests verde (suite completa, no solo apps/users), **99% cobertura total**. Único gap: un `except IntegrityError` defensivo pre-existente (protege contra race condition que `full_clean()` normalmente ya atrapa antes) — no introducido por este fix, no se persiguió.
+- **Frontend:** 219/219 tests verde (21 archivos), 98.32% stmts / 88.94% branches / 96.11% funcs. `tsc --noEmit` limpio (solo 3 errores preexistentes no relacionados).
+- **E2E real (Playwright/Chromium, `npm run dev:msw`):** login admin → Usuarios → "Nuevo usuario" → campo "Contraseña inicial" visible → password débil rechazada con mensaje claro → password fuerte crea el usuario → **logout → login con las credenciales recién creadas funciona** (redirige según el rol asignado). Capturas verificadas visualmente.
+
+### Trazabilidad
+
+```
+Reporte del usuario (2026-07-23): "no tienen contraseña para acceder"
+  → Investigación de código: create_admin_user nunca crea users.User
+    → AskUserQuestion: ¿admin escribe la password o el sistema la genera?
+      → Decisión: admin la escribe (mismo patrón de fortaleza que P2)
+        → serializers.py + services.py + views.py (backend)
+          → adminUser.ts + UserForm.tsx + handlers.ts (frontend)
+            → 339 tests backend + 219 tests frontend, 99%/98.32% cobertura
+              → E2E: crear usuario → logout → login con el nuevo usuario ✅
+```
+
+Refs: ADR-0011/0013/0017 (CRUD admin + login unificado, gap de implementación entre ambos), PM-ADMIN-005 (P2, mismo patrón de política de contraseña).
+
+---
+
 ## PM-CRUD-MUESTRA-001 — CRUD de Muestras (bootstrap bounded context clínico Django+React)
 
 | Campo | Valor |

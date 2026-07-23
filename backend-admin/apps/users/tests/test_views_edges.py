@@ -16,6 +16,7 @@ pytestmark = pytest.mark.django_db
 
 LIST_URL = '/api/admin/users/'
 DETAIL_FMT = '/api/admin/users/{id}/'
+STRONG_PW = 'StrongPass1234'
 
 
 class TestUpdateSerializerBranch:
@@ -65,6 +66,7 @@ class TestCreateNoActorBranch:
             'full_name': 'Bootstrap Admin',
             'email': 'bootstrap-admin@biomed.umss.bo',
             'role': 'analista',
+            'password': STRONG_PW,
         }, format='json')
         assert resp.status_code == 201
         u = AdminUser.objects.get(email='bootstrap-admin@biomed.umss.bo')
@@ -79,6 +81,7 @@ class TestCreateErrorBranches:
             'full_name': 'X' * 200,  # >80 chars
             'email': 'too-long@biomed.umss.bo',
             'role': 'analista',
+            'password': STRONG_PW,
         }, format='json')
         # El serializer capturará validate_full_name; pero si pasa, el service raise.
         assert resp.status_code in (400,)
@@ -100,6 +103,7 @@ class TestCreateErrorBranches:
             'full_name': 'Edge Case',
             'email': 'edge@biomed.umss.bo',
             'role': 'analista',
+            'password': STRONG_PW,
         }, format='json')
         assert resp.status_code == 400
         # El body es el dict del message_dict
@@ -119,6 +123,7 @@ class TestCreateErrorBranches:
             'full_name': 'Edge 409',
             'email': 'edge409@biomed.umss.bo',
             'role': 'analista',
+            'password': STRONG_PW,
         }, format='json')
         assert resp.status_code == 409
 

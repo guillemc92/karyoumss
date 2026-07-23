@@ -52,6 +52,8 @@ describe('AdminUsersPanel — integración con MSW', () => {
     await user.click(screen.getByTestId('new-user'));
     await user.type(screen.getByTestId('input-full_name'), 'Daniel Quispe');
     await user.type(screen.getByTestId('input-email'), 'daniel.quispe@biomed.umss.bo');
+    await user.type(screen.getByTestId('input-password'), 'StrongPass1234');
+    await user.type(screen.getByTestId('input-confirm-password'), 'StrongPass1234');
     await user.selectOptions(screen.getByTestId('select-role'), 'analista');
     await user.click(screen.getByTestId('submit-user'));
     await waitFor(() => {

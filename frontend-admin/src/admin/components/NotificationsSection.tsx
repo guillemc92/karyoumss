@@ -22,11 +22,16 @@ function pickEditable(pref: NotificationPreference): EditableFields {
   return rest;
 }
 
+/** Excluye los 2 campos string (quiet_hours_start/end) de EditableFields:
+ * emailField/inappField solo referencian los booleanos de la matriz, así
+ * `values[cat.emailField]` se tipa como `boolean`, no `string | boolean`. */
+type BooleanField = Exclude<keyof EditableFields, 'quiet_hours_start' | 'quiet_hours_end'>;
+
 interface CategoryDef {
   key: string;
   label: string;
-  emailField: keyof EditableFields;
-  inappField: keyof EditableFields;
+  emailField: BooleanField;
+  inappField: BooleanField;
 }
 
 const CATEGORIES: CategoryDef[] = [

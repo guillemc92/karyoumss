@@ -124,6 +124,7 @@ describe('adminClient', () => {
       email: 'daniel.quispe@biomed.umss.bo',
       role: 'analista',
       active: true,
+      password: 'StrongPass1234',
     };
 
     it('crea un usuario y devuelve 201', async () => {

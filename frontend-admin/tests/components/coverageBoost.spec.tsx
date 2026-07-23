@@ -135,6 +135,8 @@ describe('AdminUsersPanel — flujos secundarios (cobertura)', () => {
     await user.click(screen.getByTestId('new-user'));
     await user.type(screen.getByTestId('input-full_name'), 'Cualquier Nombre');
     await user.type(screen.getByTestId('input-email'), 'cualquier@biomed.umss.bo');
+    await user.type(screen.getByTestId('input-password'), 'StrongPass1234');
+    await user.type(screen.getByTestId('input-confirm-password'), 'StrongPass1234');
     await user.click(screen.getByTestId('submit-user'));
     await waitFor(() =>
       expect(screen.getByTestId('dialog-error')).toHaveTextContent(/server caído/),

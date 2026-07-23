@@ -120,6 +120,7 @@ class TestCreateWithActor:
             'full_name': 'Nuevo',
             'email': 'nuevo@biomed.umss.bo',
             'role': 'analista',
+            'password': 'StrongPass1234',
         }, context=_ctx(user=auth_user))
         assert ser.is_valid(), ser.errors
         instance = ser.save()
@@ -132,6 +133,7 @@ class TestCreateWithActor:
             'full_name': 'Bootstrap',
             'email': 'bootstrap@biomed.umss.bo',
             'role': 'admin',
+            'password': 'StrongPass1234',
         }, context=_ctx(user=auth_user))
         assert ser.is_valid(), ser.errors
         instance = ser.save()
@@ -143,7 +145,7 @@ class TestCreateSerializer:
         ser = AdminUserCreateSerializer()
         # Solo los campos del alta, no id/created_at/etc
         names = set(ser.fields.keys())
-        assert names == {'full_name', 'email', 'role', 'active'}
+        assert names == {'full_name', 'email', 'role', 'active', 'password'}
 
 
 class TestUpdateSerializer:

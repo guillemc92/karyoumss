@@ -211,6 +211,14 @@ const DEMO_ACCOUNTS: DemoAccount[] = [
   { email: 'demo_supervisor@biomed.umss.bo', password: 'demo12345', role: 'supervisor', full_name: 'Demo Supervisor' },
 ];
 
+/**
+ * Cuentas creadas dinámicamente vía POST /api/admin/users/ (bug corregido
+ * 2026-07-23: un usuario del CRUD ahora puede loguearse de verdad — acá
+ * simulamos ese mismo comportamiento para que el demo cierre el círculo
+ * completo "crear usuario → loguearse con él").
+ */
+let dynamicAccounts: DemoAccount[] = [];
+
 let tokenCounter = 0;
 /** access/refresh token → cuenta demo dueña de ese token, para que /me/ y el
  * rotado de /refresh/ devuelvan SIEMPRE el usuario realmente logueado (no
@@ -304,6 +312,7 @@ export function resetMockData(): void {
   mockMetricNextId = mockMetrics.length + 1;
   mockNotificationPreference = { ...initialNotificationPreference };
   mockAppearancePreference = { ...initialAppearancePreference };
+  dynamicAccounts = [];
   auditLog = Object.fromEntries(
     Object.entries(initialAuditLog).map(([k, v]) => [k, v.map((e) => ({ ...e }))]),
   );
@@ -339,6 +348,22 @@ export const handlers = [
         { status: 400 },
       );
     }
+    // password: espejo de AdminUserCreateSerializer + create_admin_user
+    // (bug corregido 2026-07-23 — un usuario creado sin password no podía
+    // loguearse nunca, porque el login real valida contra users.User, no
+    // contra AdminUser).
+    if (!body.password || body.password.length < 12) {
+      return HttpResponse.json(
+        { password: ['Asegúrese de que este campo tenga al menos 12 caracteres.'] },
+        { status: 400 },
+      );
+    }
+    if (!/[A-Z]/.test(body.password) || !/[0-9]/.test(body.password)) {
+      return HttpResponse.json(
+        { password: ['Mínimo 12 caracteres, 1 mayúscula, 1 dígito'] },
+        { status: 400 },
+      );
+    }
     // Unique check (espejo de admin_users_email_lower_unique_idx)
     if (baseUsers.some((u) => u.email.toLowerCase() === body.email.toLowerCase())) {
       return HttpResponse.json(
@@ -348,10 +373,11 @@ export const handlers = [
     }
     const id = `${++nextId}${nextId}${nextId}${nextId}-${nextId}${nextId}${nextId}${nextId}-${nextId}${nextId}${nextId}${nextId}-${nextId}${nextId}${nextId}${nextId}`.slice(0, 36);
     const now = new Date().toISOString();
+    const normalizedEmail = body.email.trim().toLowerCase();
     const created: AdminUser = {
       id,
       full_name: body.full_name.trim(),
-      email: body.email.trim().toLowerCase(),
+      email: normalizedEmail,
       role: body.role,
       active: body.active,
       created_at: now,
@@ -359,6 +385,14 @@ export const handlers = [
       created_by: null,
     };
     baseUsers.push(created);
+    // Registra la cuenta como loguéable de verdad en el mock (ver
+    // dynamicAccounts arriba) — cierra el círculo "crear → loguearse".
+    dynamicAccounts.push({
+      email: normalizedEmail,
+      password: body.password,
+      role: body.role,
+      full_name: created.full_name,
+    });
     return HttpResponse.json(created, { status: 201 });
   }),
 
@@ -618,7 +652,7 @@ export const handlers = [
 
   http.post('/api/auth/login/', async ({ request }) => {
     const body = (await request.json()) as { email?: string; password?: string };
-    const account = DEMO_ACCOUNTS.find(
+    const account = [...DEMO_ACCOUNTS, ...dynamicAccounts].find(
       (a) => a.email === body.email && a.password === body.password,
     );
     if (!account) {

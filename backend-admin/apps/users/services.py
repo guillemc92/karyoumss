@@ -11,28 +11,67 @@ import re
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
-from .models import AdminUser, EMAIL_RE, _normalize_email, _validate_full_name, VALID_ROLES
+from .models import AdminUser, User, EMAIL_RE, _normalize_email, _validate_full_name, VALID_ROLES
+
+# Misma política que apps.config.services.rotate_password (P2, ADR-0014
+# §Seguridad) — duplicada acá porque apps.config depende de apps.users
+# (no al revés) y no vale la pena invertir esa dependencia por 3 líneas.
+PASSWORD_MIN_LENGTH = 12
 
 
-def create_admin_user(*, full_name: str, email: str, role: str,
+def _validate_password_strength(password: str) -> None:
+    if (
+        len(password) < PASSWORD_MIN_LENGTH
+        or not re.search(r'[A-Z]', password)
+        or not re.search(r'[0-9]', password)
+    ):
+        raise ValidationError(
+            {'password': f'Mínimo {PASSWORD_MIN_LENGTH} caracteres, 1 mayúscula, 1 dígito'}
+        )
+
+
+def create_admin_user(*, full_name: str, email: str, role: str, password: str,
                       active: bool = True, created_by: AdminUser | None = None) -> AdminUser:
     """
-    Crea un AdminUser con validaciones completas.
-    Raises ValidationError si hay problema de datos.
-    Raises IntegrityError si el email ya existe (UNIQUE constraint DB).
+    Crea un AdminUser CON un `users.User` vinculado y autenticable.
+
+    Bug corregido (detectado en demo, 2026-07-23): antes solo se creaba la
+    fila AdminUser (cuenta institucional/dominio); el login real
+    (`/api/auth/login/`, ADR-0017) valida contra `users.User.password`, no
+    contra AdminUser — así que un usuario recién creado no tenía forma de
+    entrar al sistema. `password` es ahora obligatorio y se usa para crear
+    (o adoptar, si ya existía huérfano de un exchange previo sin AdminUser)
+    el User vinculado.
+
+    Raises ValidationError si hay problema de datos (incluida fortaleza
+    de contraseña). Raises IntegrityError si el email ya existe en
+    AdminUser (UNIQUE constraint DB).
     """
     full_name = _validate_full_name(full_name)
     email = _normalize_email(email)
     if role not in VALID_ROLES:
         raise ValidationError(f'Rol inválido. Debe ser uno de: {VALID_ROLES}')
+    _validate_password_strength(password)
 
     with transaction.atomic():
+        # get_or_create: un User puede existir ya (ej. hizo login/exchange
+        # antes de que un admin le diera de alta la cuenta institucional).
+        # En ese caso lo "adoptamos": misma contraseña/rol que se acaba de
+        # definir acá, no dos identidades desincronizadas.
+        auth_user, _ = User.objects.get_or_create(email=email)
+        auth_user.role = role
+        auth_user.is_active = active
+        auth_user.is_staff = (role == 'admin')
+        auth_user.set_password(password)
+        auth_user.save()
+
         admin_user = AdminUser(
             full_name=full_name,
             email=email,
             role=role,
             active=active,
             created_by=created_by,
+            user=auth_user,
         )
         admin_user.full_clean()  # Valida constraints del modelo
         try:

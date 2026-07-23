@@ -26,6 +26,7 @@ LIST_URL = '/api/admin/users/'
 DETAIL_FMT = '/api/admin/users/{id}/'
 HISTORY_FMT = '/api/admin/users/{id}/history/'
 EXCHANGE_URL = '/api/admin/auth/exchange'
+STRONG_PW = 'StrongPass1234'
 
 
 def _detail(u):
@@ -68,12 +69,51 @@ class TestCreate:
             'full_name': 'Nuevo Usuario',
             'email': 'nuevo@biomed.umss.bo',
             'role': 'analista',
+            'password': STRONG_PW,
         }, format='json')
         assert resp.status_code == 201
         data = resp.json()
         assert data['email'] == 'nuevo@biomed.umss.bo'
         assert data['full_name'] == 'Nuevo Usuario'
+        assert 'password' not in data
         assert AdminUser.objects.filter(email='nuevo@biomed.umss.bo').exists()
+
+    def test_created_user_can_login(self, admin_client, admin_user):
+        """Bug corregido 2026-07-23: un usuario creado por el CRUD debe
+        poder loguearse de verdad con la password provista."""
+        resp = admin_client.post(LIST_URL, data={
+            'full_name': 'Puede Loguearse',
+            'email': 'puedeloguearse@biomed.umss.bo',
+            'role': 'analista',
+            'password': STRONG_PW,
+        }, format='json')
+        assert resp.status_code == 201
+
+        login_resp = admin_client.post('/api/auth/login/', data={
+            'email': 'puedeloguearse@biomed.umss.bo',
+            'password': STRONG_PW,
+        }, format='json')
+        assert login_resp.status_code == 200
+        assert 'access' in login_resp.json()
+
+    def test_create_without_password_returns_400(self, admin_client, admin_user):
+        resp = admin_client.post(LIST_URL, data={
+            'full_name': 'Sin Password',
+            'email': 'sinpassword@biomed.umss.bo',
+            'role': 'analista',
+        }, format='json')
+        assert resp.status_code == 400
+        assert 'password' in resp.json()
+
+    def test_create_with_weak_password_returns_400(self, admin_client, admin_user):
+        resp = admin_client.post(LIST_URL, data={
+            'full_name': 'Weak Password',
+            'email': 'weakpassword@biomed.umss.bo',
+            'role': 'analista',
+            'password': 'weak',
+        }, format='json')
+        assert resp.status_code == 400
+        assert 'password' in resp.json()
 
     def test_anon_creates_returns_401(self, anon_client):
         resp = anon_client.post(LIST_URL, data={
@@ -93,18 +133,21 @@ class TestCreate:
                                   role='analista', active=True)
         resp = admin_client.post(LIST_URL, data={
             'full_name': 'Dup', 'email': 'dup-create@biomed.umss.bo', 'role': 'analista',
+            'password': STRONG_PW,
         }, format='json')
         assert resp.status_code == 400
 
     def test_short_name_returns_400(self, admin_client):
         resp = admin_client.post(LIST_URL, data={
             'full_name': 'ab', 'email': 'short@biomed.umss.bo', 'role': 'analista',
+            'password': STRONG_PW,
         }, format='json')
         assert resp.status_code == 400
 
     def test_invalid_role_returns_400(self, admin_client):
         resp = admin_client.post(LIST_URL, data={
             'full_name': 'Hacker', 'email': 'h@biomed.umss.bo', 'role': 'hacker',
+            'password': STRONG_PW,
         }, format='json')
         assert resp.status_code == 400
 
