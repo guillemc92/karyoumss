@@ -33,7 +33,7 @@ export function SampleDetailPage() {
       <div className="actions">
         <ProcessButton sampleId={sample.id} status={sample.status} />
         <button type="button" onClick={() => navigate(`/clinic/samples/${sample.id}/edit`)}>Editar</button>
-        <a href={`/correccion de cariotipo.html?sample=${sample.id}`}>Ver cariotipo →</a>
+        <Link to={`/clinic/samples/${sample.id}/karyotype`} className="btn-outline">Ver cariotipo →</Link>
       </div>
 
       <StatusPoller sampleId={sample.id} initialStatus={sample.status} />

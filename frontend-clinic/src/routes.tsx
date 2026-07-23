@@ -4,6 +4,7 @@ import { SampleFormPage } from './clinic/pages/SampleFormPage';
 import { SampleDetailPage } from './clinic/pages/SampleDetailPage';
 import { SampleRegisterPage } from './clinic/pages/SampleRegisterPage';
 import { DegradedModePage } from './clinic/pages/DegradedModePage';
+import { KaryotypePage } from './clinic/pages/KaryotypePage';
 
 export function AppRoutes() {
   return (
@@ -13,6 +14,7 @@ export function AppRoutes() {
       <Route path="/clinic/samples/register" element={<SampleRegisterPage />} />
       <Route path="/clinic/samples/new" element={<SampleFormPage />} />
       <Route path="/clinic/samples/:id" element={<SampleDetailPage />} />
+      <Route path="/clinic/samples/:id/karyotype" element={<KaryotypePage />} />
       <Route path="/clinic/samples/:id/edit" element={<SampleFormPage />} />
       <Route path="/clinic/degraded" element={<DegradedModePage />} />
     </Routes>

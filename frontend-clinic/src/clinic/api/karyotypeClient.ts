@@ -1,0 +1,26 @@
+/**
+ * karyotypeClient — wrapper HTTP del visor de cariotipo (ADR-0021 P1).
+ *
+ * Reutiliza la infra de samplesClient (auth JWT + parseo de errores).
+ * P1: solo GET. P2/P3 agregarán resolver naranjas, XAI y reclasificación.
+ *
+ * Errores esperados:
+ *   401 → JWT ausente/expirado
+ *   403 → NOT_OWNER (analista no dueño de la muestra)
+ *   404 → NOT_FOUND (muestra) / NO_KARYOTYPE (sin cariotipo generado aún)
+ */
+import { clinicRequest, CLINIC_DEFAULT_BASE_URL } from './samplesClient';
+import type { Karyotype } from '../types/karyotype';
+
+export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL) {
+  return {
+    baseUrl,
+    /** GET /api/clinic/samples/{sampleId}/karyotype/ */
+    get(sampleId: string): Promise<Karyotype> {
+      return clinicRequest<Karyotype>(baseUrl, `/samples/${sampleId}/karyotype/`, { method: 'GET' });
+    },
+  };
+}
+
+export type KaryotypeClient = ReturnType<typeof createKaryotypeClient>;
+export const karyotypeClient: KaryotypeClient = createKaryotypeClient();

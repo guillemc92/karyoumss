@@ -2313,5 +2313,91 @@ Refs: ADR-0017, SPEC-010, DD-AUTH-001.md, docs/AUTH_BRIDGE.md, ADR-0011, ADR-001
 
 ---
 
+## PM-KARYO-001 — Visor de Cariotipo read-only con Semaforización (P1)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-KARYO-001 |
+| **Título** | Núcleo clínico: modelo de datos de cariotipo + visor read-only con semaforización verde/naranja (FSD-UC-002), primera fase del editor de corrección de cariotipo |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Fable/Opus (feature más compleja del producto) |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-07-23 |
+| **ADR origen** | [ADR-0021](docs/adr/0021-visor-correccion-cariotipo.md) §D1–D5 (P1) |
+| **Design Doc** | [DD-KARYO-001](docs/design/DD-KARYO-001.md) |
+
+### Contexto y decisiones
+
+La corrección de cariotipo es el corazón clínico (FSD-UC-002/003/004). El
+gap era total: `backend-clinic` no tenía **ningún modelo de cromosomas**, y
+Konva.js (stack canónico) no estaba instalado. Se decidió (ADR-0021) un
+plan de 4 fases y arrancar por **P1: modelo + visor read-only**. Dos
+decisiones clave confirmadas con el usuario vía AskUserQuestion:
+1. **Fase inicial P1** (cimiento verificable antes de XAI/drag&drop).
+2. **Render SVG/CSS ahora, Konva en P3** (D4): el visor read-only no
+   necesita canvas; Konva se difiere a la fase que lo justifica (YAGNI),
+   refinando —no derogando— el stack de CLAUDE.md/ADR-0006.
+
+### Alcance ejecutado (P1)
+
+- **Backend (`backend-clinic/apps/samples`):** modelos `Karyotype` (1:1 con
+  `Sample`) + `Chromosome` (N), con `semaphore` **derivado** de
+  `confidence_score` (RN-02: verde ≥0.85 / naranja <0.85 / rojo si null),
+  NO persistido (ADR-0021 D2). Estados `BLOCKED_BY_CONFIDENCE`/
+  `ANALYST_VALIDATED` declarados en el enum (transiciones en P2, D3).
+  Endpoint `GET /api/clinic/samples/{id}/karyotype/` con `summary` derivado
+  (conteos + `is_blocked`), scope de propiedad RN-06 (404 NO_KARYOTYPE /
+  403 NOT_OWNER). Management command `seed_karyotype` (46 cromosomas, 3
+  naranjas puntuales, fiel al mockup).
+- **Frontend (`frontend-clinic`):** `karyotypeClient` (reutiliza la infra de
+  `samplesClient` vía export `clinicRequest`), `useKaryotype` (react-query),
+  `KaryotypeViewer` (grid SVG de 24 slots, cromosomas coloreados por
+  semáforo, click-select), `ChromosomePropertiesPanel`, `KaryotypePage`
+  (`/clinic/samples/:id/karyotype`) con banner de bloqueo + leyenda. Link
+  "Ver cariotipo" en `SampleDetailPage` migrado del HTML vanilla a la ruta
+  React. MSW: builder mock + handler + reset.
+
+### Corrección del mockup
+
+El mockup mostraba pares completos naranjas; el seed real marca **una sola
+copia** por par como baja confianza (3 cromosomas puntuales 18/5/13, no 3
+pares de 6), coherente con la semántica clínica y con el banner "3
+cromosomas requieren revisión".
+
+### Output (verificación)
+
+- **Backend:** 148/148 tests, **97.84% cobertura total**; `test_karyotype.py`
+  (30 tests) 100%; `models.py`/`serializers.py`/`views.py` ~97-99%.
+- **Frontend:** suite completa verde, **99.48% stmts / 92.36% branches /
+  90.78% funcs**; `KaryotypeViewer.tsx` 100%. 23 tests nuevos (viewer,
+  panel, page, client) + 1 test existente migrado (link). `tsc --noEmit`
+  limpio.
+- **E2E real (Playwright/Chromium, `dev:msw`):** visor con 46 cromosomas,
+  banner "3 cromosoma(s) requieren revisión", leyenda de semáforo, selección
+  del par 18 → panel "72% · Naranja — requiere revisión" + medidas. Captura
+  verificada visualmente, sin errores de consola.
+
+### Trazabilidad
+
+```
+FSD-UC-002 (semaforización) + base de FSD-UC-003/004
+  → ADR-0021 §D1–D5 (modelo Karyotype/Chromosome, SVG-now/Konva-later, fases P1-P4)
+    → DD-KARYO-001 (P1: modelo, endpoint, serializer, componente, tests)
+      → backend-clinic/apps/samples (models + serializers + views + urls + seed)
+        → frontend-clinic (karyotypeClient + useKaryotype + KaryotypeViewer + KaryotypePage)
+          → 148 tests backend (97.84%) + 23 tests frontend nuevos (99.48%)
+            → E2E Playwright verificado en navegador real
+```
+
+Pendiente (fases siguientes, ADR-0021 D5): **P2** (XAI Grad-CAM + resolver
+naranjas + gating de bloqueo RN-01 + audit append-only), **P3** (drag & drop
+de reclasificación sobre Konva.js), **P4** (herramientas de imagen + modo
+degradado).
+
+Refs: ADR-0021, DD-KARYO-001, ADR-0006 (semaforización), ADR-0008 (audit,
+P2), ADR-0015/0016 (bounded context clínico), AGENTS.md §9 (pipeline IA).
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*

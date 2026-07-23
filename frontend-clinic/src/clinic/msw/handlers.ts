@@ -4,6 +4,7 @@
  */
 import { http, HttpResponse } from 'msw';
 import { initialSamples } from './seedData';
+import { buildMockKaryotype } from './karyotypeSeed';
 import type { SampleCreateRequest, SampleListItem, SampleRead, SampleUpdateRequest } from '../types/sample';
 import type { SampleRegistrationData } from '../types/registration';
 
@@ -207,5 +208,20 @@ export const handlers = [
       chromosome_count: sample.status === 'READY' ? 46 : 0,
       confidence_avg: sample.status === 'READY' ? 0.92 : undefined,
     });
+  }),
+
+  // Cariotipo (ADR-0021 P1) — solo muestras READY/VALIDATED tienen cariotipo.
+  http.get(`${API}/samples/:id/karyotype/`, ({ params }) => {
+    const sample = samples.find((s) => s.id === params.id);
+    if (!sample) {
+      return HttpResponse.json({ code: 'NOT_FOUND', detail: 'Muestra no encontrada' }, { status: 404 });
+    }
+    if (sample.status !== 'READY' && sample.status !== 'VALIDATED') {
+      return HttpResponse.json(
+        { code: 'NO_KARYOTYPE', detail: 'La muestra aún no tiene cariotipo generado.' },
+        { status: 404 },
+      );
+    }
+    return HttpResponse.json(buildMockKaryotype(String(params.id)));
   }),
 ];

@@ -2,7 +2,7 @@ import re
 
 from rest_framework import serializers
 
-from .models import Sample, SampleType
+from .models import Chromosome, Karyotype, Sample, SampleType
 
 CHN_FORMAT_RE = re.compile(r'^CHN-\d{4}-\d{2}-\d{2}-\d{4}$')
 
@@ -148,3 +148,60 @@ class SampleRegisterSerializer(serializers.Serializer):
         if len(attrs.get('images', [])) < 3:
             raise serializers.ValidationError({'images': 'INSUFFICIENT_IMAGES'})
         return attrs
+
+
+# ============================================================================
+# Cariotipo (ADR-0021, DD-KARYO-001) — P1: lectura read-only + semaforización
+# ============================================================================
+
+
+class ChromosomeSerializer(serializers.ModelSerializer):
+    """Un cromosoma con su semáforo DERIVADO (RN-02, no persistido)."""
+
+    semaphore = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = Chromosome
+        fields = [
+            'id', 'predicted_class', 'position_index', 'confidence_score',
+            'semaphore', 'resolution_status', 'xai_viewed',
+            'measures', 'bbox', 'order',
+        ]
+
+
+class KaryotypeSerializer(serializers.ModelSerializer):
+    """Cariotipo completo + `summary` derivado (conteos + is_blocked).
+
+    `summary` no persiste: se computa por-request desde los cromosomas.
+    `is_blocked` en P1 es informativo (el bloqueo real de emisión es P2).
+    """
+
+    sample_id = serializers.UUIDField(read_only=True)
+    chromosomes = ChromosomeSerializer(many=True, read_only=True)
+    summary = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Karyotype
+        fields = ['id', 'sample_id', 'model_version', 'generated_at', 'summary', 'chromosomes']
+
+    def get_summary(self, obj) -> dict:
+        green = orange = red = unresolved_orange = 0
+        for chromo in obj.chromosomes.all():
+            sem = chromo.semaphore
+            if sem == 'green':
+                green += 1
+            elif sem == 'orange':
+                orange += 1
+                if chromo.resolution_status != 'RESOLVED':
+                    unresolved_orange += 1
+            else:
+                red += 1
+        return {
+            'total': green + orange + red,
+            'green': green,
+            'orange': orange,
+            'red': red,
+            'unresolved_orange': unresolved_orange,
+            # RN-01/RN-02: hay naranjas sin resolver → no se puede emitir (P2)
+            'is_blocked': unresolved_orange > 0 or red > 0,
+        }

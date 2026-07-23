@@ -1,9 +1,14 @@
 import uuid
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
 
 from .fields import EncryptedTextField
+
+# Umbral único de semaforización (RN-02, ADR-0006 / ADR-0021 D2). Debe
+# coincidir con ModelConfig.confidence_threshold del panel admin (ADR-0014 P3).
+CONFIDENCE_THRESHOLD = Decimal('0.850')
 
 
 class SampleStatus(models.TextChoices):
@@ -11,6 +16,11 @@ class SampleStatus(models.TextChoices):
     PENDING_AI = 'PENDING_AI', 'Pendiente de IA'
     PROCESSING = 'PROCESSING', 'En procesamiento'
     READY = 'READY', 'Listo'
+    # Estados del flujo de validación de cariotipo (FSD-UC-004, ADR-0021 D3).
+    # Declarados en P1; las transiciones se implementan en P2 (no inertes por
+    # error: es una decisión documentada para evitar una 2da migración).
+    BLOCKED_BY_CONFIDENCE = 'BLOCKED_BY_CONFIDENCE', 'Bloqueado por confianza'
+    ANALYST_VALIDATED = 'ANALYST_VALIDATED', 'Validado por analista'
     VALIDATED = 'VALIDATED', 'Validado'
     REJECTED = 'REJECTED', 'Rechazado'
 
@@ -35,7 +45,7 @@ class Sample(models.Model):
     patient_ref = models.CharField(max_length=64, blank=True, default='')
     image_path = models.CharField(max_length=512, blank=True, default='')
     status = models.CharField(
-        max_length=20, choices=SampleStatus.choices, default=SampleStatus.PENDING_AI,
+        max_length=24, choices=SampleStatus.choices, default=SampleStatus.PENDING_AI,
     )
     analyst = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='samples_as_analyst',
@@ -121,6 +131,76 @@ class SampleImage(models.Model):
 
     def __str__(self):
         return f'SampleImage({self.sample_id}, order={self.order})'
+
+
+# ============================================================================
+# Cariotipo (ADR-0021, DD-KARYO-001) — P1: modelo + semaforización derivada
+# ============================================================================
+
+CHROMOSOME_CLASSES = [(str(n), str(n)) for n in range(1, 23)] + [('X', 'X'), ('Y', 'Y')]
+
+
+class ChromosomeResolution(models.TextChoices):
+    AUTO = 'AUTO', 'Automático (verde)'      # confidence >= umbral
+    PENDING = 'PENDING', 'Pendiente (naranja)'  # confidence < umbral, sin resolver
+    RESOLVED = 'RESOLVED', 'Resuelto'         # naranja resuelto por analista (P2)
+
+
+class Karyotype(models.Model):
+    """Resultado del pipeline IA (U-Net + EfficientNet-B3) para una Sample.
+
+    1:1 con Sample. El conteo esperado es 46 (23 pares) pero NO se fuerza:
+    aneuploidías reales (+21, monosomías) tienen ≠46 cromosomas.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sample = models.OneToOneField(Sample, on_delete=models.CASCADE, related_name='karyotype')
+    model_version = models.CharField(max_length=80, default='u-net-v2.1+efficientnet-b3-v1.4')
+    image_path = models.CharField(max_length=512, blank=True, default='')
+    generated_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'clinic_karyotypes'
+
+    def __str__(self):
+        return f'Karyotype({self.sample.chn_code})'
+
+
+class Chromosome(models.Model):
+    """Un cromosoma segmentado y clasificado dentro de un cariotipo.
+
+    RN-02: la semaforización (verde/naranja/rojo) se DERIVA de
+    confidence_score en tiempo de lectura (`semaphore`), no se persiste
+    como campo — evita deriva si el umbral cambia (ADR-0021 D2).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    karyotype = models.ForeignKey(Karyotype, on_delete=models.CASCADE, related_name='chromosomes')
+    predicted_class = models.CharField(max_length=2, choices=CHROMOSOME_CLASSES)
+    position_index = models.IntegerField(default=0)  # copia dentro del par (0/1)
+    # null = clasificación fallida → semáforo rojo (intervención manual, ADR-0006)
+    confidence_score = models.DecimalField(max_digits=4, decimal_places=3, null=True, blank=True)
+    bbox = models.JSONField(default=dict, blank=True)      # {x,y,w,h} crop en la metafase (P3)
+    measures = models.JSONField(default=dict, blank=True)  # {length_um, centromeric_index, band_count, quality}
+    resolution_status = models.CharField(
+        max_length=10, choices=ChromosomeResolution.choices, default=ChromosomeResolution.AUTO,
+    )
+    xai_viewed = models.BooleanField(default=False)  # gate FSD-UC-003 (P2)
+    order = models.IntegerField(default=0)           # orden estable de render
+
+    class Meta:
+        db_table = 'clinic_chromosomes'
+        ordering = ['order', 'position_index']
+
+    def __str__(self):
+        return f'Chromosome({self.predicted_class}, conf={self.confidence_score})'
+
+    @property
+    def semaphore(self) -> str:
+        """Verde ≥0.85, naranja <0.85, rojo si la clasificación falló."""
+        if self.confidence_score is None:
+            return 'red'
+        return 'green' if self.confidence_score >= CONFIDENCE_THRESHOLD else 'orange'
 
 
 # RBAC jerárquico (ADR-0019, DD-RBAC-001) — re-exportado para que Django

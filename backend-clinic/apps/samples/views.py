@@ -7,6 +7,7 @@ from .models import Sample, SampleStatus
 from .permissions import CanRegisterSample, HasOpcion, IsOwnerOrStaff
 from .pipeline_client import MLDegradedError, pipeline_client
 from .serializers import (
+    KaryotypeSerializer,
     SampleCreateSerializer,
     SampleListItemSerializer,
     SampleReadSerializer,
@@ -214,3 +215,29 @@ class SampleStatusView(APIView):
             },
             status=status.HTTP_200_OK,
         )
+
+
+class KaryotypeView(APIView):
+    """GET /api/clinic/samples/{id}/karyotype/ — visor read-only (ADR-0021 P1).
+
+    RN-06: mismo scope de propiedad que SampleDetailView (analista solo sus
+    propias muestras → 403 NOT_OWNER; supervisor/admin cualquiera).
+    404 NO_KARYOTYPE si la muestra aún no tiene cariotipo generado.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.view')]
+
+    def get(self, request, pk):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+
+        karyotype = getattr(sample, 'karyotype', None)
+        if karyotype is None:
+            return Response(
+                {'code': 'NO_KARYOTYPE', 'detail': 'La muestra aún no tiene cariotipo generado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        return Response(KaryotypeSerializer(karyotype).data, status=status.HTTP_200_OK)

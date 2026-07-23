@@ -51,10 +51,10 @@ describe('SampleDetailPage', () => {
     await waitFor(() => expect(screen.getByText('Editar Muestra')).toBeInTheDocument());
   });
 
-  it('link "Ver cariotipo" apunta al visor vanilla con el sample id', async () => {
+  it('link "Ver cariotipo" apunta a la ruta React del visor (ADR-0021 P1)', async () => {
     renderDetail(SAMPLE_ID);
     await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
     const link = screen.getByText(/Ver cariotipo/);
-    expect(link).toHaveAttribute('href', `/correccion de cariotipo.html?sample=${SAMPLE_ID}`);
+    expect(link).toHaveAttribute('href', `/clinic/samples/${SAMPLE_ID}/karyotype`);
   });
 });

@@ -96,6 +96,10 @@ async function request<T>(base: string, path: string, opts: RequestOptions = {})
   return payload as T;
 }
 
+/** Reutilizable por otros clients del bounded context clínico (ej.
+ * karyotypeClient) — misma infra de auth JWT + parseo de errores. */
+export { request as clinicRequest, DEFAULT_BASE_URL as CLINIC_DEFAULT_BASE_URL };
+
 export function createSamplesClient(baseUrl: string = DEFAULT_BASE_URL) {
   return {
     baseUrl,
