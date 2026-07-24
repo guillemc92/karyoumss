@@ -7,6 +7,7 @@ function chromo(overrides: Partial<Chromosome> = {}): Chromosome {
   return {
     id: 'c1', predicted_class: '1', position_index: 0, confidence_score: '0.960',
     semaphore: 'green', resolution_status: 'AUTO', xai_viewed: false,
+    is_anomaly: false,
     measures: {}, bbox: {}, order: 0, ...overrides,
   };
 }

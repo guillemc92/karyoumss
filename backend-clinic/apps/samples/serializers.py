@@ -2,7 +2,7 @@ import re
 
 from rest_framework import serializers
 
-from .models import Chromosome, Karyotype, Sample, SampleType
+from .models import AuditEvent, Chromosome, Karyotype, Sample, SampleType
 
 CHN_FORMAT_RE = re.compile(r'^CHN-\d{4}-\d{2}-\d{2}-\d{4}$')
 
@@ -164,7 +164,7 @@ class ChromosomeSerializer(serializers.ModelSerializer):
         model = Chromosome
         fields = [
             'id', 'predicted_class', 'position_index', 'confidence_score',
-            'semaphore', 'resolution_status', 'xai_viewed',
+            'semaphore', 'resolution_status', 'xai_viewed', 'is_anomaly',
             'measures', 'bbox', 'order',
         ]
 
@@ -205,3 +205,17 @@ class KaryotypeSerializer(serializers.ModelSerializer):
             # RN-01/RN-02: hay naranjas sin resolver → no se puede emitir (P2)
             'is_blocked': unresolved_orange > 0 or red > 0,
         }
+
+
+class AuditEventSerializer(serializers.ModelSerializer):
+    """Evento de auditoría read-only (ADR-0022). Expone el actor por username."""
+
+    actor_name = serializers.CharField(source='actor.get_full_name', default='', read_only=True)
+
+    class Meta:
+        model = AuditEvent
+        fields = [
+            'id', 'event_type', 'chromosome', 'actor', 'actor_name',
+            'payload', 'created_at', 'previous_hash', 'current_hash',
+        ]
+        read_only_fields = fields

@@ -7,13 +7,59 @@ import { initialSamples } from './seedData';
 import { buildMockKaryotype } from './karyotypeSeed';
 import type { SampleCreateRequest, SampleListItem, SampleRead, SampleUpdateRequest } from '../types/sample';
 import type { SampleRegistrationData } from '../types/registration';
+import type { AuditEvent, AuditEventType, Karyotype } from '../types/karyotype';
 
 let samples: SampleRead[] = [...initialSamples];
 let forceDegraded = false;
 
+// Estado mutable del cariotipo por sample (P2): permite que el flujo
+// ver XAI → aceptar → validar persista entre requests en el demo.
+const karyotypes: Record<string, Karyotype> = {};
+const auditTrails: Record<string, AuditEvent[]> = {};
+
+function getOrBuildKaryotype(sampleId: string): Karyotype {
+  if (!karyotypes[sampleId]) karyotypes[sampleId] = buildMockKaryotype(sampleId);
+  return karyotypes[sampleId];
+}
+
+function recomputeSummary(k: Karyotype): void {
+  const orange = k.chromosomes.filter((c) => c.semaphore === 'orange');
+  const red = k.chromosomes.filter((c) => c.semaphore === 'red');
+  const unresolved = orange.filter((c) => c.resolution_status !== 'RESOLVED');
+  k.summary = {
+    total: k.chromosomes.length,
+    green: k.chromosomes.filter((c) => c.semaphore === 'green').length,
+    orange: orange.length,
+    red: red.length,
+    unresolved_orange: unresolved.length,
+    is_blocked: unresolved.length > 0 || red.length > 0,
+  };
+}
+
+function pushAudit(sampleId: string, eventType: AuditEventType, chromosomeId: string | null): void {
+  const chain = auditTrails[sampleId] ?? (auditTrails[sampleId] = []);
+  const prev = chain.length ? chain[chain.length - 1].current_hash : '';
+  chain.push({
+    id: `${sampleId}-ev-${chain.length}`,
+    event_type: eventType,
+    chromosome: chromosomeId,
+    actor: 1,
+    actor_name: 'Analista Demo',
+    payload: {},
+    created_at: new Date().toISOString(),
+    previous_hash: prev,
+    current_hash: `mockhash-${chain.length}-${eventType}`,
+  });
+}
+
 export function resetMockData(): void {
-  samples = [...initialSamples];
+  // Copia PROFUNDA: varios handlers mutan `sample.status` (process, validate);
+  // sin clonar los objetos, la mutación persistiría en initialSamples y
+  // filtraría estado entre tests (aislamiento roto).
+  samples = initialSamples.map((s) => ({ ...s }));
   forceDegraded = false;
+  for (const k of Object.keys(karyotypes)) delete karyotypes[k];
+  for (const k of Object.keys(auditTrails)) delete auditTrails[k];
 }
 
 export function setDegradedMode(value: boolean): void {
@@ -216,12 +262,71 @@ export const handlers = [
     if (!sample) {
       return HttpResponse.json({ code: 'NOT_FOUND', detail: 'Muestra no encontrada' }, { status: 404 });
     }
-    if (sample.status !== 'READY' && sample.status !== 'VALIDATED') {
+    if (sample.status !== 'READY' && sample.status !== 'VALIDATED' && sample.status !== 'ANALYST_VALIDATED') {
       return HttpResponse.json(
         { code: 'NO_KARYOTYPE', detail: 'La muestra aún no tiene cariotipo generado.' },
         { status: 404 },
       );
     }
-    return HttpResponse.json(buildMockKaryotype(String(params.id)));
+    return HttpResponse.json(getOrBuildKaryotype(String(params.id)));
+  }),
+
+  // Cariotipo P2 (ADR-0021 P2, ADR-0022) — XAI, resolver, anomalía, validar, audit.
+  http.post(`${API}/samples/:id/chromosomes/:cid/xai/`, ({ params }) => {
+    const k = getOrBuildKaryotype(String(params.id));
+    const chromo = k.chromosomes.find((c) => c.id === params.cid);
+    if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
+    chromo.xai_viewed = true;
+    pushAudit(String(params.id), 'XAI_VIEWED', chromo.id);
+    return HttpResponse.json({
+      chromosome_id: chromo.id,
+      predicted_class: chromo.predicted_class,
+      confidence_score: chromo.confidence_score,
+      heatmap_base64: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    });
+  }),
+
+  http.post(`${API}/samples/:id/chromosomes/:cid/resolve/`, ({ params }) => {
+    const k = getOrBuildKaryotype(String(params.id));
+    const chromo = k.chromosomes.find((c) => c.id === params.cid);
+    if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
+    if (chromo.semaphore !== 'orange') {
+      return HttpResponse.json({ code: 'NOT_ORANGE', detail: 'Solo los naranja requieren resolución.' }, { status: 400 });
+    }
+    if (!chromo.xai_viewed) {
+      return HttpResponse.json({ code: 'XAI_REQUIRED', detail: 'Debe consultar XAI antes de resolver.' }, { status: 409 });
+    }
+    chromo.resolution_status = 'RESOLVED';
+    recomputeSummary(k);
+    pushAudit(String(params.id), 'ACCEPT_CHROMOSOME', chromo.id);
+    return HttpResponse.json(chromo);
+  }),
+
+  http.post(`${API}/samples/:id/chromosomes/:cid/anomaly/`, ({ params }) => {
+    const k = getOrBuildKaryotype(String(params.id));
+    const chromo = k.chromosomes.find((c) => c.id === params.cid);
+    if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
+    chromo.is_anomaly = true;
+    pushAudit(String(params.id), 'MARK_ANOMALY', chromo.id);
+    return HttpResponse.json(chromo);
+  }),
+
+  http.post(`${API}/samples/:id/validate/`, ({ params }) => {
+    const k = getOrBuildKaryotype(String(params.id));
+    recomputeSummary(k);
+    if (k.summary.unresolved_orange > 0 || k.summary.red > 0) {
+      return HttpResponse.json(
+        { code: 'CASE_BLOCKED', detail: 'Resuelva todos los cromosomas naranja antes de continuar.' },
+        { status: 409 },
+      );
+    }
+    const sample = samples.find((s) => s.id === params.id);
+    if (sample) sample.status = 'ANALYST_VALIDATED';
+    pushAudit(String(params.id), 'ANALYST_VALIDATED', null);
+    return HttpResponse.json({ sample_id: String(params.id), status: 'ANALYST_VALIDATED' });
+  }),
+
+  http.get(`${API}/samples/:id/audit/`, ({ params }) => {
+    return HttpResponse.json(auditTrails[String(params.id)] ?? []);
   }),
 ];

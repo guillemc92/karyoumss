@@ -314,3 +314,16 @@ input[type="range"] { width: 100%; height: 4px; border-radius: 2px; background: 
     .karyo-grid { grid-template-columns: repeat(4, 1fr); }
     .karyo-workspace__panel { position: static; }
 }
+
+/* Cariotipo P2 (ADR-0021 P2) — acciones, gating, audit */
+.karyo-alert--ok { background: var(--green-light); border-color: var(--green-success); color: var(--green-success); }
+.karyo-actions { margin-top: 1rem; border-top: 1px solid var(--border-light); padding-top: 0.8rem; }
+.karyo-actions__row { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 0.6rem; }
+.karyo-actions__row button { width: 100%; justify-content: center; }
+.karyo-gating { margin-top: 1rem; }
+.karyo-gating button { width: 100%; }
+.karyo-audit { margin-top: 1.5rem; }
+.karyo-audit__list { list-style: none; margin-top: 0.8rem; background: var(--white); border: 1px solid var(--border-light); border-radius: var(--radius-lg); padding: 0.8rem 1rem; max-height: 260px; overflow-y: auto; font-size: 0.78rem; }
+.karyo-audit__list li { padding: 4px 0; border-bottom: 1px solid var(--border-light); }
+.karyo-audit__list li:last-child { border-bottom: none; }
+.karyo-audit__time { color: var(--gray-text); font-variant-numeric: tabular-nums; }

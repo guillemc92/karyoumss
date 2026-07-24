@@ -2399,5 +2399,79 @@ P2), ADR-0015/0016 (bounded context clínico), AGENTS.md §9 (pipeline IA).
 
 ---
 
+## PM-KARYO-002 — XAI + Resolución de naranjas + Gating + Audit Trail (P2)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-KARYO-002 |
+| **Título** | Núcleo clínico P2: XAI Grad-CAM, resolución de cromosomas naranja con gate BR-004, bloqueo RN-01, transición ANALYST_VALIDATED y audit trail append-only |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Fable/Opus |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-07-23/24 |
+| **ADR origen** | [ADR-0021](docs/adr/0021-visor-correccion-cariotipo.md) §D5 (P2) + [ADR-0022](docs/adr/0022-audit-trail-clinico-django.md) |
+| **Design Doc** | [DD-KARYO-002](docs/design/DD-KARYO-002.md) |
+
+### Alcance ejecutado (P2)
+
+Sobre el visor read-only de P1, el flujo completo de resolución de naranjas:
+1. **Audit trail** (ADR-0022): modelo `AuditEvent` append-only con hash chain
+   lineal SHA256 **por caso**, servicio `emit_audit_event` con
+   `select_for_update`, verificación de integridad O(n), enforcement en 3
+   capas (ORMbloquea UPDATE, sin PATCH/DELETE, `verify_audit_chain`).
+2. **XAI Grad-CAM**: `POST /chromosomes/{cid}/xai/` → heatmap mock (el real lo
+   produce el microservicio de inferencia ADR-0007) + registra `XAI_VIEWED` +
+   setea `xai_viewed=True`. Modal `XaiModal` en el frontend.
+3. **Resolver naranja**: `POST /chromosomes/{cid}/resolve/` — **gate BR-004**:
+   409 `XAI_REQUIRED` si no vio XAI; 400 `NOT_ORANGE` si no es naranja. UI:
+   botón "Aceptar" deshabilitado hasta ver XAI.
+4. **Marcar anomalía (M)**: `POST /chromosomes/{cid}/anomaly/` + campo
+   `Chromosome.is_anomaly`.
+5. **Gating RN-01**: `POST /samples/{id}/validate/` → 409 `CASE_BLOCKED` si
+   hay naranjas sin resolver, si no → transición `ANALYST_VALIDATED`. UI:
+   botón "Pasar a Supervisor" deshabilitado mientras haya pendientes.
+6. **Bitácora** `GET /samples/{id}/audit/` + log colapsable en la página.
+
+### Output (verificación)
+
+- **Backend:** 172/172 tests en `apps/samples`, **97.73% cobertura total**;
+  `test_karyotype_p2.py` (24 tests): hash chain encadena, append-only bloquea
+  UPDATE, gate XAI, gating RN-01, permisos.
+- **Frontend:** suite completa verde, **99.33% stmts / 93.02% branches / 92%
+  funcs**; `KaryotypeViewer`/`useKaryotypeActions` 100%. 21 tests nuevos (P2
+  UI + client + panel). Bug de aislamiento MSW corregido de paso (copia
+  profunda en `resetMockData`). `tsc --noEmit` limpio.
+- **E2E real (Playwright/Chromium):** gating inicial OK → Aceptar bloqueado
+  sin XAI → ver XAI + aceptar los 3 naranjas → "Pasar a Supervisor" habilitado
+  → validar → banner de éxito → **7 eventos encadenados en la bitácora** (3
+  XAI + 3 aceptar + 1 validar). Captura verificada.
+
+### Corrección de diseño confirmada
+
+BR-004 (XAI obligatorio antes de resolver) se enforce **a nivel de servicio**,
+no solo de UI (ADR-0022 D4): el endpoint `resolve` rechaza con 409 aunque el
+cliente saltee el gate visual. El semáforo sigue derivado de la confianza
+(ADR-0021 D2) — resolver no lo cambia; el estado "Resuelto" es separado.
+
+### Trazabilidad
+
+```
+FSD-UC-003 (XAI + corrección) + FSD-UC-004 (bloqueo/validación)
+  → ADR-0021 §P2 + ADR-0022 (audit trail Django, hash chain SHA256)
+    → DD-KARYO-002 (XAI, resolver, gating, audit)
+      → backend-clinic: AuditEvent + servicios + 5 endpoints
+        → frontend-clinic: XaiModal + panel acciones + gating + audit log
+          → 172 tests backend (97.73%) + 21 tests frontend nuevos (99.33%)
+            → E2E Playwright: flujo completo XAI→aceptar→validar→audit
+```
+
+Pendiente (ADR-0021 D5): **P3** (drag & drop de reclasificación + split/join
+/cross sobre Konva.js), **P4** (herramientas de imagen + modo degradado).
+
+Refs: ADR-0021 §P2, ADR-0022, DD-KARYO-002, RN-01/RN-02/RN-05, BR-003/BR-004,
+PM-KARYO-001 (P1, precedente).
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*

@@ -30,10 +30,60 @@ export interface Chromosome {
   semaphore: Semaphore;
   resolution_status: ChromosomeResolution;
   xai_viewed: boolean;
+  is_anomaly: boolean;
   measures: ChromosomeMeasures;
   bbox: Record<string, number>;
   order: number;
 }
+
+// --- P2 (ADR-0021 P2, ADR-0022, DD-KARYO-002) ---
+
+/** Respuesta de POST /chromosomes/{id}/xai/ — heatmap Grad-CAM (mock en demo). */
+export interface XaiResult {
+  chromosome_id: string;
+  predicted_class: string;
+  confidence_score: string | null;
+  heatmap_base64: string;
+}
+
+export type AuditEventType =
+  | 'XAI_VIEWED' | 'ACCEPT_CHROMOSOME' | 'RECLASSIFY' | 'CORRECT_CLASS'
+  | 'MARK_ANOMALY' | 'SPLIT' | 'JOIN' | 'RESOLVE_CROSS'
+  | 'ANALYST_VALIDATED' | 'AUDIT_DECISION' | 'ISCN_OVERRIDE' | 'SIGN_REPORT';
+
+export interface AuditEvent {
+  id: string;
+  event_type: AuditEventType;
+  chromosome: string | null;
+  actor: number;
+  actor_name: string;
+  payload: Record<string, unknown>;
+  created_at: string;
+  previous_hash: string;
+  current_hash: string;
+}
+
+/** Respuesta de POST /samples/{id}/validate/. */
+export interface ValidateResult {
+  sample_id: string;
+  status: string;
+}
+
+/** Etiqueta legible por tipo de evento de auditoría (para el log). */
+export const AUDIT_LABELS: Record<AuditEventType, string> = {
+  XAI_VIEWED: 'Consultó explicabilidad (XAI)',
+  ACCEPT_CHROMOSOME: 'Aceptó cromosoma',
+  RECLASSIFY: 'Reclasificó',
+  CORRECT_CLASS: 'Corrigió clase',
+  MARK_ANOMALY: 'Marcó anomalía',
+  SPLIT: 'Separó',
+  JOIN: 'Unió',
+  RESOLVE_CROSS: 'Resolvió cruce',
+  ANALYST_VALIDATED: 'Validó el caso',
+  AUDIT_DECISION: 'Decisión de auditoría',
+  ISCN_OVERRIDE: 'Override ISCN',
+  SIGN_REPORT: 'Firmó reporte',
+};
 
 export interface KaryotypeSummary {
   total: number;

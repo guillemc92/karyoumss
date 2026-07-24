@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from .fields import EncryptedTextField
 
@@ -186,6 +187,7 @@ class Chromosome(models.Model):
         max_length=10, choices=ChromosomeResolution.choices, default=ChromosomeResolution.AUTO,
     )
     xai_viewed = models.BooleanField(default=False)  # gate FSD-UC-003 (P2)
+    is_anomaly = models.BooleanField(default=False)  # marcador estructural (M), P2
     order = models.IntegerField(default=0)           # orden estable de render
 
     class Meta:
@@ -201,6 +203,85 @@ class Chromosome(models.Model):
         if self.confidence_score is None:
             return 'red'
         return 'green' if self.confidence_score >= CONFIDENCE_THRESHOLD else 'orange'
+
+
+# ============================================================================
+# Audit Trail append-only (ADR-0022, DD-KARYO-002) — P2
+# ============================================================================
+
+import hashlib  # noqa: E402
+import json     # noqa: E402
+
+
+class AuditEventType(models.TextChoices):
+    XAI_VIEWED = 'XAI_VIEWED', 'XAI consultado'
+    ACCEPT_CHROMOSOME = 'ACCEPT_CHROMOSOME', 'Cromosoma aceptado'
+    RECLASSIFY = 'RECLASSIFY', 'Reclasificado'          # P3
+    CORRECT_CLASS = 'CORRECT_CLASS', 'Clase corregida'  # P3
+    MARK_ANOMALY = 'MARK_ANOMALY', 'Anomalía marcada'
+    SPLIT = 'SPLIT', 'Separado'                          # P3
+    JOIN = 'JOIN', 'Unido'                              # P3
+    RESOLVE_CROSS = 'RESOLVE_CROSS', 'Cruce resuelto'    # P3
+    ANALYST_VALIDATED = 'ANALYST_VALIDATED', 'Validado por analista'
+    AUDIT_DECISION = 'AUDIT_DECISION', 'Decisión de auditoría'  # futuro
+    ISCN_OVERRIDE = 'ISCN_OVERRIDE', 'Override ISCN'            # futuro
+    SIGN_REPORT = 'SIGN_REPORT', 'Reporte firmado'             # futuro
+
+
+class AuditEventError(Exception):
+    """Se intentó mutar un AuditEvent existente (RN-05 append-only)."""
+
+
+class AuditEvent(models.Model):
+    """Evento de auditoría inmutable con hash chain lineal SHA256 por-caso
+    (ADR-0022 §D1/D2, materializa ADR-0008 Nivel 1 en Django).
+
+    RN-05: append-only — `save()` rechaza cualquier UPDATE. El `current_hash`
+    encadena contra el `current_hash` del evento anterior de la MISMA sample.
+    NO instanciar directo: usar `services.emit_audit_event()` (calcula el
+    encadenamiento bajo lock).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sample = models.ForeignKey(Sample, on_delete=models.CASCADE, related_name='audit_events')
+    chromosome = models.ForeignKey(
+        Chromosome, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_events',
+    )
+    event_type = models.CharField(max_length=20, choices=AuditEventType.choices)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='audit_events')
+    payload = models.JSONField(default=dict, blank=True)
+    # default=timezone.now (no auto_now_add): el service necesita created_at
+    # poblado ANTES de save() para computar el hash de forma determinística.
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    previous_hash = models.CharField(max_length=64, blank=True, default='')
+    current_hash = models.CharField(max_length=64, blank=True, default='')
+
+    class Meta:
+        db_table = 'clinic_audit_events'
+        ordering = ['created_at']
+        indexes = [models.Index(fields=['sample', 'created_at'])]
+
+    def __str__(self):
+        return f'AuditEvent({self.event_type}, sample={self.sample_id})'
+
+    def compute_hash(self) -> str:
+        """SHA256(canonical(fila sin hashes) || previous_hash). Determinístico:
+        claves ordenadas, timestamp ISO-8601 UTC."""
+        canonical = json.dumps({
+            'sample': str(self.sample_id),
+            'chromosome': str(self.chromosome_id) if self.chromosome_id else None,
+            'event_type': self.event_type,
+            'actor': self.actor_id,
+            'payload': self.payload,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+        }, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+        return hashlib.sha256((canonical + self.previous_hash).encode('utf-8')).hexdigest()
+
+    def save(self, *args, **kwargs):
+        # RN-05: bloquea cualquier re-guardado (UPDATE) tras la creación.
+        if not self._state.adding:
+            raise AuditEventError('AuditEvent es append-only (RN-05): no se puede modificar.')
+        super().save(*args, **kwargs)
 
 
 # RBAC jerárquico (ADR-0019, DD-RBAC-001) — re-exportado para que Django

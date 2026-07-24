@@ -3,10 +3,12 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Sample, SampleStatus
+from .models import Chromosome, Sample, SampleStatus
 from .permissions import CanRegisterSample, HasOpcion, IsOwnerOrStaff
 from .pipeline_client import MLDegradedError, pipeline_client
 from .serializers import (
+    AuditEventSerializer,
+    ChromosomeSerializer,
     KaryotypeSerializer,
     SampleCreateSerializer,
     SampleListItemSerializer,
@@ -14,7 +16,17 @@ from .serializers import (
     SampleRegisterSerializer,
     SampleUpdateSerializer,
 )
-from .services import ChnDuplicateError, sample_registration_service
+from .services import (
+    CaseBlockedError,
+    ChnDuplicateError,
+    NotOrangeError,
+    XaiRequiredError,
+    mark_anomaly,
+    resolve_chromosome,
+    sample_registration_service,
+    validate_case,
+    view_xai,
+)
 
 
 class SampleListCreateView(generics.ListCreateAPIView):
@@ -241,3 +253,120 @@ class KaryotypeView(APIView):
             )
 
         return Response(KaryotypeSerializer(karyotype).data, status=status.HTTP_200_OK)
+
+
+def _get_owned_chromosome_or_error(sample, chromosome_id):
+    """Busca el cromosoma dentro del cariotipo de la muestra (scope ya validado
+    por _get_owned_sample_or_none). Devuelve (chromosome, None) o (None, 404)."""
+    karyotype = getattr(sample, 'karyotype', None)
+    if karyotype is None:
+        return None, Response(
+            {'code': 'NO_KARYOTYPE', 'detail': 'La muestra no tiene cariotipo.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    try:
+        chromo = Chromosome.objects.get(id=chromosome_id, karyotype=karyotype)
+    except Chromosome.DoesNotExist:
+        return None, Response(
+            {'code': 'CHROMOSOME_NOT_FOUND', 'detail': 'Cromosoma no encontrado en este cariotipo.'},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+    return chromo, None
+
+
+class ChromosomeXaiView(APIView):
+    """POST /samples/{id}/chromosomes/{cid}/xai/ — XAI Grad-CAM (ADR-0021 P2).
+
+    Registra XAI_VIEWED (BR-004) y marca el cromosoma como visto. El heatmap
+    real lo produce el microservicio de inferencia (ADR-0007); acá mock.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.view')]
+
+    def post(self, request, pk, cid):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        chromo, error = _get_owned_chromosome_or_error(sample, cid)
+        if error:
+            return error
+        result = view_xai(sample, chromo, request.user)
+        return Response(result, status=status.HTTP_200_OK)
+
+
+class ChromosomeResolveView(APIView):
+    """POST /samples/{id}/chromosomes/{cid}/resolve/ — resolver naranja (P2).
+
+    Exige XAI previo (BR-004): 409 XAI_REQUIRED si no. 400 NOT_ORANGE si el
+    cromosoma no es naranja.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk, cid):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        chromo, error = _get_owned_chromosome_or_error(sample, cid)
+        if error:
+            return error
+        try:
+            chromo = resolve_chromosome(sample, chromo, request.user)
+        except XaiRequiredError as e:
+            return Response({'code': 'XAI_REQUIRED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except NotOrangeError as e:
+            return Response({'code': 'NOT_ORANGE', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ChromosomeSerializer(chromo).data, status=status.HTTP_200_OK)
+
+
+class ChromosomeAnomalyView(APIView):
+    """POST /samples/{id}/chromosomes/{cid}/anomaly/ — marcar anomalía (M) (P2)."""
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk, cid):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        chromo, error = _get_owned_chromosome_or_error(sample, cid)
+        if error:
+            return error
+        chromo = mark_anomaly(sample, chromo, request.user)
+        return Response(ChromosomeSerializer(chromo).data, status=status.HTTP_200_OK)
+
+
+class CaseValidateView(APIView):
+    """POST /samples/{id}/validate/ — transición a ANALYST_VALIDATED (FSD-UC-004).
+
+    Rechaza 409 CASE_BLOCKED si hay naranjas sin resolver (RN-01).
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        try:
+            sample = validate_case(sample, request.user)
+        except CaseBlockedError as e:
+            return Response({'code': 'CASE_BLOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        return Response({'sample_id': str(sample.id), 'status': sample.status}, status=status.HTTP_200_OK)
+
+
+class AuditTrailView(APIView):
+    """GET /samples/{id}/audit/ — bitácora append-only del caso (ADR-0022)."""
+
+    def get_permissions(self):
+        return [HasOpcion('sample.view')]
+
+    def get(self, request, pk):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        events = sample.audit_events.all()
+        return Response(AuditEventSerializer(events, many=True).data, status=status.HTTP_200_OK)
