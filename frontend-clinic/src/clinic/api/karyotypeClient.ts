@@ -10,7 +10,9 @@
  *   404 → NOT_FOUND (muestra) / NO_KARYOTYPE (sin cariotipo generado aún)
  */
 import { clinicRequest, CLINIC_DEFAULT_BASE_URL } from './samplesClient';
-import type { AuditEvent, Chromosome, Karyotype, PipelineHealth, ValidateResult, XaiResult } from '../types/karyotype';
+import type {
+  AuditEvent, AuditReview, AuditReviewResponse, Chromosome, Karyotype, PipelineHealth, ValidateResult, XaiResult,
+} from '../types/karyotype';
 
 export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL) {
   return {
@@ -73,6 +75,20 @@ export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL)
     /** GET /pipeline/health/ — disponibilidad de la IA (para el modo degradado). */
     pipelineHealth(): Promise<PipelineHealth> {
       return clinicRequest<PipelineHealth>(baseUrl, '/pipeline/health/', { method: 'GET' });
+    },
+
+    // --- Supervisor S1 (auditoría del 5%, DD-SUP-001) ---
+
+    /** GET /samples/{id}/audit-review/ — selección del 5% + resumen. */
+    getAuditReview(sampleId: string): Promise<AuditReviewResponse> {
+      return clinicRequest<AuditReviewResponse>(baseUrl, `/samples/${sampleId}/audit-review/`, { method: 'GET' });
+    },
+    /** POST /audit-review/{cid}/decide/ — Confirmar/Rechazar un cromosoma auditado. */
+    decideAudit(sampleId: string, chromosomeId: string, decision: 'CONFIRMED' | 'REJECTED', comment = ''): Promise<AuditReview> {
+      return clinicRequest<AuditReview>(baseUrl, `/samples/${sampleId}/audit-review/${chromosomeId}/decide/`, {
+        method: 'POST',
+        body: { decision, comment },
+      });
     },
   };
 }

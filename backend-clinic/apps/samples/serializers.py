@@ -2,7 +2,7 @@ import re
 
 from rest_framework import serializers
 
-from .models import AuditEvent, Chromosome, Karyotype, Sample, SampleType
+from .models import AuditEvent, AuditReview, Chromosome, Karyotype, Sample, SampleType
 
 CHN_FORMAT_RE = re.compile(r'^CHN-\d{4}-\d{2}-\d{2}-\d{4}$')
 
@@ -177,12 +177,13 @@ class KaryotypeSerializer(serializers.ModelSerializer):
     """
 
     sample_id = serializers.UUIDField(read_only=True)
+    sample_status = serializers.CharField(source='sample.status', read_only=True)
     chromosomes = serializers.SerializerMethodField()
     summary = serializers.SerializerMethodField()
 
     class Meta:
         model = Karyotype
-        fields = ['id', 'sample_id', 'model_version', 'generated_at', 'summary', 'chromosomes']
+        fields = ['id', 'sample_id', 'sample_status', 'model_version', 'generated_at', 'summary', 'chromosomes']
 
     def _active_chromosomes(self, obj):
         # P3: los fragmentos absorbidos por JOIN quedan is_active=False y no
@@ -213,6 +214,26 @@ class KaryotypeSerializer(serializers.ModelSerializer):
             # RN-01/RN-02: hay naranjas sin resolver → no se puede emitir (P2)
             'is_blocked': unresolved_orange > 0 or red > 0,
         }
+
+
+class AuditReviewSerializer(serializers.ModelSerializer):
+    """Revisión del 5% del Supervisor (ADR-0023 S1). Incluye datos del cromosoma
+    auditado para el badge púrpura del visor."""
+
+    predicted_class = serializers.CharField(source='chromosome.predicted_class', read_only=True)
+    confidence_score = serializers.DecimalField(
+        source='chromosome.confidence_score', max_digits=4, decimal_places=3, read_only=True,
+    )
+    semaphore = serializers.CharField(source='chromosome.semaphore', read_only=True)
+    reviewer_name = serializers.CharField(source='reviewer.get_full_name', default='', read_only=True)
+
+    class Meta:
+        model = AuditReview
+        fields = [
+            'id', 'chromosome', 'predicted_class', 'confidence_score', 'semaphore',
+            'decision', 'comment', 'reviewer', 'reviewer_name', 'decided_at', 'created_at',
+        ]
+        read_only_fields = fields
 
 
 class AuditEventSerializer(serializers.ModelSerializer):

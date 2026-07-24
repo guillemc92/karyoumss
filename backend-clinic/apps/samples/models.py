@@ -22,6 +22,10 @@ class SampleStatus(models.TextChoices):
     # error: es una decisión documentada para evitar una 2da migración).
     BLOCKED_BY_CONFIDENCE = 'BLOCKED_BY_CONFIDENCE', 'Bloqueado por confianza'
     ANALYST_VALIDATED = 'ANALYST_VALIDATED', 'Validado por analista'
+    # Flujo del Supervisor (FSD-UC-005/006, ADR-0023 D1). SIGNED/REPORTED se
+    # declaran en S1; sus transiciones llegan en S2 (firma) y S3 (ISCN).
+    SIGNED = 'SIGNED', 'Firmado por supervisor'
+    REPORTED = 'REPORTED', 'Reportado (ISCN)'
     VALIDATED = 'VALIDATED', 'Validado'
     REJECTED = 'REJECTED', 'Rechazado'
 
@@ -294,6 +298,48 @@ class AuditEvent(models.Model):
         if not self._state.adding:
             raise AuditEventError('AuditEvent es append-only (RN-05): no se puede modificar.')
         super().save(*args, **kwargs)
+
+
+# ============================================================================
+# Flujo del Supervisor S1 (ADR-0023 D2, DD-SUP-001) — auditoría del 5%
+# ============================================================================
+
+
+class AuditDecision(models.TextChoices):
+    PENDING = 'PENDING', 'Pendiente'
+    CONFIRMED = 'CONFIRMED', 'Confirmado'
+    REJECTED = 'REJECTED', 'Rechazado'
+
+
+class AuditReview(models.Model):
+    """Revisión del Supervisor sobre un cromosoma seleccionado para la
+    auditoría aleatoria del 5% (RN-08). Un registro por cromosoma auditado.
+
+    La selección (qué cromosomas) es determinista por `sample_id` y NO se
+    persiste como flag en `Chromosome` (evita deriva): estas filas SON la
+    materialización de la selección + la decisión del Supervisor.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    sample = models.ForeignKey(Sample, on_delete=models.CASCADE, related_name='audit_reviews')
+    chromosome = models.ForeignKey(Chromosome, on_delete=models.CASCADE, related_name='audit_reviews')
+    decision = models.CharField(max_length=10, choices=AuditDecision.choices, default=AuditDecision.PENDING)
+    comment = models.TextField(blank=True, default='')
+    reviewer = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name='audit_reviews',
+    )
+    decided_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'clinic_audit_reviews'
+        ordering = ['created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['sample', 'chromosome'], name='uniq_audit_review_per_chromosome'),
+        ]
+
+    def __str__(self):
+        return f'AuditReview({self.chromosome_id}, {self.decision})'
 
 
 # RBAC jerárquico (ADR-0019, DD-RBAC-001) — re-exportado para que Django

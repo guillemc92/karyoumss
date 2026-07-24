@@ -3,11 +3,12 @@ from rest_framework import generics, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Chromosome, Sample, SampleStatus
+from .models import AuditReview, Chromosome, Sample, SampleStatus
 from .permissions import CanRegisterSample, HasOpcion, IsOwnerOrStaff
 from .pipeline_client import MLDegradedError, pipeline_client
 from .serializers import (
     AuditEventSerializer,
+    AuditReviewSerializer,
     ChromosomeSerializer,
     KaryotypeSerializer,
     SampleCreateSerializer,
@@ -22,16 +23,21 @@ from .services import (
     ChnDuplicateError,
     CrossKaryotypeError,
     InvalidClassError,
+    InvalidDecisionError,
     JoinSelfError,
+    NotAuditableError,
     NotOrangeError,
     SameClassError,
     XaiRequiredError,
+    audit_summary,
+    decide_audit,
     join_chromosomes,
     mark_anomaly,
     reclassify_chromosome,
     resolve_chromosome,
     resolve_cross,
     sample_registration_service,
+    select_audit_sample,
     split_chromosome,
     validate_case,
     view_xai,
@@ -485,6 +491,54 @@ class AuditTrailView(APIView):
             return error
         events = sample.audit_events.all()
         return Response(AuditEventSerializer(events, many=True).data, status=status.HTTP_200_OK)
+
+
+class AuditReviewListView(APIView):
+    """GET /samples/{id}/audit-review/ — selección del 5% del Supervisor (ADR-0023 S1).
+
+    Crea la selección determinista al primer acceso (idempotente). Permiso
+    `case.audit` (Supervisor/Admin; el Analista NO lo tiene, segregación RN-06).
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('case.audit')]
+
+    def get(self, request, pk):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        reviews = select_audit_sample(sample)
+        return Response(
+            {'reviews': AuditReviewSerializer(reviews, many=True).data, 'summary': audit_summary(sample)},
+            status=status.HTTP_200_OK,
+        )
+
+
+class AuditDecideView(APIView):
+    """POST /samples/{id}/audit-review/{cid}/decide/ — decisión del Supervisor (S1).
+
+    Body: {"decision": "CONFIRMED"|"REJECTED", "comment": "..."}. Emite
+    AUDIT_DECISION. 409 NOT_AUDITABLE si el caso no está ANALYST_VALIDATED.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('case.audit')]
+
+    def post(self, request, pk, cid):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        try:
+            review = sample.audit_reviews.get(chromosome_id=cid)
+        except AuditReview.DoesNotExist:
+            return Response({'code': 'REVIEW_NOT_FOUND', 'detail': 'Cromosoma no está en la auditoría del 5%'}, status=status.HTTP_404_NOT_FOUND)
+        try:
+            review = decide_audit(sample, review, request.user, request.data.get('decision'), request.data.get('comment', ''))
+        except NotAuditableError as e:
+            return Response({'code': 'NOT_AUDITABLE', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except InvalidDecisionError as e:
+            return Response({'code': 'INVALID_DECISION', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(AuditReviewSerializer(review).data, status=status.HTTP_200_OK)
 
 
 class PipelineHealthView(APIView):

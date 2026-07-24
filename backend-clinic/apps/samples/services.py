@@ -397,6 +397,92 @@ def resolve_cross(sample, chromosome, actor, mode='auto') -> Chromosome:
     return chromosome
 
 
+# ============================================================================
+# Flujo del Supervisor S1 (ADR-0023 D2, DD-SUP-001) — auditoría del 5%
+# ============================================================================
+
+import math    # noqa: E402
+import random  # noqa: E402
+from decimal import Decimal  # noqa: E402
+
+from django.utils import timezone as _tz  # noqa: E402
+
+from .models import AuditDecision, AuditReview  # noqa: E402
+
+AUDIT_CONFIDENCE_MIN = Decimal('0.86')  # RN-08: solo verdes de alta confianza (>86%)
+AUDIT_FRACTION = 0.05
+
+
+class NotAuditableError(Exception):
+    """El caso no está en un estado auditable (debe ser ANALYST_VALIDATED)."""
+
+
+class InvalidDecisionError(Exception):
+    """Decisión de auditoría inválida (no es CONFIRMED/REJECTED)."""
+
+
+def _audit_pool(karyotype):
+    """Cromosomas activos con confianza > 0.86, ordenados de forma estable."""
+    return sorted(
+        [
+            c for c in karyotype.chromosomes.filter(is_active=True)
+            if c.confidence_score is not None and c.confidence_score > AUDIT_CONFIDENCE_MIN
+        ],
+        key=lambda c: str(c.id),
+    )
+
+
+def select_audit_sample(sample) -> list:
+    """Selecciona (idempotente) el 5% aleatorio determinista de cromosomas de
+    alta confianza para auditoría (RN-08, ADR-0023 D2) y materializa un
+    `AuditReview` PENDING por cada uno. Reproducible: semilla = sample_id.
+
+    Devuelve los AuditReview del caso (ordenados)."""
+    karyotype = getattr(sample, 'karyotype', None)
+    if karyotype is None:
+        return []
+    pool = _audit_pool(karyotype)
+    if pool:
+        n = max(1, math.ceil(AUDIT_FRACTION * len(pool)))
+        rng = random.Random(str(sample.id))
+        chosen = rng.sample(pool, n) if n <= len(pool) else pool
+        with transaction.atomic():
+            for chromo in chosen:
+                AuditReview.objects.get_or_create(sample=sample, chromosome=chromo)
+    return list(sample.audit_reviews.select_related('chromosome').all())
+
+
+def decide_audit(sample, review, reviewer, decision, comment='') -> AuditReview:
+    """Registra la decisión del Supervisor sobre un cromosoma auditado
+    (Confirmar/Rechazar) y emite AUDIT_DECISION (ADR-0022)."""
+    if sample.status != SampleStatus.ANALYST_VALIDATED:
+        raise NotAuditableError('El caso debe estar validado por el analista para auditar.')
+    if decision not in (AuditDecision.CONFIRMED, AuditDecision.REJECTED):
+        raise InvalidDecisionError('La decisión debe ser CONFIRMED o REJECTED.')
+    with transaction.atomic():
+        review.decision = decision
+        review.comment = comment or ''
+        review.reviewer = reviewer
+        review.decided_at = _tz.now()
+        review.save(update_fields=['decision', 'comment', 'reviewer', 'decided_at'])
+        emit_audit_event(
+            sample, reviewer, AuditEventType.AUDIT_DECISION, chromosome=review.chromosome,
+            payload={'decision': decision, 'comment': review.comment},
+        )
+    return review
+
+
+def audit_summary(sample) -> dict:
+    """Resumen del avance de auditoría del 5% para el caso."""
+    reviews = list(sample.audit_reviews.all())
+    return {
+        'total': len(reviews),
+        'pending': sum(1 for r in reviews if r.decision == AuditDecision.PENDING),
+        'confirmed': sum(1 for r in reviews if r.decision == AuditDecision.CONFIRMED),
+        'rejected': sum(1 for r in reviews if r.decision == AuditDecision.REJECTED),
+    }
+
+
 def _bbox_union(a: dict, b: dict) -> dict:
     """Rectángulo mínimo que contiene a ambos bbox {x,y,w,h}."""
     a = a or {}

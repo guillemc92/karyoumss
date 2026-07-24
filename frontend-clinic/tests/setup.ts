@@ -71,6 +71,7 @@ beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 beforeEach(() => {
   resetMockData();
   setClinicMode('auto'); // P4: el modo degradado es global (module var) — resetear entre tests
+  localStorage.clear(); // el JWT de sesión (rol) persiste entre tests si no se limpia
 });
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());

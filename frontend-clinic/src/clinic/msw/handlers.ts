@@ -7,7 +7,7 @@ import { initialSamples } from './seedData';
 import { buildMockKaryotype } from './karyotypeSeed';
 import type { SampleCreateRequest, SampleListItem, SampleRead, SampleUpdateRequest } from '../types/sample';
 import type { SampleRegistrationData } from '../types/registration';
-import type { AuditEvent, AuditEventType, Chromosome, Karyotype } from '../types/karyotype';
+import type { AuditEvent, AuditEventType, AuditReview, Chromosome, Karyotype } from '../types/karyotype';
 import { CHROMOSOME_SLOTS } from '../types/karyotype';
 
 let samples: SampleRead[] = [...initialSamples];
@@ -17,6 +17,42 @@ let forceDegraded = false;
 // ver XAI → aceptar → validar persista entre requests en el demo.
 const karyotypes: Record<string, Karyotype> = {};
 const auditTrails: Record<string, AuditEvent[]> = {};
+// Supervisor S1: selección del 5% + decisiones, mutable por sample.
+const auditReviews: Record<string, AuditReview[]> = {};
+
+/** Selección determinista del 5% (espejo del backend): pool >0.86, min 1. */
+function getOrBuildAuditReviews(sampleId: string): AuditReview[] {
+  if (auditReviews[sampleId]) return auditReviews[sampleId];
+  const k = getOrBuildKaryotype(sampleId);
+  const pool = k.chromosomes
+    .filter((c) => c.is_active && c.confidence_score !== null && parseFloat(c.confidence_score) > 0.86)
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const n = pool.length ? Math.max(1, Math.ceil(0.05 * pool.length)) : 0;
+  auditReviews[sampleId] = pool.slice(0, n).map((c, i) => ({
+    id: `${sampleId}-rev-${i}`,
+    chromosome: c.id,
+    predicted_class: c.predicted_class,
+    confidence_score: c.confidence_score,
+    semaphore: c.semaphore,
+    decision: 'PENDING',
+    comment: '',
+    reviewer: null,
+    reviewer_name: '',
+    decided_at: null,
+    created_at: new Date().toISOString(),
+  }));
+  return auditReviews[sampleId];
+}
+
+function auditReviewSummary(sampleId: string) {
+  const rs = auditReviews[sampleId] ?? [];
+  return {
+    total: rs.length,
+    pending: rs.filter((r) => r.decision === 'PENDING').length,
+    confirmed: rs.filter((r) => r.decision === 'CONFIRMED').length,
+    rejected: rs.filter((r) => r.decision === 'REJECTED').length,
+  };
+}
 
 function getOrBuildKaryotype(sampleId: string): Karyotype {
   if (!karyotypes[sampleId]) karyotypes[sampleId] = buildMockKaryotype(sampleId);
@@ -73,9 +109,39 @@ export function resetMockData(): void {
   // filtraría estado entre tests (aislamiento roto).
   samples = initialSamples.map((s) => ({ ...s }));
   forceDegraded = false;
-  try { sessionStorage?.removeItem('biomed.degraded'); } catch { /* no-op */ }
+  try {
+    sessionStorage?.removeItem('biomed.degraded');
+    for (let i = sessionStorage.length - 1; i >= 0; i--) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith('biomed.status.')) sessionStorage.removeItem(key);
+    }
+  } catch { /* no-op */ }
   for (const k of Object.keys(karyotypes)) delete karyotypes[k];
   for (const k of Object.keys(auditTrails)) delete auditTrails[k];
+  for (const k of Object.keys(auditReviews)) delete auditReviews[k];
+}
+
+/** Demo/E2E: fuerza el estado clínico de una muestra (p.ej. ANALYST_VALIDATED
+ * para el flujo del Supervisor S1). Persiste en sessionStorage para sobrevivir
+ * un reload; `applyStatusOverrides` lo re-aplica en el bootstrap. */
+export function setSampleStatus(sampleId: string, status: SampleRead['status']): void {
+  const s = samples.find((x) => x.id === sampleId);
+  if (s) s.status = status;
+  try { sessionStorage?.setItem(`biomed.status.${sampleId}`, status); } catch { /* no-op */ }
+}
+
+/** Re-aplica los overrides de estado persistidos (llamado en el bootstrap MSW). */
+export function applyStatusOverrides(): void {
+  try {
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const key = sessionStorage.key(i);
+      if (key?.startsWith('biomed.status.')) {
+        const id = key.slice('biomed.status.'.length);
+        const s = samples.find((x) => x.id === id);
+        if (s) s.status = sessionStorage.getItem(key) as SampleRead['status'];
+      }
+    }
+  } catch { /* sessionStorage no disponible */ }
 }
 
 /** Persistente para que el modo degradado sobreviva un reload (demo/E2E). */
@@ -304,7 +370,9 @@ export const handlers = [
         { status: 404 },
       );
     }
-    return HttpResponse.json(getOrBuildKaryotype(String(params.id)));
+    const k = getOrBuildKaryotype(String(params.id));
+    k.sample_status = sample.status; // gating del panel del supervisor (S1)
+    return HttpResponse.json(k);
   }),
 
   // Cariotipo P2 (ADR-0021 P2, ADR-0022) — XAI, resolver, anomalía, validar, audit.
@@ -446,5 +514,34 @@ export const handlers = [
   http.get(`${API}/pipeline/health/`, () => {
     const degraded = isDegraded();
     return HttpResponse.json({ available: !degraded, mode: degraded ? 'degradado' : 'auto' });
+  }),
+
+  // Supervisor S1 (ADR-0023, DD-SUP-001) — auditoría del 5%.
+  http.get(`${API}/samples/:id/audit-review/`, ({ params }) => {
+    const sid = String(params.id);
+    const reviews = getOrBuildAuditReviews(sid);
+    return HttpResponse.json({ reviews, summary: auditReviewSummary(sid) });
+  }),
+
+  http.post(`${API}/samples/:id/audit-review/:cid/decide/`, async ({ params, request }) => {
+    const sid = String(params.id);
+    const sample = samples.find((s) => s.id === sid);
+    if (sample && sample.status !== 'ANALYST_VALIDATED') {
+      return HttpResponse.json({ code: 'NOT_AUDITABLE', detail: 'El caso debe estar validado por el analista.' }, { status: 409 });
+    }
+    const reviews = getOrBuildAuditReviews(sid);
+    const review = reviews.find((r) => r.chromosome === params.cid);
+    if (!review) return HttpResponse.json({ code: 'REVIEW_NOT_FOUND' }, { status: 404 });
+    const body = (await request.json()) as { decision?: string; comment?: string };
+    if (body.decision !== 'CONFIRMED' && body.decision !== 'REJECTED') {
+      return HttpResponse.json({ code: 'INVALID_DECISION', detail: 'Decisión inválida' }, { status: 400 });
+    }
+    review.decision = body.decision;
+    review.comment = body.comment ?? '';
+    review.reviewer = 1;
+    review.reviewer_name = 'Supervisor Demo';
+    review.decided_at = new Date().toISOString();
+    pushAudit(sid, 'AUDIT_DECISION', review.chromosome, modeOf(request));
+    return HttpResponse.json(review);
   }),
 ];

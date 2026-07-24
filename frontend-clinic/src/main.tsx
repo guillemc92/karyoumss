@@ -23,8 +23,15 @@ async function bootstrap() {
     const { worker } = await import('./clinic/msw/browser');
     // Toggle de demo del modo degradado (P4, DD-KARYO-004): solo en el build
     // MSW. Permite mostrar en vivo el "Modo Manual" sin caer el pipeline real.
-    const { setDegradedMode } = await import('./clinic/msw/handlers');
-    (window as unknown as { __biomedSetDegraded?: (v: boolean) => void }).__biomedSetDegraded = setDegradedMode;
+    const { setDegradedMode, setSampleStatus, applyStatusOverrides } = await import('./clinic/msw/handlers');
+    const w = window as unknown as {
+      __biomedSetDegraded?: (v: boolean) => void;
+      __biomedSetStatus?: (id: string, status: string) => void;
+    };
+    w.__biomedSetDegraded = setDegradedMode;
+    // Demo del flujo Supervisor (S1): forzar ANALYST_VALIDATED sin recorrer todo el flujo.
+    w.__biomedSetStatus = setSampleStatus as (id: string, status: string) => void;
+    applyStatusOverrides(); // re-aplica overrides de estado persistidos tras un reload
     await worker.start({
       onUnhandledRequest: 'bypass',
       serviceWorker: { url: '/mockServiceWorker.js' },

@@ -110,10 +110,41 @@ export interface KaryotypeSummary {
 export interface Karyotype {
   id: string;
   sample_id: string;
+  sample_status: string; // estado clínico de la muestra (gating del panel supervisor)
   model_version: string;
   generated_at: string;
   summary: KaryotypeSummary;
   chromosomes: Chromosome[];
+}
+
+// --- Supervisor S1 (ADR-0023, DD-SUP-001) — auditoría del 5% ---
+
+export type AuditDecision = 'PENDING' | 'CONFIRMED' | 'REJECTED';
+
+export interface AuditReview {
+  id: string;
+  chromosome: string;
+  predicted_class: string;
+  confidence_score: string | null;
+  semaphore: Semaphore;
+  decision: AuditDecision;
+  comment: string;
+  reviewer: number | null;
+  reviewer_name: string;
+  decided_at: string | null;
+  created_at: string;
+}
+
+export interface AuditReviewSummary {
+  total: number;
+  pending: number;
+  confirmed: number;
+  rejected: number;
+}
+
+export interface AuditReviewResponse {
+  reviews: AuditReview[];
+  summary: AuditReviewSummary;
 }
 
 /** % legible desde el confidence_score string ("0.720" → "72%"). */

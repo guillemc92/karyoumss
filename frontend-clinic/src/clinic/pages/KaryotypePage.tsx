@@ -15,7 +15,9 @@ import { Skeleton } from '../components/Skeleton';
 import { KaryotypeCanvas } from '../components/KaryotypeCanvas';
 import { KaryoImageToolbar } from '../components/KaryoImageToolbar';
 import { ChromosomePropertiesPanel } from '../components/ChromosomePropertiesPanel';
+import { SupervisorAuditPanel } from '../components/SupervisorAuditPanel';
 import { XaiModal } from '../components/XaiModal';
+import { useSession } from '../auth';
 import { useKaryotype } from '../hooks/useKaryotype';
 import { useAuditTrail, useKaryotypeActions } from '../hooks/useKaryotypeActions';
 import { useDegradedMode } from '../hooks/useDegradedMode';
@@ -36,6 +38,7 @@ function SemaphoreLegend() {
 
 export function KaryotypePage() {
   const { id } = useParams<{ id: string }>();
+  const { role } = useSession();
   const { data: karyotype, isLoading, isError, error } = useKaryotype(id);
   const [selected, setSelected] = useState<Chromosome | null>(null);
   const [xaiOpen, setXaiOpen] = useState(false);
@@ -80,6 +83,9 @@ export function KaryotypePage() {
 
   const { summary } = karyotype;
   const blocked = summary.unresolved_orange > 0 || summary.red > 0;
+  // Supervisor S1 (ADR-0023): auditoría del 5% visible para supervisor/admin
+  // sobre casos ya validados por el analista (segregación reforzada en backend).
+  const showAudit5 = (role === 'supervisor' || role === 'admin') && karyotype.sample_status === 'ANALYST_VALIDATED';
   const busy =
     viewXai.isPending || resolve.isPending || markAnomaly.isPending || validate.isPending ||
     reclassify.isPending || split.isPending || join.isPending || resolveCross.isPending;
@@ -240,6 +246,8 @@ export function KaryotypePage() {
           </div>
         </aside>
       </div>
+
+      {showAudit5 && id && <SupervisorAuditPanel sampleId={id} />}
 
       <div className="karyo-audit">
         <button type="button" className="btn-outline" onClick={() => setShowAudit((v) => !v)} data-testid="toggle-audit">

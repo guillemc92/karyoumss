@@ -57,6 +57,7 @@ export function buildMockKaryotype(sampleId: string): Karyotype {
   return {
     id: `${sampleId}-karyotype`,
     sample_id: sampleId,
+    sample_status: 'READY', // el handler lo sobreescribe con el estado real de la muestra
     model_version: 'u-net-v2.1+efficientnet-b3-v1.4',
     generated_at: '2026-04-10T09:30:00Z',
     summary,

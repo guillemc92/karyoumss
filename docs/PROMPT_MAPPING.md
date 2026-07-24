@@ -2624,5 +2624,67 @@ PM-KARYO-001/002/003 (P1/P2/P3, precedentes).
 
 ---
 
+## PM-SUP-001 — Flujo del Supervisor S1: auditoría del 5% aleatorio
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-SUP-001 |
+| **Título** | Primera fase del flujo del Supervisor: auditoría de calidad del 5% aleatorio determinista (RN-08) con decisiones Confirmar/Rechazar, segregación por permiso (RN-06) |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Opus 4.8 |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-07-24 |
+| **ADR origen** | [ADR-0023](docs/adr/0023-supervisor-auditoria-firma-iscn.md) §D2/§D5/§D6 (S1) + [ADR-0022](docs/adr/0022-audit-trail-clinico-django.md) |
+| **Design Doc** | [DD-SUP-001](docs/design/DD-SUP-001.md) |
+
+### Alcance ejecutado (S1)
+
+Primera de las 3 fases del flujo del Supervisor (ADR-0023). Sobre un caso
+`ANALYST_VALIDATED`, el Supervisor revisa una muestra del 5% de cromosomas de
+alta confianza (control de calidad):
+- **Selección determinista y reproducible (RN-08):** `random.Random(sample_id)`,
+  pool = activos con `confidence_score > 0.86`, `max(1, ceil(0.05*len))`.
+  Modelo `AuditReview` (1 por cromosoma), idempotente.
+- **Decisiones** Confirmar/Rechazar + comentario → evento `AUDIT_DECISION`
+  (ADR-0022). Gate `NOT_AUDITABLE` si el caso no está validado por el analista.
+- **Segregación (RN-06):** nueva opción RBAC `case.audit` (migración de datos):
+  Supervisor/Admin **sí**, Analista **no** → el analista recibe 403 aunque sea
+  dueño. Estados `SIGNED`/`REPORTED` declarados (transiciones en S2/S3).
+- **Frontend:** `SupervisorAuditPanel` (badges púrpura, Confirmar/Rechazar +
+  comentario, contador de avance), gateado por rol supervisor/admin + estado
+  `ANALYST_VALIDATED` (expuesto en el cariotipo como `sample_status`).
+
+### Output (verificación)
+
+- **Backend:** `test_supervisor_s1.py` (13 tests): selección 5% determinista/
+  reproducible/idempotente, pool >0.86, decisión + AUDIT_DECISION, gate
+  NOT_AUDITABLE, segregación (analista 403). Migraciones 0009 (schema) + 0010
+  (seed RBAC).
+- **Frontend:** 254/254 tests, **99.33% stmts / 93.15% branches**; panel +
+  gating + client + MSW. `tsc` limpio.
+- **E2E real (Playwright):** sesión de Supervisor inyectada + caso forzado a
+  ANALYST_VALIDATED → panel del 5% (3 cromosomas) → Confirmar 1 + Rechazar 1 con
+  comentario → 2/3 revisados → 2 eventos `AUDIT_DECISION` en la bitácora. Sin
+  errores de consola. Captura verificada.
+
+### Trazabilidad
+
+```
+FSD-UC-005 (auditoría 5% del Supervisor)
+  → ADR-0023 §D2/§D6 (S1) + ADR-0022 (audit)
+    → DD-SUP-001 (AuditReview + selección determinista + decisiones)
+      → backend-clinic: AuditReview + servicios + 2 endpoints + migraciones 0009/0010
+        → frontend-clinic: SupervisorAuditPanel + gating por rol/estado + MSW
+          → 13 tests backend + frontend 254 (99.33%)
+            → E2E Playwright: supervisor audita 5% → AUDIT_DECISION encadenado
+```
+
+Pendiente (ADR-0023 D6): **S2** (firma MFA delegada a backend-admin + segregación
++ gate 5% + `SIGN_REPORT`/`SIGNED`), **S3** (motor ISCN + override + `REPORTED`).
+
+Refs: ADR-0023 §S1, ADR-0022, DD-SUP-001, RN-08/RN-06/RN-05.
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*
