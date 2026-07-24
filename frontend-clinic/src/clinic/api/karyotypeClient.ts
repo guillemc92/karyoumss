@@ -42,6 +42,31 @@ export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL)
     getAudit(sampleId: string): Promise<AuditEvent[]> {
       return clinicRequest<AuditEvent[]>(baseUrl, `/samples/${sampleId}/audit/`, { method: 'GET' });
     },
+
+    // --- P3 (corrección manual, DD-KARYO-003) ---
+
+    /** POST /chromosomes/{cid}/reclassify/ — mover a otro slot (CORRECT_CLASS). */
+    reclassify(sampleId: string, chromosomeId: string, targetClass: string): Promise<Chromosome> {
+      return clinicRequest<Chromosome>(baseUrl, `/samples/${sampleId}/chromosomes/${chromosomeId}/reclassify/`, {
+        method: 'POST',
+        body: { target_class: targetClass },
+      });
+    },
+    /** POST /chromosomes/{cid}/split/ — separar touching (crea 2º cromosoma). */
+    split(sampleId: string, chromosomeId: string): Promise<Chromosome> {
+      return clinicRequest<Chromosome>(baseUrl, `/samples/${sampleId}/chromosomes/${chromosomeId}/split/`, { method: 'POST' });
+    },
+    /** POST /chromosomes/{cid}/join/ — unir `otherId` en `chromosomeId`. */
+    join(sampleId: string, chromosomeId: string, otherId: string): Promise<Chromosome> {
+      return clinicRequest<Chromosome>(baseUrl, `/samples/${sampleId}/chromosomes/${chromosomeId}/join/`, {
+        method: 'POST',
+        body: { other_id: otherId },
+      });
+    },
+    /** POST /chromosomes/{cid}/cross/ — resolver cruce (individualiza). */
+    resolveCross(sampleId: string, chromosomeId: string): Promise<Chromosome> {
+      return clinicRequest<Chromosome>(baseUrl, `/samples/${sampleId}/chromosomes/${chromosomeId}/cross/`, { method: 'POST' });
+    },
   };
 }
 

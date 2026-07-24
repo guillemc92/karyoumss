@@ -3,6 +3,8 @@
  * P1: semaforización read-only + panel de propiedades.
  * P2 (ADR-0021 P2, ADR-0022): XAI Grad-CAM, resolver naranjas con gate BR-004,
  * marcar anomalías, gating de "Pasar a Supervisor" (RN-01) y bitácora.
+ * P3 (ADR-0021 P3, DD-KARYO-003): corrección manual sobre canvas Konva —
+ * reclasificar (drag & drop o "Mover a par"), separar/unir/resolver cruce.
  *
  * Ruta: /clinic/samples/:id/karyotype
  */
@@ -10,7 +12,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BiomedShell } from '../components/BiomedShell';
 import { Skeleton } from '../components/Skeleton';
-import { KaryotypeViewer } from '../components/KaryotypeViewer';
+import { KaryotypeCanvas } from '../components/KaryotypeCanvas';
 import { ChromosomePropertiesPanel } from '../components/ChromosomePropertiesPanel';
 import { XaiModal } from '../components/XaiModal';
 import { useKaryotype } from '../hooks/useKaryotype';
@@ -38,8 +40,10 @@ export function KaryotypePage() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [validated, setValidated] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
+  const [joinPick, setJoinPick] = useState<{ id: string; label: string } | null>(null);
 
-  const { viewXai, resolve, markAnomaly, validate } = useKaryotypeActions(id);
+  const { viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross } =
+    useKaryotypeActions(id);
   const audit = useAuditTrail(id, showAudit);
 
   // Mantener el cromosoma seleccionado sincronizado tras un refetch.
@@ -71,7 +75,9 @@ export function KaryotypePage() {
 
   const { summary } = karyotype;
   const blocked = summary.unresolved_orange > 0 || summary.red > 0;
-  const busy = viewXai.isPending || resolve.isPending || markAnomaly.isPending || validate.isPending;
+  const busy =
+    viewXai.isPending || resolve.isPending || markAnomaly.isPending || validate.isPending ||
+    reclassify.isPending || split.isPending || join.isPending || resolveCross.isPending;
 
   async function handleViewXai(c: Chromosome) {
     setActionError(null);
@@ -112,6 +118,39 @@ export function KaryotypePage() {
     }
   }
 
+  // --- P3: corrección manual (DD-KARYO-003) ---
+  async function runP3<T>(label: string, fn: () => Promise<T>) {
+    setActionError(null);
+    try {
+      await fn();
+    } catch (err) {
+      setActionError(err instanceof ClinicApiException ? err.message : label);
+    }
+  }
+
+  function handleReclassify(c: Chromosome, targetClass: string) {
+    if (targetClass === c.predicted_class) return;
+    void runP3('Error al reclasificar', () => reclassify.mutateAsync({ chromosomeId: c.id, targetClass }));
+  }
+
+  function handleSplit(c: Chromosome) {
+    void runP3('Error al separar', () => split.mutateAsync(c.id));
+  }
+
+  function handleResolveCross(c: Chromosome) {
+    void runP3('Error al resolver cruce', () => resolveCross.mutateAsync(c.id));
+  }
+
+  function handleJoinPick(c: Chromosome) {
+    setJoinPick((prev) => (prev?.id === c.id ? null : { id: c.id, label: c.predicted_class }));
+  }
+
+  async function handleJoinConfirm(c: Chromosome) {
+    if (!joinPick) return;
+    await runP3('Error al unir', () => join.mutateAsync({ keepId: joinPick.id, otherId: c.id }));
+    setJoinPick(null);
+  }
+
   return (
     <BiomedShell>
       <div className="karyo-header">
@@ -143,7 +182,14 @@ export function KaryotypePage() {
 
       <div className="karyo-workspace">
         <div className="karyo-workspace__viewer">
-          <KaryotypeViewer chromosomes={karyotype.chromosomes} selectedId={selected?.id ?? null} onSelect={setSelected} />
+          <KaryotypeCanvas
+            chromosomes={karyotype.chromosomes}
+            selectedId={selected?.id ?? null}
+            joinPickId={joinPick?.id ?? null}
+            editable={!validated}
+            onSelect={setSelected}
+            onReclassify={validated ? undefined : handleReclassify}
+          />
         </div>
         <aside className="karyo-workspace__panel">
           <ChromosomePropertiesPanel
@@ -152,6 +198,12 @@ export function KaryotypePage() {
             onResolve={validated ? undefined : handleResolve}
             onMarkAnomaly={validated ? undefined : handleAnomaly}
             busy={busy}
+            onReclassify={validated ? undefined : handleReclassify}
+            onSplit={validated ? undefined : handleSplit}
+            onResolveCross={validated ? undefined : handleResolveCross}
+            onJoinPick={validated ? undefined : handleJoinPick}
+            onJoinConfirm={validated ? undefined : handleJoinConfirm}
+            joinPick={joinPick}
           />
           <div className="karyo-gating">
             <button

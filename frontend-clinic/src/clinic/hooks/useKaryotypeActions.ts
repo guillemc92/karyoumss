@@ -27,7 +27,27 @@ export function useKaryotypeActions(sampleId: string | undefined) {
     onSuccess: invalidate,
   });
 
-  return { viewXai, resolve, markAnomaly, validate };
+  // --- P3 (corrección manual, DD-KARYO-003) ---
+  const reclassify = useMutation({
+    mutationFn: (v: { chromosomeId: string; targetClass: string }) =>
+      karyotypeClient.reclassify(sampleId as string, v.chromosomeId, v.targetClass),
+    onSuccess: invalidate,
+  });
+  const split = useMutation({
+    mutationFn: (chromosomeId: string) => karyotypeClient.split(sampleId as string, chromosomeId),
+    onSuccess: invalidate,
+  });
+  const join = useMutation({
+    mutationFn: (v: { keepId: string; otherId: string }) =>
+      karyotypeClient.join(sampleId as string, v.keepId, v.otherId),
+    onSuccess: invalidate,
+  });
+  const resolveCross = useMutation({
+    mutationFn: (chromosomeId: string) => karyotypeClient.resolveCross(sampleId as string, chromosomeId),
+    onSuccess: invalidate,
+  });
+
+  return { viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross };
 }
 
 export function useAuditTrail(sampleId: string | undefined, enabled = false) {

@@ -27,6 +27,7 @@ export function buildMockKaryotype(sampleId: string): Karyotype {
       resolution_status: sem === 'orange' ? 'PENDING' : 'AUTO',
       xai_viewed: false,
       is_anomaly: false,
+      is_active: true,
       measures: { length_um: 5.2, centromeric_index: 0.42, band_count: 380, quality: 'alta' },
       bbox: { x: 0, y: 0, w: 40, h: 96 },
       order: order++,

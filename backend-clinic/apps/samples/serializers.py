@@ -165,7 +165,7 @@ class ChromosomeSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'predicted_class', 'position_index', 'confidence_score',
             'semaphore', 'resolution_status', 'xai_viewed', 'is_anomaly',
-            'measures', 'bbox', 'order',
+            'is_active', 'measures', 'bbox', 'order',
         ]
 
 
@@ -177,16 +177,24 @@ class KaryotypeSerializer(serializers.ModelSerializer):
     """
 
     sample_id = serializers.UUIDField(read_only=True)
-    chromosomes = ChromosomeSerializer(many=True, read_only=True)
+    chromosomes = serializers.SerializerMethodField()
     summary = serializers.SerializerMethodField()
 
     class Meta:
         model = Karyotype
         fields = ['id', 'sample_id', 'model_version', 'generated_at', 'summary', 'chromosomes']
 
+    def _active_chromosomes(self, obj):
+        # P3: los fragmentos absorbidos por JOIN quedan is_active=False y no
+        # deben aparecer en el visor ni contar en el summary (DD-KARYO-003).
+        return [c for c in obj.chromosomes.all() if c.is_active]
+
+    def get_chromosomes(self, obj) -> list:
+        return ChromosomeSerializer(self._active_chromosomes(obj), many=True).data
+
     def get_summary(self, obj) -> dict:
         green = orange = red = unresolved_orange = 0
-        for chromo in obj.chromosomes.all():
+        for chromo in self._active_chromosomes(obj):
             sem = chromo.semaphore
             if sem == 'green':
                 green += 1

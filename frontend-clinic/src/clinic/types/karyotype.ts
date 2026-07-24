@@ -31,10 +31,14 @@ export interface Chromosome {
   resolution_status: ChromosomeResolution;
   xai_viewed: boolean;
   is_anomaly: boolean;
+  is_active: boolean; // P3: JOIN desactiva el fragmento absorbido (DD-KARYO-003)
   measures: ChromosomeMeasures;
   bbox: Record<string, number>;
   order: number;
 }
+
+/** Herramienta de corrección manual activa (P3). */
+export type KaryoTool = 'select' | 'split' | 'join' | 'cross';
 
 // --- P2 (ADR-0021 P2, ADR-0022, DD-KARYO-002) ---
 

@@ -18,12 +18,21 @@ from .serializers import (
 )
 from .services import (
     CaseBlockedError,
+    CaseLockedError,
     ChnDuplicateError,
+    CrossKaryotypeError,
+    InvalidClassError,
+    JoinSelfError,
     NotOrangeError,
+    SameClassError,
     XaiRequiredError,
+    join_chromosomes,
     mark_anomaly,
+    reclassify_chromosome,
     resolve_chromosome,
+    resolve_cross,
     sample_registration_service,
+    split_chromosome,
     validate_case,
     view_xai,
 )
@@ -335,6 +344,105 @@ class ChromosomeAnomalyView(APIView):
         if error:
             return error
         chromo = mark_anomaly(sample, chromo, request.user)
+        return Response(ChromosomeSerializer(chromo).data, status=status.HTTP_200_OK)
+
+
+class ChromosomeReclassifyView(APIView):
+    """POST /samples/{id}/chromosomes/{cid}/reclassify/ — corregir clase (P3).
+
+    Body: {"target_class": "7"}. Override manual del analista (BR-003): marca
+    RESOLVED. 400 INVALID_CLASS / 400 SAME_CLASS / 409 CASE_LOCKED.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk, cid):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        chromo, error = _get_owned_chromosome_or_error(sample, cid)
+        if error:
+            return error
+        try:
+            chromo = reclassify_chromosome(sample, chromo, request.data.get('target_class'), request.user)
+        except CaseLockedError as e:
+            return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except InvalidClassError as e:
+            return Response({'code': 'INVALID_CLASS', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except SameClassError as e:
+            return Response({'code': 'SAME_CLASS', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ChromosomeSerializer(chromo).data, status=status.HTTP_200_OK)
+
+
+class ChromosomeSplitView(APIView):
+    """POST /samples/{id}/chromosomes/{cid}/split/ — separar (touching) (P3)."""
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk, cid):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        chromo, error = _get_owned_chromosome_or_error(sample, cid)
+        if error:
+            return error
+        try:
+            created = split_chromosome(sample, chromo, request.user)
+        except CaseLockedError as e:
+            return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        return Response(ChromosomeSerializer(created).data, status=status.HTTP_201_CREATED)
+
+
+class ChromosomeJoinView(APIView):
+    """POST /samples/{id}/chromosomes/{cid}/join/ — unir fragmentos (P3).
+
+    Body: {"other_id": "<uuid>"}. `cid` es el que se conserva; `other_id` el
+    absorbido (queda inactivo). 400 JOIN_SELF / 409 CASE_LOCKED.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk, cid):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        keep, error = _get_owned_chromosome_or_error(sample, cid)
+        if error:
+            return error
+        absorbed, error = _get_owned_chromosome_or_error(sample, request.data.get('other_id'))
+        if error:
+            return error
+        try:
+            keep = join_chromosomes(sample, keep, absorbed, request.user)
+        except CaseLockedError as e:
+            return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except JoinSelfError as e:
+            return Response({'code': 'JOIN_SELF', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except CrossKaryotypeError as e:
+            return Response({'code': 'CROSS_KARYOTYPE', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response(ChromosomeSerializer(keep).data, status=status.HTTP_200_OK)
+
+
+class ChromosomeCrossView(APIView):
+    """POST /samples/{id}/chromosomes/{cid}/cross/ — resolver cruce (P3)."""
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk, cid):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        chromo, error = _get_owned_chromosome_or_error(sample, cid)
+        if error:
+            return error
+        try:
+            chromo = resolve_cross(sample, chromo, request.user)
+        except CaseLockedError as e:
+            return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
         return Response(ChromosomeSerializer(chromo).data, status=status.HTTP_200_OK)
 
 

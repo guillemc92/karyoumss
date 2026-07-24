@@ -188,6 +188,9 @@ class Chromosome(models.Model):
     )
     xai_viewed = models.BooleanField(default=False)  # gate FSD-UC-003 (P2)
     is_anomaly = models.BooleanField(default=False)  # marcador estructural (M), P2
+    # P3 (DD-KARYO-003 §2.1): JOIN hace soft-remove del fragmento absorbido en
+    # vez de DELETE físico, para no romper el FK SET_NULL de AuditEvent (RN-05).
+    is_active = models.BooleanField(default=True)
     order = models.IntegerField(default=0)           # orden estable de render
 
     class Meta:

@@ -2473,5 +2473,87 @@ PM-KARYO-001 (P1, precedente).
 
 ---
 
+## PM-KARYO-003 — Corrección manual: reclasificar (drag & drop) + separar/unir/cruce sobre Konva.js (P3)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-KARYO-003 |
+| **Título** | Núcleo clínico P3: cariograma interactivo Konva.js con reclasificación por drag & drop y operaciones morfológicas (separar/unir/resolver cruce), todas auditadas |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Opus 4.8 |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-07-24 |
+| **ADR origen** | [ADR-0021](docs/adr/0021-visor-correccion-cariotipo.md) §D4/§D5 (P3) + [ADR-0022](docs/adr/0022-audit-trail-clinico-django.md) |
+| **Design Doc** | [DD-KARYO-003](docs/design/DD-KARYO-003.md) |
+
+### Alcance ejecutado (P3)
+
+Migración del visor SVG read-only de P1 a un **lienzo Konva.js** (`react-konva`,
+primera adopción del canvas canónico de CLAUDE.md, difería por ADR-0021 D4) con
+corrección manual completa:
+1. **Reclasificar (drag & drop)** — arrastrar un cromosoma a otro par →
+   `POST /chromosomes/{cid}/reclassify/` (`CORRECT_CLASS`). Override manual
+   autoritativo (BR-003): marca `RESOLVED` (deja de bloquear aunque la confianza
+   siga baja). Geometría del drop en `lib/karyoLayout.ts` (puro). Fallback
+   accesible "Mover a par" (`<select>`) en el panel.
+2. **Separar (touching)** — `POST /chromosomes/{cid}/split/`: divide el bbox y
+   crea un 2º `Chromosome` (`SPLIT`).
+3. **Unir fragmentos** — `POST /chromosomes/{cid}/join/`: unión de bbox + el
+   fragmento absorbido queda `is_active=False` (soft-remove, preserva el FK de
+   `AuditEvent`) (`JOIN`).
+4. **Resolver cruce** — `POST /chromosomes/{cid}/cross/`: individualiza
+   (`RESOLVE_CROSS`).
+- **Case-lock (BR-003):** las 4 operaciones rechazan `409 CASE_LOCKED` si el
+  caso ya está `ANALYST_VALIDATED`/`VALIDATED`. Guard `_assert_editable`.
+- Campo nuevo `Chromosome.is_active` (migración `0007`). Serializer y `summary`
+  excluyen inactivos.
+
+### Output (verificación)
+
+- **Backend:** 195/195 tests en `apps/samples`, **97.45% cobertura**;
+  `test_karyotype_p3.py` (23 tests): reclassify (CORRECT_CLASS, INVALID_CLASS,
+  SAME_CLASS, desbloqueo), split (bbox partido, 2º cromosoma), join (soft-remove,
+  bbox unión, JOIN_SELF, excluido del summary), cross, case-lock 409, cadena de
+  audit intacta tras ops P3, permisos.
+- **Frontend:** suite completa verde; `karyoLayout` (10 tests puros),
+  `KaryotypeCanvas` (6), panel P3 (5 nuevos), `karyotypeP3.spec` de página (6).
+  react-konva mockeado globalmente (jsdom no tiene canvas); el drag se dispara
+  con `CustomEvent('konvadragend')`. `testTimeout` elevado a 15s (tests de
+  página XAI/modal pesados flakeaban a 5s bajo carga).
+- **E2E real (Playwright/Chromium sobre Konva REAL):** interacción por
+  coordenadas de píxel (el Stage es un solo `<canvas>`, no hay DOM
+  `chromosome-*`). Reclasificar por **drag** (banner 3→2) + unir + separar +
+  resolver cruce + reclasificar por panel → **5 eventos encadenados** en la
+  bitácora, sin errores de consola. Captura verificada (canvas con 46 cromosomas
+  semaforizados + panel "Corrección manual").
+
+### Decisión de diseño (refina DD, no ADR)
+
+Las operaciones morfológicas (separar/unir/cruce) se disparan desde el **panel
+de propiedades (DOM)**, no desde el canvas: más accesible y robusto para E2E
+(evita clics por coordenadas). El canvas Konva solo maneja seleccionar +
+reclasificar-por-drag. Sobre datos mock los `bbox` son placeholders; la máscara
+de segmentación real llega con el pipeline de inferencia (ADR-0007).
+
+### Trazabilidad
+
+```
+FSD-UC-003 (corrección manual del cariotipo)
+  → ADR-0021 §D4 (Konva en P3) + §D5 (P3) + ADR-0022 (audit)
+    → DD-KARYO-003 (reclassify/split/join/cross sobre Konva)
+      → backend-clinic: is_active + 4 servicios + 4 endpoints + migración 0007
+        → frontend-clinic: KaryotypeCanvas (Konva) + karyoLayout + panel P3
+          → 195 tests backend (97.45%) + tests frontend (layout/canvas/panel/page)
+            → E2E Playwright: drag-reclassify + morfología + audit sobre Konva real
+```
+
+Pendiente (ADR-0021 D5): **P4** (herramientas de imagen zoom/pan/rotar/brillo +
+modo manual/degradado, FSD-UC-007).
+
+Refs: ADR-0021 §D4/§P3, ADR-0022, DD-KARYO-003, RN-02/RN-05, BR-003,
+PM-KARYO-001/002 (P1/P2, precedentes).
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*

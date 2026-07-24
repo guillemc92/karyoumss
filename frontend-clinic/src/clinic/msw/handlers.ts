@@ -7,7 +7,8 @@ import { initialSamples } from './seedData';
 import { buildMockKaryotype } from './karyotypeSeed';
 import type { SampleCreateRequest, SampleListItem, SampleRead, SampleUpdateRequest } from '../types/sample';
 import type { SampleRegistrationData } from '../types/registration';
-import type { AuditEvent, AuditEventType, Karyotype } from '../types/karyotype';
+import type { AuditEvent, AuditEventType, Chromosome, Karyotype } from '../types/karyotype';
+import { CHROMOSOME_SLOTS } from '../types/karyotype';
 
 let samples: SampleRead[] = [...initialSamples];
 let forceDegraded = false;
@@ -23,17 +24,25 @@ function getOrBuildKaryotype(sampleId: string): Karyotype {
 }
 
 function recomputeSummary(k: Karyotype): void {
-  const orange = k.chromosomes.filter((c) => c.semaphore === 'orange');
-  const red = k.chromosomes.filter((c) => c.semaphore === 'red');
+  // P3: los fragmentos absorbidos por JOIN (is_active=false) no cuentan.
+  const activos = k.chromosomes.filter((c) => c.is_active);
+  const orange = activos.filter((c) => c.semaphore === 'orange');
+  const red = activos.filter((c) => c.semaphore === 'red');
   const unresolved = orange.filter((c) => c.resolution_status !== 'RESOLVED');
   k.summary = {
-    total: k.chromosomes.length,
-    green: k.chromosomes.filter((c) => c.semaphore === 'green').length,
+    total: activos.length,
+    green: activos.filter((c) => c.semaphore === 'green').length,
     orange: orange.length,
     red: red.length,
     unresolved_orange: unresolved.length,
     is_blocked: unresolved.length > 0 || red.length > 0,
   };
+}
+
+/** Case-lock (DD-KARYO-003 §2.2): tras validar, el analista no puede editar. */
+function sampleLocked(sampleId: string): boolean {
+  const s = samples.find((x) => x.id === sampleId);
+  return s?.status === 'ANALYST_VALIDATED' || s?.status === 'VALIDATED';
 }
 
 function pushAudit(sampleId: string, eventType: AuditEventType, chromosomeId: string | null): void {
@@ -328,5 +337,81 @@ export const handlers = [
 
   http.get(`${API}/samples/:id/audit/`, ({ params }) => {
     return HttpResponse.json(auditTrails[String(params.id)] ?? []);
+  }),
+
+  // Cariotipo P3 (ADR-0021 P3, DD-KARYO-003) — corrección manual.
+  http.post(`${API}/samples/:id/chromosomes/:cid/reclassify/`, async ({ params, request }) => {
+    const sid = String(params.id);
+    if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
+    const k = getOrBuildKaryotype(sid);
+    const chromo = k.chromosomes.find((c) => c.id === params.cid);
+    if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
+    const body = (await request.json()) as { target_class?: string };
+    const target = body.target_class ?? '';
+    if (!CHROMOSOME_SLOTS.includes(target)) {
+      return HttpResponse.json({ code: 'INVALID_CLASS', detail: 'Clase inválida' }, { status: 400 });
+    }
+    if (target === chromo.predicted_class) {
+      return HttpResponse.json({ code: 'SAME_CLASS', detail: 'Clase igual a la actual' }, { status: 400 });
+    }
+    chromo.predicted_class = target;
+    chromo.resolution_status = 'RESOLVED';
+    recomputeSummary(k);
+    pushAudit(sid, 'CORRECT_CLASS', chromo.id);
+    return HttpResponse.json(chromo);
+  }),
+
+  http.post(`${API}/samples/:id/chromosomes/:cid/split/`, ({ params }) => {
+    const sid = String(params.id);
+    if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
+    const k = getOrBuildKaryotype(sid);
+    const chromo = k.chromosomes.find((c) => c.id === params.cid);
+    if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
+    const w = chromo.bbox.w ?? 0;
+    const x = chromo.bbox.x ?? 0;
+    chromo.bbox = { ...chromo.bbox, x, w: w / 2 };
+    const nextIndex = Math.max(...k.chromosomes.filter((c) => c.predicted_class === chromo.predicted_class).map((c) => c.position_index)) + 1;
+    const created: Chromosome = {
+      ...chromo,
+      id: `${chromo.id}-split-${nextIndex}`,
+      position_index: nextIndex,
+      bbox: { ...chromo.bbox, x: x + w / 2, w: w / 2 },
+      order: k.chromosomes.length,
+    };
+    k.chromosomes.push(created);
+    recomputeSummary(k);
+    pushAudit(sid, 'SPLIT', chromo.id);
+    return HttpResponse.json(created, { status: 201 });
+  }),
+
+  http.post(`${API}/samples/:id/chromosomes/:cid/join/`, async ({ params, request }) => {
+    const sid = String(params.id);
+    if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
+    const k = getOrBuildKaryotype(sid);
+    const keep = k.chromosomes.find((c) => c.id === params.cid);
+    if (!keep) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
+    const body = (await request.json()) as { other_id?: string };
+    if (body.other_id === keep.id) return HttpResponse.json({ code: 'JOIN_SELF', detail: 'Mismo cromosoma' }, { status: 400 });
+    const absorbed = k.chromosomes.find((c) => c.id === body.other_id);
+    if (!absorbed) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
+    absorbed.is_active = false;
+    const x0 = Math.min(keep.bbox.x ?? 0, absorbed.bbox.x ?? 0);
+    const x1 = Math.max((keep.bbox.x ?? 0) + (keep.bbox.w ?? 0), (absorbed.bbox.x ?? 0) + (absorbed.bbox.w ?? 0));
+    keep.bbox = { ...keep.bbox, x: x0, w: x1 - x0 };
+    recomputeSummary(k);
+    pushAudit(sid, 'JOIN', keep.id);
+    return HttpResponse.json(keep);
+  }),
+
+  http.post(`${API}/samples/:id/chromosomes/:cid/cross/`, ({ params }) => {
+    const sid = String(params.id);
+    if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
+    const k = getOrBuildKaryotype(sid);
+    const chromo = k.chromosomes.find((c) => c.id === params.cid);
+    if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
+    chromo.resolution_status = 'RESOLVED';
+    recomputeSummary(k);
+    pushAudit(sid, 'RESOLVE_CROSS', chromo.id);
+    return HttpResponse.json(chromo);
   }),
 ];

@@ -327,3 +327,9 @@ input[type="range"] { width: 100%; height: 4px; border-radius: 2px; background: 
 .karyo-audit__list li { padding: 4px 0; border-bottom: 1px solid var(--border-light); }
 .karyo-audit__list li:last-child { border-bottom: none; }
 .karyo-audit__time { color: var(--gray-text); font-variant-numeric: tabular-nums; }
+
+/* Cariotipo P3 (ADR-0021 P3, DD-KARYO-003) — canvas Konva + corrección manual */
+.karyo-canvas { display: flex; justify-content: center; overflow-x: auto; }
+.karyo-canvas > div { background: #f4f8fb; border-radius: var(--radius-md); }
+.karyo-reclassify { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; font-size: 0.82rem; }
+.karyo-reclassify select { flex: 1; padding: 0.35rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); }

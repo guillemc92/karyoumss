@@ -182,9 +182,12 @@ def verify_audit_chain(sample) -> bool:
 
 
 def _unresolved_count(karyotype: Karyotype) -> int:
-    """Naranjas sin resolver + rojos (bloquean la emisión, RN-01/RN-02)."""
+    """Naranjas sin resolver + rojos (bloquean la emisión, RN-01/RN-02).
+
+    Solo cuenta cromosomas activos (JOIN de P3 desactiva fragmentos absorbidos).
+    """
     count = 0
-    for c in karyotype.chromosomes.all():
+    for c in karyotype.chromosomes.filter(is_active=True):
         sem = c.semaphore
         if sem == 'red':
             count += 1
@@ -257,3 +260,149 @@ def validate_case(sample, actor) -> Sample:
         sample.save(update_fields=['status', 'updated_at'])
         emit_audit_event(sample, actor, AuditEventType.ANALYST_VALIDATED)
     return sample
+
+
+# ============================================================================
+# Cariotipo P3 (ADR-0021 P3, DD-KARYO-003) — corrección manual
+# reclasificar (drag & drop) + separar / unir / resolver cruce
+# ============================================================================
+
+VALID_CHROMOSOME_CLASSES = frozenset(
+    [str(n) for n in range(1, 23)] + ['X', 'Y']
+)
+
+
+class CaseLockedError(Exception):
+    """Se intentó editar un caso que ya salió del analista (BR-003/FSD-UC-004)."""
+
+
+class InvalidClassError(Exception):
+    """Clase destino inválida para reclasificar (no es 1..22/X/Y)."""
+
+
+class SameClassError(Exception):
+    """La clase destino es igual a la actual (reclasificación sin efecto)."""
+
+
+class JoinSelfError(Exception):
+    """Se intentó unir un cromosoma consigo mismo."""
+
+
+class CrossKaryotypeError(Exception):
+    """Se intentó unir cromosomas de cariotipos distintos."""
+
+
+def _assert_editable(sample) -> None:
+    """Bloquea la edición si el caso ya fue validado por el analista o el
+    supervisor (el caso salió del analista, BR-003)."""
+    if sample.status in (SampleStatus.ANALYST_VALIDATED, SampleStatus.VALIDATED):
+        raise CaseLockedError('El caso ya fue validado y no admite más correcciones.')
+
+
+def reclassify_chromosome(sample, chromosome, target_class, actor) -> Chromosome:
+    """Reclasifica un cromosoma a otro slot (override manual, BR-003).
+
+    El analista es autoridad: la corrección marca el cromosoma como RESOLVED
+    (deja de bloquear el caso aunque su confianza siga baja).
+    """
+    _assert_editable(sample)
+    target = str(target_class)
+    if target not in VALID_CHROMOSOME_CLASSES:
+        raise InvalidClassError(f'Clase destino inválida: {target!r}')
+    if target == chromosome.predicted_class:
+        raise SameClassError('La clase destino es igual a la actual.')
+    previous = chromosome.predicted_class
+    with transaction.atomic():
+        chromosome.predicted_class = target
+        chromosome.resolution_status = 'RESOLVED'
+        chromosome.save(update_fields=['predicted_class', 'resolution_status'])
+        emit_audit_event(
+            sample, actor, AuditEventType.CORRECT_CLASS, chromosome=chromosome,
+            payload={'from': previous, 'to': target},
+        )
+    return chromosome
+
+
+def split_chromosome(sample, chromosome, actor) -> Chromosome:
+    """Separa un cromosoma segmentado como uno solo (touching) en dos.
+
+    El original conserva la mitad izquierda del bbox; el nuevo cromosoma toma
+    la mitad derecha (misma clase, siguiente position_index). La reclasificación
+    posterior de cada fragmento queda a criterio del analista.
+    """
+    _assert_editable(sample)
+    bbox = dict(chromosome.bbox or {})
+    x = bbox.get('x', 0)
+    y = bbox.get('y', 0)
+    w = bbox.get('w', 0)
+    h = bbox.get('h', 0)
+    half = w / 2 if w else 0
+    with transaction.atomic():
+        chromosome.bbox = {'x': x, 'y': y, 'w': half, 'h': h}
+        chromosome.save(update_fields=['bbox'])
+        siblings = chromosome.karyotype.chromosomes.filter(
+            predicted_class=chromosome.predicted_class,
+        )
+        next_index = max((c.position_index for c in siblings), default=chromosome.position_index) + 1
+        next_order = max((c.order for c in chromosome.karyotype.chromosomes.all()), default=chromosome.order) + 1
+        created = Chromosome.objects.create(
+            karyotype=chromosome.karyotype,
+            predicted_class=chromosome.predicted_class,
+            position_index=next_index,
+            confidence_score=chromosome.confidence_score,
+            bbox={'x': x + half, 'y': y, 'w': half, 'h': h},
+            measures=dict(chromosome.measures or {}),
+            resolution_status=chromosome.resolution_status,
+            order=next_order,
+        )
+        emit_audit_event(
+            sample, actor, AuditEventType.SPLIT, chromosome=chromosome,
+            payload={'origin': str(chromosome.id), 'created': str(created.id)},
+        )
+    return created
+
+
+def join_chromosomes(sample, keep, absorbed, actor) -> Chromosome:
+    """Une dos fragmentos en uno: `keep` toma la unión de ambos bbox y
+    `absorbed` queda inactivo (soft-remove, preserva trazabilidad de audit)."""
+    _assert_editable(sample)
+    if keep.id == absorbed.id:
+        raise JoinSelfError('No se puede unir un cromosoma consigo mismo.')
+    if keep.karyotype_id != absorbed.karyotype_id:
+        raise CrossKaryotypeError('Los cromosomas pertenecen a cariotipos distintos.')
+    with transaction.atomic():
+        keep.bbox = _bbox_union(keep.bbox, absorbed.bbox)
+        keep.save(update_fields=['bbox'])
+        absorbed.is_active = False
+        absorbed.save(update_fields=['is_active'])
+        emit_audit_event(
+            sample, actor, AuditEventType.JOIN, chromosome=keep,
+            payload={'kept': str(keep.id), 'absorbed': str(absorbed.id)},
+        )
+    return keep
+
+
+def resolve_cross(sample, chromosome, actor) -> Chromosome:
+    """Individualiza un cromosoma cruzado/solapado: lo marca como resuelto."""
+    _assert_editable(sample)
+    with transaction.atomic():
+        chromosome.resolution_status = 'RESOLVED'
+        chromosome.save(update_fields=['resolution_status'])
+        emit_audit_event(
+            sample, actor, AuditEventType.RESOLVE_CROSS, chromosome=chromosome,
+            payload={'predicted_class': chromosome.predicted_class},
+        )
+    return chromosome
+
+
+def _bbox_union(a: dict, b: dict) -> dict:
+    """Rectángulo mínimo que contiene a ambos bbox {x,y,w,h}."""
+    a = a or {}
+    b = b or {}
+    ax, ay, aw, ah = a.get('x', 0), a.get('y', 0), a.get('w', 0), a.get('h', 0)
+    bx, by, bw, bh = b.get('x', 0), b.get('y', 0), b.get('w', 0), b.get('h', 0)
+    x0 = min(ax, bx)
+    y0 = min(ay, by)
+    x1 = max(ax + aw, bx + bw)
+    y1 = max(ay + ah, by + bh)
+    return {'x': x0, 'y': y0, 'w': x1 - x0, 'h': y1 - y0}

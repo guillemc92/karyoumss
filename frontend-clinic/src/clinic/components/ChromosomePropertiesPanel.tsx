@@ -5,7 +5,7 @@
  * callbacks. Sin ellos, el panel sigue siendo read-only (compat P1).
  */
 import type { Chromosome } from '../types/karyotype';
-import { confidencePercent } from '../types/karyotype';
+import { CHROMOSOME_SLOTS, confidencePercent } from '../types/karyotype';
 
 const SEMAPHORE_LABEL: Record<string, string> = {
   green: 'Verde — alta confianza',
@@ -18,6 +18,14 @@ interface Actions {
   onResolve?: (c: Chromosome) => void;
   onMarkAnomaly?: (c: Chromosome) => void;
   busy?: boolean;
+  // --- P3 (corrección manual, DD-KARYO-003) ---
+  onReclassify?: (c: Chromosome, targetClass: string) => void;
+  onSplit?: (c: Chromosome) => void;
+  onResolveCross?: (c: Chromosome) => void;
+  onJoinPick?: (c: Chromosome) => void;
+  onJoinConfirm?: (c: Chromosome) => void;
+  /** Primer fragmento marcado para unir (lo gestiona la página). */
+  joinPick?: { id: string; label: string } | null;
 }
 
 export function ChromosomePropertiesPanel({
@@ -26,6 +34,12 @@ export function ChromosomePropertiesPanel({
   onResolve,
   onMarkAnomaly,
   busy = false,
+  onReclassify,
+  onSplit,
+  onResolveCross,
+  onJoinPick,
+  onJoinConfirm,
+  joinPick = null,
 }: { chromosome: Chromosome | null } & Actions) {
   if (!chromosome) {
     return (
@@ -38,8 +52,11 @@ export function ChromosomePropertiesPanel({
 
   const m = chromosome.measures ?? {};
   const showActions = Boolean(onViewXai || onResolve || onMarkAnomaly);
+  const showP3 = Boolean(onReclassify || onSplit || onResolveCross || onJoinPick);
   const isOrange = chromosome.semaphore === 'orange';
   const isResolved = chromosome.resolution_status === 'RESOLVED';
+  const isJoinPicked = joinPick?.id === chromosome.id;
+  const canJoinConfirm = Boolean(joinPick) && !isJoinPicked;
 
   return (
     <div className="karyo-props" data-testid="chromosome-props">
@@ -109,6 +126,60 @@ export function ChromosomePropertiesPanel({
               Debe consultar la explicabilidad (XAI) antes de aceptar (BR-004).
             </p>
           )}
+        </div>
+      )}
+
+      {showP3 && (
+        <div className="karyo-actions" data-testid="chromosome-p3-actions">
+          <strong>✏️ Corrección manual</strong>
+
+          {onReclassify && (
+            <label className="karyo-reclassify">
+              <span>Mover a par</span>
+              <select
+                data-testid="reclassify-select"
+                value={chromosome.predicted_class}
+                disabled={busy}
+                onChange={(e) => onReclassify(chromosome, e.target.value)}
+              >
+                {CHROMOSOME_SLOTS.map((slot) => (
+                  <option key={slot} value={slot}>{slot}</option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <div className="karyo-actions__row">
+            {onSplit && (
+              <button type="button" className="btn-outline" onClick={() => onSplit(chromosome)} disabled={busy} data-testid="action-split">
+                ✂️ Separar (touching)
+              </button>
+            )}
+            {onResolveCross && (
+              <button type="button" className="btn-outline" onClick={() => onResolveCross(chromosome)} disabled={busy} data-testid="action-cross">
+                ✳️ Resolver cruce
+              </button>
+            )}
+            {onJoinConfirm && canJoinConfirm && (
+              <button type="button" className="btn-primary" onClick={() => onJoinConfirm(chromosome)} disabled={busy} data-testid="action-join-confirm">
+                🔗 Unir con par {joinPick?.label}
+              </button>
+            )}
+            {onJoinPick && !canJoinConfirm && (
+              <button
+                type="button"
+                className={isJoinPicked ? 'btn-primary' : 'btn-outline'}
+                onClick={() => onJoinPick(chromosome)}
+                disabled={busy}
+                data-testid="action-join-pick"
+              >
+                {isJoinPicked ? '🔗 Marcado — elija el otro fragmento' : '🔗 Unir: marcar este fragmento'}
+              </button>
+            )}
+          </div>
+          <p className="karyo-props__hint" data-testid="reclassify-hint">
+            Arrastre el cromosoma a otro par en el visor, o use "Mover a par" (override manual, BR-003).
+          </p>
         </div>
       )}
     </div>

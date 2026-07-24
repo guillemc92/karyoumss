@@ -14,6 +14,7 @@ function chromo(overrides: Partial<Chromosome> = {}): Chromosome {
     resolution_status: 'AUTO',
     xai_viewed: false,
     is_anomaly: false,
+    is_active: true,
     measures: {},
     bbox: {},
     order: 0,

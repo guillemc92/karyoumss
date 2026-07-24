@@ -15,6 +15,9 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.spec.ts', 'tests/**/*.spec.tsx', 'src/**/*.spec.ts', 'src/**/*.spec.tsx'],
     css: false,
+    // Las suites de página del cariotipo (XAI/modal + MSW + loops de resolución)
+    // son pesadas; 5s por defecto flakea bajo carga concurrente. 15s da margen.
+    testTimeout: 15000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'text-summary', 'html'],
