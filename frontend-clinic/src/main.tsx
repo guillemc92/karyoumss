@@ -21,6 +21,10 @@ function mount() {
 async function bootstrap() {
   if (USE_MSW) {
     const { worker } = await import('./clinic/msw/browser');
+    // Toggle de demo del modo degradado (P4, DD-KARYO-004): solo en el build
+    // MSW. Permite mostrar en vivo el "Modo Manual" sin caer el pipeline real.
+    const { setDegradedMode } = await import('./clinic/msw/handlers');
+    (window as unknown as { __biomedSetDegraded?: (v: boolean) => void }).__biomedSetDegraded = setDegradedMode;
     await worker.start({
       onUnhandledRequest: 'bypass',
       serviceWorker: { url: '/mockServiceWorker.js' },

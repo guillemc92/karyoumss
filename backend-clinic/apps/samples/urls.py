@@ -11,6 +11,7 @@ from .views import (
     ChromosomeSplitView,
     ChromosomeXaiView,
     KaryotypeView,
+    PipelineHealthView,
     SampleDetailView,
     SampleListCreateView,
     SampleProcessView,
@@ -41,4 +42,7 @@ urlpatterns = [
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/split/', ChromosomeSplitView.as_view(), name='chromosome-split'),
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/join/', ChromosomeJoinView.as_view(), name='chromosome-join'),
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/cross/', ChromosomeCrossView.as_view(), name='chromosome-cross'),
+
+    # Cariotipo P4 (ADR-0021 P4, DD-KARYO-004) — salud del pipeline (modo degradado).
+    path('pipeline/health/', PipelineHealthView.as_view(), name='pipeline-health'),
 ]

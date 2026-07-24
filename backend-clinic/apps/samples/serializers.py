@@ -224,6 +224,6 @@ class AuditEventSerializer(serializers.ModelSerializer):
         model = AuditEvent
         fields = [
             'id', 'event_type', 'chromosome', 'actor', 'actor_name',
-            'payload', 'created_at', 'previous_hash', 'current_hash',
+            'payload', 'mode', 'created_at', 'previous_hash', 'current_hash',
         ]
         read_only_fields = fields

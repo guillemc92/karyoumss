@@ -8,15 +8,18 @@
  *
  * Ruta: /clinic/samples/:id/karyotype
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { BiomedShell } from '../components/BiomedShell';
 import { Skeleton } from '../components/Skeleton';
 import { KaryotypeCanvas } from '../components/KaryotypeCanvas';
+import { KaryoImageToolbar } from '../components/KaryoImageToolbar';
 import { ChromosomePropertiesPanel } from '../components/ChromosomePropertiesPanel';
 import { XaiModal } from '../components/XaiModal';
 import { useKaryotype } from '../hooks/useKaryotype';
 import { useAuditTrail, useKaryotypeActions } from '../hooks/useKaryotypeActions';
+import { useDegradedMode } from '../hooks/useDegradedMode';
+import { INITIAL_VIEWPORT, viewportReducer } from '../lib/viewport';
 import { ClinicApiException } from '../types/sample';
 import type { Chromosome, XaiResult } from '../types/karyotype';
 import { AUDIT_LABELS } from '../types/karyotype';
@@ -41,6 +44,8 @@ export function KaryotypePage() {
   const [validated, setValidated] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
   const [joinPick, setJoinPick] = useState<{ id: string; label: string } | null>(null);
+  const [viewport, dispatchViewport] = useReducer(viewportReducer, INITIAL_VIEWPORT);
+  const { degraded, justRestored, dismissRestored } = useDegradedMode();
 
   const { viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross } =
     useKaryotypeActions(id);
@@ -161,6 +166,19 @@ export function KaryotypePage() {
         <SemaphoreLegend />
       </div>
 
+      {degraded && (
+        <div className="karyo-alert karyo-alert--degraded" role="alert" data-testid="karyo-degraded-banner">
+          🔌 <strong>Modo Manual — IA no disponible.</strong> Puede corregir el cariotipo con las
+          herramientas manuales; cada acción queda registrada como <code>degradado</code> (FSD-UC-007).
+        </div>
+      )}
+      {justRestored && !degraded && (
+        <div className="karyo-alert karyo-alert--ok" role="status" data-testid="karyo-restored-banner">
+          ✅ <strong>IA restaurada.</strong> Volvió el modo automático.
+          <button type="button" className="btn-outline" onClick={dismissRestored} data-testid="dismiss-restored">Entendido</button>
+        </div>
+      )}
+
       {validated ? (
         <div className="karyo-alert karyo-alert--ok" role="status" data-testid="karyo-validated-banner">
           ✅ <strong>Caso validado por el analista.</strong> Listo para pasar a Supervisor.
@@ -182,13 +200,16 @@ export function KaryotypePage() {
 
       <div className="karyo-workspace">
         <div className="karyo-workspace__viewer">
+          <KaryoImageToolbar viewport={viewport} dispatch={dispatchViewport} />
           <KaryotypeCanvas
             chromosomes={karyotype.chromosomes}
             selectedId={selected?.id ?? null}
             joinPickId={joinPick?.id ?? null}
             editable={!validated}
+            viewport={viewport}
             onSelect={setSelected}
             onReclassify={validated ? undefined : handleReclassify}
+            onPan={(x, y) => dispatchViewport({ type: 'pan', dx: x - viewport.offsetX, dy: y - viewport.offsetY })}
           />
         </div>
         <aside className="karyo-workspace__panel">
@@ -233,6 +254,9 @@ export function KaryotypePage() {
                 <span className="karyo-audit__time">{new Date(e.created_at).toLocaleTimeString('es-BO')}</span>
                 {' — '}{AUDIT_LABELS[e.event_type] ?? e.event_type}
                 {e.actor_name && ` · ${e.actor_name}`}
+                {e.mode === 'degradado' && (
+                  <span className="karyo-audit__badge" data-testid="audit-mode-degradado"> degradado</span>
+                )}
               </li>
             ))}
           </ul>

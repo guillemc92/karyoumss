@@ -55,6 +55,8 @@ export type AuditEventType =
   | 'MARK_ANOMALY' | 'SPLIT' | 'JOIN' | 'RESOLVE_CROSS'
   | 'ANALYST_VALIDATED' | 'AUDIT_DECISION' | 'ISCN_OVERRIDE' | 'SIGN_REPORT';
 
+export type AuditMode = 'auto' | 'degradado';
+
 export interface AuditEvent {
   id: string;
   event_type: AuditEventType;
@@ -62,9 +64,16 @@ export interface AuditEvent {
   actor: number;
   actor_name: string;
   payload: Record<string, unknown>;
+  mode: AuditMode; // P4: 'degradado' si la acción se hizo sin IA (FSD-UC-007)
   created_at: string;
   previous_hash: string;
   current_hash: string;
+}
+
+/** Respuesta de GET /pipeline/health/ (P4, DD-KARYO-004). */
+export interface PipelineHealth {
+  available: boolean;
+  mode: AuditMode;
 }
 
 /** Respuesta de POST /samples/{id}/validate/. */

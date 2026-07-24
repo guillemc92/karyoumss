@@ -142,12 +142,13 @@ class CaseBlockedError(Exception):
     """Se intentó validar el caso con naranjas sin resolver (RN-01)."""
 
 
-def emit_audit_event(sample, actor, event_type, chromosome=None, payload=None) -> AuditEvent:
+def emit_audit_event(sample, actor, event_type, chromosome=None, payload=None, mode='auto') -> AuditEvent:
     """Emite un evento de auditoría encadenado (ADR-0022 D1). Debe llamarse
     DENTRO de una transacción atómica junto con la acción de dominio.
 
     `select_for_update` sobre el último evento del caso serializa dos
     acciones concurrentes sobre la misma sample (evita cadenas divergentes).
+    `mode` marca las acciones hechas en modo degradado (FSD-UC-007 §7, BR-008).
     """
     last = (
         AuditEvent.objects.select_for_update()
@@ -161,6 +162,7 @@ def emit_audit_event(sample, actor, event_type, chromosome=None, payload=None) -
         event_type=event_type,
         actor=actor,
         payload=payload or {},
+        mode=mode,
         previous_hash=last.current_hash if last else '',
     )
     event.current_hash = event.compute_hash()
@@ -196,7 +198,7 @@ def _unresolved_count(karyotype: Karyotype) -> int:
     return count
 
 
-def view_xai(sample, chromosome, actor) -> dict:
+def view_xai(sample, chromosome, actor, mode='auto') -> dict:
     """Registra XAI_VIEWED y marca el cromosoma como visto (gate BR-004).
     El heatmap Grad-CAM real lo genera el microservicio de inferencia
     (ADR-0007); acá se devuelve una referencia mock."""
@@ -206,7 +208,7 @@ def view_xai(sample, chromosome, actor) -> dict:
             chromosome.save(update_fields=['xai_viewed'])
         emit_audit_event(
             sample, actor, AuditEventType.XAI_VIEWED, chromosome=chromosome,
-            payload={'confidence_pre_xai': str(chromosome.confidence_score)},
+            payload={'confidence_pre_xai': str(chromosome.confidence_score)}, mode=mode,
         )
     return {
         'chromosome_id': str(chromosome.id),
@@ -219,7 +221,7 @@ def view_xai(sample, chromosome, actor) -> dict:
     }
 
 
-def resolve_chromosome(sample, chromosome, actor) -> Chromosome:
+def resolve_chromosome(sample, chromosome, actor, mode='auto') -> Chromosome:
     """Resuelve (acepta) un cromosoma naranja. Exige XAI previo (BR-004)."""
     if chromosome.semaphore != 'orange':
         raise NotOrangeError('Solo los cromosomas naranja requieren resolución.')
@@ -230,24 +232,24 @@ def resolve_chromosome(sample, chromosome, actor) -> Chromosome:
         chromosome.save(update_fields=['resolution_status'])
         emit_audit_event(
             sample, actor, AuditEventType.ACCEPT_CHROMOSOME, chromosome=chromosome,
-            payload={'predicted_class': chromosome.predicted_class},
+            payload={'predicted_class': chromosome.predicted_class}, mode=mode,
         )
     return chromosome
 
 
-def mark_anomaly(sample, chromosome, actor) -> Chromosome:
+def mark_anomaly(sample, chromosome, actor, mode='auto') -> Chromosome:
     """Marca un cromosoma con anomalía estructural (M)."""
     with transaction.atomic():
         chromosome.is_anomaly = True
         chromosome.save(update_fields=['is_anomaly'])
         emit_audit_event(
             sample, actor, AuditEventType.MARK_ANOMALY, chromosome=chromosome,
-            payload={'predicted_class': chromosome.predicted_class},
+            payload={'predicted_class': chromosome.predicted_class}, mode=mode,
         )
     return chromosome
 
 
-def validate_case(sample, actor) -> Sample:
+def validate_case(sample, actor, mode='auto') -> Sample:
     """Transición a ANALYST_VALIDATED (FSD-UC-004). Rechaza si el caso está
     bloqueado por naranjas sin resolver (RN-01)."""
     karyotype = getattr(sample, 'karyotype', None)
@@ -258,7 +260,7 @@ def validate_case(sample, actor) -> Sample:
     with transaction.atomic():
         sample.status = SampleStatus.ANALYST_VALIDATED
         sample.save(update_fields=['status', 'updated_at'])
-        emit_audit_event(sample, actor, AuditEventType.ANALYST_VALIDATED)
+        emit_audit_event(sample, actor, AuditEventType.ANALYST_VALIDATED, mode=mode)
     return sample
 
 
@@ -299,7 +301,7 @@ def _assert_editable(sample) -> None:
         raise CaseLockedError('El caso ya fue validado y no admite más correcciones.')
 
 
-def reclassify_chromosome(sample, chromosome, target_class, actor) -> Chromosome:
+def reclassify_chromosome(sample, chromosome, target_class, actor, mode='auto') -> Chromosome:
     """Reclasifica un cromosoma a otro slot (override manual, BR-003).
 
     El analista es autoridad: la corrección marca el cromosoma como RESOLVED
@@ -318,12 +320,12 @@ def reclassify_chromosome(sample, chromosome, target_class, actor) -> Chromosome
         chromosome.save(update_fields=['predicted_class', 'resolution_status'])
         emit_audit_event(
             sample, actor, AuditEventType.CORRECT_CLASS, chromosome=chromosome,
-            payload={'from': previous, 'to': target},
+            payload={'from': previous, 'to': target}, mode=mode,
         )
     return chromosome
 
 
-def split_chromosome(sample, chromosome, actor) -> Chromosome:
+def split_chromosome(sample, chromosome, actor, mode='auto') -> Chromosome:
     """Separa un cromosoma segmentado como uno solo (touching) en dos.
 
     El original conserva la mitad izquierda del bbox; el nuevo cromosoma toma
@@ -357,12 +359,12 @@ def split_chromosome(sample, chromosome, actor) -> Chromosome:
         )
         emit_audit_event(
             sample, actor, AuditEventType.SPLIT, chromosome=chromosome,
-            payload={'origin': str(chromosome.id), 'created': str(created.id)},
+            payload={'origin': str(chromosome.id), 'created': str(created.id)}, mode=mode,
         )
     return created
 
 
-def join_chromosomes(sample, keep, absorbed, actor) -> Chromosome:
+def join_chromosomes(sample, keep, absorbed, actor, mode='auto') -> Chromosome:
     """Une dos fragmentos en uno: `keep` toma la unión de ambos bbox y
     `absorbed` queda inactivo (soft-remove, preserva trazabilidad de audit)."""
     _assert_editable(sample)
@@ -377,12 +379,12 @@ def join_chromosomes(sample, keep, absorbed, actor) -> Chromosome:
         absorbed.save(update_fields=['is_active'])
         emit_audit_event(
             sample, actor, AuditEventType.JOIN, chromosome=keep,
-            payload={'kept': str(keep.id), 'absorbed': str(absorbed.id)},
+            payload={'kept': str(keep.id), 'absorbed': str(absorbed.id)}, mode=mode,
         )
     return keep
 
 
-def resolve_cross(sample, chromosome, actor) -> Chromosome:
+def resolve_cross(sample, chromosome, actor, mode='auto') -> Chromosome:
     """Individualiza un cromosoma cruzado/solapado: lo marca como resuelto."""
     _assert_editable(sample)
     with transaction.atomic():
@@ -390,7 +392,7 @@ def resolve_cross(sample, chromosome, actor) -> Chromosome:
         chromosome.save(update_fields=['resolution_status'])
         emit_audit_event(
             sample, actor, AuditEventType.RESOLVE_CROSS, chromosome=chromosome,
-            payload={'predicted_class': chromosome.predicted_class},
+            payload={'predicted_class': chromosome.predicted_class}, mode=mode,
         )
     return chromosome
 

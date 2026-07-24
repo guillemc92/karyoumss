@@ -24,6 +24,8 @@ import {
   reclassifyTargetFromDrop,
   slotOrigin,
 } from '../lib/karyoLayout';
+import type { ViewportState } from '../lib/viewport';
+import { INITIAL_VIEWPORT, cssFilter } from '../lib/viewport';
 
 const SEMAPHORE_FILL: Record<string, string> = {
   green: '#1e8868',
@@ -40,8 +42,12 @@ interface KaryotypeCanvasProps {
   joinPickId?: string | null;
   /** false cuando el caso ya fue validado → sin arrastre (case-lock). */
   editable?: boolean;
+  /** Herramientas de imagen (P4): zoom/rotación/offset/brillo/contraste/pan. */
+  viewport?: ViewportState;
   onSelect: (chromosome: Chromosome) => void;
   onReclassify?: (chromosome: Chromosome, targetClass: string) => void;
+  /** Nuevo offset del lienzo tras un arrastre en modo "Mover" (P4). */
+  onPan?: (offsetX: number, offsetY: number) => void;
 }
 
 export function KaryotypeCanvas({
@@ -49,14 +55,30 @@ export function KaryotypeCanvas({
   selectedId,
   joinPickId = null,
   editable = true,
+  viewport = INITIAL_VIEWPORT,
   onSelect,
   onReclassify,
+  onPan,
 }: KaryotypeCanvasProps) {
   const active = chromosomes.filter((c) => c.is_active);
+  // En modo "Mover" el lienzo se arrastra y los cromosomas NO (evita el
+  // conflicto con el drag de reclasificación).
+  const chromoDraggable = editable && !viewport.panMode;
 
   return (
-    <div className="karyo-canvas" data-testid="karyotype-viewer">
-      <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT}>
+    <div className="karyo-canvas" data-testid="karyotype-viewer" style={{ filter: cssFilter(viewport) }}>
+      <Stage
+        width={STAGE_WIDTH}
+        height={STAGE_HEIGHT}
+        scaleX={viewport.scale}
+        scaleY={viewport.scale}
+        rotation={viewport.rotation}
+        x={viewport.offsetX}
+        y={viewport.offsetY}
+        draggable={viewport.panMode}
+        onDragEnd={viewport.panMode && onPan ? (e) => onPan(e.target.x(), e.target.y()) : undefined}
+        data-testid="karyo-stage"
+      >
         <Layer>
           {/* Etiquetas de cada slot (1..22, X, Y). */}
           {CHROMOSOME_SLOTS.map((slot) => {
@@ -90,11 +112,11 @@ export function KaryotypeCanvas({
                 aria-label={`Cromosoma ${chromo.predicted_class}`}
                 x={pos.x}
                 y={pos.y}
-                draggable={editable}
+                draggable={chromoDraggable}
                 onClick={() => onSelect(chromo)}
                 onTap={() => onSelect(chromo)}
                 onDragEnd={
-                  editable
+                  chromoDraggable
                     ? (e) => {
                         const target = reclassifyTargetFromDrop(e.target.x(), e.target.y(), chromo);
                         e.target.position(chromosomePosition(chromo)); // snap-back; el refetch mueve el nodo

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { KaryotypeCanvas } from '../../src/clinic/components/KaryotypeCanvas';
 import type { Chromosome } from '../../src/clinic/types/karyotype';
 import { PAD, SLOT_W } from '../../src/clinic/lib/karyoLayout';
+import { INITIAL_VIEWPORT } from '../../src/clinic/lib/viewport';
 
 /** react-konva está mockeado globalmente en tests/setup.ts: los cromosomas se
  * renderizan como <button data-testid="chromosome-{id}"> y el drag se dispara
@@ -80,6 +81,34 @@ describe('KaryotypeCanvas (Konva, P3)', () => {
     setDrop(PAD + 10, PAD + 10); // slot 1 = clase actual
     fireEvent(screen.getByTestId('chromosome-a'), new CustomEvent('konvadragend'));
     expect(onReclassify).not.toHaveBeenCalled();
+  });
+
+  it('en modo "Mover" (panMode) el cromosoma no reclasifica al arrastrar', () => {
+    const onReclassify = vi.fn();
+    render(
+      <KaryotypeCanvas
+        chromosomes={[chromo({ id: 'a', predicted_class: '1' })]}
+        selectedId={null}
+        viewport={{ ...INITIAL_VIEWPORT, panMode: true }}
+        onSelect={() => {}}
+        onReclassify={onReclassify}
+      />,
+    );
+    setDrop(PAD + SLOT_W + 10, PAD + 10);
+    fireEvent(screen.getByTestId('chromosome-a'), new CustomEvent('konvadragend'));
+    expect(onReclassify).not.toHaveBeenCalled();
+  });
+
+  it('aplica el CSS filter de brillo/contraste al contenedor', () => {
+    render(
+      <KaryotypeCanvas
+        chromosomes={[chromo({ id: 'a' })]}
+        selectedId={null}
+        viewport={{ ...INITIAL_VIEWPORT, brightness: 120, contrast: 80 }}
+        onSelect={() => {}}
+      />,
+    );
+    expect(screen.getByTestId('karyotype-viewer')).toHaveStyle({ filter: 'brightness(120%) contrast(80%)' });
   });
 
   it('con editable=false el cromosoma no es arrastrable (sin onReclassify)', () => {

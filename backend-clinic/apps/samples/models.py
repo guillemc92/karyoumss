@@ -231,6 +231,11 @@ class AuditEventType(models.TextChoices):
     SIGN_REPORT = 'SIGN_REPORT', 'Reporte firmado'             # futuro
 
 
+class AuditEventMode(models.TextChoices):
+    AUTO = 'auto', 'Automático (con IA)'
+    DEGRADED = 'degradado', 'Modo degradado (manual, sin IA)'  # FSD-UC-007 §7
+
+
 class AuditEventError(Exception):
     """Se intentó mutar un AuditEvent existente (RN-05 append-only)."""
 
@@ -253,6 +258,9 @@ class AuditEvent(models.Model):
     event_type = models.CharField(max_length=20, choices=AuditEventType.choices)
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='audit_events')
     payload = models.JSONField(default=dict, blank=True)
+    # FSD-UC-007 §7: marca las acciones hechas en modo degradado (sin IA) para
+    # la facturación de BR-008. Campo consultable, no enterrado en el payload.
+    mode = models.CharField(max_length=10, choices=AuditEventMode.choices, default=AuditEventMode.AUTO)
     # default=timezone.now (no auto_now_add): el service necesita created_at
     # poblado ANTES de save() para computar el hash de forma determinística.
     created_at = models.DateTimeField(default=timezone.now, editable=False)
@@ -276,6 +284,7 @@ class AuditEvent(models.Model):
             'event_type': self.event_type,
             'actor': self.actor_id,
             'payload': self.payload,
+            'mode': self.mode,
             'created_at': self.created_at.isoformat() if self.created_at else None,
         }, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
         return hashlib.sha256((canonical + self.previous_hash).encode('utf-8')).hexdigest()

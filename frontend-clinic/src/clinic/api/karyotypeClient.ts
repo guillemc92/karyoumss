@@ -10,7 +10,7 @@
  *   404 → NOT_FOUND (muestra) / NO_KARYOTYPE (sin cariotipo generado aún)
  */
 import { clinicRequest, CLINIC_DEFAULT_BASE_URL } from './samplesClient';
-import type { AuditEvent, Chromosome, Karyotype, ValidateResult, XaiResult } from '../types/karyotype';
+import type { AuditEvent, Chromosome, Karyotype, PipelineHealth, ValidateResult, XaiResult } from '../types/karyotype';
 
 export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL) {
   return {
@@ -66,6 +66,13 @@ export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL)
     /** POST /chromosomes/{cid}/cross/ — resolver cruce (individualiza). */
     resolveCross(sampleId: string, chromosomeId: string): Promise<Chromosome> {
       return clinicRequest<Chromosome>(baseUrl, `/samples/${sampleId}/chromosomes/${chromosomeId}/cross/`, { method: 'POST' });
+    },
+
+    // --- P4 (modo degradado, DD-KARYO-004) ---
+
+    /** GET /pipeline/health/ — disponibilidad de la IA (para el modo degradado). */
+    pipelineHealth(): Promise<PipelineHealth> {
+      return clinicRequest<PipelineHealth>(baseUrl, '/pipeline/health/', { method: 'GET' });
     },
   };
 }

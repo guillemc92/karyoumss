@@ -153,6 +153,13 @@ class SampleRegisterView(APIView):
         return 'VALIDATION_ERROR'
 
 
+def _request_mode(request) -> str:
+    """FSD-UC-007 §7: el frontend marca las acciones hechas en modo degradado
+    (sin IA) con el header `X-Biomed-Mode`. Es un estado del sistema
+    (cross-cutting), por eso va en header y no en el body de cada endpoint."""
+    return 'degradado' if request.META.get('HTTP_X_BIOMED_MODE') == 'degradado' else 'auto'
+
+
 def _get_owned_sample_or_none(pk, user):
     """Busca la muestra activa por pk. Devuelve (sample, None) o (None, error_response)."""
     try:
@@ -300,7 +307,7 @@ class ChromosomeXaiView(APIView):
         chromo, error = _get_owned_chromosome_or_error(sample, cid)
         if error:
             return error
-        result = view_xai(sample, chromo, request.user)
+        result = view_xai(sample, chromo, request.user, mode=_request_mode(request))
         return Response(result, status=status.HTTP_200_OK)
 
 
@@ -322,7 +329,7 @@ class ChromosomeResolveView(APIView):
         if error:
             return error
         try:
-            chromo = resolve_chromosome(sample, chromo, request.user)
+            chromo = resolve_chromosome(sample, chromo, request.user, mode=_request_mode(request))
         except XaiRequiredError as e:
             return Response({'code': 'XAI_REQUIRED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
         except NotOrangeError as e:
@@ -343,7 +350,7 @@ class ChromosomeAnomalyView(APIView):
         chromo, error = _get_owned_chromosome_or_error(sample, cid)
         if error:
             return error
-        chromo = mark_anomaly(sample, chromo, request.user)
+        chromo = mark_anomaly(sample, chromo, request.user, mode=_request_mode(request))
         return Response(ChromosomeSerializer(chromo).data, status=status.HTTP_200_OK)
 
 
@@ -365,7 +372,7 @@ class ChromosomeReclassifyView(APIView):
         if error:
             return error
         try:
-            chromo = reclassify_chromosome(sample, chromo, request.data.get('target_class'), request.user)
+            chromo = reclassify_chromosome(sample, chromo, request.data.get('target_class'), request.user, mode=_request_mode(request))
         except CaseLockedError as e:
             return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
         except InvalidClassError as e:
@@ -389,7 +396,7 @@ class ChromosomeSplitView(APIView):
         if error:
             return error
         try:
-            created = split_chromosome(sample, chromo, request.user)
+            created = split_chromosome(sample, chromo, request.user, mode=_request_mode(request))
         except CaseLockedError as e:
             return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
         return Response(ChromosomeSerializer(created).data, status=status.HTTP_201_CREATED)
@@ -416,7 +423,7 @@ class ChromosomeJoinView(APIView):
         if error:
             return error
         try:
-            keep = join_chromosomes(sample, keep, absorbed, request.user)
+            keep = join_chromosomes(sample, keep, absorbed, request.user, mode=_request_mode(request))
         except CaseLockedError as e:
             return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
         except JoinSelfError as e:
@@ -440,7 +447,7 @@ class ChromosomeCrossView(APIView):
         if error:
             return error
         try:
-            chromo = resolve_cross(sample, chromo, request.user)
+            chromo = resolve_cross(sample, chromo, request.user, mode=_request_mode(request))
         except CaseLockedError as e:
             return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
         return Response(ChromosomeSerializer(chromo).data, status=status.HTTP_200_OK)
@@ -460,7 +467,7 @@ class CaseValidateView(APIView):
         if error:
             return error
         try:
-            sample = validate_case(sample, request.user)
+            sample = validate_case(sample, request.user, mode=_request_mode(request))
         except CaseBlockedError as e:
             return Response({'code': 'CASE_BLOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
         return Response({'sample_id': str(sample.id), 'status': sample.status}, status=status.HTTP_200_OK)
@@ -478,3 +485,21 @@ class AuditTrailView(APIView):
             return error
         events = sample.audit_events.all()
         return Response(AuditEventSerializer(events, many=True).data, status=status.HTTP_200_OK)
+
+
+class PipelineHealthView(APIView):
+    """GET /api/clinic/pipeline/health/ — disponibilidad del pipeline de IA (P4).
+
+    FSD-UC-007 §8: el visor consulta cada 30s para entrar/salir del modo
+    degradado. Chequeo barato del circuit breaker (sin llamada de red).
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.view')]
+
+    def get(self, request):
+        available = not pipeline_client._circuit_open()
+        return Response(
+            {'available': available, 'mode': 'auto' if available else 'degradado'},
+            status=status.HTTP_200_OK,
+        )

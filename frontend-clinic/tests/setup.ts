@@ -9,6 +9,7 @@ import '@testing-library/jest-dom/vitest';
 import { afterAll, afterEach, beforeAll, beforeEach, vi } from 'vitest';
 import { server } from '../src/clinic/msw/server';
 import { resetMockData } from '../src/clinic/msw/handlers';
+import { setClinicMode } from '../src/clinic/api/samplesClient';
 
 /**
  * Mock global de react-konva (P3, DD-KARYO-003 §3): Konva usa <canvas>, que
@@ -67,6 +68,9 @@ Object.defineProperty(import.meta, 'env', {
 });
 
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
-beforeEach(() => resetMockData());
+beforeEach(() => {
+  resetMockData();
+  setClinicMode('auto'); // P4: el modo degradado es global (module var) — resetear entre tests
+});
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());

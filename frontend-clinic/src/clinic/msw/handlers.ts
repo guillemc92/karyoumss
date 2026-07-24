@@ -45,13 +45,19 @@ function sampleLocked(sampleId: string): boolean {
   return s?.status === 'ANALYST_VALIDATED' || s?.status === 'VALIDATED';
 }
 
-function pushAudit(sampleId: string, eventType: AuditEventType, chromosomeId: string | null): void {
+/** P4: el modo degradado viaja en el header X-Biomed-Mode (DD-KARYO-004). */
+function modeOf(request: Request): 'auto' | 'degradado' {
+  return request.headers.get('X-Biomed-Mode') === 'degradado' ? 'degradado' : 'auto';
+}
+
+function pushAudit(sampleId: string, eventType: AuditEventType, chromosomeId: string | null, mode: 'auto' | 'degradado' = 'auto'): void {
   const chain = auditTrails[sampleId] ?? (auditTrails[sampleId] = []);
   const prev = chain.length ? chain[chain.length - 1].current_hash : '';
   chain.push({
     id: `${sampleId}-ev-${chain.length}`,
     event_type: eventType,
     chromosome: chromosomeId,
+    mode,
     actor: 1,
     actor_name: 'Analista Demo',
     payload: {},
@@ -67,12 +73,33 @@ export function resetMockData(): void {
   // filtraría estado entre tests (aislamiento roto).
   samples = initialSamples.map((s) => ({ ...s }));
   forceDegraded = false;
+  try { sessionStorage?.removeItem('biomed.degraded'); } catch { /* no-op */ }
   for (const k of Object.keys(karyotypes)) delete karyotypes[k];
   for (const k of Object.keys(auditTrails)) delete auditTrails[k];
 }
 
+/** Persistente para que el modo degradado sobreviva un reload (demo/E2E). */
+function degradedFlag(): boolean {
+  try {
+    return typeof sessionStorage !== 'undefined' && sessionStorage.getItem('biomed.degraded') === '1';
+  } catch {
+    return false;
+  }
+}
+
 export function setDegradedMode(value: boolean): void {
   forceDegraded = value;
+  try {
+    if (typeof sessionStorage !== 'undefined') {
+      if (value) sessionStorage.setItem('biomed.degraded', '1');
+      else sessionStorage.removeItem('biomed.degraded');
+    }
+  } catch { /* sessionStorage no disponible */ }
+}
+
+/** El pipeline está degradado si se forzó en runtime o vía el flag persistente. */
+function isDegraded(): boolean {
+  return forceDegraded || degradedFlag();
 }
 
 function toListItem(s: SampleRead): SampleListItem {
@@ -281,12 +308,12 @@ export const handlers = [
   }),
 
   // Cariotipo P2 (ADR-0021 P2, ADR-0022) — XAI, resolver, anomalía, validar, audit.
-  http.post(`${API}/samples/:id/chromosomes/:cid/xai/`, ({ params }) => {
+  http.post(`${API}/samples/:id/chromosomes/:cid/xai/`, ({ params, request }) => {
     const k = getOrBuildKaryotype(String(params.id));
     const chromo = k.chromosomes.find((c) => c.id === params.cid);
     if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
     chromo.xai_viewed = true;
-    pushAudit(String(params.id), 'XAI_VIEWED', chromo.id);
+    pushAudit(String(params.id), 'XAI_VIEWED', chromo.id, modeOf(request));
     return HttpResponse.json({
       chromosome_id: chromo.id,
       predicted_class: chromo.predicted_class,
@@ -295,7 +322,7 @@ export const handlers = [
     });
   }),
 
-  http.post(`${API}/samples/:id/chromosomes/:cid/resolve/`, ({ params }) => {
+  http.post(`${API}/samples/:id/chromosomes/:cid/resolve/`, ({ params, request }) => {
     const k = getOrBuildKaryotype(String(params.id));
     const chromo = k.chromosomes.find((c) => c.id === params.cid);
     if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
@@ -307,20 +334,20 @@ export const handlers = [
     }
     chromo.resolution_status = 'RESOLVED';
     recomputeSummary(k);
-    pushAudit(String(params.id), 'ACCEPT_CHROMOSOME', chromo.id);
+    pushAudit(String(params.id), 'ACCEPT_CHROMOSOME', chromo.id, modeOf(request));
     return HttpResponse.json(chromo);
   }),
 
-  http.post(`${API}/samples/:id/chromosomes/:cid/anomaly/`, ({ params }) => {
+  http.post(`${API}/samples/:id/chromosomes/:cid/anomaly/`, ({ params, request }) => {
     const k = getOrBuildKaryotype(String(params.id));
     const chromo = k.chromosomes.find((c) => c.id === params.cid);
     if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
     chromo.is_anomaly = true;
-    pushAudit(String(params.id), 'MARK_ANOMALY', chromo.id);
+    pushAudit(String(params.id), 'MARK_ANOMALY', chromo.id, modeOf(request));
     return HttpResponse.json(chromo);
   }),
 
-  http.post(`${API}/samples/:id/validate/`, ({ params }) => {
+  http.post(`${API}/samples/:id/validate/`, ({ params, request }) => {
     const k = getOrBuildKaryotype(String(params.id));
     recomputeSummary(k);
     if (k.summary.unresolved_orange > 0 || k.summary.red > 0) {
@@ -331,7 +358,7 @@ export const handlers = [
     }
     const sample = samples.find((s) => s.id === params.id);
     if (sample) sample.status = 'ANALYST_VALIDATED';
-    pushAudit(String(params.id), 'ANALYST_VALIDATED', null);
+    pushAudit(String(params.id), 'ANALYST_VALIDATED', null, modeOf(request));
     return HttpResponse.json({ sample_id: String(params.id), status: 'ANALYST_VALIDATED' });
   }),
 
@@ -357,11 +384,11 @@ export const handlers = [
     chromo.predicted_class = target;
     chromo.resolution_status = 'RESOLVED';
     recomputeSummary(k);
-    pushAudit(sid, 'CORRECT_CLASS', chromo.id);
+    pushAudit(sid, 'CORRECT_CLASS', chromo.id, modeOf(request));
     return HttpResponse.json(chromo);
   }),
 
-  http.post(`${API}/samples/:id/chromosomes/:cid/split/`, ({ params }) => {
+  http.post(`${API}/samples/:id/chromosomes/:cid/split/`, ({ params, request }) => {
     const sid = String(params.id);
     if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
     const k = getOrBuildKaryotype(sid);
@@ -380,7 +407,7 @@ export const handlers = [
     };
     k.chromosomes.push(created);
     recomputeSummary(k);
-    pushAudit(sid, 'SPLIT', chromo.id);
+    pushAudit(sid, 'SPLIT', chromo.id, modeOf(request));
     return HttpResponse.json(created, { status: 201 });
   }),
 
@@ -399,11 +426,11 @@ export const handlers = [
     const x1 = Math.max((keep.bbox.x ?? 0) + (keep.bbox.w ?? 0), (absorbed.bbox.x ?? 0) + (absorbed.bbox.w ?? 0));
     keep.bbox = { ...keep.bbox, x: x0, w: x1 - x0 };
     recomputeSummary(k);
-    pushAudit(sid, 'JOIN', keep.id);
+    pushAudit(sid, 'JOIN', keep.id, modeOf(request));
     return HttpResponse.json(keep);
   }),
 
-  http.post(`${API}/samples/:id/chromosomes/:cid/cross/`, ({ params }) => {
+  http.post(`${API}/samples/:id/chromosomes/:cid/cross/`, ({ params, request }) => {
     const sid = String(params.id);
     if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
     const k = getOrBuildKaryotype(sid);
@@ -411,7 +438,13 @@ export const handlers = [
     if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
     chromo.resolution_status = 'RESOLVED';
     recomputeSummary(k);
-    pushAudit(sid, 'RESOLVE_CROSS', chromo.id);
+    pushAudit(sid, 'RESOLVE_CROSS', chromo.id, modeOf(request));
     return HttpResponse.json(chromo);
+  }),
+
+  // Cariotipo P4 (ADR-0021 P4, DD-KARYO-004) — salud del pipeline (modo degradado).
+  http.get(`${API}/pipeline/health/`, () => {
+    const degraded = isDegraded();
+    return HttpResponse.json({ available: !degraded, mode: degraded ? 'degradado' : 'auto' });
   }),
 ];

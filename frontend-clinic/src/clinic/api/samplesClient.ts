@@ -32,6 +32,21 @@ import {
 
 const DEFAULT_BASE_URL = (import.meta.env.VITE_CLINIC_API_BASE as string | undefined) ?? '/api/clinic';
 
+/**
+ * Modo del sistema (FSD-UC-007, DD-KARYO-004): 'degradado' cuando el pipeline de
+ * IA está caído. Es un estado cross-cutting — se propaga como header
+ * `X-Biomed-Mode` en TODA petición clínica para que el backend marque las
+ * acciones manuales en el audit trail, sin ensuciar el body de cada endpoint.
+ * `useDegradedMode` lo actualiza; los tests pueden setearlo directamente.
+ */
+let clinicMode: 'auto' | 'degradado' = 'auto';
+export function setClinicMode(mode: 'auto' | 'degradado'): void {
+  clinicMode = mode;
+}
+export function getClinicMode(): 'auto' | 'degradado' {
+  return clinicMode;
+}
+
 interface RequestOptions {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
@@ -53,7 +68,7 @@ function buildUrl(base: string, path: string, query?: Record<string, string | nu
 
 async function request<T>(base: string, path: string, opts: RequestOptions = {}): Promise<T> {
   const url = buildUrl(base, path, opts.query);
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { Accept: 'application/json', 'X-Biomed-Mode': clinicMode };
   const token = getAccessToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
 

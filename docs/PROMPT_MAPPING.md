@@ -2555,5 +2555,74 @@ PM-KARYO-001/002 (P1/P2, precedentes).
 
 ---
 
+## PM-KARYO-004 — Herramientas de imagen + Modo degradado integrado (P4, cierre del núcleo clínico)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-KARYO-004 |
+| **Título** | Núcleo clínico P4 (último): herramientas de imagen (zoom/pan/rotar/brillo/contraste) sobre Konva + modo degradado (FSD-UC-007) con flag `mode:degradado` en el audit trail |
+| **Versión** | 0.1 |
+| **Modelo recomendado** | Claude Opus 4.8 |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-07-24 |
+| **ADR origen** | [ADR-0021](docs/adr/0021-visor-correccion-cariotipo.md) §D5 (P4) + [ADR-0022](docs/adr/0022-audit-trail-clinico-django.md) |
+| **Design Doc** | [DD-KARYO-004](docs/design/DD-KARYO-004.md) |
+
+### Alcance ejecutado (P4)
+
+Cuarta y **última** fase del núcleo clínico (ADR-0021 D5). Dos piezas:
+
+1. **Herramientas de imagen** (canvas Konva): reducer puro `lib/viewport.ts`
+   (zoom con clamps, rotar ±15°, pan, brillo/contraste, reset) + toolbar
+   `KaryoImageToolbar`. El `Stage` aplica scale/rotation/offset; brillo/contraste
+   vía CSS filter en el contenedor (cromosomas vectoriales — sin imagen real
+   todavía, ADR-0007). Pan por arrastre del lienzo (desactiva el drag de
+   reclasificación para no colisionar).
+2. **Modo degradado (FSD-UC-007, RN-07):** banner "Modo Manual — IA no
+   disponible", herramientas manuales P3 disponibles sin IA, y **cada evento de
+   audit marcado `mode:"degradado"`** (para BR-008). El modo es cross-cutting:
+   viaja como header `X-Biomed-Mode` en toda petición clínica (variable de módulo
+   `clinicMode`, seteada por `useDegradedMode`). Backend: campo `AuditEvent.mode`
+   (migración 0008, consultable), threading en los 8 servicios que emiten audit,
+   y `GET /pipeline/health/` (circuit breaker, polling 30s). **Fuera de P4** (por
+   necesitar imágenes reales, ADR-0007): editor de segmentación manual desde cero.
+
+### Output (verificación)
+
+- **Backend:** 204/204 tests, **97.53% cobertura**; `test_karyotype_p4.py` (9
+  tests): mode='degradado' vía header, default 'auto', `mode` en el hash chain,
+  endpoint health según circuit breaker, serializer.
+- **Frontend:** 248/248 tests, **99.36% stmts / 93.33% branches**;
+  `viewport.ts` 100%, `viewport.spec` (9), `KaryoImageToolbar` (7),
+  `useDegradedMode` (2), canvas viewport+panMode (2 nuevos), `karyotypeP4.spec`
+  de página (4). `tsc` limpio.
+- **E2E real (Playwright sobre Konva REAL):** modo degradado forzado (flag
+  persistente en sessionStorage + reload) → banner Modo Manual → corrección
+  manual → **evento marcado `degradado`** en la bitácora → restauración. Luego
+  herramientas de imagen: zoom 100%→150%, rotación, brillo (CSS filter aplicado),
+  reset. Sin errores de consola. Captura verificada (cariograma escalado+rotado).
+
+### Trazabilidad
+
+```
+FSD-UC-007 (modo degradado) + FSD-UC-003 (herramientas de imagen)
+  → ADR-0021 §D5 (P4) + ADR-0022 (audit)
+    → DD-KARYO-004 (viewport + degradado + AuditEvent.mode)
+      → backend-clinic: AuditEvent.mode + /pipeline/health/ + migración 0008
+        → frontend-clinic: viewport reducer + KaryoImageToolbar + useDegradedMode
+          → 204 tests backend (97.53%) + frontend 248 (99.36%)
+            → E2E Playwright: degradado + audit 'degradado' + herramientas Konva
+```
+
+**Núcleo clínico de corrección de cariotipo COMPLETO (P1→P4).** Fuera de las 4
+fases queda la firma MFA del Supervisor + auditoría 5% + generación ISCN
+(épica separada), y la segmentación manual desde cero (requiere el pipeline de
+inferencia real, ADR-0007).
+
+Refs: ADR-0021 §D5, ADR-0022, DD-KARYO-004, RN-07/RN-05, BR-008,
+PM-KARYO-001/002/003 (P1/P2/P3, precedentes).
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*
