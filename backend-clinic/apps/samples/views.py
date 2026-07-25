@@ -41,6 +41,7 @@ from .services import (
     join_chromosomes,
     mark_anomaly,
     reclassify_chromosome,
+    reprocess_sample,
     resolve_chromosome,
     resolve_cross,
     sample_registration_service,
@@ -201,23 +202,24 @@ class SampleProcessView(APIView):
         if error:
             return error
 
-        force_reprocess = bool(request.data.get('force_reprocess', False))
         if sample.status == SampleStatus.PROCESSING:
             return Response({'code': 'ALREADY_PROCESSING', 'detail': 'La muestra ya está en procesamiento'}, status=status.HTTP_409_CONFLICT)
 
+        # Flujo real (DD-ML-002): segmenta la imagen con backend-ml e ingesta el
+        # cariotipo de forma síncrona (baseline). RN-07: 503 si backend-ml cae.
         try:
-            result = pipeline_client.trigger_processing(str(sample.id), force_reprocess=force_reprocess)
+            karyotype = reprocess_sample(sample)
         except MLDegradedError:
             return Response(
                 {'code': 'ML_DEGRADED', 'detail': 'Pipeline de IA no disponible. Use el modo manual.', 'retry_after_seconds': 60},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-        sample.status = SampleStatus.PROCESSING
+        sample.status = SampleStatus.READY
         sample.save(update_fields=['status', 'updated_at'])
         return Response(
-            {'sample_id': str(sample.id), 'task_id': result.get('task_id'), 'status': 'queued'},
-            status=status.HTTP_202_ACCEPTED,
+            {'sample_id': str(sample.id), 'status': sample.status, 'chromosome_count': karyotype.chromosomes.count()},
+            status=status.HTTP_200_OK,
         )
 
 
@@ -239,21 +241,16 @@ class SampleStatusView(APIView):
         if error:
             return error
 
-        try:
-            result = pipeline_client.get_status(str(sample.id))
-        except MLDegradedError:
-            return Response(
-                {'code': 'ML_DEGRADED', 'detail': 'Pipeline de IA no disponible.', 'retry_after_seconds': 60},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-            )
-
+        # Estado local (DD-ML-002): el procesamiento es síncrono en registro/
+        # process, así que el estado ya está persistido; no se consulta backend-ml.
+        karyotype = getattr(sample, 'karyotype', None)
         return Response(
             {
                 'sample_id': str(sample.id),
-                'status': result.get('status', sample.status),
-                'progress': result.get('progress'),
-                'chromosome_count': result.get('chromosome_count'),
-                'confidence_avg': result.get('confidence_avg'),
+                'status': sample.status,
+                'progress': 1 if sample.status == SampleStatus.READY else 0,
+                'chromosome_count': karyotype.chromosomes.count() if karyotype else 0,
+                'confidence_avg': None,
             },
             status=status.HTTP_200_OK,
         )

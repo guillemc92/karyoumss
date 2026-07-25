@@ -139,7 +139,12 @@ PATIENT_VAULT_KEY = env('PATIENT_VAULT_KEY', required=True)
 # Pipeline FastAPI (ADR-0015 #6 — cliente con circuit breaker)
 # ============================================================================
 
+# backend-ml (motor de inferencia, ADR-0007/DD-ML-001) — el FastAPI de :8000.
 CLINIC_FASTAPI_URL = env('CLINIC_FASTAPI_URL', 'http://localhost:8000')
+
+# Almacenamiento de imágenes de metafase reales (DD-ML-002 §2.1).
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / env('CLINIC_MEDIA_DIR', 'media')
 CLINIC_FASTAPI_TIMEOUT = float(env('CLINIC_FASTAPI_TIMEOUT', '2.0'))
 CLINIC_FASTAPI_CIRCUIT_THRESHOLD = int(env('CLINIC_FASTAPI_CIRCUIT_THRESHOLD', '3'))
 CLINIC_FASTAPI_CIRCUIT_COOLDOWN = int(env('CLINIC_FASTAPI_CIRCUIT_COOLDOWN', '60'))

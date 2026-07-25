@@ -1,10 +1,21 @@
 import base64
 import binascii
 from datetime import datetime, timezone
+from decimal import Decimal as _Decimal
+from pathlib import Path
 
+from django.conf import settings
 from django.db import transaction
 
-from .models import PatientVault, Sample, SampleImage, SampleStatus
+from .models import (
+    CONFIDENCE_THRESHOLD,
+    Chromosome,
+    Karyotype,
+    PatientVault,
+    Sample,
+    SampleImage,
+    SampleStatus,
+)
 from .pipeline_client import MLDegradedError, pipeline_client
 
 
@@ -32,20 +43,28 @@ class SampleRegistrationService:
             image_count = self._create_images(data.get('images', []), sample, chn_code)
 
         degraded = False
-        task_id = None
         if not is_draft:
-            try:
-                result = pipeline_client.trigger_processing(str(sample.id))
-                task_id = result.get('task_id')
-            except MLDegradedError:
+            # Flujo real (DD-ML-002): segmentar la 1ª imagen con backend-ml e
+            # ingestar el cariotipo. RN-07: si la IA cae, la muestra queda
+            # persistida en PENDING_AI (sin cariotipo), no se rompe el flujo.
+            raw = self._first_image_bytes(data.get('images', []))
+            if raw is None:
                 degraded = True
+            else:
+                try:
+                    result = pipeline_client.segment_image(raw)
+                    ingest_segmentation(sample, result)
+                    sample.status = SampleStatus.READY
+                    sample.save(update_fields=['status', 'updated_at'])
+                except MLDegradedError:
+                    degraded = True
 
         return {
             'id': str(sample.id),
             'chn_code': sample.chn_code,
             'sample_code': sample.sample_code,
             'status': sample.status,
-            'task_id': task_id,
+            'task_id': None,
             'image_count': image_count,
             'degraded': degraded,
             'created_at': sample.created_at,
@@ -92,21 +111,32 @@ class SampleRegistrationService:
         )
 
     def _create_images(self, images: list, sample: Sample, chn_code: str) -> int:
+        """Persiste los bytes reales de cada imagen en MEDIA_ROOT (DD-ML-002 §2.1)
+        para que backend-ml pueda segmentarlas (registro y reproceso)."""
         timestamp = int(datetime.now(timezone.utc).timestamp())
         created = 0
         for idx, img in enumerate(images):
             try:
-                self._decode_base64(img['data_base64'])
+                raw = self._decode_base64(img['data_base64'])
             except (binascii.Error, ValueError):
                 continue
+            rel_path = f'{chn_code}/{timestamp}_{idx}.img'
+            abs_path = Path(settings.MEDIA_ROOT) / rel_path
+            abs_path.parent.mkdir(parents=True, exist_ok=True)
+            abs_path.write_bytes(raw)
             SampleImage.objects.create(
-                sample=sample,
-                image_path=f'{chn_code}/{timestamp}_{idx}.jpg',
-                order=idx,
-                source=img['source'],
+                sample=sample, image_path=rel_path, order=idx, source=img['source'],
             )
             created += 1
         return created
+
+    def _first_image_bytes(self, images: list) -> bytes | None:
+        for img in images:
+            try:
+                return self._decode_base64(img['data_base64'])
+            except (binascii.Error, ValueError):
+                continue
+        return None
 
     @staticmethod
     def _decode_base64(data_url: str) -> bytes:
@@ -116,6 +146,58 @@ class SampleRegistrationService:
 
 
 sample_registration_service = SampleRegistrationService()
+
+
+# ============================================================================
+# Ingesta de la segmentación de backend-ml (ADR-0007, DD-ML-002)
+# ============================================================================
+
+def ingest_segmentation(sample, result: dict) -> Karyotype:
+    """Crea (o reemplaza) el Karyotype 1:1 + las filas Chromosome a partir del
+    SegmentResult de backend-ml. RN-02: resolution_status derivado del umbral
+    de confianza (naranja < 0.85 → PENDING). La semaforización sigue siendo
+    derivada en lectura (no se persiste el color)."""
+    with transaction.atomic():
+        Karyotype.objects.filter(sample=sample).delete()  # 1:1 — reemplaza si reprocesa
+        karyotype = Karyotype.objects.create(
+            sample=sample,
+            model_version=(result.get('model_version') or '')[:80],
+        )
+        per_class: dict[str, int] = {}
+        for ch in result.get('chromosomes', []):
+            cls = str(ch.get('predicted_class', ''))[:2]
+            pos = per_class.get(cls, 0)
+            per_class[cls] = pos + 1
+            conf = ch.get('confidence_score')
+            conf_dec = _Decimal(str(conf)) if conf is not None else None
+            res_status = 'AUTO'
+            if conf_dec is None:
+                res_status = 'AUTO'  # rojo (null) — intervención manual, no naranja
+            elif conf_dec < CONFIDENCE_THRESHOLD:
+                res_status = 'PENDING'
+            Chromosome.objects.create(
+                karyotype=karyotype,
+                predicted_class=cls,
+                position_index=pos,
+                confidence_score=conf_dec,
+                bbox=ch.get('bbox', {}) or {},
+                resolution_status=res_status,
+                order=int(ch.get('order', 0)),
+            )
+    return karyotype
+
+
+def reprocess_sample(sample) -> Karyotype:
+    """Reprocesa la 1ª imagen almacenada de la muestra con backend-ml e ingesta
+    el cariotipo (DD-ML-002). MLDegradedError si backend-ml no responde."""
+    image = sample.images.order_by('order', 'captured_at').first()
+    if image is None:
+        raise MLDegradedError('sin imagen para procesar')
+    abs_path = Path(settings.MEDIA_ROOT) / image.image_path
+    if not abs_path.exists():
+        raise MLDegradedError('imagen no encontrada en almacenamiento')
+    result = pipeline_client.segment_image(abs_path.read_bytes(), filename=abs_path.name)
+    return ingest_segmentation(sample, result)
 
 
 # ============================================================================

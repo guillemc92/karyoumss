@@ -56,6 +56,24 @@ class PipelineClient:
         except (httpx.TimeoutException, httpx.HTTPError) as exc:
             raise MLDegradedError(str(exc)) from exc
 
+    def segment_image(self, image_bytes: bytes, filename: str = 'metafase.bmp') -> dict:
+        """Envía una imagen de metafase a backend-ml (/api/v1/segment/) y devuelve
+        el SegmentResult (cromosomas detectados). DD-ML-002 §2.2, RN-07."""
+        if self._circuit_open():
+            raise MLDegradedError('circuit_open')
+        try:
+            with httpx.Client(timeout=max(self.timeout, 30.0)) as client:
+                resp = client.post(
+                    f'{self.base_url}/api/v1/segment/',
+                    files={'file': (filename, image_bytes, 'application/octet-stream')},
+                )
+                resp.raise_for_status()
+                self._record_success()
+                return resp.json()
+        except (httpx.TimeoutException, httpx.HTTPError) as exc:
+            self._record_failure()
+            raise MLDegradedError(str(exc)) from exc
+
 
 pipeline_client = PipelineClient(
     base_url=settings.CLINIC_FASTAPI_URL,

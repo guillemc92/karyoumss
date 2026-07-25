@@ -2776,5 +2776,50 @@ Refs: ADR-0007, ADR-0015, DD-ML-001, AGENTS.md §9, RN-07 (degradado).
 
 ---
 
+## PM-ML-002 — Wiring backend-clinic ↔ backend-ml (flujo real, Fase B2)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-ML-002 |
+| **Título** | Conectar el flujo real: registro con imagen real → backend-ml segmenta → backend-clinic ingesta cromosomas reales → visor. Reemplaza el mock del pipeline |
+| **Estado** | Ejecutado y verificado (baseline) |
+| **Fecha** | 2026-07-24 |
+| **ADR origen** | [ADR-0007](docs/adr/0007-microservicio-inferencia.md) + [ADR-0015](docs/adr/0015-arquitectura-clinica-django.md) |
+| **Design Doc** | [DD-ML-002](docs/design/DD-ML-002.md) |
+
+### Alcance ejecutado (Fase B2)
+- **Almacenamiento real:** `MEDIA_ROOT`/`MEDIA_URL`; el registro guarda los bytes
+  de la imagen (antes los descartaba).
+- **`pipeline_client.segment_image(bytes)`:** POST multipart a backend-ml
+  `/api/v1/segment/` (circuit breaker, RN-07).
+- **`ingest_segmentation(sample, result)`:** crea/reemplaza `Karyotype` 1:1 + filas
+  `Chromosome` (predicted_class, confidence_score, bbox, order, position_index por
+  clase; `resolution_status` = PENDING si confianza < 0.85, RN-02).
+- **Flujo:** registro no-borrador → segmenta la 1ª imagen → ingesta → `READY`
+  (RN-07: si backend-ml cae → `PENDING_AI` sin cariotipo, degradado). `process`
+  reprocesa la imagen almacenada. `status` es local (síncrono, ya no consulta a la IA).
+
+### Output (verificación)
+- backend-clinic: 10 tests (`test_ml_ingest`: ingesta, naranja→PENDING,
+  position_index, degradado, reproceso, endpoint). `test_process_status_view`
+  reescrito al flujo síncrono (33 tests del subconjunto verdes).
+- **E2E REAL (2 backends + dato real):** `uvicorn backend-ml` + registro en
+  backend-clinic con una metafase MetaClass real (4 MB) → backend-ml segmentó por
+  HTTP → **60 `Chromosome` reales ingestados**, status READY, todos naranja
+  (placeholder → clasificación manual). Flujo real de punta a punta.
+
+### Trazabilidad
+```
+imagen real → registro backend-clinic → pipeline_client.segment_image
+  → backend-ml /api/v1/segment/ (OpenCV real) → ingest_segmentation
+    → Karyotype + Chromosome reales → visor (GET /karyotype/)
+```
+El frontend en modo proxy (no MSW) usa este flujo sin cambios de código.
+Pendiente: **Fase C** (modelo entrenado reemplaza el clasificador placeholder).
+
+Refs: ADR-0007/0015, DD-ML-002, RN-02/RN-07, PM-ML-001.
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*

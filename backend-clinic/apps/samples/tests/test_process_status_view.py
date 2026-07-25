@@ -1,16 +1,17 @@
-"""Tests de SampleProcessView y SampleStatusView (SPEC-008 UC-S-006/UC-S-007).
+"""Tests de SampleProcessView y SampleStatusView.
 
-POST /samples/{id}/process/ y GET /samples/{id}/status/ estaban fuera de
-alcance según SPEC-008 §6.1 (redactado antes de que frontend-clinic los
-consumiera), pero el frontend ya depende de ambos endpoints
-(samplesClient.ts, useSampleMutations, useStatusPolling). Decisión
-2026-07-16: implementarlos; §6.1 se corrige en la misma sesión.
+Actualizados a DD-ML-002: el procesamiento es SÍNCRONO (registro/process llaman
+a backend-ml `/api/v1/segment/` e ingestan el cariotipo). `process` → 200 READY;
+`status` es local (no consulta a la IA). `segment_image` se mockea.
 """
-import httpx
+from decimal import Decimal
+from pathlib import Path
+
 import pytest
+from django.conf import settings
 from django.urls import reverse
 
-from apps.samples.models import Sample, SampleStatus
+from apps.samples.models import Chromosome, Karyotype, Sample, SampleImage, SampleStatus
 from apps.samples.pipeline_client import pipeline_client
 
 pytestmark = pytest.mark.django_db
@@ -22,6 +23,26 @@ def _process_url(sample):
 
 def _status_url(sample):
     return reverse('samples:sample-status', kwargs={'pk': sample.pk})
+
+
+SEG_RESULT = {
+    'model_version': 'opencv-watershed-v0+placeholder-clf-v0',
+    'chromosomes': [
+        {'order': i, 'predicted_class': str((i % 22) + 1), 'confidence_score': 0.55,
+         'bbox': {'x': i, 'y': i, 'w': 10, 'h': 20}, 'area': 100}
+        for i in range(46)
+    ],
+}
+
+
+def _add_image(sample):
+    """Persiste una imagen (bytes cualquiera; segment_image se mockea) para que
+    reprocess_sample tenga qué leer."""
+    rel = f'{sample.chn_code}/img0.img'
+    path = Path(settings.MEDIA_ROOT) / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b'\xff\xd8-fake-image-bytes')
+    SampleImage.objects.create(sample=sample, image_path=rel, order=0, source='upload')
 
 
 @pytest.fixture
@@ -43,8 +64,6 @@ def other_sample(django_user_model):
 
 @pytest.fixture(autouse=True)
 def _reset_circuit_breaker():
-    """El circuit breaker vive en la instancia módulo-level pipeline_client;
-    resetear entre tests para que un test no contamine al siguiente."""
     pipeline_client._failures = 0
     pipeline_client._circuit_open_until = 0.0
     yield
@@ -52,51 +71,20 @@ def _reset_circuit_breaker():
     pipeline_client._circuit_open_until = 0.0
 
 
-class FakeHttpxClient:
-    def __init__(self, response=None, raise_exc=None):
-        self._response = response
-        self._raise_exc = raise_exc
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *a):
-        return False
-
-    def post(self, *a, **kw):
-        if self._raise_exc:
-            raise self._raise_exc
-        return self._response
-
-    def get(self, *a, **kw):
-        if self._raise_exc:
-            raise self._raise_exc
-        return self._response
-
-
-class FakeResponse:
-    def __init__(self, payload):
-        self._payload = payload
-
-    def raise_for_status(self):
-        pass
-
-    def json(self):
-        return self._payload
+def _mock_segment(monkeypatch, result=SEG_RESULT):
+    monkeypatch.setattr(pipeline_client, 'segment_image', lambda b, filename='m.bmp': result)
 
 
 class TestProcess:
     def test_analista_procesa_propia(self, analyst_client, own_sample, monkeypatch):
-        fake = FakeHttpxClient(response=FakeResponse({'sample_id': str(own_sample.id), 'task_id': 'task-1', 'status': 'queued'}))
-        monkeypatch.setattr(httpx, 'Client', lambda **kw: fake)
-
-        resp = analyst_client.post(_process_url(own_sample), {'force_reprocess': False}, format='json')
-
-        assert resp.status_code == 202
-        assert resp.data['task_id'] == 'task-1'
-        assert resp.data['status'] == 'queued'
+        _add_image(own_sample)
+        _mock_segment(monkeypatch)
+        resp = analyst_client.post(_process_url(own_sample), {}, format='json')
+        assert resp.status_code == 200
+        assert resp.data['status'] == 'READY'
+        assert resp.data['chromosome_count'] == 46
         own_sample.refresh_from_db()
-        assert own_sample.status == SampleStatus.PROCESSING
+        assert own_sample.status == SampleStatus.READY
 
     def test_analista_no_procesa_ajena_403(self, analyst_client, other_sample):
         resp = analyst_client.post(_process_url(other_sample), {}, format='json')
@@ -104,30 +92,25 @@ class TestProcess:
         assert resp.data['code'] == 'NOT_OWNER'
 
     def test_supervisor_procesa_cualquiera(self, supervisor_client, other_sample, monkeypatch):
-        fake = FakeHttpxClient(response=FakeResponse({'sample_id': str(other_sample.id), 'task_id': 'task-2', 'status': 'queued'}))
-        monkeypatch.setattr(httpx, 'Client', lambda **kw: fake)
-
+        _add_image(other_sample)
+        _mock_segment(monkeypatch)
         resp = supervisor_client.post(_process_url(other_sample), {}, format='json')
-        assert resp.status_code == 202
+        assert resp.status_code == 200
 
     def test_ya_processing_409(self, analyst_client, own_sample):
         own_sample.status = SampleStatus.PROCESSING
         own_sample.save(update_fields=['status'])
-
         resp = analyst_client.post(_process_url(own_sample), {}, format='json')
         assert resp.status_code == 409
         assert resp.data['code'] == 'ALREADY_PROCESSING'
 
-    def test_ml_degraded_503(self, analyst_client, own_sample, monkeypatch):
-        fake = FakeHttpxClient(raise_exc=httpx.TimeoutException('timeout'))
-        monkeypatch.setattr(httpx, 'Client', lambda **kw: fake)
-
+    def test_ml_degraded_503_sin_imagen(self, analyst_client, own_sample):
+        # Sin imagen almacenada → reprocess_sample levanta MLDegradedError → 503.
         resp = analyst_client.post(_process_url(own_sample), {}, format='json')
-
         assert resp.status_code == 503
         assert resp.data['code'] == 'ML_DEGRADED'
         own_sample.refresh_from_db()
-        assert own_sample.status == SampleStatus.PENDING_AI  # no se degrada el estado si el pipeline falló
+        assert own_sample.status == SampleStatus.PENDING_AI  # no se degrada el estado
 
     def test_no_existe_404(self, analyst_client):
         import uuid
@@ -139,51 +122,39 @@ class TestProcess:
         resp = api_client.post(_process_url(own_sample), {}, format='json')
         assert resp.status_code == 401
 
-    def test_force_reprocess_true_permite_desde_ready(self, analyst_client, own_sample, monkeypatch):
+    def test_reprocesa_desde_ready(self, analyst_client, own_sample, monkeypatch):
         own_sample.status = SampleStatus.READY
         own_sample.save(update_fields=['status'])
-        fake = FakeHttpxClient(response=FakeResponse({'sample_id': str(own_sample.id), 'task_id': 'task-3', 'status': 'queued'}))
-        monkeypatch.setattr(httpx, 'Client', lambda **kw: fake)
-
-        resp = analyst_client.post(_process_url(own_sample), {'force_reprocess': True}, format='json')
-        assert resp.status_code == 202
+        _add_image(own_sample)
+        _mock_segment(monkeypatch)
+        resp = analyst_client.post(_process_url(own_sample), {}, format='json')
+        assert resp.status_code == 200
+        assert resp.data['chromosome_count'] == 46
 
 
 class TestStatus:
-    def test_analista_ve_status_propia(self, analyst_client, own_sample, monkeypatch):
-        fake = FakeHttpxClient(response=FakeResponse({'status': 'PROCESSING', 'progress': 0.5}))
-        monkeypatch.setattr(httpx, 'Client', lambda **kw: fake)
-
+    def test_analista_ve_status_propia(self, analyst_client, own_sample):
         resp = analyst_client.get(_status_url(own_sample))
-
         assert resp.status_code == 200
-        assert resp.data['status'] == 'PROCESSING'
-        assert resp.data['progress'] == 0.5
+        assert resp.data['status'] == SampleStatus.PENDING_AI
+        assert resp.data['chromosome_count'] == 0
+        assert resp.data['progress'] == 0
 
     def test_analista_no_ve_status_ajena_403(self, analyst_client, other_sample):
         resp = analyst_client.get(_status_url(other_sample))
         assert resp.status_code == 403
         assert resp.data['code'] == 'NOT_OWNER'
 
-    def test_status_ready_incluye_metricas(self, analyst_client, own_sample, monkeypatch):
-        fake = FakeHttpxClient(response=FakeResponse({
-            'status': 'READY', 'progress': 1, 'chromosome_count': 46, 'confidence_avg': 0.92,
-        }))
-        monkeypatch.setattr(httpx, 'Client', lambda **kw: fake)
-
+    def test_status_ready_incluye_conteo(self, analyst_client, own_sample):
+        own_sample.status = SampleStatus.READY
+        own_sample.save(update_fields=['status'])
+        k = Karyotype.objects.create(sample=own_sample)
+        for i in range(46):
+            Chromosome.objects.create(karyotype=k, predicted_class='1', confidence_score=Decimal('0.9'), order=i)
         resp = analyst_client.get(_status_url(own_sample))
-
+        assert resp.data['status'] == 'READY'
         assert resp.data['chromosome_count'] == 46
-        assert resp.data['confidence_avg'] == 0.92
-
-    def test_ml_degraded_503(self, analyst_client, own_sample, monkeypatch):
-        fake = FakeHttpxClient(raise_exc=httpx.ConnectError('refused'))
-        monkeypatch.setattr(httpx, 'Client', lambda **kw: fake)
-
-        resp = analyst_client.get(_status_url(own_sample))
-
-        assert resp.status_code == 503
-        assert resp.data['code'] == 'ML_DEGRADED'
+        assert resp.data['progress'] == 1
 
     def test_no_existe_404(self, analyst_client):
         import uuid
