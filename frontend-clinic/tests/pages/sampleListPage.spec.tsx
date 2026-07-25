@@ -5,7 +5,7 @@ import { SampleListPage } from '../../src/clinic/pages/SampleListPage';
 import { renderWithProviders } from '../testUtils';
 
 describe('SampleListPage', () => {
-  it('renderiza las 8 muestras del seed tras cargar', async () => {
+  it('renderiza las muestras del seed tras cargar', async () => {
     renderWithProviders(<SampleListPage />);
     await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
     expect(screen.getByText('Gestión de Muestras')).toBeInTheDocument();
@@ -15,7 +15,7 @@ describe('SampleListPage', () => {
     renderWithProviders(<SampleListPage />);
     await waitFor(() => expect(screen.getByText('CHN-2026-04-10-0442')).toBeInTheDocument());
     const totalCard = screen.getByText('Total muestras').closest('.stat-card');
-    expect(totalCard).toHaveTextContent('8');
+    expect(totalCard).toHaveTextContent('11'); // 8 originales + 3 metafases MetaClass
   });
 
   it('búsqueda sin coincidencias muestra el empty-state', async () => {
