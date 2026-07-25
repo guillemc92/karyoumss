@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
-from .pipeline import MODEL_VERSION, run_pipeline
+from .pipeline import get_classifier, run_pipeline
 from .schemas import HealthOut, SegmentResult
 from .segmentation import load_gray
 
@@ -24,11 +24,12 @@ app = FastAPI(
 
 @app.get('/health/', response_model=HealthOut)
 def health() -> HealthOut:
+    clf = get_classifier()
     return HealthOut(
         status='ok',
         service='ai-inference',
-        model_version=MODEL_VERSION,
-        trained_model=False,  # baseline: aún sin U-Net/EfficientNet entrenados
+        model_version=f'opencv-watershed-v0+{clf.name}',
+        trained_model=clf.is_trained,  # True si cargó el EfficientNet-B3 entrenado
     )
 
 

@@ -11,18 +11,21 @@ def test_health():
     assert r.status_code == 200
     body = r.json()
     assert body['status'] == 'ok'
-    assert body['trained_model'] is False  # baseline, sin modelo entrenado
+    assert isinstance(body['trained_model'], bool)  # True con modelo entrenado, False con placeholder
 
 
 def test_segment_endpoint(synthetic_png_bytes):
+    # Agnóstico al clasificador (placeholder o EfficientNet entrenado).
     r = client.post('/api/v1/segment/', files={'file': ('meta.png', synthetic_png_bytes, 'image/png')})
     assert r.status_code == 200
     body = r.json()
     assert body['chromosome_count'] >= 10
     assert len(body['chromosomes']) == body['chromosome_count']
-    assert body['confidence_avg'] < 0.85
+    assert 0.0 <= body['confidence_avg'] <= 1.0
+    valid = [str(n) for n in range(1, 23)] + ['X', 'Y']
     c0 = body['chromosomes'][0]
     assert set(c0.keys()) >= {'order', 'predicted_class', 'confidence_score', 'bbox', 'area'}
+    assert c0['predicted_class'] in valid
 
 
 def test_segment_rechaza_vacio():

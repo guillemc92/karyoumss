@@ -2821,5 +2821,53 @@ Refs: ADR-0007/0015, DD-ML-002, RN-02/RN-07, PM-ML-001.
 
 ---
 
+## PM-ML-003 — Modelo entrenado enchufado (Fase C: EfficientNet-B3 real)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-ML-003 |
+| **Título** | Entrenar y enchufar el clasificador real: EfficientNet-B3 sobre el dataset MetaClass reemplaza al placeholder en backend-ml (pipeline IA 100% real) |
+| **Estado** | Ejecutado y verificado (baseline entrenado) |
+| **Fecha** | 2026-07-25 |
+| **ADR origen** | [ADR-0007](docs/adr/0007-microservicio-inferencia.md) + AGENTS.md §9 |
+| **Design Doc** | [DD-ML-001](docs/design/DD-ML-001.md) (puertos hexagonales) |
+
+### Alcance ejecutado (Fase C)
+- **C1** (commit 6c243ad): `extract_labels.py` parsea los 460 cariogramas ordenados
+  → **19.845 crops etiquetados** por posición (clases 1-18 limpias).
+- **C2** (commit ff32789): notebook Colab/Kaggle (transfer learning) → el usuario
+  entrenó EfficientNet-B3 en GPU gratis. **val_accuracy 0.633, macro-F1 0.601.**
+- **C3** (este commit): `EfficientNetClassifier(ClassifierPort)` carga
+  `models/classifier.pth` (import de torch perezoso). `get_classifier()` usa el
+  modelo entrenado si torch+modelo están, si no cae al placeholder (RN-07).
+  Refactor de `ClassifierPort` a `classify_all(gray, detections)`. `/health/`
+  reporta `trained_model:true`.
+
+### Output (verificación)
+- backend-ml: 13 tests (2 nuevos del EfficientNet, se saltean sin torch/modelo).
+- **E2E real:** uvicorn + POST de una metafase MetaClass real → `/health/`
+  `trained_model:true`, clasificaciones reales del EfficientNet-B3 con confianzas
+  por cromosoma (0.13-0.63). **Pipeline IA 100% real, sin placeholder.**
+
+### Honestidad / limitaciones
+Domain gap real: el modelo se entrenó con crops del cariograma ORDENADO
+(cromosomas verticales, aislados) pero se aplica a crops de la metafase CRUDA
+(rotados, tocándose) → precisión modesta, confianzas bajas → casi todo naranja →
+revisión del analista (HITL). Mejoras: aumento de rotación en el entrenamiento o
+alineación previa; limpiar las etiquetas de la fila 4 (19-22/X/Y); más épocas/GPU.
+
+### Trazabilidad
+```
+AGENTS.md §9 (EfficientNet-B3) + ADR-0007
+  → C1 extract_labels (19.845 crops) → C2 notebook (train, acc 0.63)
+    → C3 EfficientNetClassifier (models/classifier.pth) reemplaza placeholder
+      → 13 tests + E2E real: metafase real → clasificacion entrenada
+```
+El diseño hexagonal (ADR-0007) permitió el swap sin tocar la API ni el pipeline.
+
+Refs: ADR-0007, AGENTS.md §9, DD-ML-001, PM-ML-001/002.
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*

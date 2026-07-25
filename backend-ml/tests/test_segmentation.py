@@ -1,7 +1,7 @@
 """Tests de la segmentación y el pipeline (ADR-0007, DD-ML-001)."""
 import numpy as np
 
-from app.classifier import assign_placeholder_classes
+from app.classifier import PlaceholderClassifier, assign_placeholder_classes
 from app.pipeline import run_pipeline
 from app.segmentation import load_gray, segment
 
@@ -42,16 +42,18 @@ class TestPlaceholderClassifier:
 
 class TestPipeline:
     def test_pipeline_entrega_estructura_completa(self, synthetic_gray):
-        res = run_pipeline(synthetic_gray)
+        # Clasificador explícito (placeholder) → determinístico sin depender de torch.
+        res = run_pipeline(synthetic_gray, classifier=PlaceholderClassifier())
         assert res.chromosome_count == len(res.chromosomes)
         assert res.chromosome_count >= 10
         assert res.model_version.startswith('opencv-watershed')
-        assert 0 < res.confidence_avg < 0.85  # placeholder → confianza baja (naranja)
+        assert 'placeholder' in res.classifier
+        assert res.confidence_avg == 0.55  # placeholder → confianza baja fija (naranja)
         for c in res.chromosomes:
             assert c.predicted_class in [str(n) for n in range(1, 23)] + ['X', 'Y']
             assert c.bbox.w > 0 and c.bbox.h > 0
 
     def test_pipeline_imagen_vacia(self):
-        res = run_pipeline(np.full((100, 100), 255, dtype=np.uint8))
+        res = run_pipeline(np.full((100, 100), 255, dtype=np.uint8), classifier=PlaceholderClassifier())
         assert res.chromosome_count == 0
         assert res.confidence_avg == 0.0
