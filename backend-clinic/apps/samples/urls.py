@@ -4,6 +4,7 @@ from .views import (
     AuditDecideView,
     AuditReviewListView,
     AuditTrailView,
+    CaseSignView,
     CaseValidateView,
     ChromosomeAnomalyView,
     ChromosomeCrossView,
@@ -51,4 +52,7 @@ urlpatterns = [
     # Flujo del Supervisor S1 (ADR-0023, DD-SUP-001) — auditoría del 5%.
     path('samples/<uuid:pk>/audit-review/', AuditReviewListView.as_view(), name='audit-review'),
     path('samples/<uuid:pk>/audit-review/<uuid:cid>/decide/', AuditDecideView.as_view(), name='audit-decide'),
+
+    # Flujo del Supervisor S2 (ADR-0023 S2, DD-SUP-002) — firma MFA.
+    path('samples/<uuid:pk>/sign/', CaseSignView.as_view(), name='case-sign'),
 ]

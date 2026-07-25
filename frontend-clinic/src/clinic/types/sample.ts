@@ -1,6 +1,8 @@
 export type SampleStatus =
   | 'DRAFT' | 'PENDING_AI' | 'PROCESSING' | 'READY'
-  | 'BLOCKED_BY_CONFIDENCE' | 'ANALYST_VALIDATED' | 'VALIDATED' | 'REJECTED';
+  | 'BLOCKED_BY_CONFIDENCE' | 'ANALYST_VALIDATED'
+  | 'SIGNED' | 'REPORTED' // flujo del Supervisor (ADR-0023 S2/S3)
+  | 'VALIDATED' | 'REJECTED';
 
 export interface SampleMetadata {
   gender?: 'M' | 'F';

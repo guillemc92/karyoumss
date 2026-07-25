@@ -90,6 +90,13 @@ export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL)
         body: { decision, comment },
       });
     },
+
+    // --- Supervisor S2 (firma MFA, DD-SUP-002) ---
+
+    /** POST /samples/{id}/sign/ — firma MFA del Supervisor. */
+    signReport(sampleId: string, mfaCode: string): Promise<{ sample_id: string; status: string; signed_at: string }> {
+      return clinicRequest(baseUrl, `/samples/${sampleId}/sign/`, { method: 'POST', body: { mfa_code: mfaCode } });
+    },
   };
 }
 

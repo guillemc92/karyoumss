@@ -54,6 +54,10 @@ function auditReviewSummary(sampleId: string) {
   };
 }
 
+// Supervisor S2: contador de fallos de MFA por sample (mock del lockout).
+const signFails: Record<string, number> = {};
+const MOCK_MFA_CODE = '123456';
+
 function getOrBuildKaryotype(sampleId: string): Karyotype {
   if (!karyotypes[sampleId]) karyotypes[sampleId] = buildMockKaryotype(sampleId);
   return karyotypes[sampleId];
@@ -119,6 +123,7 @@ export function resetMockData(): void {
   for (const k of Object.keys(karyotypes)) delete karyotypes[k];
   for (const k of Object.keys(auditTrails)) delete auditTrails[k];
   for (const k of Object.keys(auditReviews)) delete auditReviews[k];
+  for (const k of Object.keys(signFails)) delete signFails[k];
 }
 
 /** Demo/E2E: fuerza el estado clínico de una muestra (p.ej. ANALYST_VALIDATED
@@ -364,7 +369,8 @@ export const handlers = [
     if (!sample) {
       return HttpResponse.json({ code: 'NOT_FOUND', detail: 'Muestra no encontrada' }, { status: 404 });
     }
-    if (sample.status !== 'READY' && sample.status !== 'VALIDATED' && sample.status !== 'ANALYST_VALIDATED') {
+    const withKaryotype = ['READY', 'VALIDATED', 'ANALYST_VALIDATED', 'SIGNED', 'REPORTED'];
+    if (!withKaryotype.includes(sample.status)) {
       return HttpResponse.json(
         { code: 'NO_KARYOTYPE', detail: 'La muestra aún no tiene cariotipo generado.' },
         { status: 404 },
@@ -543,5 +549,33 @@ export const handlers = [
     review.decided_at = new Date().toISOString();
     pushAudit(sid, 'AUDIT_DECISION', review.chromosome, modeOf(request));
     return HttpResponse.json(review);
+  }),
+
+  // Supervisor S2 (ADR-0023 S2, DD-SUP-002) — firma MFA (TOTP mock: 123456).
+  http.post(`${API}/samples/:id/sign/`, async ({ params, request }) => {
+    const sid = String(params.id);
+    const sample = samples.find((s) => s.id === sid);
+    if (!sample) return HttpResponse.json({ code: 'NOT_FOUND' }, { status: 404 });
+    if (sample.status !== 'ANALYST_VALIDATED') {
+      return HttpResponse.json({ code: 'NOT_SIGNABLE', detail: 'El caso no está en estado firmable.' }, { status: 409 });
+    }
+    if (auditReviewSummary(sid).pending > 0) {
+      return HttpResponse.json({ code: 'AUDIT_INCOMPLETE', detail: 'Debe revisar toda la auditoría del 5% antes de firmar.' }, { status: 409 });
+    }
+    if ((signFails[sid] ?? 0) >= 3) {
+      return HttpResponse.json({ code: 'MFA_LOCKED', detail: 'Firma bloqueada por intentos fallidos de MFA.' }, { status: 423 });
+    }
+    const body = (await request.json()) as { mfa_code?: string };
+    if (body.mfa_code !== MOCK_MFA_CODE) {
+      signFails[sid] = (signFails[sid] ?? 0) + 1;
+      if (signFails[sid] >= 3) {
+        return HttpResponse.json({ code: 'MFA_LOCKED', detail: 'Firma bloqueada por intentos fallidos de MFA.' }, { status: 423 });
+      }
+      return HttpResponse.json({ code: 'MFA_INVALID', detail: 'Código MFA inválido.' }, { status: 401 });
+    }
+    signFails[sid] = 0;
+    sample.status = 'SIGNED';
+    pushAudit(sid, 'SIGN_REPORT', null, modeOf(request));
+    return HttpResponse.json({ sample_id: sid, status: 'SIGNED', signed_at: new Date().toISOString() });
   }),
 ];

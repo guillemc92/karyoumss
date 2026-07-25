@@ -186,6 +186,14 @@ AUTH_ADMIN_JWT_SECRET = env('AUTH_ADMIN_JWT_SECRET', required=True)
 
 TOTP_VAULT_KEY = env('TOTP_VAULT_KEY', required=True)
 
+# ============================================================================
+# Verificación MFA inter-servicio (ADR-0023 D3, DD-SUP-002) — backend-clinic
+# delega la firma del Supervisor acá vía POST /api/internal/mfa/verify/,
+# autenticado por este secreto compartido (NO por JWT de usuario).
+# ============================================================================
+
+INTERNAL_SERVICE_SECRET = env('INTERNAL_SERVICE_SECRET', 'dev-internal-service-secret')
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),

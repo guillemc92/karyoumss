@@ -17,7 +17,9 @@ from .serializers import (
     SampleRegisterSerializer,
     SampleUpdateSerializer,
 )
+from .admin_client import MfaServiceError
 from .services import (
+    AuditIncompleteError,
     CaseBlockedError,
     CaseLockedError,
     ChnDuplicateError,
@@ -25,9 +27,14 @@ from .services import (
     InvalidClassError,
     InvalidDecisionError,
     JoinSelfError,
+    MfaInvalidError,
+    MfaLockedError,
+    MfaNotEnrolledError,
     NotAuditableError,
     NotOrangeError,
+    NotSignableError,
     SameClassError,
+    SegregationError,
     XaiRequiredError,
     audit_summary,
     decide_audit,
@@ -38,6 +45,7 @@ from .services import (
     resolve_cross,
     sample_registration_service,
     select_audit_sample,
+    sign_report,
     split_chromosome,
     validate_case,
     view_xai,
@@ -539,6 +547,46 @@ class AuditDecideView(APIView):
         except InvalidDecisionError as e:
             return Response({'code': 'INVALID_DECISION', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(AuditReviewSerializer(review).data, status=status.HTTP_200_OK)
+
+
+class CaseSignView(APIView):
+    """POST /samples/{id}/sign/ — firma MFA del Supervisor (ADR-0023 S2).
+
+    Body: {"mfa_code": "123456"}. Verificación TOTP delegada a backend-admin.
+    Errores: 409 NOT_SIGNABLE / 403 SEGREGATION_VIOLATION / 409 AUDIT_INCOMPLETE /
+    423 MFA_LOCKED / 401 MFA_INVALID / 400 MFA_NOT_ENROLLED / 503 MFA_SERVICE.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('case.sign')]
+
+    def post(self, request, pk):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        try:
+            sample = sign_report(sample, request.user, request.data.get('mfa_code', ''))
+        except NotSignableError as e:
+            return Response({'code': 'NOT_SIGNABLE', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except SegregationError as e:
+            return Response({'code': 'SEGREGATION_VIOLATION', 'detail': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except AuditIncompleteError as e:
+            return Response({'code': 'AUDIT_INCOMPLETE', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except MfaLockedError as e:
+            return Response({'code': 'MFA_LOCKED', 'detail': str(e)}, status=status.HTTP_423_LOCKED)
+        except MfaNotEnrolledError as e:
+            return Response({'code': 'MFA_NOT_ENROLLED', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except MfaInvalidError as e:
+            return Response({'code': 'MFA_INVALID', 'detail': str(e)}, status=status.HTTP_401_UNAUTHORIZED)
+        except MfaServiceError:
+            return Response(
+                {'code': 'MFA_SERVICE', 'detail': 'Servicio de MFA no disponible. Reintente.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response(
+            {'sample_id': str(sample.id), 'status': sample.status, 'signed_at': sample.signed_at},
+            status=status.HTTP_200_OK,
+        )
 
 
 class PipelineHealthView(APIView):

@@ -83,9 +83,11 @@ export function KaryotypePage() {
 
   const { summary } = karyotype;
   const blocked = summary.unresolved_orange > 0 || summary.red > 0;
-  // Supervisor S1 (ADR-0023): auditoría del 5% visible para supervisor/admin
-  // sobre casos ya validados por el analista (segregación reforzada en backend).
-  const showAudit5 = (role === 'supervisor' || role === 'admin') && karyotype.sample_status === 'ANALYST_VALIDATED';
+  // Supervisor S1/S2 (ADR-0023): auditoría del 5% + firma visible para
+  // supervisor/admin sobre casos validados por el analista o ya firmados
+  // (segregación reforzada en backend). SIGNED se muestra para ver el estado firmado.
+  const isSupervisor = role === 'supervisor' || role === 'admin';
+  const showAudit5 = isSupervisor && (karyotype.sample_status === 'ANALYST_VALIDATED' || karyotype.sample_status === 'SIGNED');
   const busy =
     viewXai.isPending || resolve.isPending || markAnomaly.isPending || validate.isPending ||
     reclassify.isPending || split.isPending || join.isPending || resolveCross.isPending;
@@ -247,7 +249,7 @@ export function KaryotypePage() {
         </aside>
       </div>
 
-      {showAudit5 && id && <SupervisorAuditPanel sampleId={id} />}
+      {showAudit5 && id && <SupervisorAuditPanel sampleId={id} signed={karyotype.sample_status === 'SIGNED'} />}
 
       <div className="karyo-audit">
         <button type="button" className="btn-outline" onClick={() => setShowAudit((v) => !v)} data-testid="toggle-audit">

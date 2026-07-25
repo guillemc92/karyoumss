@@ -7,8 +7,10 @@
  * (el gating lo decide la página).
  */
 import { useState } from 'react';
-import { useAuditDecide, useAuditReview } from '../hooks/useAuditReview';
+import { useAuditDecide, useAuditReview, useSignReport } from '../hooks/useAuditReview';
+import { SignMfaModal } from './SignMfaModal';
 import { confidencePercent } from '../types/karyotype';
+import { ClinicApiException } from '../types/sample';
 import type { AuditReview } from '../types/karyotype';
 
 const DECISION_LABEL: Record<string, string> = {
@@ -56,13 +58,27 @@ function ReviewRow({ review, sampleId }: { review: AuditReview; sampleId: string
   );
 }
 
-export function SupervisorAuditPanel({ sampleId }: { sampleId: string }) {
+export function SupervisorAuditPanel({ sampleId, signed = false }: { sampleId: string; signed?: boolean }) {
   const { data, isLoading, isError } = useAuditReview(sampleId, true);
+  const sign = useSignReport(sampleId);
+  const [showSignModal, setShowSignModal] = useState(false);
+  const [signError, setSignError] = useState<string | null>(null);
 
   if (isLoading) return <div className="audit-panel" data-testid="audit-panel"><p>Cargando auditoría…</p></div>;
   if (isError || !data) return <div className="audit-panel" data-testid="audit-panel"><p role="alert">No se pudo cargar la auditoría.</p></div>;
 
   const { summary, reviews } = data;
+  const auditDone = summary.pending === 0;
+
+  async function handleSign(code: string) {
+    setSignError(null);
+    try {
+      await sign.mutateAsync(code);
+      setShowSignModal(false);
+    } catch (err) {
+      setSignError(err instanceof ClinicApiException ? err.message : 'Error al firmar');
+    }
+  }
 
   return (
     <section className="audit-panel" data-testid="audit-panel">
@@ -72,16 +88,43 @@ export function SupervisorAuditPanel({ sampleId }: { sampleId: string }) {
           {summary.total - summary.pending}/{summary.total} revisados
         </span>
       </div>
-      {summary.pending > 0 ? (
-        <p className="audit-panel__hint" data-testid="audit-pending-hint">
-          Debe revisar {summary.pending} cromosoma(s) de auditoría antes de firmar el reporte (FSD-UC-005).
+
+      {signed ? (
+        <p className="audit-panel__ok" role="status" data-testid="report-signed-banner">
+          🔏 <strong>Reporte firmado digitalmente por el Supervisor.</strong> (21 CFR Part 11)
         </p>
       ) : (
-        <p className="audit-panel__ok" data-testid="audit-complete">✅ Auditoría del 5% completa.</p>
+        <>
+          {summary.pending > 0 ? (
+            <p className="audit-panel__hint" data-testid="audit-pending-hint">
+              Debe revisar {summary.pending} cromosoma(s) de auditoría antes de firmar el reporte (FSD-UC-005).
+            </p>
+          ) : (
+            <p className="audit-panel__ok" data-testid="audit-complete">✅ Auditoría del 5% completa.</p>
+          )}
+          <ul className="audit-panel__list">
+            {reviews.map((r) => <ReviewRow key={r.id} review={r} sampleId={sampleId} />)}
+          </ul>
+          <div className="karyo-gating">
+            <button
+              type="button" className="btn-primary"
+              disabled={!auditDone || sign.isPending}
+              onClick={() => { setSignError(null); setShowSignModal(true); }}
+              title={auditDone ? '' : `Revise ${summary.pending} cromosoma(s) de auditoría antes de firmar`}
+              data-testid="btn-sign-report"
+            >🔐 Firmar Reporte con MFA</button>
+          </div>
+        </>
       )}
-      <ul className="audit-panel__list">
-        {reviews.map((r) => <ReviewRow key={r.id} review={r} sampleId={sampleId} />)}
-      </ul>
+
+      {showSignModal && (
+        <SignMfaModal
+          onSubmit={handleSign}
+          onClose={() => setShowSignModal(false)}
+          busy={sign.isPending}
+          error={signError}
+        />
+      )}
     </section>
   );
 }

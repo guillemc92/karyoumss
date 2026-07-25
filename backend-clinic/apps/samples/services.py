@@ -483,6 +483,87 @@ def audit_summary(sample) -> dict:
     }
 
 
+# ============================================================================
+# Flujo del Supervisor S2 (ADR-0023 D3, DD-SUP-002) — firma MFA delegada
+# ============================================================================
+
+from datetime import timedelta  # noqa: E402
+
+from .admin_client import admin_client  # noqa: E402
+from .models import SignLockout  # noqa: E402
+
+MFA_MAX_FAILS = 3
+MFA_LOCKOUT_MINUTES = 15
+
+
+class NotSignableError(Exception):
+    """El caso no está en estado firmable (debe ser ANALYST_VALIDATED)."""
+
+
+class SegregationError(Exception):
+    """RN-06: el supervisor que firma no puede ser el analista del caso."""
+
+
+class AuditIncompleteError(Exception):
+    """Quedan cromosomas del 5% sin auditar antes de firmar (FSD-UC-005 A1)."""
+
+
+class MfaLockedError(Exception):
+    """Firma bloqueada por 3 fallos de MFA (FSD-UC-005 A2)."""
+
+
+class MfaInvalidError(Exception):
+    """Código MFA inválido."""
+
+
+class MfaNotEnrolledError(Exception):
+    """El supervisor no tiene 2FA habilitado en backend-admin."""
+
+
+def _supervisor_email(user) -> str:
+    return getattr(user, 'email', '') or getattr(user, 'username', '')
+
+
+def sign_report(sample, supervisor, mfa_code) -> Sample:
+    """Firma el reporte con MFA (FSD-UC-005). Valida en orden: estado firmable,
+    segregación (RN-06), auditoría 5% completa, lockout, y por último el TOTP
+    (delegado a backend-admin, ADR-0023 D3). Éxito → estado SIGNED + SIGN_REPORT.
+    """
+    if sample.status != SampleStatus.ANALYST_VALIDATED:
+        raise NotSignableError('El caso debe estar validado por el analista para firmarse.')
+    if supervisor.id == sample.analyst_id:
+        raise SegregationError('El supervisor que firma no puede ser el analista del caso (RN-06).')
+    if audit_summary(sample)['pending'] > 0:
+        raise AuditIncompleteError('Debe revisar toda la auditoría del 5% antes de firmar.')
+
+    now = _tz.now()
+    lockout, _ = SignLockout.objects.get_or_create(user=supervisor)
+    if lockout.locked_until and lockout.locked_until > now:
+        raise MfaLockedError('Firma bloqueada por intentos fallidos de MFA. Reintente más tarde.')
+
+    result = admin_client.verify_mfa(_supervisor_email(supervisor), mfa_code)  # MfaServiceError → 503
+    if not result.get('enrolled'):
+        raise MfaNotEnrolledError('El supervisor no tiene 2FA configurado.')
+    if not result.get('valid'):
+        lockout.failed_attempts += 1
+        if lockout.failed_attempts >= MFA_MAX_FAILS:
+            lockout.locked_until = now + timedelta(minutes=MFA_LOCKOUT_MINUTES)
+            lockout.failed_attempts = 0
+        lockout.save(update_fields=['failed_attempts', 'locked_until'])
+        raise MfaInvalidError('Código MFA inválido.')
+
+    with transaction.atomic():
+        sample.status = SampleStatus.SIGNED
+        sample.signed_by = supervisor
+        sample.signed_at = now
+        sample.save(update_fields=['status', 'signed_by', 'signed_at', 'updated_at'])
+        emit_audit_event(sample, supervisor, AuditEventType.SIGN_REPORT, payload={'method': 'TOTP'})
+        lockout.failed_attempts = 0
+        lockout.locked_until = None
+        lockout.save(update_fields=['failed_attempts', 'locked_until'])
+    return sample
+
+
 def _bbox_union(a: dict, b: dict) -> dict:
     """Rectángulo mínimo que contiene a ambos bbox {x,y,w,h}."""
     a = a or {}

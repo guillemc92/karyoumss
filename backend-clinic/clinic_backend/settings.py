@@ -145,6 +145,13 @@ CLINIC_FASTAPI_CIRCUIT_THRESHOLD = int(env('CLINIC_FASTAPI_CIRCUIT_THRESHOLD', '
 CLINIC_FASTAPI_CIRCUIT_COOLDOWN = int(env('CLINIC_FASTAPI_CIRCUIT_COOLDOWN', '60'))
 
 # ============================================================================
+# backend-admin interno (ADR-0023 D3, DD-SUP-002 — verificación MFA delegada)
+# ============================================================================
+
+ADMIN_INTERNAL_URL = env('ADMIN_INTERNAL_URL', 'http://localhost:8001')
+INTERNAL_SERVICE_SECRET = env('INTERNAL_SERVICE_SECRET', 'dev-internal-service-secret')
+
+# ============================================================================
 # CORS (ADR-0015 #10 — allowlist frontend-clinic :5174)
 # ============================================================================
 

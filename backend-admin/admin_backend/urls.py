@@ -10,4 +10,5 @@ urlpatterns = [
     path('api/admin/', include('apps.audit.urls')),
     path('api/admin/', include('apps.config.urls')),
     path('api/auth/', include('apps.users.auth_urls')),  # ADR-0017
+    path('api/internal/', include('apps.config.internal_urls')),  # ADR-0023 D3 (service-to-service)
 ]

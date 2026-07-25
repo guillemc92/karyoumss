@@ -40,4 +40,13 @@ describe('KaryotypePage — Supervisor S1 (gating del panel de auditoría)', () 
     await screen.findByTestId('karyotype-viewer');
     expect(screen.queryByTestId('audit-panel')).not.toBeInTheDocument();
   });
+
+  it('supervisor sobre caso SIGNED ve el banner de reporte firmado (S2)', async () => {
+    setSampleStatus(SAMPLE, 'SIGNED');
+    renderPage({ asSupervisor: true });
+    await screen.findByTestId('karyotype-viewer');
+    await waitFor(() => expect(screen.getByTestId('audit-panel')).toBeInTheDocument(), { timeout: 5000 });
+    expect(await screen.findByTestId('report-signed-banner')).toBeInTheDocument();
+    expect(screen.queryByTestId('btn-sign-report')).not.toBeInTheDocument();
+  });
 });

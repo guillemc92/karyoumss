@@ -24,3 +24,15 @@ export function useAuditDecide(sampleId: string | undefined) {
     },
   });
 }
+
+/** Firma MFA del Supervisor (S2). Invalida el cariotipo para reflejar SIGNED. */
+export function useSignReport(sampleId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (mfaCode: string) => karyotypeClient.signReport(sampleId as string, mfaCode),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clinic', 'karyotype', sampleId] });
+      qc.invalidateQueries({ queryKey: ['clinic', 'audit', sampleId] });
+    },
+  });
+}

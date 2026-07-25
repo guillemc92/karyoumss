@@ -75,6 +75,13 @@ class Sample(models.Model):
     department = models.CharField(max_length=128, blank=True, default='')
     analysis_requests = models.JSONField(default=list, blank=True)
 
+    # --- Firma del Supervisor (ADR-0023 S2, DD-SUP-002) ---
+    signed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
+        related_name='samples_signed',
+    )
+    signed_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         db_table = 'clinic_samples'
         ordering = ['-created_at']
@@ -340,6 +347,26 @@ class AuditReview(models.Model):
 
     def __str__(self):
         return f'AuditReview({self.chromosome_id}, {self.decision})'
+
+
+# ============================================================================
+# Flujo del Supervisor S2 (ADR-0023 D3, DD-SUP-002) — lockout de firma MFA
+# ============================================================================
+
+
+class SignLockout(models.Model):
+    """Estado de bloqueo de firma por fallos de MFA (FSD-UC-005 A2): 3 fallos
+    consecutivos → bloqueo de 15 min. Uno por usuario supervisor."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='sign_lockout')
+    failed_attempts = models.PositiveIntegerField(default=0)
+    locked_until = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'clinic_sign_lockouts'
+
+    def __str__(self):
+        return f'SignLockout({self.user_id}, fails={self.failed_attempts})'
 
 
 # RBAC jerárquico (ADR-0019, DD-RBAC-001) — re-exportado para que Django

@@ -328,6 +328,10 @@ input[type="range"] { width: 100%; height: 4px; border-radius: 2px; background: 
 .karyo-audit__list li:last-child { border-bottom: none; }
 .karyo-audit__time { color: var(--gray-text); font-variant-numeric: tabular-nums; }
 
+/* Supervisor S2 (ADR-0023 S2, DD-SUP-002) — firma MFA */
+.sign-mfa__body { padding: 1.5rem; }
+.sign-mfa__input { width: 100%; font-size: 1.6rem; letter-spacing: 0.5rem; text-align: center; padding: 0.6rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); margin-top: 0.8rem; font-variant-numeric: tabular-nums; }
+
 /* Supervisor S1 (ADR-0023, DD-SUP-001) — panel de auditoría del 5% */
 .audit-panel { margin-top: 1.5rem; background: var(--white); border: 1px solid #e9d5ff; border-left: 4px solid #7b2cbf; border-radius: var(--radius-lg); padding: 1rem 1.2rem; box-shadow: var(--shadow-sm); }
 .audit-panel__header { display: flex; justify-content: space-between; align-items: center; color: #5b21b6; }
