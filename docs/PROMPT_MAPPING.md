@@ -2725,5 +2725,56 @@ Refs: ADR-0023 §S2, ADR-0020, ADR-0022, DD-SUP-002, RN-06/RN-05, 21 CFR Part 11
 
 ---
 
+## PM-ML-001 — Motor de inferencia de cariotipado (baseline real, Fase B)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-ML-001 |
+| **Título** | Servicio FastAPI `backend-ml`: segmentación REAL (OpenCV+watershed) de metafases + clasificación placeholder, con puertos hexagonales para enchufar el modelo entrenado |
+| **Estado** | Ejecutado y verificado (baseline) |
+| **Fecha** | 2026-07-24 |
+| **ADR origen** | [ADR-0007](docs/adr/0007-microservicio-inferencia.md) + [ADR-0015](docs/adr/0015-arquitectura-clinica-django.md) |
+| **Design Doc** | [DD-ML-001](docs/design/DD-ML-001.md) |
+
+### Alcance ejecutado (Fase B)
+Materializa el motor de inferencia (el FastAPI `:8000` que `pipeline_client` de
+backend-clinic ya esperaba). Convierte una **imagen de metafase real** en
+cromosomas detectados. **Segmentación REAL** (OpenCV: Otsu invertido + morfología
++ **watershed** para separar cromosomas que se tocan → componentes filtradas por
+área). **Clasificación = placeholder** (por rango de tamaño, confianza fija 0.55 →
+todo naranja → clasificación manual, FSD-UC-007). Diseño **hexagonal** (ADR-0007):
+`SegmenterPort`/`ClassifierPort` → el modelo U-Net+EfficientNet-B3 se enchufa
+reemplazando adaptadores, sin tocar la API. API: `GET /health/`,
+`POST /api/v1/segment/`.
+
+### Contexto del descubrimiento
+El usuario tiene la base MetaClass REAL (`SCAMC.mdf`, SQL Server Express) — no
+solo el schema `script.sql`. Se extrajo el dataset a `datasets/metaclass/`
+(gitignored): **460 metafases reales anotadas por experto** (número de clase
+escrito sobre cada cromosoma = ground truth) + 32 recortes. Base para entrenar
+(Fase C).
+
+### Output (verificación)
+- 11 tests (`pytest`): segmentación (imagen sintética), `load_gray`, placeholder,
+  pipeline, API (`/health`, `/segment`, 400/422).
+- **E2E real:** `uvicorn` + POST de una metafase MetaClass real (1024×998) → 200
+  → 60 cromosomas detectados (el baseline sobre-segmenta en ruido; el U-Net
+  entrenado lo corrige). Segmentación real, clasificación placeholder honesta.
+
+### Trazabilidad
+```
+AGENTS.md §9 (U-Net → EfficientNet-B3 → Grad-CAM) + ADR-0007 (motor inferencia)
+  → DD-ML-001 (baseline OpenCV + placeholder, puertos hexagonales)
+    → backend-ml/ (FastAPI): segmentation + classifier + pipeline + API
+      → 11 tests + E2E real sobre metafase MetaClass (dataset SCAMC.mdf)
+```
+Pendiente: **Fase C** (entrenar U-Net+EfficientNet-B3 sobre datasets/metaclass,
+requiere torch+GPU+OCR de etiquetas), **Fase B2** (wiring backend-clinic
+`/samples/{id}/process/` + ingesta + frontend sin mock).
+
+Refs: ADR-0007, ADR-0015, DD-ML-001, AGENTS.md §9, RN-07 (degradado).
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*
