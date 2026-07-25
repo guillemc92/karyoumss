@@ -2686,5 +2686,44 @@ Refs: ADR-0023 §S1, ADR-0022, DD-SUP-001, RN-08/RN-06/RN-05.
 
 ---
 
+## PM-SUP-002 — Flujo del Supervisor S2: firma MFA delegada
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-SUP-002 |
+| **Título** | Firma digital con MFA (TOTP) del Supervisor, verificación delegada a backend-admin (ADR-0020), con segregación (RN-06), gate del 5% y lockout |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-07-24 |
+| **ADR origen** | [ADR-0023](docs/adr/0023-supervisor-auditoria-firma-iscn.md) §D3/§D6 (S2) + [ADR-0020](docs/adr/0020-sso-backend-admin-autoridad-jwt.md) |
+| **Design Doc** | [DD-SUP-002](docs/design/DD-SUP-002.md) |
+
+### Alcance ejecutado (S2)
+Sobre un caso `ANALYST_VALIDATED` con el 5% auditado (S1), el Supervisor firma con
+MFA → `SIGNED`. **Verificación MFA delegada** (ADR-0023 D3): backend-admin expone
+`POST /api/internal/mfa/verify/` (secreto de servicio `X-Internal-Secret`, no JWT;
+reusa `_verify_totp_code`); backend-clinic la consume con `admin_client` (circuit
+breaker). El secreto TOTP vive solo en backend-admin (ADR-0020). `sign_report`
+valida: estado firmable, **segregación Analista≠Supervisor (RN-06)**, 5% completo,
+lockout (3 fallos → 15 min, modelo `SignLockout`), TOTP. RBAC `case.sign`.
+
+### Output (verificación)
+- backend-admin: 6 tests (`test_internal_mfa`). backend-clinic: 12 tests
+  (`test_supervisor_s2`, `admin_client` mockeado). Frontend suite verde (99.33%).
+- E2E real (Playwright): 5% completo → MFA inválido (error) → `123456` → reporte
+  firmado (21 CFR Part 11) + `SIGN_REPORT` en la bitácora.
+
+### Trazabilidad
+```
+FSD-UC-005 (firma MFA) → ADR-0023 §D3 (delegación) + ADR-0020 (autoridad JWT/creds)
+  → DD-SUP-002 → backend-admin /internal/mfa/verify/ + backend-clinic admin_client
+    + sign_report + SignLockout + case.sign → frontend SignMfaModal
+      → 6 + 12 tests backend + frontend + E2E firma
+```
+Pendiente (ADR-0023 D6): **S3** (motor ISCN determinístico + override + `REPORTED`).
+
+Refs: ADR-0023 §S2, ADR-0020, ADR-0022, DD-SUP-002, RN-06/RN-05, 21 CFR Part 11.
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*
