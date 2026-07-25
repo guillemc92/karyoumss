@@ -99,7 +99,9 @@ export function SampleRegisterPage() {
   }
 
   function handleProcessingComplete() {
-    navigate(`/correccion de cariotipo.html?sample=${processingSampleId}`);
+    // Conecta el registro con el visor de cariotipo React (ADR-0021, P1-P4),
+    // no con el prototipo vanilla legado.
+    navigate(`/clinic/samples/${processingSampleId}/karyotype`);
   }
 
   return (

@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { Routes, Route } from 'react-router-dom';
 import { SampleRegisterPage } from '../../src/clinic/pages/SampleRegisterPage';
 import { SampleListPage } from '../../src/clinic/pages/SampleListPage';
+import { KaryotypePage } from '../../src/clinic/pages/KaryotypePage';
 import { renderWithProviders } from '../testUtils';
 
 function renderPage() {
@@ -11,6 +12,7 @@ function renderPage() {
     <Routes>
       <Route path="/clinic/samples" element={<SampleListPage />} />
       <Route path="/clinic/samples/register" element={<SampleRegisterPage />} />
+      <Route path="/clinic/samples/:id/karyotype" element={<KaryotypePage />} />
     </Routes>,
     { route: '/clinic/samples/register' },
   );
@@ -84,7 +86,7 @@ describe('SampleRegisterPage', () => {
     await waitFor(() => expect(screen.getByText('Procesando con Biomed IA')).toBeInTheDocument());
   });
 
-  it('registro completo: al terminar el polling navega a corrección de cariotipo', async () => {
+  it('registro completo: al terminar el polling navega al visor de cariotipo (P1-P4)', async () => {
     renderPage();
     await userEvent.type(screen.getByPlaceholderText('Ej: CHN-12345'), 'CHN-2026-07-12-0199');
     await userEvent.type(screen.getByPlaceholderText('Nombre del paciente'), 'ANON-TEST');
@@ -93,6 +95,8 @@ describe('SampleRegisterPage', () => {
     await userEvent.click(screen.getByText(/Registrar y analizar con IA/));
     await waitFor(() => expect(screen.getByText('Procesando con Biomed IA')).toBeInTheDocument());
     await waitFor(() => expect(screen.queryByText('Procesando con Biomed IA')).not.toBeInTheDocument(), { timeout: 5000 });
+    // Ahora aterriza en el visor React (no en el prototipo vanilla legado).
+    expect(await screen.findByTestId('karyotype-viewer', undefined, { timeout: 5000 })).toBeInTheDocument();
   });
 
   it('registro con CHN duplicado muestra error del backend', async () => {
