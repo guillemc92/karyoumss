@@ -194,7 +194,9 @@ class TestEndpointNarrativa:
         r = supervisor_client.post(self._url(s), {'iscn': '46,XX'}, format='json')
         assert r.data['is_draft'] is True
 
-    def test_deriva_el_iscn_del_caso_si_no_viene(self, monkeypatch, supervisor_client, supervisor_user):
+    def test_usa_el_iscn_persistido_del_caso(self, monkeypatch, supervisor_client, supervisor_user):
+        """Desde S3 (ADR-0025) el ISCN es un dato del caso, no algo que la vista
+        derive: el LLM narra lo que la función determinística ya calculó."""
         capturado = {}
 
         def fake(iscn, sample_type, chn_code, counts):
@@ -203,10 +205,26 @@ class TestEndpointNarrativa:
 
         monkeypatch.setattr(llm_mod.llm_client, 'generate_narrative', fake)
         s = _case(supervisor_user, n_chromo=6)
+        s.iscn_nomenclature = '47,XY,+21'
+        s.save(update_fields=['iscn_nomenclature'])
         r = supervisor_client.post(self._url(s), {}, format='json')
 
         assert r.status_code == 200
-        assert capturado['iscn'] == '6,XX'   # 6 cromosomas activos, sin Y
+        assert capturado['iscn'] == '47,XY,+21'
+
+    def test_sin_iscn_generado_no_narra(self, monkeypatch, supervisor_client, supervisor_user):
+        """Sin S3 ejecutado no hay dato clínico que narrar — y pedirle al LLM que
+        lo invente es justo lo que ADR-0024 D1 prohíbe."""
+        def explota(**kwargs):
+            raise AssertionError('no debió llamarse al LLM sin ISCN')
+        monkeypatch.setattr(llm_mod.llm_client, 'generate_narrative', explota)
+
+        s = _case(supervisor_user, n_chromo=6)     # sin iscn_nomenclature
+        r = supervisor_client.post(self._url(s), {}, format='json')
+
+        assert r.status_code == 200
+        assert r.data['generated'] is False
+        assert r.data['reason'] == 'sin_iscn'
 
     def test_el_llm_caido_devuelve_200_no_error(self, monkeypatch, supervisor_client, supervisor_user):
         """RN-07: el endpoint no puede propagar el fallo del LLM como error HTTP —

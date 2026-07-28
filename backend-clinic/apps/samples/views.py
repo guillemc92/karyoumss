@@ -4,7 +4,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import AuditReview, Chromosome, Sample, SampleStatus
-from .permissions import CanRegisterSample, HasOpcion, IsOwnerOrStaff
+from .iscn import IscnError
+from .permissions import CanRegisterSample, HasOpcion, IsOwnerOrStaff, tiene_opcion
 from .pipeline_client import MLDegradedError, pipeline_client
 from .serializers import (
     AuditEventSerializer,
@@ -36,8 +37,11 @@ from .services import (
     SameClassError,
     SegregationError,
     XaiRequiredError,
+    IscnAlreadyGeneratedError,
+    NotReportableError,
     audit_summary,
     decide_audit,
+    generate_case_iscn,
     generate_narrative,
     join_chromosomes,
     mark_anomaly,
@@ -631,14 +635,11 @@ class CaseNarrativeView(APIView):
 
         iscn = (request.data.get('iscn') or '').strip()
         if not iscn:
-            counts = {}
-            karyotype = getattr(sample, 'karyotype', None)
-            if karyotype:
-                for chromo in karyotype.chromosomes.filter(is_active=True):
-                    if chromo.predicted_class:
-                        counts[chromo.predicted_class] = counts.get(chromo.predicted_class, 0) + 1
-            total = sum(counts.values())
-            iscn = f'{total},{"XY" if counts.get("Y") else "XX"}' if total else ''
+            # El ISCN persistido del caso (S3): el dato clínico ya generado por
+            # la función determinística y, si hubo override, revisado por el
+            # Supervisor. Es exactamente lo que el LLM debe narrar — antes de S3
+            # había que derivarlo acá a mano.
+            iscn = sample.iscn_nomenclature
 
         result = generate_narrative(
             sample, request.user, iscn,
@@ -653,4 +654,60 @@ class CaseNarrativeView(APIView):
             'model': sample.narrative_model,
             'generated_at': sample.narrative_generated_at,
             'is_draft': True,   # ADR-0024 D3: requiere revisión humana
+        }, status=status.HTTP_200_OK)
+
+
+class CaseIscnView(APIView):
+    """POST /samples/{id}/iscn/ — genera la nomenclatura ISCN (ADR-0023 D4, ADR-0025).
+
+    Body opcional: {"override": "47,XY,+21", "justification": "..."}.
+    Sin `override`, la calcula la función pura sobre el conteo validado.
+
+    RN-04: el campo es read-only tras generarse. NO hay PATCH — para cambiarlo hay
+    que pasar un `override` con justificación, y queda auditado (ISCN_OVERRIDE).
+
+    Errores: 409 NOT_REPORTABLE (el caso no está firmado) / 409
+    ISCN_ALREADY_GENERATED / 400 INVALID_ISCN.
+    """
+
+    def get_permissions(self):
+        # Reportar es el paso siguiente a firmar: mismo permiso base. El override
+        # exige además `case.override_iscn` (se valida en post()).
+        return [HasOpcion('case.sign')]
+
+    def post(self, request, pk):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+
+        override = (request.data.get('override') or '').strip()
+        if override and not tiene_opcion(request.user, 'case.override_iscn'):
+            return Response(
+                {'code': 'FORBIDDEN_OVERRIDE',
+                 'detail': 'Se requiere el permiso case.override_iscn para sobrescribir el ISCN.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        try:
+            sample = generate_case_iscn(
+                sample, request.user,
+                override=override,
+                justification=request.data.get('justification', ''),
+                mode=request.headers.get('X-Biomed-Mode', 'auto'),
+            )
+        except NotReportableError as e:
+            return Response({'code': 'NOT_REPORTABLE', 'detail': str(e)},
+                            status=status.HTTP_409_CONFLICT)
+        except IscnAlreadyGeneratedError as e:
+            return Response({'code': 'ISCN_ALREADY_GENERATED', 'detail': str(e)},
+                            status=status.HTTP_409_CONFLICT)
+        except IscnError as e:
+            return Response({'code': 'INVALID_ISCN', 'detail': str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            'iscn_nomenclature': sample.iscn_nomenclature,
+            'is_override': sample.iscn_is_override,
+            'generated_at': sample.iscn_generated_at,
+            'status': sample.status,
         }, status=status.HTTP_200_OK)

@@ -16,6 +16,7 @@ from .models import (
     SampleImage,
     SampleStatus,
 )
+from .iscn import IscnError, generate_iscn, validate_iscn
 from .pipeline_client import MLDegradedError, pipeline_client
 
 
@@ -723,3 +724,84 @@ def generate_narrative(sample, actor, iscn: str, mode='auto') -> dict:
             mode=mode,
         )
     return {'generated': True, 'text': result['text'], 'reason': None}
+
+
+# ============================================================================
+# Motor ISCN — fase S3 (ADR-0023 D4, ADR-0025)
+# ============================================================================
+
+
+class NotReportableError(Exception):
+    """El caso no está en SIGNED: el ISCN se reporta DESPUÉS de la firma."""
+
+
+class IscnAlreadyGeneratedError(Exception):
+    """Ya tiene ISCN y no se justificó un override (RN-04: read-only)."""
+
+
+def _conteo_por_clase(sample) -> dict[str, int]:
+    """Conteo final por clase de los cromosomas ACTIVOS del caso.
+
+    `predicted_class` ya refleja las reclasificaciones del analista (P3 corrige
+    en sitio) y `is_active=False` marca los que separar/unir descartó — así que
+    esto es el cariotipo tal como quedó tras la validación humana.
+    """
+    counts: dict[str, int] = {}
+    karyotype = Karyotype.objects.filter(sample=sample).first()
+    if karyotype:
+        for chromo in Chromosome.objects.filter(karyotype=karyotype, is_active=True):
+            if chromo.predicted_class:
+                counts[chromo.predicted_class] = counts.get(chromo.predicted_class, 0) + 1
+    return counts
+
+
+def generate_case_iscn(sample, actor, override: str = '', justification: str = '',
+                       mode='auto'):
+    """Genera la nomenclatura ISCN del caso y lo pasa a REPORTED (ADR-0023 D4).
+
+    Sin `override`: la calcula la función pura `generate_iscn()` sobre el conteo
+    validado. Con `override`: el Supervisor impone su string, que se valida
+    contra la gramática ISCN y **exige justificación** — es la autoridad médica,
+    pero la decisión queda auditada.
+
+    RN-04: `iscn_nomenclature` es read-only tras generarse. Regenerar sin
+    justificar un override → IscnAlreadyGeneratedError.
+    """
+    if sample.status != SampleStatus.SIGNED:
+        raise NotReportableError(
+            f'el caso debe estar firmado (SIGNED) para reportarse; está en {sample.status}')
+
+    if sample.iscn_nomenclature and not override:
+        raise IscnAlreadyGeneratedError(
+            'el caso ya tiene ISCN; para cambiarlo se requiere override justificado')
+
+    original = generate_iscn(_conteo_por_clase(sample))   # puede lanzar IscnError
+
+    if override:
+        if not justification.strip():
+            raise IscnError('el override requiere una justificación')
+        final = validate_iscn(override)                   # puede lanzar IscnError
+    else:
+        final = original
+
+    now = datetime.now(timezone.utc)
+    with transaction.atomic():
+        sample.iscn_nomenclature = final
+        sample.iscn_generated_at = now
+        sample.iscn_is_override = bool(override)
+        sample.status = SampleStatus.REPORTED
+        sample.save(update_fields=[
+            'iscn_nomenclature', 'iscn_generated_at', 'iscn_is_override',
+            'status', 'updated_at',
+        ])
+        if override:
+            emit_audit_event(
+                sample, actor, AuditEventType.ISCN_OVERRIDE,
+                payload={
+                    'original_iscn': original,
+                    'final_iscn': final,
+                    'justification': justification.strip(),
+                },
+                mode=mode,
+            )
+    return sample

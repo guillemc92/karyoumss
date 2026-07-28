@@ -40,7 +40,9 @@ class SampleType(models.TextChoices):
 class Sample(models.Model):
     """Catálogo de muestras del bounded context clínico (ADR-0015, ADR-0016).
 
-    RN-04: iscn_nomenclature NO vive acá — la genera el FastAPI clínico.
+    RN-04: iscn_nomenclature SÍ vive acá desde ADR-0025 (deroga parcialmente
+    ADR-0015): el FastAPI al que delegaba no existe, y separarlo partiría el
+    hash chain de auditoría. Sigue siendo read-only tras generarse.
     RN-05: edits NO vive acá — es tabla append-only del FastAPI clínico.
     RN-03: datos de paciente (PII) viven en PatientVault, NO en este modelo.
     """
@@ -90,6 +92,15 @@ class Sample(models.Model):
     narrative_draft = models.TextField(blank=True, default='')
     narrative_model = models.CharField(max_length=64, blank=True, default='')
     narrative_generated_at = models.DateTimeField(null=True, blank=True)
+
+    # --- Nomenclatura ISCN (ADR-0023 D4, ADR-0025) ---
+    # RN-04: READ-ONLY tras generarse. No hay endpoint PATCH; el override del
+    # Supervisor es un endpoint de generación con validación de gramática y
+    # justificación obligatoria, no una edición libre. Lo produce la función
+    # pura `iscn.generate_iscn()` — NUNCA el LLM (ADR-0024 D1): es un diagnóstico.
+    iscn_nomenclature = models.CharField(max_length=200, blank=True, default='')
+    iscn_generated_at = models.DateTimeField(null=True, blank=True)
+    iscn_is_override = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'clinic_samples'

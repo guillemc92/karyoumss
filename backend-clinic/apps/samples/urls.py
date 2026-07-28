@@ -4,6 +4,7 @@ from .views import (
     AuditDecideView,
     AuditReviewListView,
     AuditTrailView,
+    CaseIscnView,
     CaseNarrativeView,
     CaseSignView,
     CaseValidateView,
@@ -59,4 +60,7 @@ urlpatterns = [
 
     # Narrativa asistida por LLM (ADR-0024)
     path('samples/<uuid:pk>/narrative/', CaseNarrativeView.as_view(), name='case-narrative'),
+
+    # Motor ISCN — fase S3 (ADR-0023 D4, ADR-0025)
+    path('samples/<uuid:pk>/iscn/', CaseIscnView.as_view(), name='case-iscn'),
 ]
