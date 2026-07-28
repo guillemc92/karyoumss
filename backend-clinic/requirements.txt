@@ -5,3 +5,9 @@ django-cors-headers==4.4.0
 python-dotenv==1.0.1
 httpx==0.27.0
 cryptography==43.0.0
+
+# ADR-0024: SDK de IA generativa para la narrativa del informe. Apunta a Ollama
+# en localhost (API compatible), no a la nube — sin egreso de datos (RN-03).
+# Opcional: sin este paquete el sistema corre igual, sin narrativa (RN-07).
+openai>=1.0
+

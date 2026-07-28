@@ -82,6 +82,15 @@ class Sample(models.Model):
     )
     signed_at = models.DateTimeField(null=True, blank=True)
 
+    # --- Narrativa asistida por LLM (ADR-0024 D3) ---
+    # BORRADOR, no dato clínico. La nomenclatura ISCN la calcula una función
+    # determinística (ADR-0023 D4); el LLM solo redacta el párrafo que la
+    # acompaña. Campo separado a propósito: no se mezcla con iscn_nomenclature
+    # (read-only por RN-04) y no entra al informe firmado sin revisión humana.
+    narrative_draft = models.TextField(blank=True, default='')
+    narrative_model = models.CharField(max_length=64, blank=True, default='')
+    narrative_generated_at = models.DateTimeField(null=True, blank=True)
+
     class Meta:
         db_table = 'clinic_samples'
         ordering = ['-created_at']
@@ -240,6 +249,9 @@ class AuditEventType(models.TextChoices):
     AUDIT_DECISION = 'AUDIT_DECISION', 'Decisión de auditoría'  # futuro
     ISCN_OVERRIDE = 'ISCN_OVERRIDE', 'Override ISCN'            # futuro
     SIGN_REPORT = 'SIGN_REPORT', 'Reporte firmado'             # futuro
+    # ADR-0024 D3: deja traza de qué modelo redactó el borrador y con qué ISCN
+    # de entrada, para poder auditar después una narrativa incorrecta.
+    NARRATIVE_GENERATED = 'NARRATIVE_GENERATED', 'Narrativa generada (LLM)'
 
 
 class AuditEventMode(models.TextChoices):

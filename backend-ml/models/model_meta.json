@@ -14,6 +14,15 @@
       0.225
     ]
   },
-  "val_accuracy": 0.6334,
-  "val_macro_f1": 0.6008
+  "preprocess": "letterbox",
+  "letterbox": {
+    "target_frac": 0.45,
+    "fill": 255
+  },
+  "split": "by_karyogram",
+  "val_accuracy": 0.6771,
+  "val_macro_f1": 0.6517,
+  "val_karyograms": 164,
+  "train_karyograms": 932,
+  "version": "v2"
 }

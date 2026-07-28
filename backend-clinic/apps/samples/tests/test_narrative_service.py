@@ -1,0 +1,169 @@
+"""Tests del servicio de narrativa asistida por LLM (ADR-0024 D3).
+
+Cubre el cableado: persistir el borrador, dejar traza de auditoría, y —lo más
+importante— **degradar sin bloquear**. Si el LLM falla, el caso debe poder
+seguir su curso hacia el informe (RN-07).
+
+El cliente LLM se mockea: estos tests no requieren Ollama corriendo.
+"""
+from decimal import Decimal
+
+import pytest
+
+from apps.samples import llm_client as llm_mod
+from apps.samples.llm_client import LlmServiceError
+from apps.samples.models import AuditEvent, Chromosome, Karyotype, Sample
+from apps.samples.services import generate_narrative
+
+pytestmark = pytest.mark.django_db
+
+NARRATIVA = (
+    'El análisis citogenético muestra un complemento cromosómico femenino normal, '
+    'sin alteraciones numéricas ni estructurales detectables. Se recomienda '
+    'correlación clínica.'
+)
+
+
+def _mock_llm(monkeypatch, *, text=NARRATIVA, raises=None, tokens=310, latency=95000):
+    def fake(iscn, sample_type, chn_code, counts):
+        if raises is not None:
+            raise raises
+        return {'text': text, 'model': 'llama3.2:3b', 'tokens': tokens, 'latency_ms': latency}
+    monkeypatch.setattr(llm_mod.llm_client, 'generate_narrative', fake)
+
+
+def _case(analyst, n_chromo=6):
+    s = Sample.objects.create(
+        chn_code=f'CHN-NARR-{Sample.objects.count():04d}',
+        analyst=analyst,
+        status='SIGNED',
+        sample_type='sangre',
+    )
+    if n_chromo:
+        k = Karyotype.objects.create(sample=s)
+        for i in range(n_chromo):
+            Chromosome.objects.create(
+                karyotype=k, predicted_class=str((i % 3) + 1), position_index=i,
+                confidence_score=Decimal('0.950'), order=i,
+            )
+    return s
+
+
+class TestGeneracionYPersistencia:
+    def test_persiste_el_borrador_y_su_procedencia(self, monkeypatch, analyst_user, supervisor_user):
+        _mock_llm(monkeypatch)
+        s = _case(analyst_user)
+        out = generate_narrative(s, supervisor_user, '46,XX')
+
+        assert out['generated'] is True
+        s.refresh_from_db()
+        assert s.narrative_draft == NARRATIVA
+        assert s.narrative_model == 'llama3.2:3b'
+        assert s.narrative_generated_at is not None
+
+    def test_emite_evento_auditable_con_el_iscn_de_entrada(self, monkeypatch, analyst_user, supervisor_user):
+        """Para poder auditar después una narrativa incorrecta hace falta saber
+        qué modelo la escribió y sobre qué dato."""
+        _mock_llm(monkeypatch)
+        s = _case(analyst_user)
+        generate_narrative(s, supervisor_user, '47,XY,+21')
+
+        ev = AuditEvent.objects.get(sample=s, event_type='NARRATIVE_GENERATED')
+        assert ev.actor_id == supervisor_user.id
+        assert ev.payload['model'] == 'llama3.2:3b'
+        assert ev.payload['iscn_input'] == '47,XY,+21'
+        assert ev.payload['tokens'] == 310
+        assert ev.payload['is_draft'] is True
+
+    def test_el_evento_entra_en_la_cadena_de_hash(self, monkeypatch, analyst_user, supervisor_user):
+        _mock_llm(monkeypatch)
+        s = _case(analyst_user)
+        generate_narrative(s, supervisor_user, '46,XX')
+        ev = AuditEvent.objects.get(sample=s, event_type='NARRATIVE_GENERATED')
+        assert ev.current_hash and len(ev.current_hash) == 64
+
+    def test_pasa_el_conteo_de_cromosomas_activos(self, monkeypatch, analyst_user, supervisor_user):
+        capturado = {}
+
+        def fake(iscn, sample_type, chn_code, counts):
+            capturado.update(counts=counts, iscn=iscn, sample_type=sample_type, chn=chn_code)
+            return {'text': NARRATIVA, 'model': 'm', 'tokens': 1, 'latency_ms': 1}
+
+        monkeypatch.setattr(llm_mod.llm_client, 'generate_narrative', fake)
+        s = _case(analyst_user, n_chromo=6)
+        generate_narrative(s, supervisor_user, '46,XX')
+
+        assert sum(capturado['counts'].values()) == 6
+        assert capturado['sample_type'] == 'sangre'
+        assert capturado['chn'] == s.chn_code
+
+    def test_regenerar_sobrescribe_el_borrador_y_deja_dos_eventos(self, monkeypatch, analyst_user, supervisor_user):
+        """El borrador se reemplaza, pero la traza es append-only (RN-05)."""
+        _mock_llm(monkeypatch, text=NARRATIVA)
+        s = _case(analyst_user)
+        generate_narrative(s, supervisor_user, '46,XX')
+        _mock_llm(monkeypatch, text=NARRATIVA.replace('femenino', 'masculino'))
+        generate_narrative(s, supervisor_user, '46,XY')
+
+        s.refresh_from_db()
+        assert 'masculino' in s.narrative_draft
+        assert AuditEvent.objects.filter(sample=s, event_type='NARRATIVE_GENERATED').count() == 2
+
+
+class TestDegradacionNoBloqueante:
+    """RN-07 — la narrativa nunca puede impedir que el informe se emita."""
+
+    def test_servicio_caido_no_lanza(self, monkeypatch, analyst_user, supervisor_user):
+        _mock_llm(monkeypatch, raises=LlmServiceError('circuit_open'))
+        s = _case(analyst_user)
+        out = generate_narrative(s, supervisor_user, '46,XX')
+
+        assert out['generated'] is False
+        assert out['reason'] == 'circuit_open'
+        s.refresh_from_db()
+        assert s.narrative_draft == ''
+
+    def test_alucinacion_descarta_el_borrador(self, monkeypatch, analyst_user, supervisor_user):
+        """Si la validación rechaza el texto, no se persiste nada: mejor sin
+        narrativa que con una que afirme una anomalía inexistente."""
+        _mock_llm(monkeypatch, raises=LlmServiceError('alucinación: "+21" no está en el ISCN'))
+        s = _case(analyst_user)
+        out = generate_narrative(s, supervisor_user, '46,XX')
+
+        assert out['generated'] is False
+        s.refresh_from_db()
+        assert s.narrative_draft == ''
+
+    def test_fallo_no_emite_evento_de_auditoria(self, monkeypatch, analyst_user, supervisor_user):
+        """No hubo narrativa: no hay nada que auditar."""
+        _mock_llm(monkeypatch, raises=LlmServiceError('timeout'))
+        s = _case(analyst_user)
+        generate_narrative(s, supervisor_user, '46,XX')
+        assert not AuditEvent.objects.filter(sample=s, event_type='NARRATIVE_GENERATED').exists()
+
+    def test_sin_iscn_no_llama_al_modelo(self, monkeypatch, analyst_user, supervisor_user):
+        """El LLM redacta SOBRE un ISCN ya calculado (ADR-0024 D1). Sin ese dato
+        no hay nada que narrar — y pedirlo invitaría al modelo a inventarlo."""
+        def explota(**kwargs):
+            raise AssertionError('no debió llamarse al LLM sin ISCN')
+        monkeypatch.setattr(llm_mod.llm_client, 'generate_narrative', explota)
+
+        s = _case(analyst_user)
+        out = generate_narrative(s, supervisor_user, '')
+        assert out['generated'] is False
+        assert out['reason'] == 'sin_iscn'
+
+    def test_caso_sin_cariotipo_no_revienta(self, monkeypatch, analyst_user, supervisor_user):
+        _mock_llm(monkeypatch)
+        s = _case(analyst_user, n_chromo=0)
+        assert generate_narrative(s, supervisor_user, '46,XX')['generated'] is True
+
+
+class TestModoDegradado:
+    def test_propaga_el_modo_al_evento(self, monkeypatch, analyst_user, supervisor_user):
+        """FSD-UC-007 §7: las acciones en modo manual quedan marcadas."""
+        _mock_llm(monkeypatch)
+        s = _case(analyst_user)
+        generate_narrative(s, supervisor_user, '46,XX', mode='degradado')
+        ev = AuditEvent.objects.get(sample=s, event_type='NARRATIVE_GENERATED')
+        assert ev.mode == 'degradado'

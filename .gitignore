@@ -5,3 +5,10 @@ __pycache__/
 .pytest_cache/
 backend-clinic/media/
 /model/
+
+# Entornos virtuales (se recrean desde requirements.txt)
+.venv/
+*.sqlite3
+
+# Respaldo local del modelo previo: 41 MB que ya viven en el historial de git
+backend-ml/models_v1_backup/

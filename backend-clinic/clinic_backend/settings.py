@@ -157,6 +157,25 @@ ADMIN_INTERNAL_URL = env('ADMIN_INTERNAL_URL', 'http://localhost:8001')
 INTERNAL_SERVICE_SECRET = env('INTERNAL_SERVICE_SECRET', 'dev-internal-service-secret')
 
 # ============================================================================
+# LLM local para la narrativa del informe (ADR-0024 — IA generativa vía SDK)
+# ============================================================================
+
+# Ollama en localhost: API compatible con el SDK de OpenAI. Al no salir ningún
+# dato de la máquina, RN-03 (cero fuga de PII) se cumple por construcción.
+CLINIC_LLM_URL = env('CLINIC_LLM_URL', 'http://localhost:11434/v1')
+# Dimensionado para el hardware actual (i5-3317U, sin GPU). Subir de modelo al
+# migrar a más memoria es un cambio de config, no de arquitectura (ADR-0024 D2).
+CLINIC_LLM_MODEL = env('CLINIC_LLM_MODEL', 'llama3.2:3b')
+# Holgado a propósito: la inferencia en CPU va a ~2-5 tok/s. Medido en el
+# hardware actual (i5-3317U): 107 s para una narrativa de 367 tokens, y un caso
+# con más contexto superó los 190 s. Con GPU basta un valor mucho menor.
+CLINIC_LLM_TIMEOUT = float(env('CLINIC_LLM_TIMEOUT', '240.0'))
+CLINIC_LLM_CIRCUIT_THRESHOLD = int(env('CLINIC_LLM_CIRCUIT_THRESHOLD', '3'))
+CLINIC_LLM_CIRCUIT_COOLDOWN = int(env('CLINIC_LLM_CIRCUIT_COOLDOWN', '120'))
+# Apagado por defecto: sin narrativa el informe se emite igual (RN-07).
+CLINIC_LLM_ENABLED = env('CLINIC_LLM_ENABLED', 'false').lower() in ('1', 'true', 'yes')
+
+# ============================================================================
 # CORS (ADR-0015 #10 — allowlist frontend-clinic :5174)
 # ============================================================================
 

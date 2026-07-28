@@ -657,3 +657,69 @@ def _bbox_union(a: dict, b: dict) -> dict:
     x1 = max(ax + aw, bx + bw)
     y1 = max(ay + ah, by + bh)
     return {'x': x0, 'y': y0, 'w': x1 - x0, 'h': y1 - y0}
+
+
+# ============================================================================
+# Narrativa asistida por LLM (ADR-0024) — IA generativa vía SDK
+# ============================================================================
+
+
+def generate_narrative(sample, actor, iscn: str, mode='auto') -> dict:
+    """Genera y persiste el BORRADOR narrativo del informe (ADR-0024 D3).
+
+    El LLM **no calcula el dato clínico**: recibe el `iscn` ya producido por la
+    función determinística (ADR-0023 D4) y solo redacta el párrafo que lo
+    acompaña. Por eso `iscn` es un parámetro y no algo que este servicio infiera.
+
+    RN-07 — degradación limpia: si el LLM no responde, alucina o está apagado,
+    se devuelve `{'generated': False, 'reason': ...}` y **no se lanza**. La
+    narrativa nunca puede bloquear la emisión del informe.
+
+    Devuelve {'generated': bool, 'text': str, 'reason': str|None}.
+    """
+    from .llm_client import LlmServiceError, llm_client
+
+    if not iscn:
+        return {'generated': False, 'text': '', 'reason': 'sin_iscn'}
+
+    # `predicted_class` ya refleja las reclasificaciones del analista (P3 la
+    # corrige en sitio), así que es la clase final. Solo cuenta los activos:
+    # separar/unir desactiva cromosomas sin borrarlos.
+    counts = {}
+    karyotype = Karyotype.objects.filter(sample=sample).first()
+    if karyotype:
+        for chromo in Chromosome.objects.filter(karyotype=karyotype, is_active=True):
+            if chromo.predicted_class:
+                counts[chromo.predicted_class] = counts.get(chromo.predicted_class, 0) + 1
+
+    try:
+        result = llm_client.generate_narrative(
+            iscn=iscn,
+            sample_type=sample.sample_type or 'no especificado',
+            chn_code=sample.chn_code,
+            counts=counts,
+        )
+    except LlmServiceError as exc:
+        # No se persiste nada ni se emite evento: no hubo narrativa que auditar.
+        return {'generated': False, 'text': '', 'reason': str(exc)}
+
+    now = datetime.now(timezone.utc)
+    with transaction.atomic():
+        sample.narrative_draft = result['text']
+        sample.narrative_model = result['model']
+        sample.narrative_generated_at = now
+        sample.save(update_fields=[
+            'narrative_draft', 'narrative_model', 'narrative_generated_at', 'updated_at',
+        ])
+        emit_audit_event(
+            sample, actor, AuditEventType.NARRATIVE_GENERATED,
+            payload={
+                'model': result['model'],
+                'iscn_input': iscn,          # con qué dato se redactó
+                'tokens': result['tokens'],
+                'latency_ms': result['latency_ms'],
+                'is_draft': True,            # requiere revisión humana (D3)
+            },
+            mode=mode,
+        )
+    return {'generated': True, 'text': result['text'], 'reason': None}
