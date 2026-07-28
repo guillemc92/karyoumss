@@ -4,6 +4,7 @@ from .views import (
     AuditDecideView,
     AuditReviewListView,
     AuditTrailView,
+    CaseNarrativeView,
     CaseSignView,
     CaseValidateView,
     ChromosomeAnomalyView,
@@ -55,4 +56,7 @@ urlpatterns = [
 
     # Flujo del Supervisor S2 (ADR-0023 S2, DD-SUP-002) — firma MFA.
     path('samples/<uuid:pk>/sign/', CaseSignView.as_view(), name='case-sign'),
+
+    # Narrativa asistida por LLM (ADR-0024)
+    path('samples/<uuid:pk>/narrative/', CaseNarrativeView.as_view(), name='case-narrative'),
 ]

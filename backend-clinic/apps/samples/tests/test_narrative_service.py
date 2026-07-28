@@ -167,3 +167,69 @@ class TestModoDegradado:
         generate_narrative(s, supervisor_user, '46,XX', mode='degradado')
         ev = AuditEvent.objects.get(sample=s, event_type='NARRATIVE_GENERATED')
         assert ev.mode == 'degradado'
+
+
+class TestEndpointNarrativa:
+    """POST /samples/{id}/narrative/ (ADR-0024) — el extra "exponerlo como
+    endpoint" de la consigna del módulo de IA."""
+
+    def _url(self, sample):
+        return f'/api/clinic/samples/{sample.id}/narrative/'
+
+    def test_devuelve_el_borrador(self, monkeypatch, supervisor_client, supervisor_user):
+        _mock_llm(monkeypatch)
+        s = _case(supervisor_user)
+        r = supervisor_client.post(self._url(s), {'iscn': '46,XX'}, format='json')
+
+        assert r.status_code == 200
+        assert r.data['generated'] is True
+        assert r.data['narrative_draft'] == NARRATIVA
+        assert r.data['model'] == 'llama3.2:3b'
+        assert r.data['iscn_input'] == '46,XX'
+
+    def test_marca_la_salida_como_borrador(self, monkeypatch, supervisor_client, supervisor_user):
+        """ADR-0024 D3: el consumidor tiene que saber que requiere revisión."""
+        _mock_llm(monkeypatch)
+        s = _case(supervisor_user)
+        r = supervisor_client.post(self._url(s), {'iscn': '46,XX'}, format='json')
+        assert r.data['is_draft'] is True
+
+    def test_deriva_el_iscn_del_caso_si_no_viene(self, monkeypatch, supervisor_client, supervisor_user):
+        capturado = {}
+
+        def fake(iscn, sample_type, chn_code, counts):
+            capturado['iscn'] = iscn
+            return {'text': NARRATIVA, 'model': 'm', 'tokens': 1, 'latency_ms': 1}
+
+        monkeypatch.setattr(llm_mod.llm_client, 'generate_narrative', fake)
+        s = _case(supervisor_user, n_chromo=6)
+        r = supervisor_client.post(self._url(s), {}, format='json')
+
+        assert r.status_code == 200
+        assert capturado['iscn'] == '6,XX'   # 6 cromosomas activos, sin Y
+
+    def test_el_llm_caido_devuelve_200_no_error(self, monkeypatch, supervisor_client, supervisor_user):
+        """RN-07: el endpoint no puede propagar el fallo del LLM como error HTTP —
+        el informe se emite igual, solo sin narrativa."""
+        _mock_llm(monkeypatch, raises=LlmServiceError('circuit_open'))
+        s = _case(supervisor_user)
+        r = supervisor_client.post(self._url(s), {'iscn': '46,XX'}, format='json')
+
+        assert r.status_code == 200
+        assert r.data['generated'] is False
+        assert r.data['reason'] == 'circuit_open'
+        assert r.data['narrative_draft'] == ''
+
+    def test_el_analista_no_puede_generarla(self, monkeypatch, analyst_client, analyst_user):
+        """Requiere case.sign: es parte del cierre del informe (RN-06)."""
+        _mock_llm(monkeypatch)
+        s = _case(analyst_user)
+        r = analyst_client.post(self._url(s), {'iscn': '46,XX'}, format='json')
+        assert r.status_code == 403
+
+    def test_anonimo_rechazado(self, monkeypatch, supervisor_user):
+        from rest_framework.test import APIClient
+        _mock_llm(monkeypatch)
+        s = _case(supervisor_user)
+        r = APIClient().post(self._url(s), {'iscn': '46,XX'}, format='json')
+        assert r.status_code in (401, 403)

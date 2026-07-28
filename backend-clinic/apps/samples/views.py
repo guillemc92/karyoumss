@@ -38,6 +38,7 @@ from .services import (
     XaiRequiredError,
     audit_summary,
     decide_audit,
+    generate_narrative,
     join_chromosomes,
     mark_anomaly,
     reclassify_chromosome,
@@ -602,3 +603,54 @@ class PipelineHealthView(APIView):
             {'available': available, 'mode': 'auto' if available else 'degradado'},
             status=status.HTTP_200_OK,
         )
+
+
+class CaseNarrativeView(APIView):
+    """POST /samples/{id}/narrative/ — genera el borrador narrativo (ADR-0024).
+
+    Body opcional: {"iscn": "47,XY,+21"}. Si no viene, se deriva del conteo de
+    cromosomas activos del caso.
+
+    El LLM **solo redacta**: el ISCN es un dato de entrada calculado por la
+    función determinística (ADR-0023 D4), nunca por el modelo. La respuesta es un
+    BORRADOR (`is_draft: true`) que el Supervisor debe revisar antes de que llegue
+    al informe firmado.
+
+    Nunca falla por el LLM: si el servicio no responde o el texto no supera la
+    validación, devuelve 200 con `generated: false` y el motivo — la narrativa no
+    puede bloquear la emisión del informe (RN-07).
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('case.sign')]
+
+    def post(self, request, pk):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+
+        iscn = (request.data.get('iscn') or '').strip()
+        if not iscn:
+            counts = {}
+            karyotype = getattr(sample, 'karyotype', None)
+            if karyotype:
+                for chromo in karyotype.chromosomes.filter(is_active=True):
+                    if chromo.predicted_class:
+                        counts[chromo.predicted_class] = counts.get(chromo.predicted_class, 0) + 1
+            total = sum(counts.values())
+            iscn = f'{total},{"XY" if counts.get("Y") else "XX"}' if total else ''
+
+        result = generate_narrative(
+            sample, request.user, iscn,
+            mode=request.headers.get('X-Biomed-Mode', 'auto'),
+        )
+        sample.refresh_from_db()
+        return Response({
+            'generated': result['generated'],
+            'reason': result['reason'],
+            'iscn_input': iscn,
+            'narrative_draft': sample.narrative_draft,
+            'model': sample.narrative_model,
+            'generated_at': sample.narrative_generated_at,
+            'is_draft': True,   # ADR-0024 D3: requiere revisión humana
+        }, status=status.HTTP_200_OK)
