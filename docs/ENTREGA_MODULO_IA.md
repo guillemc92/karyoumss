@@ -40,10 +40,12 @@ limpia: VS Code con `llm_client.py` abierto y la terminal integrada abajo.
 
 ```bash
 cd backend-clinic
-.venv/Scripts/python manage.py demo_llm --chn CHN-SMOKE-P2
+.venv/Scripts/python manage.py demo_llm --chn CHN-DEMO-T21
 ```
 
-Salida real (i5-3317U sin GPU):
+Salida real (i5-3317U sin GPU). Este caso es un **síndrome de Down**: el motor
+determinístico derivó `47,XY,+21` del cariotipo validado, y el LLM redactó sobre
+ese dato.
 
 ```
 ========================================================================
@@ -57,29 +59,57 @@ DEMO - Integracion con LLM (ADR-0024)  |  BIOMED UMSS
     habilitado: True
 
 [2] Dato real de la aplicacion
-    caso (CHN)  : CHN-SMOKE-P2
-    cromosomas  : 46 activos
-    ISCN        : 46,XY
-    (el ISCN lo calcula una funcion deterministica, NO el LLM - ADR-0024 D1)
+    caso (CHN)  : CHN-DEMO-T21
+    tipo muestra: sangre
+    cromosomas  : 47 activos
+    ISCN        : 47,XY,+21
+    origen ISCN : campo persistido del caso (S3)
+    (lo calcula una funcion pura deterministica, NO el LLM - ADR-0024 D1)
 
 [3] Llamando al modelo...
 
 [4] Respuesta del modelo
 ------------------------------------------------------------------------
-  El cariotipo resultante es normal, con una distribucion equilibrada de
-  cromosomas en todas las clases, sin anomalias detectables. Sin
-  embargo, se recomienda correlacion clinica para determinar la
-  relevancia de este hallazgo en el contexto del paciente.
+  El cariotipo de la muestra presentado como 47,XY,+21 indica una
+  aneuploidia del cromosoma 21, con un numero adicional de este
+  cromosoma en comparacion con el esperado normal (46,XY). Este hallazgo
+  sugiere trisomia 21, caracterizada por la presencia de una copia
+  adicional del cromosoma 21. El resultado requiere correlacion clinica
+  para determinar su significado en el contexto de los sintomas y
+  antecedentes del paciente.
 ------------------------------------------------------------------------
-    latencia total: 117853 ms
+    latencia total: 129102 ms
 
 [5] Persistencia y auditoria
-    Sample.narrative_draft : 252 chars
+    Sample.narrative_draft : 422 chars
     Sample.narrative_model : llama3.2:3b
     AuditEvent             : NARRATIVE_GENERATED
-    hash encadenado        : 8bbe0e4d1082ded4d3013efabcd098a6...
+    hash encadenado        : 7a09a22dfd939c269c87d21f2f4e12b6...
+```
 
-OK - llamada al LLM completada.
+**Por qué esta captura es fuerte:** se ve el dato real (47 cromosomas contados en
+la base), el ISCN que produjo la función determinística, y el LLM redactando sobre
+ese dato — no sobre un prompt inventado. La línea `origen ISCN` prueba que el dato
+clínico no lo generó el modelo.
+
+### Preparar el caso de la demo
+
+Un solo comando deja el caso listo (47 cromosomas, tres copias del 21, ISCN ya
+generado por el motor de S3):
+
+```bash
+.venv/Scripts/python manage.py seed_demo_iscn
+# Caso CHN-DEMO-T21: ISCN=47,XY,+21 estado=REPORTED (47 cromosomas)
+
+.venv/Scripts/python manage.py demo_llm --chn CHN-DEMO-T21
+```
+
+Otras variantes:
+
+```bash
+.venv/Scripts/python manage.py seed_demo_iscn --trisomia 18   # Edwards
+.venv/Scripts/python manage.py seed_demo_iscn --sexo XX       # femenino
+.venv/Scripts/python manage.py demo_llm                       # último caso de la base
 ```
 
 > La llamada tarda **1-3 minutos** en CPU sin GPU. Es normal — no está colgado.
@@ -131,9 +161,14 @@ variables de entorno visibles en la terminal.
 Son complementarias: la CNN no redacta, el LLM no clasifica.
 
 **La decisión de diseño central (ADR-0024 D1): el LLM redacta, nunca calcula el
-dato clínico.** `47,XY,+21` es un diagnóstico de síndrome de Down; lo produce una
-función determinística, no el modelo. El LLM recibe ese ISCN ya calculado y solo
-escribe el párrafo interpretativo.
+dato clínico.** `47,XY,+21` es un diagnóstico de síndrome de Down; lo produce
+`generate_iscn()`, una **función pura** (`apps/samples/iscn.py`): sin ORM, sin I/O,
+sin estado — mismo conteo, mismo resultado, siempre. El LLM recibe ese ISCN ya
+calculado y solo escribe el párrafo interpretativo.
+
+Esa separación es lo que hace **auditable** el diagnóstico. Un modelo generativo
+puede alucinar una trisomía; una función determinística no, y se prueba con tests
+contra síndromes reales (Down, Edwards, Patau, Turner, Klinefelter).
 
 **Por qué local y no la nube:** la regla RN-03 del proyecto prohíbe que salgan
 datos de paciente. Con Ollama en localhost eso se cumple **por construcción** — no
@@ -158,7 +193,8 @@ mejor defensa que una demo donde todo salió perfecto.
 
 | Archivo | Qué es |
 |---|---|
-| `backend-clinic/apps/samples/llm_client.py` | La llamada al modelo (SDK, prompt, validación) |
+| `backend-clinic/apps/samples/llm_client.py` | **La llamada al modelo** (SDK, prompt, validación) |
+| `backend-clinic/apps/samples/iscn.py` | El motor determinístico que produce el dato clínico |
 | `backend-clinic/apps/samples/services.py` → `generate_narrative()` | Persistencia + auditoría + degradación |
 | `backend-clinic/apps/samples/views.py` → `CaseNarrativeView` | El endpoint |
 | `backend-clinic/apps/samples/management/commands/demo_llm.py` | El script de la demo |

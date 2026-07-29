@@ -17,6 +17,7 @@ import time
 from django.conf import settings
 from django.core.management.base import BaseCommand
 
+from apps.samples.iscn import IscnError, generate_iscn
 from apps.samples.llm_client import LlmServiceError, llm_client
 from apps.samples.models import Chromosome, Karyotype, Sample
 from apps.samples.services import generate_narrative
@@ -63,13 +64,26 @@ class Command(BaseCommand):
                 if chromo.predicted_class:
                     counts[chromo.predicted_class] = counts.get(chromo.predicted_class, 0) + 1
 
-        iscn = opts['iscn'] or self._iscn_de(counts)
+        # El ISCN sale del motor determinístico (S3, ADR-0025): del campo ya
+        # persistido si el caso llegó a REPORTED, o calculado en el momento
+        # sobre el mismo conteo. Nunca del LLM (ADR-0024 D1).
+        if opts['iscn']:
+            iscn, origen = opts['iscn'], 'forzado por --iscn'
+        elif sample.iscn_nomenclature:
+            iscn, origen = sample.iscn_nomenclature, 'campo persistido del caso (S3)'
+        else:
+            try:
+                iscn, origen = generate_iscn(counts), 'calculado por generate_iscn()'
+            except IscnError as exc:
+                iscn, origen = '', f'no derivable: {exc}'
+
         self.stdout.write(f'    caso (CHN)  : {sample.chn_code}')
         self.stdout.write(f'    tipo muestra: {sample.sample_type or "no especificado"}')
         self.stdout.write(f'    cromosomas  : {sum(counts.values())} activos')
-        self.stdout.write(f'    ISCN        : {iscn}')
+        self.stdout.write(f'    ISCN        : {iscn or "(sin ISCN)"}')
+        self.stdout.write(f'    origen ISCN : {origen}')
         self.stdout.write(
-            '    (el ISCN lo calcula una función determinística, NO el LLM — ADR-0024 D1)')
+            '    (lo calcula una función pura determinística, NO el LLM — ADR-0024 D1)')
 
         # --- 3. La llamada ---
         self.stdout.write('\n[3] Llamando al modelo...')
@@ -120,14 +134,6 @@ class Command(BaseCommand):
                 self.stdout.write(f'    hash encadenado        : {ev.current_hash[:32]}...')
 
         self.stdout.write(self.style.SUCCESS('\nOK — llamada al LLM completada.\n'))
-
-    @staticmethod
-    def _iscn_de(counts: dict) -> str:
-        """ISCN mínimo derivado del conteo. El motor real es la fase S3 (ADR-0023 D4);
-        esto solo alimenta la demo con un dato coherente del caso."""
-        total = sum(counts.values())
-        sexo = 'XY' if counts.get('Y') else 'XX'
-        return f'{total},{sexo}' if total else '46,XX'
 
     @staticmethod
     def _envolver(texto: str, ancho: int) -> list[str]:
