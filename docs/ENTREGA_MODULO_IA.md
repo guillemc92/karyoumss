@@ -31,6 +31,20 @@ implementado; esto indica **qué mostrar y cómo capturarlo**.
 
 **Los dos extras están cubiertos**, no solo el mínimo.
 
+### Peldaño 1 — salida estructurada (Clase03, 27/07)
+
+La Clase03 sube el escalón: *«los LLM como una función no confiable: le pedimos un
+JSON tipado, lo validamos con Pydantic, y reintentamos si no cumple el esquema»*.
+También está implementado:
+
+| Requisito de la Clase03 | Dónde |
+|---|---|
+| Esquema Pydantic tipado | `apps/samples/llm_schemas.py` → `NarrativaCariotipo` |
+| Pedir JSON al modelo (`response_format`) | `llm_client.py` → `NARRATIVA_JSON_SCHEMA`, `strict: true` |
+| Validar contra el esquema | `_parse_structured()` |
+| **Reintentar** pasándole el error | bucle en `generate_narrative()`, `max_intentos=2` |
+| Endpoint que devuelve el JSON validado | `POST .../narrative/` → campo `structured` |
+
 ---
 
 ## 3. La captura que pide la consigna
@@ -181,6 +195,31 @@ crónica y progresiva de la función cerebral»* — **clínicamente falso**. La
 validación automática **no lo detectó**, porque solo verifica que las anomalías
 citadas existan en el ISCN (`+21` sí estaba); lo que falla es la corrección médica
 de la prosa.
+
+### El caso adversario: la salida estructurada atrapa lo que la prosa dejaba pasar
+
+Con el esquema Pydantic se puede probar algo que antes no: le pasé al modelo un
+**conteo con tres copias del 21 pero un ISCN que dice `46,XX`**. El modelo se dejó
+llevar por el conteo e inventó anomalías **tres veces seguidas**, y las tres fueron
+bloqueadas (ejecución real contra Ollama):
+
+```
+intento 1/3 rechazado: anomalía "+21" no está en el ISCN '46,XX'
+intento 2/3 rechazado: declara cariotipo anormal pero el ISCN '46,XX' es normal
+intento 3/3 rechazado: anomalía "del(5p)" no está en el ISCN '46,XX'
+→ degradó sin narrativa
+```
+
+En la tercera llegó a inventar una deleción `del(5p)` que no venía de ningún lado.
+
+**Por qué la salida estructurada lo detecta y la prosa no:** ahora el modelo debe
+*declarar* qué anomalías afirma en `anomalias_citadas`, un campo aparte que se
+contrasta contra el ISCN. Antes había que buscarlas con una expresión regular
+dentro del texto, y una redacción hábil podía esquivarla.
+
+Y cuando no hay forma de obtener algo válido, el sistema queda **sin narrativa en
+vez de con una incorrecta** (RN-07) — que en un informe clínico es exactamente lo
+que se busca.
 
 No invalida el diseño, lo confirma: por eso el texto va a un campo llamado
 `narrative_draft` y requiere revisión del Supervisor antes del informe firmado.

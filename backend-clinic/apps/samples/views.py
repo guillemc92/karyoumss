@@ -650,6 +650,10 @@ class CaseNarrativeView(APIView):
             'generated': result['generated'],
             'reason': result['reason'],
             'iscn_input': iscn,
+            # Objeto tipado validado contra el esquema Pydantic (ADR-0024 D4):
+            # el consumidor no tiene que parsear prosa para saber si es normal
+            # o qué anomalías se afirman.
+            'structured': result.get('structured'),
             'narrative_draft': sample.narrative_draft,
             'model': sample.narrative_model,
             'generated_at': sample.narrative_generated_at,

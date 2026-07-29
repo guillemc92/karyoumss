@@ -28,7 +28,15 @@ def _mock_llm(monkeypatch, *, text=NARRATIVA, raises=None, tokens=310, latency=9
     def fake(iscn, sample_type, chn_code, counts):
         if raises is not None:
             raise raises
-        return {'text': text, 'model': 'llama3.2:3b', 'tokens': tokens, 'latency_ms': latency}
+        return {
+            'text': text, 'model': 'llama3.2:3b', 'tokens': tokens,
+            'latency_ms': latency, 'intentos': 1,
+            'structured': {
+                'hallazgo': 'Hallazgo de prueba para el caso analizado.',
+                'interpretacion': text,
+                'es_normal': True, 'anomalias_citadas': [], 'nivel_confianza': 'alta',
+            },
+        }
     monkeypatch.setattr(llm_mod.llm_client, 'generate_narrative', fake)
 
 
@@ -251,3 +259,27 @@ class TestEndpointNarrativa:
         s = _case(supervisor_user)
         r = APIClient().post(self._url(s), {'iscn': '46,XX'}, format='json')
         assert r.status_code in (401, 403)
+
+    def test_devuelve_el_objeto_estructurado(self, monkeypatch, supervisor_client, supervisor_user):
+        """ADR-0024 D4: el consumidor recibe campos tipados, no solo prosa."""
+        _mock_llm(monkeypatch)
+        s = _case(supervisor_user)
+        s.iscn_nomenclature = '46,XX'
+        s.save(update_fields=['iscn_nomenclature'])
+        r = supervisor_client.post(self._url(s), {}, format='json')
+
+        assert r.status_code == 200
+        est = r.data['structured']
+        assert est['es_normal'] is True
+        assert est['anomalias_citadas'] == []
+        assert est['nivel_confianza'] == 'alta'
+
+    def test_sin_narrativa_el_estructurado_es_nulo(self, monkeypatch, supervisor_client, supervisor_user):
+        _mock_llm(monkeypatch, raises=LlmServiceError('circuit_open'))
+        s = _case(supervisor_user)
+        s.iscn_nomenclature = '46,XX'
+        s.save(update_fields=['iscn_nomenclature'])
+        r = supervisor_client.post(self._url(s), {}, format='json')
+
+        assert r.status_code == 200
+        assert r.data['structured'] is None

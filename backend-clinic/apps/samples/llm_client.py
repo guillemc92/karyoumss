@@ -22,6 +22,9 @@ import re
 import time
 
 from django.conf import settings
+from pydantic import ValidationError
+
+from .llm_schemas import NARRATIVA_JSON_SCHEMA, NarrativaCariotipo
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +37,21 @@ _MAX_CHARS = 2000
 SYSTEM_PROMPT = (
     'Eres un asistente de redacción para un laboratorio de citogenética. '
     'Recibes una nomenclatura ISCN ya calculada y validada por un analista humano. '
-    'Tu única tarea es redactar un párrafo interpretativo en español para el informe.\n\n'
+    'Devuelves un objeto JSON con la redacción para el informe, en español.\n\n'
     'REGLAS ESTRICTAS:\n'
     '1. NO inventes ni infieras anomalías que no estén en el ISCN recibido.\n'
     '2. NO recuentes ni cuestiones el ISCN: es un dato ya verificado.\n'
     '3. NO emitas diagnóstico definitivo ni recomendación terapéutica.\n'
-    '4. Redacta 2 a 4 frases, en registro clínico formal y sobrio.\n'
-    '5. Si el cariotipo es normal, dilo de forma directa y breve.\n'
-    '6. Cierra indicando que el resultado requiere correlación clínica.'
+    '4. Registro clínico formal y sobrio.\n'
+    '5. Cierra la interpretación indicando que requiere correlación clínica.\n\n'
+    'CAMPOS:\n'
+    '- hallazgo: qué se observa, en una o dos frases objetivas.\n'
+    '- interpretacion: el párrafo interpretativo (2 a 4 frases).\n'
+    '- es_normal: true solo si el ISCN no tiene anomalías (p. ej. 46,XX o 46,XY).\n'
+    '- anomalias_citadas: las anomalías que afirmas, en notación ISCN ("+21", '
+    '"del(5p)"). Lista vacía si el cariotipo es normal. DEBEN estar en el ISCN '
+    'recibido: cualquier otra cosa se rechaza.\n'
+    '- nivel_confianza: "alta", "media" o "baja".'
 )
 
 
@@ -50,12 +60,14 @@ class LlmServiceError(Exception):
 
 
 class LlmClient:
-    def __init__(self, base_url: str, model: str, timeout: float, threshold: int, cooldown: int):
+    def __init__(self, base_url: str, model: str, timeout: float, threshold: int,
+                 cooldown: int, max_intentos: int = 2):
         self.base_url = base_url
         self.model = model
         self.timeout = timeout
         self.threshold = threshold
         self.cooldown = cooldown
+        self.max_intentos = max_intentos
         self._failures = 0
         self._circuit_open_until = 0.0
 
@@ -104,11 +116,39 @@ class LlmClient:
                 raise LlmServiceError(f'alucinación: "{match.strip()}" no está en el ISCN')
         return text
 
-    def generate_narrative(self, iscn: str, sample_type: str, chn_code: str, counts: dict) -> dict:
-        """Genera el borrador narrativo. Devuelve {text, model, tokens, latency_ms}.
+    def _parse_structured(self, raw: str, iscn: str) -> NarrativaCariotipo:
+        """Valida la respuesta contra el contrato de tipos (ADR-0024 D4).
 
-        Lanza LlmServiceError ante cualquier problema; el llamador degrada sin
-        bloquear el informe (RN-07).
+        Dos capas: Pydantic verifica la FORMA (campos, tipos, longitudes) y
+        `es_coherente_con` verifica el CONTENIDO contra el ISCN determinístico.
+        Un objeto bien formado que afirme una trisomía inexistente pasa la
+        primera y debe fallar la segunda.
+        """
+        try:
+            narrativa = NarrativaCariotipo.model_validate_json(raw or '')
+        except ValidationError as exc:
+            primero = exc.errors()[0] if exc.errors() else {}
+            campo = '.'.join(str(p) for p in primero.get('loc', ())) or '?'
+            raise LlmServiceError(
+                f'no cumple el esquema: {campo} — {primero.get("msg", exc)}') from exc
+
+        coherente, motivo = narrativa.es_coherente_con(iscn)
+        if not coherente:
+            raise LlmServiceError(f'alucinación: {motivo}')
+        return narrativa
+
+    def generate_narrative(self, iscn: str, sample_type: str, chn_code: str,
+                           counts: dict, max_intentos: int | None = None) -> dict:
+        """Genera el borrador narrativo como objeto tipado, con reintento.
+
+        Un LLM es una función no confiable: puede devolver prosa donde se pidió
+        JSON, u omitir campos. Por eso se le pide un esquema (`response_format`)
+        y, si la respuesta no valida, **se reintenta pasándole el error** para
+        que se autocorrija. Solo se reintenta el fallo de contrato; un fallo de
+        red va directo al circuit breaker.
+
+        Devuelve {text, structured, model, tokens, latency_ms, intentos}.
+        Lanza LlmServiceError; el llamador degrada sin bloquear (RN-07).
         """
         if not getattr(settings, 'CLINIC_LLM_ENABLED', False):
             raise LlmServiceError('llm_disabled')
@@ -120,28 +160,63 @@ class LlmClient:
         except ImportError as exc:
             raise LlmServiceError('sdk_no_instalado') from exc
 
+        intentos_max = max_intentos or self.max_intentos
         started = time.time()
+        mensajes = [
+            {'role': 'system', 'content': SYSTEM_PROMPT},
+            {'role': 'user', 'content': self._build_prompt(iscn, sample_type, chn_code, counts)},
+        ]
+        tokens_totales = 0
+        ultimo_error = None
+
         try:
             # Ollama no valida la api_key, pero el SDK exige que exista.
             client = OpenAI(base_url=self.base_url, api_key='ollama', timeout=self.timeout)
-            resp = client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {'role': 'system', 'content': SYSTEM_PROMPT},
-                    {'role': 'user', 'content': self._build_prompt(iscn, sample_type, chn_code, counts)},
-                ],
-                temperature=0.2,               # baja: registro clínico, no creatividad
-                max_tokens=400,
-            )
-            text = self._validate(resp.choices[0].message.content, iscn)
-            self._record_success()
-            usage = getattr(resp, 'usage', None)
-            return {
-                'text': text,
-                'model': self.model,
-                'tokens': getattr(usage, 'total_tokens', 0) or 0,
-                'latency_ms': int((time.time() - started) * 1000),
-            }
+
+            for intento in range(1, intentos_max + 1):
+                resp = client.chat.completions.create(
+                    model=self.model,
+                    messages=mensajes,
+                    response_format=NARRATIVA_JSON_SCHEMA,
+                    temperature=0.2,           # baja: registro clínico, no creatividad
+                    max_tokens=700,            # el objeto ocupa más que el párrafo suelto
+                )
+                usage = getattr(resp, 'usage', None)
+                tokens_totales += getattr(usage, 'total_tokens', 0) or 0
+                crudo = resp.choices[0].message.content
+
+                try:
+                    narrativa = self._parse_structured(crudo, iscn)
+                except LlmServiceError as exc:
+                    ultimo_error = str(exc)
+                    logger.warning('LLM intento %d/%d rechazado: %s',
+                                   intento, intentos_max, ultimo_error)
+                    if intento == intentos_max:
+                        break
+                    # Reintento con el error en el contexto: el modelo se corrige
+                    # mejor viendo qué falló que repitiendo el prompt original.
+                    mensajes += [
+                        {'role': 'assistant', 'content': crudo or ''},
+                        {'role': 'user', 'content': (
+                            f'Tu respuesta fue rechazada: {ultimo_error}. '
+                            f'Corrígela respetando el esquema y usando ÚNICAMENTE las '
+                            f'anomalías presentes en el ISCN {iscn}.'
+                        )},
+                    ]
+                    continue
+
+                self._record_success()
+                return {
+                    'text': narrativa.como_texto(),
+                    'structured': narrativa.model_dump(mode='json'),
+                    'model': self.model,
+                    'tokens': tokens_totales,
+                    'latency_ms': int((time.time() - started) * 1000),
+                    'intentos': intento,
+                }
+
+            # Agotados los reintentos: el servicio responde, el contenido no sirve.
+            raise LlmServiceError(f'tras {intentos_max} intentos: {ultimo_error}')
         except LlmServiceError:
             # Alucinación o longitud: el modelo respondió, el servicio está sano.
             # No cuenta como fallo de disponibilidad → no abre el circuito.
@@ -158,4 +233,5 @@ llm_client = LlmClient(
     timeout=float(getattr(settings, 'CLINIC_LLM_TIMEOUT', 240.0)),
     threshold=int(getattr(settings, 'CLINIC_LLM_CIRCUIT_THRESHOLD', 3)),
     cooldown=int(getattr(settings, 'CLINIC_LLM_CIRCUIT_COOLDOWN', 120)),
+    max_intentos=int(getattr(settings, 'CLINIC_LLM_MAX_INTENTOS', 2)),
 )

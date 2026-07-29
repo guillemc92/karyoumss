@@ -702,7 +702,7 @@ def generate_narrative(sample, actor, iscn: str, mode='auto') -> dict:
         )
     except LlmServiceError as exc:
         # No se persiste nada ni se emite evento: no hubo narrativa que auditar.
-        return {'generated': False, 'text': '', 'reason': str(exc)}
+        return {'generated': False, 'text': '', 'structured': None, 'reason': str(exc)}
 
     now = datetime.now(timezone.utc)
     with transaction.atomic():
@@ -719,11 +719,19 @@ def generate_narrative(sample, actor, iscn: str, mode='auto') -> dict:
                 'iscn_input': iscn,          # con qué dato se redactó
                 'tokens': result['tokens'],
                 'latency_ms': result['latency_ms'],
+                'intentos': result.get('intentos', 1),   # cuántos hizo falta
+                'es_normal': (result.get('structured') or {}).get('es_normal'),
+                'anomalias_citadas': (result.get('structured') or {}).get('anomalias_citadas', []),
                 'is_draft': True,            # requiere revisión humana (D3)
             },
             mode=mode,
         )
-    return {'generated': True, 'text': result['text'], 'reason': None}
+    return {
+        'generated': True,
+        'text': result['text'],
+        'structured': result.get('structured'),
+        'reason': None,
+    }
 
 
 # ============================================================================
