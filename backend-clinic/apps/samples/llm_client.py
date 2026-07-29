@@ -18,7 +18,6 @@ bloquea: sin narrativa el informe se emite igual (RN-07, ADR-0024 D4.3).
 from __future__ import annotations
 
 import logging
-import re
 import time
 
 from django.conf import settings
@@ -28,11 +27,6 @@ from .llm_schemas import NARRATIVA_JSON_SCHEMA, NarrativaCariotipo
 
 logger = logging.getLogger(__name__)
 
-# Anomalías que el texto podría afirmar: numéricas (+21, -18) y estructurales.
-_ANOMALY_RE = re.compile(r'[+-]\d{1,2}\b|\b(?:del|dup|inv|t|der|add)\s*\(', re.IGNORECASE)
-# Cota de longitud del borrador (ADR-0024 D4.2).
-_MIN_CHARS = 40
-_MAX_CHARS = 2000
 
 SYSTEM_PROMPT = (
     'Eres un asistente de redacción para un laboratorio de citogenética. '
@@ -97,24 +91,6 @@ class LlmClient:
             f'Conteo por clase: {resumen}\n\n'
             f'Redacta el párrafo interpretativo para este resultado.'
         )
-
-    def _validate(self, text: str, iscn: str) -> str:
-        """Valida la salida antes de aceptarla (ADR-0024 D4).
-
-        La defensa central: el texto no puede afirmar anomalías ausentes del ISCN.
-        Es heurística, no garantía formal — por eso ADR-0024 D3 exige además
-        revisión humana antes de que el borrador llegue al informe.
-        """
-        text = (text or '').strip()
-        if not (_MIN_CHARS <= len(text) <= _MAX_CHARS):
-            raise LlmServiceError(f'longitud fuera de rango: {len(text)}')
-
-        iscn_norm = iscn.replace(' ', '').lower()
-        for match in _ANOMALY_RE.findall(text):
-            token = match.strip().replace(' ', '').lower()
-            if token and token not in iscn_norm:
-                raise LlmServiceError(f'alucinación: "{match.strip()}" no está en el ISCN')
-        return text
 
     def _parse_structured(self, raw: str, iscn: str) -> NarrativaCariotipo:
         """Valida la respuesta contra el contrato de tipos (ADR-0024 D4).
