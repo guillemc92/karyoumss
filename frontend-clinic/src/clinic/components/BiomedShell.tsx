@@ -15,6 +15,9 @@ export function BiomedShell({ children }: BiomedShellProps) {
   const { role, username, logout } = useSession();
   const location = useLocation();
   const isSamplesActive = location.pathname.startsWith('/clinic/samples');
+  // La bandeja es del Supervisor (RN-06): al analista no le toca ese trabajo.
+  const isSupervisor = role === 'supervisor' || role === 'admin';
+  const isInboxActive = location.pathname.startsWith('/clinic/supervisor');
 
   return (
     <div className="biomed-shell">
@@ -31,6 +34,11 @@ export function BiomedShell({ children }: BiomedShellProps) {
           <Link to="/clinic/samples" className={`nav-item${isSamplesActive ? ' active' : ''}`}>
             <i className="fas fa-flask"></i> Muestras
           </Link>
+          {isSupervisor && (
+            <Link to="/clinic/supervisor" className={`nav-item${isInboxActive ? ' active' : ''}`} data-testid="nav-supervisor-inbox">
+              <i className="fas fa-user-check"></i> Bandeja
+            </Link>
+          )}
           <Link to="/clinic/degraded" className="nav-item">
             <i className="fas fa-exclamation-triangle"></i> Modo Manual
           </Link>
