@@ -36,3 +36,37 @@ export function useSignReport(sampleId: string | undefined) {
     },
   });
 }
+
+// --- Supervisor S3 (ISCN + narrativa) ---
+
+/**
+ * Genera la nomenclatura ISCN (ADR-0025). Invalida el cariotipo para reflejar
+ * el paso a REPORTED, y la auditoría porque un override emite ISCN_OVERRIDE.
+ */
+export function useGenerateIscn(sampleId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { override?: string; justification?: string } = {}) =>
+      karyotypeClient.generateIscn(sampleId as string, v.override ?? '', v.justification ?? ''),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clinic', 'karyotype', sampleId] });
+      qc.invalidateQueries({ queryKey: ['clinic', 'audit', sampleId] });
+    },
+  });
+}
+
+/**
+ * Genera el borrador narrativo con el LLM (ADR-0024).
+ *
+ * No lanza cuando el modelo falla: el backend responde 200 con
+ * `generated: false`, y la UI muestra el motivo sin bloquear el informe (RN-07).
+ */
+export function useGenerateNarrative(sampleId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (iscn?: string) => karyotypeClient.generateNarrative(sampleId as string, iscn ?? ''),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clinic', 'audit', sampleId] });
+    },
+  });
+}

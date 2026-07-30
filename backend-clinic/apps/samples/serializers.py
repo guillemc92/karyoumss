@@ -178,12 +178,17 @@ class KaryotypeSerializer(serializers.ModelSerializer):
 
     sample_id = serializers.UUIDField(read_only=True)
     sample_status = serializers.CharField(source='sample.status', read_only=True)
+    # S3 (ADR-0025): el visor necesita saber si el caso ya tiene nomenclatura
+    # para ofrecer "Generar" o mostrarla. Read-only — RN-04 prohíbe escribirla
+    # por aquí; se genera solo vía POST /samples/{id}/iscn/.
+    sample_iscn = serializers.CharField(source='sample.iscn_nomenclature', read_only=True)
     chromosomes = serializers.SerializerMethodField()
     summary = serializers.SerializerMethodField()
 
     class Meta:
         model = Karyotype
-        fields = ['id', 'sample_id', 'sample_status', 'model_version', 'generated_at', 'summary', 'chromosomes']
+        fields = ['id', 'sample_id', 'sample_status', 'sample_iscn', 'model_version',
+                  'generated_at', 'summary', 'chromosomes']
 
     def _active_chromosomes(self, obj):
         # P3: los fragmentos absorbidos por JOIN quedan is_active=False y no

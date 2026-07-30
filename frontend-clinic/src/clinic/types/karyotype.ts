@@ -53,7 +53,8 @@ export interface XaiResult {
 export type AuditEventType =
   | 'XAI_VIEWED' | 'ACCEPT_CHROMOSOME' | 'RECLASSIFY' | 'CORRECT_CLASS'
   | 'MARK_ANOMALY' | 'SPLIT' | 'JOIN' | 'RESOLVE_CROSS'
-  | 'ANALYST_VALIDATED' | 'AUDIT_DECISION' | 'ISCN_OVERRIDE' | 'SIGN_REPORT';
+  | 'ANALYST_VALIDATED' | 'AUDIT_DECISION' | 'ISCN_OVERRIDE' | 'SIGN_REPORT'
+  | 'NARRATIVE_GENERATED'; // ADR-0024: borrador redactado por el LLM
 
 export type AuditMode = 'auto' | 'degradado';
 
@@ -96,6 +97,7 @@ export const AUDIT_LABELS: Record<AuditEventType, string> = {
   AUDIT_DECISION: 'Decisión de auditoría',
   ISCN_OVERRIDE: 'Override ISCN',
   SIGN_REPORT: 'Firmó reporte',
+  NARRATIVE_GENERATED: 'Generó borrador narrativo (IA)',
 };
 
 export interface KaryotypeSummary {
@@ -111,6 +113,7 @@ export interface Karyotype {
   id: string;
   sample_id: string;
   sample_status: string; // estado clínico de la muestra (gating del panel supervisor)
+  sample_iscn?: string;  // S3: nomenclatura ya generada, '' si aún no (ADR-0025)
   model_version: string;
   generated_at: string;
   summary: KaryotypeSummary;
@@ -151,4 +154,35 @@ export interface AuditReviewResponse {
 export function confidencePercent(score: string | null): string {
   if (score === null) return '—';
   return `${Math.round(parseFloat(score) * 100)}%`;
+}
+
+// --- Supervisor S3 (motor ISCN, ADR-0023 D4 / ADR-0025) ---
+
+export interface IscnResult {
+  iscn_nomenclature: string;
+  is_override: boolean;
+  generated_at: string | null;
+  status: string;
+}
+
+/** Salida tipada del LLM (ADR-0024 D4). `null` cuando el modelo no respondió. */
+export interface NarrativeStructured {
+  hallazgo: string;
+  interpretacion: string;
+  es_normal: boolean;
+  anomalias_citadas: string[];
+  nivel_confianza: 'alta' | 'media' | 'baja';
+}
+
+export interface NarrativeResult {
+  generated: boolean;
+  /** Motivo de la degradación cuando `generated` es false (RN-07). */
+  reason: string | null;
+  iscn_input: string;
+  structured: NarrativeStructured | null;
+  narrative_draft: string;
+  model: string;
+  generated_at: string | null;
+  /** Siempre true: requiere revisión del Supervisor antes del informe (D3). */
+  is_draft: boolean;
 }

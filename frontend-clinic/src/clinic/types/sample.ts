@@ -37,6 +37,8 @@ export interface SampleRead {
   updated_at: string;
   chromosome_count?: number;
   confidence_avg?: number;
+  /** S3 (ADR-0025): nomenclatura ISCN, '' hasta que el Supervisor la genera. */
+  iscn_nomenclature?: string;
 }
 
 export interface SampleListResponse {

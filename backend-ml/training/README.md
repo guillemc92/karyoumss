@@ -154,6 +154,25 @@ entre train y val, así que estaba inflado. El v2 sube +5 puntos de macro-F1
 **a la vez que** pasa a una medición honesta sobre 164 cariogramas nunca vistos.
 La mejora real sobre pacientes nuevos es mayor que esos 5 puntos.
 
+### Actualización del dataset (2026-07-29)
+
+La base del laboratorio sumó **56 cariogramas** (IDs 1168-1225). Re-extracción:
+**1150/1169 OK**, 19 descartados por QC → **50.864 crops** (antes 48.467).
+
+| clase | antes | ahora | |
+|---|---|---|---|
+| 1-18 (típica) | ~2.200 | ~2.300 | +5% |
+| 22 | 1.393 | 1.458 | +4.7% |
+| X | 980 | 1.031 | +5.2% |
+| Y | 359 | 380 | +5.8% |
+
+> ⚠️ **+4.9% no mueve la aguja.** El crecimiento fue proporcional en todas las
+> clases, así que **el desbalance quedó idéntico**: el cromosoma Y sigue en 1 a 6.3
+> contra una clase típica. Verificado sobre los conteos nuevos, el sampler del v2
+> le sigue mostrando el Y **5.6× más** de lo que aparece. El problema de X/Y es de
+> **calibración, no de volumen** — por eso el cambio que importa sigue siendo
+> `SAMPLER_POWER` del v3, no los datos adicionales.
+
 ### Enchufar el v2
 Copiá `classifier.pth`, `classes.json` y `model_meta.json` a `backend-ml/models/`.
 

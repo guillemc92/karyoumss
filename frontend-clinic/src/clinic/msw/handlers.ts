@@ -578,4 +578,92 @@ export const handlers = [
     pushAudit(sid, 'SIGN_REPORT', null, modeOf(request));
     return HttpResponse.json({ sample_id: sid, status: 'SIGNED', signed_at: new Date().toISOString() });
   }),
+
+  // --- Supervisor S3 (ISCN + narrativa, ADR-0025 / ADR-0024) ---
+
+  http.post(`${API}/samples/:id/iscn/`, async ({ params, request }) => {
+    const sid = String(params.id);
+    const sample = samples.find((s) => s.id === sid);
+    if (!sample) return HttpResponse.json({ code: 'NOT_FOUND' }, { status: 404 });
+    // El ISCN se reporta DESPUES de la firma (ADR-0025 D5).
+    if (sample.status !== 'SIGNED') {
+      return HttpResponse.json(
+        { code: 'NOT_REPORTABLE', detail: `El caso debe estar firmado; está en ${sample.status}.` },
+        { status: 409 },
+      );
+    }
+    const body = (await request.json().catch(() => ({}))) as { override?: string; justification?: string };
+    const override = (body.override ?? '').trim();
+
+    // RN-04: read-only tras generarse. Cambiarlo exige override justificado.
+    if (sample.iscn_nomenclature && !override) {
+      return HttpResponse.json(
+        { code: 'ISCN_ALREADY_GENERATED', detail: 'El caso ya tiene ISCN; para cambiarlo se requiere override justificado.' },
+        { status: 409 },
+      );
+    }
+    if (override && !(body.justification ?? '').trim()) {
+      return HttpResponse.json({ code: 'INVALID_ISCN', detail: 'El override requiere una justificación.' }, { status: 400 });
+    }
+    if (override && !/^\d{2,3},(?:X{1,3}Y{0,2}|Y)(?:,[^,]+)*$/.test(override)) {
+      return HttpResponse.json({ code: 'INVALID_ISCN', detail: `No cumple la gramática ISCN: "${override}"` }, { status: 400 });
+    }
+
+    // El motor real cuenta los cromosomas activos; el mock deriva lo equivalente.
+    const activos = (karyotypes[sid]?.chromosomes ?? []).filter((c: Chromosome) => c.is_active !== false);
+    const tieneY = activos.some((c: Chromosome) => c.predicted_class === 'Y');
+    const calculado = activos.length ? `${activos.length},${tieneY ? 'XY' : 'XX'}` : '46,XX';
+
+    sample.iscn_nomenclature = override || calculado;
+    sample.status = 'REPORTED';
+    if (override) pushAudit(sid, 'ISCN_OVERRIDE', null, modeOf(request));
+    return HttpResponse.json({
+      iscn_nomenclature: sample.iscn_nomenclature,
+      is_override: Boolean(override),
+      generated_at: new Date().toISOString(),
+      status: 'REPORTED',
+    });
+  }),
+
+  http.post(`${API}/samples/:id/narrative/`, async ({ params, request }) => {
+    const sid = String(params.id);
+    const sample = samples.find((s) => s.id === sid);
+    if (!sample) return HttpResponse.json({ code: 'NOT_FOUND' }, { status: 404 });
+
+    const body = (await request.json().catch(() => ({}))) as { iscn?: string };
+    const iscn = (body.iscn ?? sample.iscn_nomenclature ?? '').trim();
+
+    // RN-07: sin ISCN no hay nada que narrar, y el informe se emite igual.
+    // Nunca 4xx: el fallo del LLM no puede propagarse como error HTTP.
+    if (!iscn) {
+      return HttpResponse.json({
+        generated: false, reason: 'sin_iscn', iscn_input: '', structured: null,
+        narrative_draft: '', model: '', generated_at: null, is_draft: true,
+      });
+    }
+
+    const anomalias = iscn.split(',').slice(2);
+    const esNormal = anomalias.length === 0;
+    const hallazgo = esNormal
+      ? 'No se observan alteraciones numéricas ni estructurales en las metafases analizadas.'
+      : `Se observan alteraciones compatibles con ${anomalias.join(', ')} en las metafases analizadas.`;
+
+    pushAudit(sid, 'NARRATIVE_GENERATED', null, modeOf(request));
+    return HttpResponse.json({
+      generated: true,
+      reason: null,
+      iscn_input: iscn,
+      structured: {
+        hallazgo,
+        interpretacion: 'El resultado requiere correlación clínica para determinar su significado en el contexto del paciente.',
+        es_normal: esNormal,
+        anomalias_citadas: anomalias,
+        nivel_confianza: 'alta',
+      },
+      narrative_draft: hallazgo,
+      model: 'llama3.2:3b',
+      generated_at: new Date().toISOString(),
+      is_draft: true,
+    });
+  }),
 ];

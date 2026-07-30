@@ -11,7 +11,8 @@
  */
 import { clinicRequest, CLINIC_DEFAULT_BASE_URL } from './samplesClient';
 import type {
-  AuditEvent, AuditReview, AuditReviewResponse, Chromosome, Karyotype, PipelineHealth, ValidateResult, XaiResult,
+  AuditEvent, AuditReview, AuditReviewResponse, Chromosome, IscnResult, Karyotype,
+  NarrativeResult, PipelineHealth, ValidateResult, XaiResult,
 } from '../types/karyotype';
 
 export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL) {
@@ -96,6 +97,35 @@ export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL)
     /** POST /samples/{id}/sign/ — firma MFA del Supervisor. */
     signReport(sampleId: string, mfaCode: string): Promise<{ sample_id: string; status: string; signed_at: string }> {
       return clinicRequest(baseUrl, `/samples/${sampleId}/sign/`, { method: 'POST', body: { mfa_code: mfaCode } });
+    },
+
+    // --- Supervisor S3 (motor ISCN + narrativa, ADR-0025 / ADR-0024) ---
+
+    /**
+     * POST /samples/{id}/iscn/ — genera la nomenclatura y pasa el caso a REPORTED.
+     *
+     * Sin `override`, la calcula la función pura del backend sobre el conteo
+     * validado. Con `override`, el Supervisor impone su string y debe justificarlo:
+     * queda auditado (ISCN_OVERRIDE). RN-04: no hay PATCH sobre el campo.
+     */
+    generateIscn(sampleId: string, override = '', justification = ''): Promise<IscnResult> {
+      return clinicRequest<IscnResult>(baseUrl, `/samples/${sampleId}/iscn/`, {
+        method: 'POST',
+        body: override ? { override, justification } : {},
+      });
+    },
+
+    /**
+     * POST /samples/{id}/narrative/ — borrador narrativo asistido por LLM.
+     *
+     * Devuelve 200 con `generated: false` si el modelo no responde o alucina:
+     * la narrativa nunca bloquea la emisión del informe (RN-07).
+     */
+    generateNarrative(sampleId: string, iscn = ''): Promise<NarrativeResult> {
+      return clinicRequest<NarrativeResult>(baseUrl, `/samples/${sampleId}/narrative/`, {
+        method: 'POST',
+        body: iscn ? { iscn } : {},
+      });
     },
   };
 }

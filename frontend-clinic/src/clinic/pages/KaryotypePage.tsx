@@ -16,6 +16,7 @@ import { KaryotypeCanvas } from '../components/KaryotypeCanvas';
 import { KaryoImageToolbar } from '../components/KaryoImageToolbar';
 import { ChromosomePropertiesPanel } from '../components/ChromosomePropertiesPanel';
 import { SupervisorAuditPanel } from '../components/SupervisorAuditPanel';
+import { SupervisorIscnPanel } from '../components/SupervisorIscnPanel';
 import { XaiModal } from '../components/XaiModal';
 import { useSession } from '../auth';
 import { useKaryotype } from '../hooks/useKaryotype';
@@ -88,6 +89,8 @@ export function KaryotypePage() {
   // (segregación reforzada en backend). SIGNED se muestra para ver el estado firmado.
   const isSupervisor = role === 'supervisor' || role === 'admin';
   const showAudit5 = isSupervisor && (karyotype.sample_status === 'ANALYST_VALIDATED' || karyotype.sample_status === 'SIGNED');
+  // S3: el ISCN se reporta DESPUES de la firma (ADR-0025 D5).
+  const showIscn = isSupervisor && (karyotype.sample_status === 'SIGNED' || karyotype.sample_status === 'REPORTED');
   const busy =
     viewXai.isPending || resolve.isPending || markAnomaly.isPending || validate.isPending ||
     reclassify.isPending || split.isPending || join.isPending || resolveCross.isPending;
@@ -250,6 +253,9 @@ export function KaryotypePage() {
       </div>
 
       {showAudit5 && id && <SupervisorAuditPanel sampleId={id} signed={karyotype.sample_status === 'SIGNED'} />}
+      {showIscn && id && (
+        <SupervisorIscnPanel sampleId={id} iscn={karyotype.sample_iscn ?? ''} status={karyotype.sample_status} />
+      )}
 
       <div className="karyo-audit">
         <button type="button" className="btn-outline" onClick={() => setShowAudit((v) => !v)} data-testid="toggle-audit">
