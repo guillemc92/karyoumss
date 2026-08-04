@@ -5,6 +5,8 @@ from rest_framework.views import APIView
 
 from .models import AuditReview, Chromosome, Sample, SampleStatus
 from .iscn import IscnError
+from .tool_router import responder
+from .tools import catalogo_publicado
 from .permissions import CanRegisterSample, HasOpcion, IsOwnerOrStaff, tiene_opcion
 from .pipeline_client import MLDegradedError, pipeline_client
 from .serializers import (
@@ -715,3 +717,28 @@ class CaseIscnView(APIView):
             'generated_at': sample.iscn_generated_at,
             'status': sample.status,
         }, status=status.HTTP_200_OK)
+
+
+class ToolQueryView(APIView):
+    """POST /tools/query/ - consulta en lenguaje natural (Modulo 6, tool calling).
+
+    Body: {"pregunta": "..."}. El modelo ELIGE la herramienta; el codigo produce
+    la respuesta contra la base. El LLM nunca ve ni redacta un dato.
+
+    Siempre 200: una pregunta fuera de alcance NO es un error del cliente. Se
+    responde `camino: SIN_MATCH` con el catalogo de lo que si se puede consultar.
+
+    Cada respuesta declara su procedencia (`tool`, `source`, `camino`) para que
+    un dato consultado no se confunda con uno inventado.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.list')]
+
+    def post(self, request):
+        respuesta = responder(request.data.get('pregunta', ''))
+        return Response(respuesta.as_dict(), status=status.HTTP_200_OK)
+
+    def get(self, request):
+        """Publica el catalogo: que sabe responder el sistema."""
+        return Response({'herramientas': catalogo_publicado()}, status=status.HTTP_200_OK)

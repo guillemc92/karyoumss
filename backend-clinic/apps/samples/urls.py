@@ -5,6 +5,7 @@ from .views import (
     AuditReviewListView,
     AuditTrailView,
     CaseIscnView,
+    ToolQueryView,
     CaseNarrativeView,
     CaseSignView,
     CaseValidateView,
@@ -63,4 +64,7 @@ urlpatterns = [
 
     # Motor ISCN — fase S3 (ADR-0023 D4, ADR-0025)
     path('samples/<uuid:pk>/iscn/', CaseIscnView.as_view(), name='case-iscn'),
+
+    # Tool calling (Modulo 6): el modelo elige la herramienta, el codigo responde
+    path('tools/query/', ToolQueryView.as_view(), name='tool-query'),
 ]
