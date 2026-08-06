@@ -164,7 +164,133 @@ Para probarlo sin editar el `.env`: `manage.py demo_tools --sin-ia`.
 
 ---
 
-## 6. Endpoint
+## 6. El código, explicado
+
+### 6.1 Una herramienta es un dato, no un `if`
+
+Cada herramienta se declara una sola vez. `description` es lo único que el modelo
+lee para decidir, así que se escribe **para el modelo**, no para un humano.
+`keywords` son las palabras del dominio que la resuelven sin gastar el modelo, y
+`source` es la tabla real, que viaja hasta la pantalla como procedencia.
+
+```python
+@dataclass(frozen=True)
+class ToolSpec:
+    name: str
+    description: str                 # lo único que ve el LLM para elegir
+    source: str                      # tabla real, para la procedencia
+    keywords: tuple[str, ...]        # resuelven SIN modelo
+    run: Callable[[], list[dict]]    # la consulta: Django ORM puro
+
+
+CATALOGO: tuple[ToolSpec, ...] = (
+    ToolSpec(
+        name='CROMOSOMAS_PARA_REVISION',
+        description=(
+            'Lista los cromosomas marcados en naranja: los que el modelo de IA '
+            'clasificó con confianza por debajo del umbral (85%) y que el analista '
+            'todavía no resolvió. Úsala para preguntas sobre qué cromosomas '
+            'requieren atención, revisión manual o tienen baja confianza.'
+        ),
+        source='clinic_chromosomes',
+        keywords=('naranja', 'naranjas', 'baja confianza', 'sin resolver'),
+        run=cromosomas_para_revision,
+    ),
+    ...
+)
+```
+
+Agregar una herramienta es agregar una entrada a esta tupla. El enrutador no se
+toca: ni el catálogo que se le publica al modelo, ni el mensaje de «no sé», ni
+el endpoint.
+
+### 6.2 El modelo devuelve un NOMBRE, no una respuesta
+
+Este es el punto entero de la tarea. Al modelo se le pide un JSON con el nombre
+de una herramienta —`temperature=0.0`, porque enrutar es determinista, no
+creativo— y ahí termina su participación.
+
+```python
+def _elegir_con_modelo(pregunta: str) -> tuple[str, str]:
+    """Pide al modelo el NOMBRE de una herramienta. Devuelve (nombre, motivo)."""
+    client = OpenAI(base_url=settings.CLINIC_LLM_URL, api_key='ollama')
+    resp = client.chat.completions.create(
+        model=settings.CLINIC_LLM_MODEL,          # fijo: llama3.2:3b
+        messages=[{'role': 'system', 'content': _prompt_sistema()},
+                  {'role': 'user',   'content': pregunta}],
+        response_format=SELECCION_JSON_SCHEMA,    # enum de nombres válidos
+        temperature=0.0,
+        max_tokens=200,
+    )
+    datos = json.loads(resp.choices[0].message.content or '{}')
+    return datos.get('herramienta', 'NINGUNA'), datos.get('motivo', '')
+```
+
+El modelo **nunca ve la base de datos**. No recibe filas, no recibe conteos y no
+redacta ningún dato: recibe la pregunta y devuelve una cadena.
+
+### 6.3 Los tres caminos, en orden
+
+```python
+def responder(pregunta: str) -> Respuesta:
+    inicio = time.time()
+
+    # Camino 1 — vocabulario del dominio. NO llama al modelo.
+    tool = buscar_por_palabra_clave(pregunta)
+    if tool is not None:
+        return _ejecutar(tool, 'KEYWORD', inicio)
+
+    # Camino 2 — el modelo elige. Solo si la IA está habilitada.
+    if not settings.CLINIC_LLM_ENABLED:              # ← EL INTERRUPTOR
+        return _sin_match(inicio, 'La asistencia por IA está desactivada y la '
+                                  'consulta no usa el vocabulario del catálogo.')
+    try:
+        nombre, motivo = _elegir_con_modelo(pregunta)
+    except Exception as exc:                          # degradación, no caída
+        logger.warning('Enrutador LLM no disponible: %s', exc)
+        return _sin_match(inicio, 'La asistencia por IA no está disponible.')
+
+    # El modelo puede devolver un nombre inexistente pese al enum: se verifica
+    # contra el catálogo en vez de confiar en que respetó el contrato.
+    if nombre == 'NINGUNA' or nombre not in POR_NOMBRE:
+        return _sin_match(inicio, 'Ninguna herramienta del catálogo responde eso.')
+
+    # Camino 3 — ejecuta la herramienta que el MODELO eligió.
+    return _ejecutar(POR_NOMBRE[nombre], 'LLM', inicio, motivo)
+```
+
+Tres detalles deliberados:
+
+1. **El interruptor está antes de la llamada al modelo**, no dentro. Apagado, el
+   camino KEYWORD sigue intacto: eso es el escenario 4.
+2. **Un fallo del modelo degrada, no rompe.** Si Ollama está caído, la respuesta
+   es «no sé» con el catálogo, no un error 500 (RN-07).
+3. **El nombre se valida contra el catálogo.** `strict: true` en el esquema no es
+   garantía suficiente; el modelo puede inventar un nombre y hay un test que
+   cubre exactamente ese caso.
+
+### 6.4 El código produce la respuesta
+
+`_ejecutar` es el único sitio donde se obtienen datos, y llama a Django ORM:
+
+```python
+def _ejecutar(tool, camino, inicio, motivo=''):
+    filas = tool.run()                    # Django ORM. El modelo no interviene.
+    return Respuesta(
+        camino=camino, tool=tool.name, source=tool.source,
+        filas=filas, motivo=motivo,
+        latency_ms=int((time.time() - inicio) * 1000),
+    )
+```
+
+Que `filas` salga siempre de `tool.run()` es lo que hace que el escenario 1 y el
+2 devuelvan **exactamente los mismos datos** por caminos distintos. Hay un test
+que compara ambas salidas: si difirieran, significaría que el modelo influyó en
+la respuesta.
+
+---
+
+## 7. Endpoint
 
 ```
 POST /api/clinic/tools/query/   {"pregunta": "..."}
@@ -177,7 +303,7 @@ consultar.
 
 ---
 
-## 7. Qué no funcionó
+## 8. Qué no funcionó
 
 Vale la pena documentarlo porque la consigna lo pide y porque son hallazgos
 reales, no hipotéticos:
@@ -203,7 +329,7 @@ herramienta principal devolvía cero filas. Hubo que sembrar un caso específico
 
 ---
 
-## 8. Archivos
+## 9. Archivos
 
 | Archivo | Rol |
 |---|---|
