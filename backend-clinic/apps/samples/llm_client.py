@@ -23,6 +23,7 @@ import time
 from django.conf import settings
 from pydantic import ValidationError
 
+from .corpus import buscar_contexto, formatear_para_prompt, resumen_auditoria
 from .llm_schemas import NARRATIVA_JSON_SCHEMA, NarrativaCariotipo
 
 logger = logging.getLogger(__name__)
@@ -84,13 +85,20 @@ class LlmClient:
         PatientVault (ADR-0016 D2) y no se incluyen jamás.
         """
         resumen = ', '.join(f'{k}: {v}' for k, v in sorted(counts.items())) if counts else 'n/d'
-        return (
-            f'Caso: {chn_code}\n'
-            f'Tipo de muestra: {sample_type}\n'
-            f'Nomenclatura ISCN (ya validada): {iscn}\n'
-            f'Conteo por clase: {resumen}\n\n'
-            f'Redacta el párrafo interpretativo para este resultado.'
-        )
+        partes = [
+            f'Caso: {chn_code}',
+            f'Tipo de muestra: {sample_type}',
+            f'Nomenclatura ISCN (ya validada): {iscn}',
+            f'Conteo por clase: {resumen}',
+        ]
+        # ADR-0028: material verificado sobre el que redactar, en vez de dejar
+        # que el modelo confabule desde su memoria de entrenamiento — que es de
+        # donde salió la alucinación medida en ADR-0024.
+        referencia = formatear_para_prompt(buscar_contexto(iscn))
+        if referencia:
+            partes += ['', referencia]
+        partes += ['', 'Redacta el párrafo interpretativo para este resultado.']
+        return '\n'.join(partes)
 
     def _parse_structured(self, raw: str, iscn: str) -> NarrativaCariotipo:
         """Valida la respuesta contra el contrato de tipos (ADR-0024 D4).
@@ -183,6 +191,9 @@ class LlmClient:
 
                 self._record_success()
                 return {
+                    # ADR-0028 D2: qué material fundamentó el texto y cuánto de
+                    # él no está revisado por un clínico. Va a la auditoría.
+                    **resumen_auditoria(buscar_contexto(iscn)),
                     'text': narrativa.como_texto(),
                     'structured': narrativa.model_dump(mode='json'),
                     'model': self.model,

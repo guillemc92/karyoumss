@@ -722,6 +722,11 @@ def generate_narrative(sample, actor, iscn: str, mode='auto') -> dict:
                 'intentos': result.get('intentos', 1),   # cuántos hizo falta
                 'es_normal': (result.get('structured') or {}).get('es_normal'),
                 'anomalias_citadas': (result.get('structured') or {}).get('anomalias_citadas', []),
+                # ADR-0028 D2: qué entradas del corpus fundamentaron el texto y
+                # cuántas siguen sin firma clínica. Sin esto, un error en una
+                # entrada sería irrastreable: no se sabría qué informes rehacer.
+                'corpus_entradas': result.get('corpus_entradas', []),
+                'corpus_sin_revisar': result.get('corpus_sin_revisar', 0),
                 'is_draft': True,            # requiere revisión humana (D3)
             },
             mode=mode,

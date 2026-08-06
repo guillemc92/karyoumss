@@ -262,3 +262,38 @@ def validate_iscn(iscn: str) -> str:
             _valida_linea_celular(linea)
 
     return prefijo + limpio
+
+
+def descomponer(iscn: str) -> tuple[str, list[str]]:
+    """Extrae (complemento_sexual, anomalías) de un ISCN ya validado.
+
+    Se publica para que el corpus clínico (ADR-0028) pueda buscar por clave
+    exacta: la descomposición ya existía dentro del validador, y reimplementarla
+    afuera garantizaría que las dos versiones se separen con el tiempo.
+
+    Solo mira la **primera** línea celular. En un mosaico las líneas describen
+    poblaciones distintas y fundir sus anomalías daría un contexto clínico que
+    no corresponde a ninguna de ellas.
+
+    Devuelve ('', []) ante un ISCN irreconocible: esta función alimenta una
+    búsqueda de contexto opcional, y hacerla fallar rompería la generación de la
+    narrativa por un dato que no es esencial (RN-07).
+    """
+    texto = (iscn or '').strip()
+    for p in _PREFIJOS:
+        if texto.lower().startswith(p):
+            texto = texto[len(p):]
+            break
+
+    limpio = re.sub(r'\s*([,/])\s*', lambda m: m.group(1), texto)
+    primera = re.split(r'/{1,2}', limpio)[0]
+    primera = _CORCHETE_RE.sub('', primera)
+
+    partes = [p for p in primera.split(',') if p]
+    if len(partes) < 2:
+        return '', []
+
+    sexo, resto = partes[1], partes[2:]
+    if not _SEXO_RE.match(sexo):          # el sexo venía vacío: era una anomalía
+        return '', partes[1:]
+    return sexo, resto
