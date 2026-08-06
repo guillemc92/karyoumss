@@ -110,11 +110,47 @@ def generate_iscn(counts: dict[str, int]) -> str:
     if not counts:
         raise IscnError('sin cromosomas: no hay cariotipo que reportar')
 
+    _valida_conteo(counts)
+
     total = sum(counts.values())
     sexo = _componente_sexual(counts.get('X', 0), counts.get('Y', 0))
     anomalias = _anomalias_numericas(counts)
 
     return ','.join([str(total), sexo, *anomalias])
+
+
+def _valida_conteo(counts: dict[str, int]) -> None:
+    """Rechaza conteos que producirían un ISCN falso pero verosímil.
+
+    El fallo que esto evita es el peor de todos: una clase que el sistema no
+    conoce suma al recuento total pero no genera ninguna anomalía, y el
+    resultado es un `48,XX` — un cariotipo internamente contradictorio (48
+    cromosomas exigen dos ganancias) que *parece* válido. Nada se rompe; el
+    informe simplemente miente.
+
+    Es alcanzable: `ingest_segmentation` copia `predicted_class` tal como llega
+    de backend-ml, y Django no verifica `choices` en `save()` —solo en
+    `full_clean()`—. Una etiqueta inesperada del modelo llega hasta acá.
+
+    Ante un conteo que no se entiende, la respuesta correcta es negarse a
+    emitir el ISCN, no inventarlo. El Supervisor tiene el override.
+    """
+    conocidas = set(AUTOSOMAS) | {'X', 'Y'}
+    desconocidas = sorted(set(counts) - conocidas)
+    if desconocidas:
+        raise IscnError(
+            f'clases no reconocidas: {", ".join(map(repr, desconocidas))} — '
+            f'se esperan 1-22, X, Y')
+
+    negativas = sorted(k for k, v in counts.items() if v < 0)
+    if negativas:
+        raise IscnError(f'conteo negativo en: {", ".join(negativas)}')
+
+    # Mismo rango biológico que exige `validate_iscn`: sin esto el generador
+    # puede producir un ISCN que su propio validador rechaza.
+    total = sum(counts.values())
+    if not _RECUENTO_MIN <= total <= _RECUENTO_MAX:
+        raise IscnError(f'recuento fuera de rango biológico: {total}')
 
 
 def _componente_sexual(n_x: int, n_y: int) -> str:

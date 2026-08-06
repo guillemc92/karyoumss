@@ -221,3 +221,93 @@ class TestRoundTrip:
         counts = _normal('XY')
         counts.update(mods)
         assert validate_iscn(generate_iscn(counts))
+
+
+class TestConteosQueProducirianUnIscnFalso:
+    """El generador no puede confiar en su entrada.
+
+    El fallo que esto cubre es el peor de todos: no romper nada y emitir un
+    diagnóstico verosímil pero falso.
+    """
+
+    def test_una_clase_desconocida_no_infla_el_recuento_en_silencio(self):
+        """Antes producía `48,XX`: 48 cromosomas y CERO anomalías listadas —
+        internamente contradictorio (48 exige dos ganancias) pero con toda la
+        apariencia de un cariotipo válido."""
+        counts = _normal('XX')
+        counts['ZZ'] = 2                      # etiqueta que el sistema no conoce
+        with pytest.raises(IscnError, match='no reconocidas'):
+            generate_iscn(counts)
+
+    def test_es_alcanzable_desde_el_pipeline(self):
+        """`ingest_segmentation` copia `predicted_class` tal como llega de
+        backend-ml, y Django no valida `choices` en `save()`. Una etiqueta
+        inesperada del modelo llega hasta acá."""
+        counts = _normal('XY')
+        counts['23'] = 2                      # cromosoma 23 no existe
+        with pytest.raises(IscnError, match='no reconocidas'):
+            generate_iscn(counts)
+
+    def test_clase_vacia_rechazada(self):
+        counts = _normal('XX')
+        counts[''] = 3
+        with pytest.raises(IscnError, match='no reconocidas'):
+            generate_iscn(counts)
+
+    def test_el_mensaje_nombra_la_clase_culpable(self):
+        """Sin el nombre, diagnosticar de dónde vino la etiqueta es adivinar."""
+        counts = _normal('XX')
+        counts['ZZ'] = 1
+        with pytest.raises(IscnError, match="'ZZ'"):
+            generate_iscn(counts)
+
+    def test_conteo_negativo_rechazado(self):
+        """Producía `-21,-21,-21`: perder tres copias de un cromosoma que
+        tiene dos."""
+        counts = _normal('XX')
+        counts['21'] = -1
+        with pytest.raises(IscnError, match='negativo'):
+            generate_iscn(counts)
+
+    def test_recuento_fuera_de_rango_biologico(self):
+        with pytest.raises(IscnError, match='rango biológico'):
+            generate_iscn({'X': 2})           # un cariotipo de 2 cromosomas
+
+    def test_el_generador_nunca_produce_algo_que_su_validador_rechace(self):
+        """Propiedad de consistencia interna. Antes se rompía: `generate_iscn`
+        no comprobaba el rango que `validate_iscn` sí exige."""
+        for mods in ({}, {'21': 3}, {'18': 3}, {'21': 1}, {'8': 4}, {'8': 3, '21': 1}):
+            for sexo in ('XX', 'XY'):
+                counts = _normal(sexo)
+                counts.update(mods)
+                validate_iscn(generate_iscn(counts))
+
+
+class TestGeneraNomenclaturaDelEstandar:
+    """Salida contrastada contra ejemplos publicados en ISCN 2024."""
+
+    @pytest.mark.parametrize('sexo_counts, esperado, ref', [
+        ({'X': 1},               '45,X',      '§5.3.1.1 i   Turner'),
+        ({'X': 3},               '47,XXX',    '§5.3.1.1 ii  triple X'),
+        ({'X': 1, 'Y': 2},       '47,XYY',    '§5.3.1.1 iii XYY'),
+        ({'X': 3, 'Y': 1},       '48,XXXY',   '§5.3.1.1 iv  XXXY'),
+        ({'X': 2, 'Y': 1},       '47,XXY',    '§4.2.1 e     Klinefelter'),
+    ])
+    def test_complemento_sexual(self, sexo_counts, esperado, ref):
+        """§5.1 f: los sexuales se escriben tal cual, NUNCA con +/-."""
+        counts = {str(n): 2 for n in range(1, 23)}
+        counts.update(sexo_counts)
+        assert generate_iscn(counts) == esperado
+
+    @pytest.mark.parametrize('mods, esperado, ref', [
+        ({'21': 3},           '47,XX,+21',      '§5.3.2 i   Down'),
+        ({'13': 3, '21': 3},  '48,XX,+13,+21',  '§5.3.2 ii  doble trisomía'),
+        ({'22': 1},           '45,XX,-22',      '§5.3.2 iii monosomía 22'),
+        ({'8': 3, '21': 1},   '46,XX,+8,-21',   '§5.3.2 iv  ganancia y pérdida'),
+        ({'8': 4},            '48,XX,+8,+8',    'tabla 8 #17 tetrasomía'),
+    ])
+    def test_anomalias_autosomicas(self, mods, esperado, ref):
+        """§4.3: orden cromosómico, ganancias antes que pérdidas."""
+        counts = _normal('XX')
+        counts.update(mods)
+        assert generate_iscn(counts) == esperado
