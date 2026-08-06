@@ -625,6 +625,36 @@ export const handlers = [
     });
   }),
 
+  // --- Tool calling (Modulo 6): el modelo elige, el codigo responde ---
+
+  // Espejo del catalogo del backend (apps/samples/tools.py).
+  http.get(`${API}/tools/query/`, () => HttpResponse.json({ herramientas: CATALOGO_MOCK })),
+
+  http.post(`${API}/tools/query/`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { pregunta?: string };
+    const pregunta = (body.pregunta ?? '').trim().toLowerCase();
+    const t0 = Date.now();
+
+    if (!pregunta) return HttpResponse.json(sinMatch('La consulta esta vacia.', t0));
+
+    // Camino 1: palabra del catalogo -> sin modelo, rapido.
+    for (const [kw, tool] of Object.entries(KEYWORDS_MOCK)) {
+      if (pregunta.includes(kw)) return HttpResponse.json(ejecutar(tool, 'KEYWORD', '', t0));
+    }
+
+    // Camino 2: el modelo elige. Solo si la IA esta habilitada.
+    if (!iaHabilitada) {
+      return HttpResponse.json(sinMatch(
+        'La asistencia por IA esta desactivada y la consulta no usa el vocabulario del catalogo.', t0));
+    }
+    // El "modelo" del mock: reconoce parafrasis de revision manual.
+    if (/(analista|revis|mire|mirar|atenci[oó]n|dudos)/.test(pregunta)) {
+      return HttpResponse.json(ejecutar(
+        'CROMOSOMAS_PARA_REVISION', 'LLM', 'Revision manual para confirmar clasificacion', t0));
+    }
+    return HttpResponse.json(sinMatch('Ninguna herramienta del catalogo responde esa pregunta.', t0));
+  }),
+
   http.post(`${API}/samples/:id/narrative/`, async ({ params, request }) => {
     const sid = String(params.id);
     const sample = samples.find((s) => s.id === sid);
@@ -667,3 +697,66 @@ export const handlers = [
     });
   }),
 ];
+
+// --- Tool calling: catalogo y ejecucion (espejo de tools.py) ---
+
+const CATALOGO_MOCK = [
+  { herramienta: 'CROMOSOMAS_PARA_REVISION', responde: 'Cromosomas naranjas: confianza bajo el umbral, sin resolver.', fuente: 'clinic_chromosomes' },
+  { herramienta: 'CASOS_PENDIENTES_FIRMA', responde: 'Casos validados esperando la firma del Supervisor.', fuente: 'clinic_samples' },
+  { herramienta: 'CASOS_REPORTADOS', responde: 'Casos cerrados con nomenclatura ISCN emitida.', fuente: 'clinic_samples' },
+  { herramienta: 'CASOS_EN_PROCESO', responde: 'Muestras que el pipeline de IA todavia procesa.', fuente: 'clinic_samples' },
+];
+
+const KEYWORDS_MOCK: Record<string, string> = {
+  naranja: 'CROMOSOMAS_PARA_REVISION',
+  naranjas: 'CROMOSOMAS_PARA_REVISION',
+  'baja confianza': 'CROMOSOMAS_PARA_REVISION',
+  'pendiente de firma': 'CASOS_PENDIENTES_FIRMA',
+  'sin firmar': 'CASOS_PENDIENTES_FIRMA',
+  reportado: 'CASOS_REPORTADOS',
+  reportados: 'CASOS_REPORTADOS',
+  'en proceso': 'CASOS_EN_PROCESO',
+};
+
+/** El feature flag del lado del mock. Los tests lo cambian con `setIaHabilitada`. */
+let iaHabilitada = true;
+export function setIaHabilitada(v: boolean): void { iaHabilitada = v; }
+
+function filasDe(tool: string): Record<string, string>[] {
+  if (tool === 'CROMOSOMAS_PARA_REVISION') {
+    return [
+      { caso: 'CHN-DEMO-TOOLS', clase: 'X', confianza: '54.8%', estado: 'Pendiente de revision' },
+      { caso: 'CHN-DEMO-TOOLS', clase: '9', confianza: '61.2%', estado: 'Pendiente de revision' },
+      { caso: 'CHN-DEMO-TOOLS', clase: '13', confianza: '70.4%', estado: 'Pendiente de revision' },
+    ];
+  }
+  if (tool === 'CASOS_PENDIENTES_FIRMA') {
+    return samples.filter((s) => s.status === 'ANALYST_VALIDATED')
+      .map((s) => ({ chn_code: s.chn_code, estado: s.status, tipo_muestra: s.metadata?.gender ?? '-' }));
+  }
+  if (tool === 'CASOS_REPORTADOS') {
+    return samples.filter((s) => s.status === 'REPORTED')
+      .map((s) => ({ chn_code: s.chn_code, iscn: s.iscn_nomenclature ?? '-' }));
+  }
+  return samples.filter((s) => s.status === 'PROCESSING')
+    .map((s) => ({ chn_code: s.chn_code, estado: s.status }));
+}
+
+function ejecutar(tool: string, camino: string, motivo: string, t0: number) {
+  const filas = filasDe(tool);
+  const spec = CATALOGO_MOCK.find((c) => c.herramienta === tool);
+  return {
+    camino, tool, source: spec?.fuente ?? null, filas, motivo,
+    mensaje: filas.length ? `${filas.length} resultado(s).` : 'Sin resultados para esa consulta.',
+    latency_ms: Math.max(1, Date.now() - t0),
+  };
+}
+
+function sinMatch(detalle: string, t0: number) {
+  return {
+    camino: 'SIN_MATCH', tool: null, source: null, filas: [], motivo: '',
+    mensaje: `No puedo responder eso. ${detalle}`,
+    latency_ms: Math.max(1, Date.now() - t0),
+    catalogo: CATALOGO_MOCK,
+  };
+}

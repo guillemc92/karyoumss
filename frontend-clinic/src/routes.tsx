@@ -6,6 +6,7 @@ import { SampleRegisterPage } from './clinic/pages/SampleRegisterPage';
 import { DegradedModePage } from './clinic/pages/DegradedModePage';
 import { KaryotypePage } from './clinic/pages/KaryotypePage';
 import { SupervisorInboxPage } from './clinic/pages/SupervisorInboxPage';
+import { ToolQueryPage } from './clinic/pages/ToolQueryPage';
 
 export function AppRoutes() {
   return (
@@ -18,6 +19,7 @@ export function AppRoutes() {
       <Route path="/clinic/samples/:id/karyotype" element={<KaryotypePage />} />
       <Route path="/clinic/samples/:id/edit" element={<SampleFormPage />} />
       <Route path="/clinic/supervisor" element={<SupervisorInboxPage />} />
+      <Route path="/clinic/consultas" element={<ToolQueryPage />} />
       <Route path="/clinic/degraded" element={<DegradedModePage />} />
     </Routes>
   );

@@ -39,6 +39,13 @@ export function BiomedShell({ children }: BiomedShellProps) {
               <i className="fas fa-user-check"></i> Bandeja
             </Link>
           )}
+          <Link
+            to="/clinic/consultas"
+            className={`nav-item${location.pathname.startsWith('/clinic/consultas') ? ' active' : ''}`}
+            data-testid="nav-consultas"
+          >
+            <i className="fas fa-comments"></i> Consultas
+          </Link>
           <Link to="/clinic/degraded" className="nav-item">
             <i className="fas fa-exclamation-triangle"></i> Modo Manual
           </Link>
