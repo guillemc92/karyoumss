@@ -135,12 +135,61 @@ class TestValidacionDeOverride:
     """El Supervisor es la autoridad médica: se valida la GRAMÁTICA, no la
     plausibilidad clínica (puede reportar hallazgos que el motor no deriva)."""
 
+    # Ejemplos REALES del estándar ISCN 2024, con su sección. No inventados:
+    # la versión previa de estos tests usaba formas simplificadas («del(5p)»
+    # en vez de «del(5)(q13)») y por eso no detectó que el validador rechazaba
+    # el 44% de la nomenclatura legítima.
     @pytest.mark.parametrize('iscn', [
-        '46,XX', '46,XY', '47,XY,+21', '45,X', '47,XXY', '48,XXY,+21',
-        '46,XX,del(5p)', '46,XY,t(9;22)', '47,XX,+21,+18', '46,XY,inv(9)',
+        '46,XX',                          # §5.2 i    femenino normal
+        '46,XY',                          # §5.2 ii   masculino normal
+        '46,U',                           # §5.2 iii  sexo no revelado
+        '45,X',                           # §5.3.1.1  Turner
+        '48,XXXY',                        # §5.3.1.1  cuatro sexuales
+        '47,XX,+21',                      # §5.3.2 i  Down
+        '46,XX,+8,-21',                   # §5.3.2 iv ganancia y pérdida
+        '46,XX,del(5)(q13)',              # §5.5.2 i  deleción terminal
+        '46,XX,del(5)(q13q33)',           # §5.5.2 iii deleción intersticial
+        '46,XY,t(9;22)(q34;q11.2)',       # §5.5.18   Filadelfia
+        '46,XX,inv(2)(p23p13)',           # §5.5.10 i inversión paracéntrica
+        '46,XX,i(17)(q10)',               # §5.5.11 i isocromosoma
+        '46,XX,r(7)(p15q31)',             # §5.5.16.1 anillo
+        '46,XX,add(19)(p13.3)',           # §5.5.1 i  material desconocido
+        '45,XX,dic(13;15)(q22;q24)',      # §5.5.4 ii dicéntrico
+        '46,XY,der(1)t(1;3)(p22;q13.1)',  # §5.5.3 d  derivado encadenado
+        '47,XX,+mar',                     # §5.5.12 i marcador
+        '47,XX,+der(5)t(2;5)(q21;q31)',   # tabla 5   derivado supernumerario
+        '45,XY,psu dic(15;13)(q12;q12)',  # §5.5.4 h  espacio significativo
+        '46,X,fra(X)(q27.3)',             # §5.5.7 i  sitio frágil
+        '46,XX,del(6)(q13q23)x2',         # §5.6 i    copias múltiples
     ])
-    def test_acepta_nomenclatura_valida(self, iscn):
-        assert validate_iscn(iscn) == iscn
+    def test_acepta_nomenclatura_del_estandar(self, iscn):
+        assert validate_iscn(iscn)
+
+    @pytest.mark.parametrize('iscn', [
+        '45,X[13]/46,XY[17]',             # §5.3.1.1 v  mosaico
+        'mos 47,XXY[10]/46,XY[20]',       # §5.3.1.1 vi prefijo mos
+        '46,XX[5]//46,XY[25]',            # §4.5.3 iii  quimera post-trasplante
+        '45~48,XX,+8[cp10]',              # §4.2.1 j    cariotipo compuesto
+        '47,XY,+mar dn[14]/46,XY[16]',    # §4.4.1 b    dos abreviaturas
+    ])
+    def test_acepta_mosaicismo_y_recuentos(self, iscn):
+        """El Supervisor necesita reportar mosaicismo; rechazarlo le bloquea
+        trabajo legítimo."""
+        assert validate_iscn(iscn)
+
+    @pytest.mark.parametrize('iscn', [
+        '47,XX,+21c',                     # §4.2.1 e  constitucional
+        '46,XX,t(5;6)(q34;q23)mat',       # §4.2.1 g  origen materno
+        '46,XY,?del(1)(p36.1)',           # §4.2.1 k  identificación dudosa
+        '47,XX,+?8',                      # §4.2.1 k  cromosoma dudoso
+    ])
+    def test_acepta_sufijos_y_dudas(self, iscn):
+        assert validate_iscn(iscn)
+
+    def test_preserva_el_espacio_significativo(self):
+        """§4.4.1: el espacio SÍ es significativo entre dos abreviaturas.
+        Borrarlo convertiría «psu dic» en «psudic» y corrompería el dato."""
+        assert validate_iscn('45,XY, psu dic(15;13)(q12;q12)') ==             '45,XY,psu dic(15;13)(q12;q12)'
 
     def test_normaliza_espacios(self):
         assert validate_iscn('  47, XY, +21  ') == '47,XY,+21'
