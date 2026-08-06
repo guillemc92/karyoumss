@@ -1,6 +1,6 @@
 {
   "arch": "efficientnet_b3",
-  "img_size": 224,
+  "img_size": 300,
   "num_classes": 24,
   "normalization": {
     "mean": [
@@ -20,9 +20,11 @@
     "fill": 255
   },
   "split": "by_karyogram",
-  "val_accuracy": 0.6771,
-  "val_macro_f1": 0.6517,
-  "val_karyograms": 164,
-  "train_karyograms": 932,
-  "version": "v2"
+  "val_accuracy": 0.7284,
+  "val_macro_f1": 0.6958,
+  "val_karyograms": 172,
+  "train_karyograms": 978,
+  "sampler_power": 0.5,
+  "rotation_deg": 15,
+  "version": "v3"
 }
