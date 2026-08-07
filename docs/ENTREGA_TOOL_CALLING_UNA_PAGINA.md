@@ -99,11 +99,13 @@ de ajuste contra el mismo banco. Los arreglos atacan clases de fallo, no ejemplo
 concretos, pero la medida ya está contaminada. La prueba honesta sería un
 conjunto nuevo escrito sin mirar los fallos; queda pendiente.
 
-**La latencia del camino LLM es inaceptable para uso interactivo: ~94 segundos**,
-contra 7–34 ms del camino KEYWORD — tres órdenes de magnitud. Es el costo de un
-modelo de 3B en CPU sin GPU. La arquitectura de dos caminos existe justamente por
-esto: las preguntas frecuentes se resuelven con vocabulario y el modelo queda como
-red de seguridad para las que no.
+**La latencia del camino LLM es inaceptable para uso interactivo, y empeoró al
+corregir la abstención: de ~94 s a ~190 s**, contra 28 ms del camino KEYWORD.
+Enseñar al modelo a abstenerse exigió un prompt mucho más largo, y en un modelo
+de 3B sobre CPU cada token del prompt se paga en cada consulta. Es un intercambio
+deliberado —velocidad por no dar datos equivocados— y se resuelve con GPU o con
+un catálogo de palabras clave más amplio. La arquitectura de dos caminos existe
+para que la mayoría de las preguntas no paguen ese coste.
 
 **El modelo devuelve nombres que no están en el enum**, pese a declarar
 `strict: true` en el esquema. El enrutador verifica el nombre contra el catálogo

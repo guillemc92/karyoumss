@@ -81,27 +81,38 @@ La palabra `naranjas` está en el catálogo → resuelve **sin llamar al modelo*
 Camino      : KEYWORD
 Herramienta : CROMOSOMAS_PARA_REVISION
 Fuente      : clinic_chromosomes
-Latencia    : 7 ms
-4 resultado(s).
-  - caso=CHN-DEMO-TOOLS | clase=X  | confianza=54.8% | estado=Pendiente de revisión
-  - caso=CHN-DEMO-TOOLS | clase=9  | confianza=61.2% | estado=Pendiente de revisión
-  - caso=CHN-DEMO-TOOLS | clase=13 | confianza=70.4% | estado=Pendiente de revisión
-  - caso=CHN-DEMO-TOOLS | clase=21 | confianza=78.3% | estado=Pendiente de revisión
+Latencia    : 33 ms
+50 resultado(s) — se muestran los primeros 50, puede haber más.
+  - caso=CHN-2026-08-06-0001 | clase=1 | confianza=17.2% | estado=Pendiente de revisión
+  - caso=CHN-2026-08-06-9208 | clase=1 | confianza=17.2% | estado=Pendiente de revisión
+  - caso=CHN-2026-08-06-9329 | clase=1 | confianza=17.2% | estado=Pendiente de revisión
+  - caso=CHN-2026-08-06-0001 | clase=5 | confianza=25.9% | estado=Pendiente de revisión
+  - caso=CHN-2026-08-06-9208 | clase=5 | confianza=25.9% | estado=Pendiente de revisión
+  ... y 45 más
 ```
+
+> Los datos son **reales**, de casos registrados por el pipeline, no sembrados
+> para la demo. Las confianzas bajas (17,2%) vienen de la segmentación clásica
+> sobre metafases crudas, que es una limitación conocida del pipeline de visión y
+> ajena a este módulo. La consulta ordena por confianza ascendente: se muestran
+> primero los cromosomas más dudosos, que es lo que el analista debe mirar antes.
 
 ### Escenario 2 — Sinónimo
 
 **Pregunta:** «¿Cuáles necesitan que el analista los mire de nuevo?»
 Ninguna palabra del catálogo coincide → escala al modelo, que elige la misma
-herramienta. **Mismos 4 cromosomas que el escenario 1.**
+herramienta. **Mismas filas que el escenario 1.**
 
 ```
 Camino      : LLM
 Herramienta : CROMOSOMAS_PARA_REVISION
 Fuente      : clinic_chromosomes
-Motivo (LLM): Revisión manual para confirmar clasificación
-Latencia    : 97515 ms
-4 resultado(s).   ← idénticos al escenario 1
+Motivo (LLM): dudosos o mal clasificados
+Latencia    : 190386 ms
+50 resultado(s) — se muestran los primeros 50, puede haber más.
+  - caso=CHN-2026-08-06-0001 | clase=1 | confianza=17.2% | estado=Pendiente de revisión
+  - caso=CHN-2026-08-06-9208 | clase=1 | confianza=17.2% | estado=Pendiente de revisión
+  ... y 48 más   ← idénticas al escenario 1
 ```
 
 ### Escenario 3 — Fuera de alcance
@@ -128,9 +139,14 @@ Lo que SÍ puedo responder:
 Camino      : KEYWORD
 Herramienta : CROMOSOMAS_PARA_REVISION
 Fuente      : clinic_chromosomes
-Latencia    : 7 ms
-4 resultado(s).   ← idénticos al escenario 1
+Latencia    : 28 ms
+50 resultado(s) — se muestran los primeros 50, puede haber más.
+  - caso=CHN-2026-08-06-0001 | clase=1 | confianza=17.2% | estado=Pendiente de revisión
+  ... y 49 más   ← idénticas al escenario 1, con la IA apagada
 ```
+
+**28 ms contra 190 386 ms del escenario 2**: el mismo dato, por el camino que no
+llama al modelo. Esa es la prueba de que la respuesta la produce el código.
 
 ### Escenario 4-bis — Lo que aporta la IA, medido
 
@@ -483,11 +499,17 @@ consultar.
 Vale la pena documentarlo porque la consigna lo pide y porque son hallazgos
 reales, no hipotéticos:
 
-**La latencia del camino LLM es alta: ~97 segundos** contra 7 ms del camino
-KEYWORD. Es el costo de un modelo de 3B en CPU sin GPU. En producción, o se
-amplía el catálogo de palabras clave (que resuelve la mayoría de las preguntas
-reales), o se corre el modelo en hardware con GPU. La arquitectura de dos caminos
-existe justamente por esto.
+**La latencia del camino LLM es alta y empeoró al corregir la abstención: de
+~94 s se pasó a ~190 s**, contra 28 ms del camino KEYWORD. Son casi cuatro
+órdenes de magnitud. La causa es directa: enseñar al modelo a abstenerse exigió
+un prompt de sistema mucho más largo (categorías de lo que no cubre, regla de
+forma, fronteras entre herramientas), y en un modelo de 3B sobre CPU cada token
+del prompt se paga en cada consulta.
+
+**Es un intercambio deliberado, no un descuido:** se cambió velocidad por no dar
+datos equivocados. En producción se resuelve con GPU o con un catálogo de
+palabras clave más amplio; la arquitectura de dos caminos existe justamente para
+que la mayoría de las preguntas no paguen ese coste.
 
 **El modelo puede devolver un nombre que no está en el enum**, pese a declarar
 `strict: true` en el esquema. Por eso el enrutador verifica que el nombre exista
