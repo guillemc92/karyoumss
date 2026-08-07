@@ -51,6 +51,18 @@ Las preguntas sobre los conceptos que las herramientas manipulan («¿quién tie
 permiso para firmar?», «¿qué umbral deberíamos usar?») acaban en la herramienta
 dueña del concepto.
 
+| Banco de 56 | Antes de corregir | Después |
+|---|---|---|
+| Global | 45/56 — 80% | **48/56 — 86%** |
+| Dentro de alcance | 34/38 — 89% | 34/38 — 89% |
+| Fuera de alcance | 11/18 — 61% | 14/18 — **78%** |
+
+**Lo que la corrección no consiguió**, y conviene decirlo: el guardián del atajo
+funcionó —las preguntas de «naranja» ya llegan al modelo en vez de resolverse por
+coincidencia literal— pero **el modelo también las falla**, hacia la misma
+herramienta. Para el usuario el resultado es idéntico: el arreglo movió el fallo
+de sitio, no lo eliminó.
+
 **Causa 1:** la regla de abstención era una línea suelta, sin ejemplos. El modelo
 enrutaba por parecido temático — «¿quién es el jefe del servicio?» iba a
 `CASOS_PENDIENTES_FIRMA`. Se corrigió enumerando lo que ninguna herramienta cubre

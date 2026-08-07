@@ -237,11 +237,11 @@ catálogo**. Abstenerse ante ellas es fácil. Al ampliar el banco a 56 preguntas
 con 18 fuera de alcance —seis de ellas **adversarias**: fuera de alcance pero
 escritas con el vocabulario del propio dominio— el resultado fue otro:
 
-| | Banco de 30 | **Banco de 56** |
-|---|---|---|
-| Global | 29/30 — 97% | **45/56 — 80%** |
-| Dentro de alcance | 23/24 — 96% | 34/38 — 89% |
-| **Fuera de alcance** | 6/6 — 100% | **11/18 — 61%** |
+| | Banco de 30 | Banco de 56 | Banco de 56, tras corregir |
+|---|---|---|---|
+| Global | 29/30 — 97% | 45/56 — 80% | **48/56 — 86%** |
+| Dentro de alcance | 23/24 — 96% | 34/38 — 89% | 34/38 — 89% |
+| **Fuera de alcance** | 6/6 — 100% | **11/18 — 61%** | 14/18 — **78%** |
 
 El patrón de los fallos es nítido: **las preguntas sobre los conceptos que las
 herramientas manipulan van a parar a la herramienta dueña del concepto.**
@@ -288,6 +288,28 @@ Se detectó comprobando el detector contra el banco *antes* de medir (segundos)
 en lugar de después (25 minutos). Tras corregirlo: cero colisiones con claves del
 catálogo, y el atajo dispara en 5 preguntas con 5 aciertos y **0 falsos
 positivos** — antes fallaba 3.
+
+### Qué consiguió la corrección, y qué no
+
+La abstención subió de 61% a 78%: se recuperaron las tres preguntas sobre reglas
+y permisos («cómo se calcula el ISCN», «quién tiene permiso para firmar», «qué
+umbral usar»). El global pasó de 80% a **86%**.
+
+Pero conviene leer el detalle antes de darlo por resuelto:
+
+**El guardián del atajo funcionó y aun así el resultado no cambió** para las dos
+preguntas de «naranja». Ya no las intercepta la coincidencia literal —ahora
+llegan al modelo, que es lo que se buscaba— y el modelo también las falla, hacia
+la misma herramienta. El arreglo era correcto y necesario, pero **movió el fallo
+de sitio en vez de eliminarlo**. Presentarlo como resuelto sería falso.
+
+**Dentro de alcance el número no se movió (34/38), pero cambió la composición.**
+Se arregló la pregunta con negación y apareció otra: «¿cuánto falta para que
+terminen las muestras de hoy?» ahora se abstiene. Revisándola, **la etiqueta del
+banco estaba mal**: la herramienta lista las muestras en proceso, no puede
+calcular cuánto tiempo falta. Abstenerse es la respuesta correcta y el error
+estaba en lo que se esperaba, no en el sistema. Se deja anotado en vez de
+corregir la etiqueta a posteriori, que sería ajustar la vara al resultado.
 
 ### Limitación metodológica
 
