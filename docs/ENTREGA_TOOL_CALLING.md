@@ -162,11 +162,11 @@ El reparto importa más que el total. Fallar **dentro** de alcance manda al
 usuario a «no sé»; fallar **fuera** le entrega datos reales que no responden su
 pregunta, que es mucho peor.
 
-| | Primera medición | Tras endurecer el prompt |
-|---|---|---|
-| **Fuera de alcance** | 2/6 — **33%** | 6/6 — **100%** |
-| Dentro de alcance | 22/24 — 92% | 21/24 — 88% |
-| **Global** | 24/30 — 80% | 27/30 — **90%** |
+| | Primera medición | Prompt endurecido | Descripciones equilibradas |
+|---|---|---|---|
+| **Fuera de alcance** | 2/6 — **33%** | 6/6 — 100% | 6/6 — **100%** |
+| Dentro de alcance | 22/24 — 92% | 21/24 — 88% | 23/24 — **96%** |
+| **Global** | 24/30 — 80% | 27/30 — 90% | 29/30 — **97%** |
 
 **El hallazgo que justificó el cambio:** con la regla de abstención escrita como
 una línea suelta, el modelo elegía una herramienta en 4 de cada 6 preguntas fuera
@@ -191,11 +191,38 @@ de que las herramientas solo listan el estado **actual** del flujo, y la
 prioridad invertida —elegir mal es peor que abstenerse—.
 
 **El peaje, medido y no escondido:** endurecer la abstención costó una pregunta
-válida (92% → 88% dentro de alcance). El intercambio compensa porque los dos
-errores no cuestan lo mismo, pero es un intercambio real.
+válida (92% → 88% dentro de alcance). Los dos errores no cuestan lo mismo, así
+que el intercambio compensaba — pero era un intercambio real, y se resolvió en
+la segunda iteración.
 
-Los 3 fallos que quedan caen todos en `CROMOSOMAS_PARA_REVISION`: es el atractor
-por defecto del modelo cuando la pregunta no le resulta clara.
+### Segunda iteración — el atractor era un problema de redacción
+
+Tras el primer arreglo, los 3 fallos restantes caían **todos** en
+`CROMOSOMAS_PARA_REVISION`. La causa no era que las otras herramientas
+estuvieran mal definidas: era que esa descripción estaba **mucho mejor escrita
+que las demás** —cuatro líneas con umbral, sinónimos y casos de uso, frente a
+dos líneas escuetas del resto—. El modelo se iba a la que mejor entendía.
+
+Además, las preguntas que fallaba usaban vocabulario ausente de toda
+descripción: «máquina», «corriendo», «trabajando», «sistema».
+
+La corrección fue **equilibrar las cuatro** y darle a cada una su frontera:
+
+- Cada descripción declara su etapa del flujo («es el trabajo en curso, antes de
+  que haya resultados que revisar»; «es la última etapa antes de reportar»).
+- Se distingue el grano: `CROMOSOMAS_PARA_REVISION` baja al detalle de los
+  cromosomas **dentro** de un caso; las otras tres hablan de **casos** completos.
+- Se añadió delimitación negativa donde hacía falta: «NO sirve para saber en qué
+  está trabajando el sistema».
+- Se incorporó el vocabulario real de los usuarios, no el del catálogo.
+
+Resultado: **96% dentro de alcance sin perder el 100% de abstención**. Las dos
+dimensiones quedaron por encima del punto de partida a la vez.
+
+**El único fallo que queda** es de etiqueta discutible: «¿qué está listo para la
+última revisión?» admite honestamente dos lecturas —la firma del supervisor o el
+último repaso del analista—. Se deja en el banco a propósito: los usuarios
+preguntan así, y quitarla porque el sistema la falla sería maquillar el número.
 
 ---
 

@@ -133,10 +133,14 @@ CATALOGO: tuple[ToolSpec, ...] = (
     ToolSpec(
         name='CROMOSOMAS_PARA_REVISION',
         description=(
-            'Lista los cromosomas marcados en naranja: los que el modelo de IA '
-            'clasificó con confianza por debajo del umbral (85%) y que el analista '
-            'todavía no resolvió. Úsala para preguntas sobre qué cromosomas '
-            'requieren atención, revisión manual o tienen baja confianza.'
+            'Lista CROMOSOMAS individuales marcados en naranja: los que se '
+            'clasificaron con confianza por debajo del umbral (85%) y que el '
+            'analista todavía no resolvió. Úsala para preguntas sobre qué '
+            'cromosomas requieren revisión manual, están dudosos, mal '
+            'clasificados o tienen baja confianza. '
+            'NO sirve para saber en qué está trabajando el sistema ni qué '
+            'casos están en cada etapa: esta herramienta baja al detalle de '
+            'los cromosomas dentro de un caso.'
         ),
         source='clinic_chromosomes',
         keywords=('naranja', 'naranjas', 'baja confianza', 'sin resolver', 'pendiente de revision'),
@@ -145,9 +149,11 @@ CATALOGO: tuple[ToolSpec, ...] = (
     ToolSpec(
         name='CASOS_PENDIENTES_FIRMA',
         description=(
-            'Lista los casos que el analista ya validó y esperan la firma digital '
-            'del Supervisor. Úsala para preguntas sobre qué casos están esperando '
-            'al supervisor o pendientes de firma.'
+            'Lista CASOS completos que el analista ya validó y que esperan la '
+            'firma digital del Supervisor. Úsala para preguntas sobre qué casos '
+            'esperan al supervisor, qué toca firmar o autorizar, qué está '
+            'pendiente de firma, o qué está listo para la última revisión antes '
+            'de emitir el informe. Es la última etapa antes de reportar.'
         ),
         source='clinic_samples',
         keywords=('pendiente de firma', 'esperando firma', 'validado por analista', 'sin firmar'),
@@ -156,8 +162,11 @@ CATALOGO: tuple[ToolSpec, ...] = (
     ToolSpec(
         name='CASOS_REPORTADOS',
         description=(
-            'Lista los casos cerrados, con su nomenclatura ISCN ya emitida. Úsala '
-            'para preguntas sobre casos terminados, reportados o con ISCN.'
+            'Lista CASOS ya cerrados y firmados, con su nomenclatura ISCN '
+            'emitida. Úsala para preguntas sobre casos terminados, reportados, '
+            'entregados al médico solicitante, con resultado final o que ya '
+            'completaron todo el proceso. Es la etapa final: aquí ya no queda '
+            'nada por hacer.'
         ),
         source='clinic_samples',
         keywords=('reportado', 'reportados', 'con iscn', 'cerrado', 'cerrados'),
@@ -166,8 +175,12 @@ CATALOGO: tuple[ToolSpec, ...] = (
     ToolSpec(
         name='CASOS_EN_PROCESO',
         description=(
-            'Lista las muestras que el pipeline de IA todavía está procesando. '
-            'Úsala para preguntas sobre qué muestras están en proceso o en cola.'
+            'Lista las muestras que el sistema está analizando AHORA MISMO: el '
+            'pipeline todavía no termina con ellas. Úsala para preguntas sobre '
+            'qué está corriendo, qué está procesando la máquina, en qué está '
+            'trabajando el sistema, qué hay en la cola, o qué muestras todavía '
+            'no terminan el análisis. Es el trabajo en curso, antes de que '
+            'haya resultados que revisar.'
         ),
         source='clinic_samples',
         keywords=('en proceso', 'procesando', 'en cola'),
