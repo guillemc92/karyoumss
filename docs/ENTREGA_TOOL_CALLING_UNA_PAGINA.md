@@ -31,6 +31,26 @@ dejaría de ser reproducible y los cuatro escenarios no serían verificables dos
 
 ## Qué no funcionó
 
+**El modelo elegía una herramienta en 4 de cada 6 preguntas fuera de alcance.**
+Es el fallo más grave que apareció, y los cuatro escenarios no lo detectaban: la
+pregunta del escenario 3 resultó ser una de las dos que sí acertaba. Se encontró
+midiendo con un banco de 30 preguntas etiquetadas (`manage.py eval_enrutado`),
+no ejecutando la demo.
+
+| | Antes | Después |
+|---|---|---|
+| Fuera de alcance | 2/6 — **33%** | 6/6 — **100%** |
+| Dentro de alcance | 22/24 — 92% | 21/24 — 88% |
+| Global | 24/30 — 80% | 27/30 — **90%** |
+
+La causa: la regla de abstención era una línea suelta, sin ejemplos, y las
+descripciones solo decían para qué sirve cada herramienta, nunca para qué **no**.
+El modelo enrutaba por parecido temático — «¿quién es el jefe del servicio?» iba
+a `CASOS_PENDIENTES_FIRMA`. Se corrigió enumerando lo que ninguna herramienta
+cubre e invirtiendo la prioridad: elegir mal es peor que abstenerse. **El peaje
+costó una pregunta válida** (92% → 88%): el intercambio compensa porque los dos
+errores no cuestan lo mismo, pero es real y no se esconde.
+
 **La latencia del camino LLM es inaceptable para uso interactivo: ~94 segundos**,
 contra 7–34 ms del camino KEYWORD — tres órdenes de magnitud. Es el costo de un
 modelo de 3B en CPU sin GPU. La arquitectura de dos caminos existe justamente por

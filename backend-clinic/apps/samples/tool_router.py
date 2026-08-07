@@ -67,9 +67,27 @@ def _prompt_sistema() -> str:
         '',
         'REGLAS ESTRICTAS:',
         '1. NO respondas la pregunta. NO inventes datos. Solo eliges una herramienta.',
-        '2. Si ninguna herramienta responde exactamente lo que se pregunta, '
-        'devuelve "NINGUNA". Es preferible admitirlo a elegir una que no aplica.',
-        '3. Elige por el SIGNIFICADO de la pregunta, no por coincidencia de palabras.',
+        '2. Elige por el SIGNIFICADO de la pregunta, no por coincidencia de palabras.',
+        '3. Devuelve "NINGUNA" salvo que una herramienta responda EXACTAMENTE lo '
+        'que se pregunta. Que la pregunta mencione palabras del laboratorio NO basta.',
+        '',
+        # La abstención necesita ejemplos y no solo una regla: medido sobre 30
+        # preguntas etiquetadas, con la regla suelta el modelo elegía una
+        # herramienta en 4 de 6 preguntas fuera de alcance (acierto 33%).
+        'CUÁNDO DEVOLVER "NINGUNA" — son casos frecuentes, no excepcionales:',
+        '- Estadísticas, totales o históricos: «cuántos X el año pasado», promedios.',
+        '- Personas: quién es el jefe, quién atendió un caso, de quién es una muestra.',
+        '- Documentación o procedimientos: qué dice el manual, cómo se hace algo.',
+        '- Inventario: reactivos, equipos, insumos, fechas de vencimiento.',
+        '- Dinero: precios, costos, presupuestos, facturación.',
+        '- Datos de un paciente concreto.',
+        '',
+        'Las herramientas SOLO listan el estado ACTUAL de casos y cromosomas del '
+        'flujo de trabajo. No cuentan, no promedian, no explican, no consultan '
+        'documentos y no saben de personas ni de insumos.',
+        '',
+        'Elegir una herramienta equivocada es PEOR que devolver "NINGUNA": el '
+        'usuario recibiría datos reales que no responden a su pregunta.',
         '',
         'HERRAMIENTAS DISPONIBLES:',
     ]

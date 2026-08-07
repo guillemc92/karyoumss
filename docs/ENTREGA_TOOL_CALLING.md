@@ -147,6 +147,58 @@ la tolerancia a sinónimos. Esa diferencia es exactamente lo que el modelo aport
 
 ---
 
+## 4-bis. Los cuatro escenarios no bastan: la medición
+
+Cuatro escenarios demuestran que el mecanismo funciona, pero no dicen **con qué
+frecuencia acierta**. Para saberlo se construyó un banco de 30 preguntas
+etiquetadas —escritas como las diría un analista, no como las escribiría quien
+ya conoce el catálogo— y se midió:
+
+```bash
+python manage.py eval_enrutado     # ~11 min: cada paráfrasis cuesta una llamada
+```
+
+El reparto importa más que el total. Fallar **dentro** de alcance manda al
+usuario a «no sé»; fallar **fuera** le entrega datos reales que no responden su
+pregunta, que es mucho peor.
+
+| | Primera medición | Tras endurecer el prompt |
+|---|---|---|
+| **Fuera de alcance** | 2/6 — **33%** | 6/6 — **100%** |
+| Dentro de alcance | 22/24 — 92% | 21/24 — 88% |
+| **Global** | 24/30 — 80% | 27/30 — **90%** |
+
+**El hallazgo que justificó el cambio:** con la regla de abstención escrita como
+una línea suelta, el modelo elegía una herramienta en 4 de cada 6 preguntas fuera
+de alcance. Enrutaba por parecido temático:
+
+```
+«¿Cuántos pacientes atendimos el año pasado?»  -> CASOS_REPORTADOS
+«¿Quién es el jefe del servicio de genética?»  -> CASOS_PENDIENTES_FIRMA
+«¿Qué dice el manual sobre el bandeo G?»       -> CROMOSOMAS_PARA_REVISION
+«¿Cuándo vence el reactivo de tripsina?»       -> CROMOSOMAS_PARA_REVISION
+```
+
+Es exactamente el fallo que el escenario 3 existe para descartar, y **el
+escenario 3 no lo detectaba**: su pregunta —el presupuesto de 2027— resultó ser
+una de las dos que sí acertaba. Un escenario que pasa por la elección afortunada
+de la pregunta no prueba nada.
+
+**La corrección** fue darle a la abstención lo que la regla suelta no daba:
+categorías explícitas de lo que ninguna herramienta cubre (estadísticas,
+personas, documentación, inventario, dinero, pacientes concretos), la aclaración
+de que las herramientas solo listan el estado **actual** del flujo, y la
+prioridad invertida —elegir mal es peor que abstenerse—.
+
+**El peaje, medido y no escondido:** endurecer la abstención costó una pregunta
+válida (92% → 88% dentro de alcance). El intercambio compensa porque los dos
+errores no cuestan lo mismo, pero es un intercambio real.
+
+Los 3 fallos que quedan caen todos en `CROMOSOMAS_PARA_REVISION`: es el atractor
+por defecto del modelo cuando la pregunta no le resulta clara.
+
+---
+
 ## 5. El interruptor
 
 ```env
@@ -338,6 +390,7 @@ herramienta principal devolvía cero filas. Hubo que sembrar un caso específico
 | `backend-clinic/apps/samples/views.py` → `ToolQueryView` | Endpoint |
 | `backend-clinic/apps/samples/management/commands/demo_tools.py` | Los cuatro escenarios |
 | `backend-clinic/apps/samples/management/commands/seed_demo_tools.py` | Datos para la demo |
+| `backend-clinic/apps/samples/management/commands/eval_enrutado.py` | Banco de 30 preguntas etiquetadas + medición |
 | `backend-clinic/apps/samples/tests/test_tool_router.py` | 31 tests |
 
 **Tests:** 31, sin necesidad de Ollama corriendo (el modelo se sustituye por
