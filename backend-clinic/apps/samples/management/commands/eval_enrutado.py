@@ -31,6 +31,9 @@ BANCO = [
     ('Donde no confio en lo que dijo la IA?', 'CROMOSOMAS_PARA_REVISION'),
     ('Que quedo marcado para verificacion manual?', 'CROMOSOMAS_PARA_REVISION'),
     ('Hay cromosomas mal clasificados pendientes?', 'CROMOSOMAS_PARA_REVISION'),
+    ('Que cromosomas no paso el umbral de confianza?', 'CROMOSOMAS_PARA_REVISION'),
+    ('De que no esta seguro el clasificador?', 'CROMOSOMAS_PARA_REVISION'),
+    ('Que tengo que confirmar a mano?', 'CROMOSOMAS_PARA_REVISION'),
 
     # --- CASOS_PENDIENTES_FIRMA ---------------------------------------------
     ('Que casos estan pendientes de firma?', 'CASOS_PENDIENTES_FIRMA'),
@@ -43,6 +46,10 @@ BANCO = [
     # deja en el banco porque los usuarios preguntan asi; quitarla porque el
     # sistema la falla seria maquillar el numero.
     ('Que esta listo para la ultima revision?', 'CASOS_PENDIENTES_FIRMA'),
+    ('Que casos ya paso el analista?', 'CASOS_PENDIENTES_FIRMA'),
+    ('Cuales faltan autorizar antes de entregar?', 'CASOS_PENDIENTES_FIRMA'),
+    ('Que hay parado esperando al jefe de laboratorio?', 'CASOS_PENDIENTES_FIRMA'),
+    ('Que estudios estan validados pero no cerrados?', 'CASOS_PENDIENTES_FIRMA'),
 
     # --- CASOS_REPORTADOS ----------------------------------------------------
     ('Que casos estan reportados?', 'CASOS_REPORTADOS'),
@@ -51,6 +58,9 @@ BANCO = [
     ('Muestrame los casos cerrados de esta semana', 'CASOS_REPORTADOS'),
     ('Que ya tiene nomenclatura emitida?', 'CASOS_REPORTADOS'),
     ('Cuales terminaron el proceso completo?', 'CASOS_REPORTADOS'),
+    ('Que casos ya salieron del laboratorio?', 'CASOS_REPORTADOS'),
+    ('Cuales ya tienen informe emitido?', 'CASOS_REPORTADOS'),
+    ('Que estudios estan finalizados y firmados?', 'CASOS_REPORTADOS'),
 
     # --- CASOS_EN_PROCESO ----------------------------------------------------
     ('Que muestras estan en proceso?', 'CASOS_EN_PROCESO'),
@@ -58,6 +68,10 @@ BANCO = [
     ('Cuales todavia no terminan el analisis?', 'CASOS_EN_PROCESO'),
     ('Que hay en la cola de procesamiento?', 'CASOS_EN_PROCESO'),
     ('En que esta trabajando el sistema?', 'CASOS_EN_PROCESO'),
+    ('Que muestras siguen sin resultado?', 'CASOS_EN_PROCESO'),
+    ('Cuanto falta para que terminen las muestras de hoy?', 'CASOS_EN_PROCESO'),
+    ('Que se esta analizando en este momento?', 'CASOS_EN_PROCESO'),
+    ('Hay algo pendiente de que la IA lo procese?', 'CASOS_EN_PROCESO'),
 
     # --- Fuera de alcance ----------------------------------------------------
     # Son las que de verdad ponen a prueba el enrutador: todas hablan del
@@ -68,6 +82,25 @@ BANCO = [
     ('Cuanto cuesta un cariotipo?', FUERA),
     ('Que dice el manual sobre el bandeo G?', FUERA),
     ('Cuando vence el reactivo de tripsina?', FUERA),
+    ('Cuantas metafases analizamos en promedio por semana?', FUERA),
+    ('Que microscopio usamos para el bandeo?', FUERA),
+    ('Cual es el telefono del doctor Rojas?', FUERA),
+    ('Como se prepara el cultivo de linfocitos?', FUERA),
+    ('Que porcentaje de casos sale alterado?', FUERA),
+    ('Cuando es la proxima reunion del servicio?', FUERA),
+
+    # --- Fuera de alcance, ADVERSARIAS ---------------------------------------
+    # Llevan vocabulario del catalogo ("naranja", "firma", "ISCN", "proceso")
+    # pero preguntan por documentacion, definiciones o motivos, no por el
+    # estado del flujo. Son la trampa que el camino KEYWORD no puede ver: ese
+    # camino hace coincidencia literal y NO sabe abstenerse, asi que devolvera
+    # una lista de datos a una pregunta que no los pedia.
+    ('Que significa que un cromosoma este naranja?', FUERA),
+    ('Por que el sistema marca cromosomas en naranja?', FUERA),
+    ('Como se calcula la nomenclatura ISCN?', FUERA),
+    ('Quien tiene permiso para firmar un caso?', FUERA),
+    ('Cuanto tarda en procesar una muestra?', FUERA),
+    ('Que umbral de confianza deberiamos usar?', FUERA),
 ]
 
 

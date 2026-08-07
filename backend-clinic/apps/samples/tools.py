@@ -29,6 +29,7 @@ esta arquitectura busca hacer imposible.
 """
 from __future__ import annotations
 
+import unicodedata
 from dataclasses import dataclass, field
 from typing import Callable
 
@@ -55,11 +56,21 @@ class ToolSpec:
 # Las consultas. Django ORM puro: ningún dato pasa por el modelo.
 # ---------------------------------------------------------------------------
 
+# Tope de filas por consulta. Una lista sin límite puede volcar miles de filas a
+# la respuesta; 50 basta para una consulta conversacional.
+#
+# Que se trunque NO puede quedar callado: la respuesta dice «estos son los
+# cromosomas que hay que revisar», y mostrar 50 de 100 sin avisar esconde la
+# mitad de la cola de trabajo. El llamador compara `len(filas)` contra este tope
+# para advertirlo (ver `_ejecutar` en tool_router).
+LIMITE_FILAS = 50
+
+
 def _muestras_por_estado(estado: str) -> list[dict]:
     filas = (
         Sample.objects.filter(status=estado, is_active=True)
         .order_by('-created_at')
-        .values('chn_code', 'status', 'sample_type', 'created_at')[:50]
+        .values('chn_code', 'status', 'sample_type', 'created_at')[:LIMITE_FILAS]
     )
     return [
         {
@@ -85,7 +96,7 @@ def cromosomas_para_revision() -> list[dict]:
             confidence_score__lt=CONFIDENCE_THRESHOLD,
         )
         .select_related('karyotype__sample')
-        .order_by('confidence_score')[:50]
+        .order_by('confidence_score')[:LIMITE_FILAS]
     )
     return [
         {
@@ -108,7 +119,7 @@ def casos_reportados() -> list[dict]:
     filas = (
         Sample.objects.filter(status=SampleStatus.REPORTED, is_active=True)
         .order_by('-iscn_generated_at')
-        .values('chn_code', 'iscn_nomenclature', 'iscn_generated_at')[:50]
+        .values('chn_code', 'iscn_nomenclature', 'iscn_generated_at')[:LIMITE_FILAS]
     )
     return [
         {
@@ -191,13 +202,59 @@ CATALOGO: tuple[ToolSpec, ...] = (
 POR_NOMBRE: dict[str, ToolSpec] = {t.name: t for t in CATALOGO}
 
 
+def _normaliza(texto: str) -> str:
+    """Minúsculas y sin acentos: «¿Por qué…?» debe casar con «por que»."""
+    plano = unicodedata.normalize('NFKD', (texto or '').lower())
+    return ''.join(c for c in plano if not unicodedata.combining(c))
+
+
+# Los dos puntos ciegos de la coincidencia literal, medidos sobre el banco:
+#
+# 1. No sabe ABSTENERSE. «¿Qué significa que un cromosoma esté naranja?» contiene
+#    «naranja» y devolvía la lista de cromosomas a una pregunta de documentación.
+# 2. No ve la NEGACIÓN. «¿Qué estudios están validados pero NO cerrados?» dispara
+#    con «cerrados» y devuelve justo lo contrario de lo que se pide.
+#
+# Ambos son inherentes al método, no defectos del catálogo: se detectan antes de
+# tomar el atajo y se deja pasar la pregunta al modelo, que sí interpreta.
+
+_PIDE_EXPLICACION = (
+    'que significa', 'que quiere decir', 'por que', 'porque', 'como se ',
+    'como funciona', 'para que sirve', 'quien puede', 'quien tiene permiso',
+    'cuanto tarda', 'cuanto cuesta', 'que umbral', 'deberiamos', 'deberia',
+)
+
+# OJO: aquí NO puede ir « sin ». Es negación en castellano, pero también forma
+# parte de dos claves del catálogo («sin resolver», «sin firmar»), así que
+# incluirla desactiva el atajo para preguntas legítimas — y con la IA apagada
+# esas preguntas pasarían a responder «no sé» en vez de dar los datos, que es
+# exactamente la propiedad que el camino KEYWORD existe para garantizar.
+_NIEGA = (' no ', ' excepto', ' salvo ', ' tampoco')
+
+
+def _es_atajo_inseguro(texto: str) -> bool:
+    """¿Tomar el atajo por palabra clave sería una trampa para esta pregunta?
+
+    Una pregunta que pide una EXPLICACIÓN («qué significa…», «por qué…») o que
+    NIEGA («validados pero no cerrados») no se puede resolver mirando si una
+    cadena aparece: hace falta interpretarla. El atajo daría datos reales que no
+    responden lo que se preguntó, que es peor que no responder.
+    """
+    return any(p in texto for p in _PIDE_EXPLICACION) or any(n in texto for n in _NIEGA)
+
+
 def buscar_por_palabra_clave(pregunta: str) -> ToolSpec | None:
     """Resuelve por coincidencia literal, sin llamar al modelo.
 
     Se prefiere la palabra clave más larga que coincida: 'pendiente de revision'
     es más específico que 'pendiente' y debe ganar.
+
+    Devuelve `None` —cediendo al modelo— cuando la pregunta pide explicación o
+    niega: ver `_es_atajo_inseguro`.
     """
-    texto = (pregunta or '').lower()
+    texto = _normaliza(pregunta)
+    if _es_atajo_inseguro(texto):
+        return None
     mejor: tuple[int, ToolSpec] | None = None
     for tool in CATALOGO:
         for kw in tool.keywords:

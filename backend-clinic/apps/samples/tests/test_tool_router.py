@@ -14,7 +14,7 @@ import pytest
 from apps.samples import tool_router
 from apps.samples.models import Chromosome, Karyotype, Sample, SampleStatus
 from apps.samples.tool_router import responder
-from apps.samples.tools import CATALOGO, buscar_por_palabra_clave
+from apps.samples.tools import CATALOGO, LIMITE_FILAS, buscar_por_palabra_clave
 
 pytestmark = pytest.mark.django_db
 
@@ -290,3 +290,25 @@ class TestEndpoint:
         from rest_framework.test import APIClient
         r = APIClient().post(self.URL, {'pregunta': CONTROLADA}, format='json')
         assert r.status_code in (401, 403)
+
+
+class TestTruncado:
+    """Una lista truncada que se presenta como completa esconde trabajo.
+
+    Las consultas cortan en LIMITE_FILAS. Si la respuesta dice «50 resultado(s)»
+    y hay 100 cromosomas naranjas, el analista cree haber visto toda su cola de
+    revisión cuando le falta la mitad. Se encontró con datos reales: 100
+    naranjas en la base, 50 en la respuesta, sin ninguna advertencia.
+    """
+
+    def test_por_debajo_del_tope_no_advierte(self):
+        assert tool_router._mensaje_resultados([{}] * 7) == '7 resultado(s).'
+
+    def test_en_el_tope_advierte_que_puede_haber_mas(self):
+        mensaje = tool_router._mensaje_resultados([{}] * LIMITE_FILAS)
+
+        assert 'puede haber más' in mensaje
+        assert str(LIMITE_FILAS) in mensaje
+
+    def test_sin_filas_no_habla_de_truncado(self):
+        assert 'puede haber más' not in tool_router._mensaje_resultados([])

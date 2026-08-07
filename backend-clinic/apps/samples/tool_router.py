@@ -29,7 +29,7 @@ from dataclasses import asdict, dataclass
 
 from django.conf import settings
 
-from .tools import CATALOGO, POR_NOMBRE, ToolSpec, buscar_por_palabra_clave, catalogo_publicado
+from .tools import CATALOGO, LIMITE_FILAS, POR_NOMBRE, ToolSpec, buscar_por_palabra_clave, catalogo_publicado
 
 logger = logging.getLogger(__name__)
 
@@ -81,10 +81,21 @@ def _prompt_sistema() -> str:
         '- Inventario: reactivos, equipos, insumos, fechas de vencimiento.',
         '- Dinero: precios, costos, presupuestos, facturación.',
         '- Datos de un paciente concreto.',
+        # Las mas dificiles: usan el vocabulario del propio dominio, asi que el
+        # modelo las mandaba a la herramienta dueña del concepto. Medido: 5 de
+        # los 7 fallos de abstencion del banco de 56 eran de este tipo.
+        '- REGLAS Y METODOLOGÍA sobre los conceptos que el sistema maneja: cómo '
+        'se calcula algo, quién tiene permiso para hacer algo, cuánto tarda un '
+        'proceso, qué umbral conviene usar, qué significa un estado o un color.',
+        '',
+        'REGLA DE FORMA, útil cuando dudes: si la pregunta se responde con una '
+        'LISTA de casos o de cromosomas que existen ahora en la base, hay '
+        'herramienta. Si pide una explicación, una definición, una regla, un '
+        'permiso o un número calculado, NO la hay — devuelve "NINGUNA".',
         '',
         'Las herramientas SOLO listan el estado ACTUAL de casos y cromosomas del '
         'flujo de trabajo. No cuentan, no promedian, no explican, no consultan '
-        'documentos y no saben de personas ni de insumos.',
+        'documentos y no saben de personas, de insumos ni de reglas.',
         '',
         'Elegir una herramienta equivocada es PEOR que devolver "NINGUNA": el '
         'usuario recibiría datos reales que no responden a su pregunta.',
@@ -115,6 +126,22 @@ class Respuesta:
         return d
 
 
+def _mensaje_resultados(filas: list[dict]) -> str:
+    """Cuenta las filas y **avisa si la consulta pudo truncar**.
+
+    Una lista que dice «estos son los cromosomas que hay que revisar» y muestra
+    50 de 100 sin advertirlo esconde la mitad de la cola de trabajo. Como las
+    consultas cortan en `LIMITE_FILAS`, venir justo en el tope significa que
+    puede haber más: se dice, en vez de presentar la lista como completa.
+    """
+    if not filas:
+        return 'Sin resultados para esa consulta.'
+    if len(filas) >= LIMITE_FILAS:
+        return (f'{len(filas)} resultado(s) — se muestran los primeros '
+                f'{LIMITE_FILAS}, puede haber más.')
+    return f'{len(filas)} resultado(s).'
+
+
 def _ejecutar(tool: ToolSpec, camino: str, inicio: float, motivo: str = '') -> Respuesta:
     """Corre la herramienta. Acá el dato sale de la base, nunca del modelo."""
     filas = tool.run()
@@ -123,7 +150,7 @@ def _ejecutar(tool: ToolSpec, camino: str, inicio: float, motivo: str = '') -> R
         tool=tool.name,
         source=tool.source,
         filas=filas,
-        mensaje=f'{len(filas)} resultado(s).' if filas else 'Sin resultados para esa consulta.',
+        mensaje=_mensaje_resultados(filas),
         motivo=motivo,
         latency_ms=int((time.time() - inicio) * 1000),
     )

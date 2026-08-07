@@ -162,11 +162,14 @@ El reparto importa más que el total. Fallar **dentro** de alcance manda al
 usuario a «no sé»; fallar **fuera** le entrega datos reales que no responden su
 pregunta, que es mucho peor.
 
-| | Primera medición | Prompt endurecido | Descripciones equilibradas |
+| Banco de **30** preguntas | Primera medición | Prompt endurecido | Descripciones equilibradas |
 |---|---|---|---|
-| **Fuera de alcance** | 2/6 — **33%** | 6/6 — 100% | 6/6 — **100%** |
-| Dentro de alcance | 22/24 — 92% | 21/24 — 88% | 23/24 — **96%** |
+| **Fuera de alcance** | 2/6 — **33%** | 6/6 — 100% | 6/6 — 100% |
+| Dentro de alcance | 22/24 — 92% | 21/24 — 88% | 23/24 — 96% |
 | **Global** | 24/30 — 80% | 27/30 — 90% | 29/30 — **97%** |
+
+> **Ese 97% no era real.** Al ampliar el banco a 56 preguntas se derrumbó a 80%.
+> El apartado 4-ter explica por qué, y es el hallazgo más importante del trabajo.
 
 **El hallazgo que justificó el cambio:** con la regla de abstención escrita como
 una línea suelta, el modelo elegía una herramienta en 4 de cada 6 preguntas fuera
@@ -223,6 +226,77 @@ dimensiones quedaron por encima del punto de partida a la vez.
 última revisión?» admite honestamente dos lecturas —la firma del supervisor o el
 último repaso del analista—. Se deja en el banco a propósito: los usuarios
 preguntan así, y quitarla porque el sistema la falla sería maquillar el número.
+
+---
+
+## 4-ter. El 97% era un espejismo del banco pequeño
+
+Las 6 preguntas fuera de alcance del primer banco (presupuesto, jefe del
+servicio, precio de un cariotipo…) **no compartían ni una palabra con el
+catálogo**. Abstenerse ante ellas es fácil. Al ampliar el banco a 56 preguntas,
+con 18 fuera de alcance —seis de ellas **adversarias**: fuera de alcance pero
+escritas con el vocabulario del propio dominio— el resultado fue otro:
+
+| | Banco de 30 | **Banco de 56** |
+|---|---|---|
+| Global | 29/30 — 97% | **45/56 — 80%** |
+| Dentro de alcance | 23/24 — 96% | 34/38 — 89% |
+| **Fuera de alcance** | 6/6 — 100% | **11/18 — 61%** |
+
+El patrón de los fallos es nítido: **las preguntas sobre los conceptos que las
+herramientas manipulan van a parar a la herramienta dueña del concepto.**
+
+```
+«¿Cómo se calcula la nomenclatura ISCN?»      -> CROMOSOMAS_PARA_REVISION
+«¿Quién tiene permiso para firmar un caso?»   -> CASOS_PENDIENTES_FIRMA
+«¿Cuánto tarda en procesar una muestra?»      -> CASOS_EN_PROCESO
+«¿Qué umbral de confianza deberíamos usar?»   -> CROMOSOMAS_PARA_REVISION
+```
+
+### Los dos puntos ciegos del camino rápido
+
+El banco ampliado destapó además dos límites **estructurales** de la
+coincidencia literal, no defectos del catálogo:
+
+```
+[KEYWORD] «¿Qué significa que un cromosoma esté naranja?»      -> CROMOSOMAS_PARA_REVISION
+[KEYWORD] «¿Qué estudios están validados pero NO cerrados?»    -> CASOS_REPORTADOS
+```
+
+La primera es una pregunta de documentación que contiene «naranja»: **el atajo
+no sabe abstenerse**, porque abstenerse exige entender, y él solo mira si una
+cadena aparece. La segunda pide lo contrario de lo que devuelve: **el atajo no
+ve la negación**. Ninguna de las dos llega siquiera al modelo.
+
+**La corrección** fue enseñarle al atajo a reconocer cuándo *no* debe opinar y
+ceder la pregunta al modelo: cuando pide una explicación («qué significa», «por
+qué», «quién puede», «cuánto tarda») o cuando niega. Y en el prompt se añadió la
+categoría que faltaba —reglas, permisos, umbrales, metodología— con una regla de
+forma como desempate: *si la pregunta se responde con una lista de casos o
+cromosomas que existen ahora, hay herramienta; si pide una explicación, una
+definición, un permiso o un número calculado, no la hay.*
+
+### Una regresión que casi se cuela
+
+Al escribir el detector de negación se incluyó « sin » como marca. Es negación en
+castellano — pero también forma parte de dos claves del catálogo, `sin resolver`
+y `sin firmar`. Con eso, «¿qué cromosomas están sin resolver?» dejaba de
+resolverse por el atajo y, **con la IA apagada, habría respondido «no sé» en vez
+de dar los datos**: justo la propiedad que el escenario 4 existe para demostrar.
+
+Se detectó comprobando el detector contra el banco *antes* de medir (segundos)
+en lugar de después (25 minutos). Tras corregirlo: cero colisiones con claves del
+catálogo, y el atajo dispara en 5 preguntas con 5 aciertos y **0 falsos
+positivos** — antes fallaba 3.
+
+### Limitación metodológica
+
+Este número sale de tres iteraciones de ajuste contra **el mismo banco**. Los
+arreglos atacan clases de fallo (preguntas explicativas, negación, preguntas
+sobre reglas) y no ejemplos concretos, pero a partir de aquí la medida está
+contaminada: refleja lo bien que se ajustó a *estas* 56 preguntas, no lo bien que
+enruta en general. La prueba honesta sería un conjunto nuevo, escrito sin mirar
+los fallos. Queda pendiente y se declara.
 
 ---
 
@@ -397,6 +471,15 @@ existe justamente por esto.
 `strict: true` en el esquema. Por eso el enrutador verifica que el nombre exista
 en el catálogo antes de ejecutar, en vez de confiar en que el modelo respetó el
 contrato. Está cubierto por un test.
+
+**La respuesta truncaba en silencio: mostraba 50 de 100 cromosomas naranjas
+diciendo «50 resultado(s)».** El `[:50]` estaba escrito a pelo en tres consultas,
+sin nombre y sin comentario, así que nada delataba que fuera un tope. En una
+consulta cualquiera sería un detalle; aquí la respuesta significa «estos son los
+cromosomas que hay que revisar», y un analista que la leyera creería haber visto
+toda su cola de trabajo cuando le faltaba la mitad. Corregido con `LIMITE_FILAS`
+y un aviso explícito («se muestran los primeros 50, puede haber más»), fijado con
+tres tests. **Apareció por consultar datos reales en vez de datos sembrados.**
 
 **La consola de Windows (cp1252) rompe con caracteres Unicode** — flechas,
 comillas angulares, guiones largos. La primera corrida del comando falló con

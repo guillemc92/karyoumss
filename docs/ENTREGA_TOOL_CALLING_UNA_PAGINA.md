@@ -37,11 +37,19 @@ pregunta del escenario 3 resultó ser una de las dos que sí acertaba. Se encont
 midiendo con un banco de 30 preguntas etiquetadas (`manage.py eval_enrutado`),
 no ejecutando la demo.
 
-| | Inicial | Prompt endurecido | Descripciones equilibradas |
+| Banco de 30 | Inicial | Prompt endurecido | Descripciones equilibradas |
 |---|---|---|---|
-| Fuera de alcance | 2/6 — **33%** | 6/6 — 100% | 6/6 — **100%** |
-| Dentro de alcance | 22/24 — 92% | 21/24 — 88% | 23/24 — **96%** |
+| Fuera de alcance | 2/6 — **33%** | 6/6 — 100% | 6/6 — 100% |
+| Dentro de alcance | 22/24 — 92% | 21/24 — 88% | 23/24 — 96% |
 | Global | 24/30 — 80% | 27/30 — 90% | 29/30 — **97%** |
+
+**Ese 97% no era real.** Las 6 preguntas fuera de alcance del banco pequeño no
+compartían ni una palabra con el catálogo, así que abstenerse era fácil. Con 56
+preguntas —18 fuera de alcance, 6 de ellas escritas con el vocabulario del propio
+dominio— el resultado cayó a **45/56 (80%), con la abstención en 11/18 (61%)**.
+Las preguntas sobre los conceptos que las herramientas manipulan («¿quién tiene
+permiso para firmar?», «¿qué umbral deberíamos usar?») acaban en la herramienta
+dueña del concepto.
 
 **Causa 1:** la regla de abstención era una línea suelta, sin ejemplos. El modelo
 enrutaba por parecido temático — «¿quién es el jefe del servicio?» iba a
@@ -60,6 +68,24 @@ el 100% de abstención**.
 
 El único fallo restante es de etiqueta discutible («¿qué está listo para la
 última revisión?» admite dos lecturas) y se deja en el banco a propósito.
+
+**El camino rápido tiene dos puntos ciegos estructurales.** La coincidencia
+literal no sabe abstenerse —«¿qué significa que un cromosoma esté naranja?»
+contiene «naranja» y devolvía la lista a una pregunta de documentación— ni ve la
+negación: «¿validados pero NO cerrados?» disparaba con «cerrados» y devolvía lo
+contrario. Ninguna llegaba al modelo. Corregido haciendo que el atajo ceda al
+modelo ante preguntas explicativas o negadas.
+
+**La respuesta truncaba en silencio:** mostraba 50 de 100 cromosomas naranjas
+diciendo «50 resultado(s)». La respuesta significa «estos son los cromosomas que
+hay que revisar»: un analista creería haber visto toda su cola faltándole la
+mitad. Corregido con un aviso explícito y tres tests. Apareció por consultar
+datos reales en vez de sembrados.
+
+**Limitación metodológica declarada:** el número final sale de tres iteraciones
+de ajuste contra el mismo banco. Los arreglos atacan clases de fallo, no ejemplos
+concretos, pero la medida ya está contaminada. La prueba honesta sería un
+conjunto nuevo escrito sin mirar los fallos; queda pendiente.
 
 **La latencia del camino LLM es inaceptable para uso interactivo: ~94 segundos**,
 contra 7–34 ms del camino KEYWORD — tres órdenes de magnitud. Es el costo de un
