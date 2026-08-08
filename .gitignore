@@ -12,3 +12,6 @@ backend-clinic/media/
 
 # Respaldo local del modelo previo: 41 MB que ya viven en el historial de git
 backend-ml/models_v1_backup/
+
+# Archivos temporales de Word (~$NOMBRE.docx)
+~$*

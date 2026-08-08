@@ -20,6 +20,92 @@ implementado y verificado contra Ollama real.
 
 ---
 
+## 1-bis. Contexto del dominio (para quien no viene del área)
+
+Esta sección existe para que la entrega se pueda evaluar sin conocer
+citogenética. **Nada de lo que sigue es requisito de la consigna**: es el mínimo
+para que las cuatro herramientas tengan sentido.
+
+### Qué es un cariotipo
+
+Un **cariotipo** es el retrato ordenado de los 46 cromosomas de una persona.
+Sirve para detectar alteraciones genéticas: un cromosoma de más, uno de menos, un
+trozo cambiado de sitio. El síndrome de Down, por ejemplo, es una tercera copia
+del cromosoma 21.
+
+El resultado se escribe en una nomenclatura internacional, **ISCN**:
+
+```
+46,XY        varón sin alteraciones numéricas
+47,XX,+21    mujer con una copia extra del cromosoma 21 (síndrome de Down)
+```
+
+### Cómo se produce en el laboratorio
+
+1. Se cultiva una muestra de sangre y se detiene la división celular en
+   **metafase**, el único momento en que los cromosomas se ven al microscopio
+   como cuerpos separados.
+2. Se fotografía una célula. Esa imagen —la metafase— muestra los 46 cromosomas
+   **desordenados, girados y a menudo tocándose entre sí**.
+3. Alguien recorta cada cromosoma y los ordena por parejas, del 1 al 22 más los
+   sexuales. A ese resultado ordenado se le llama **cariograma**.
+4. Se redacta el informe con la nomenclatura ISCN.
+
+Hecho a mano, el paso 3 es el caro: entre 20 y 30 minutos de trabajo experto por
+caso. **Eso es lo que este sistema automatiza.**
+
+### Dónde entra la IA, y por qué hay dos IA distintas
+
+| | Qué hace | Tipo |
+|---|---|---|
+| EfficientNet-B3 | Mira el recorte de un cromosoma y dice **cuál de los 24 es** | IA **discriminativa** (imagen → etiqueta) |
+| `llama3.2:3b` (este módulo) | Elige **qué consulta** responde una pregunta escrita en castellano | IA **generativa** (texto → texto) |
+
+No compiten: la primera clasifica imágenes y **nunca ve texto**; la segunda
+enruta preguntas y **nunca ve la base de datos**.
+
+### El semáforo: por qué existen los «cromosomas naranjas»
+
+El clasificador no solo dice qué cromosoma es, también **cuánta confianza tiene**.
+El sistema lo traduce a un color:
+
+| Color | Condición | Significado |
+|---|---|---|
+| Verde | confianza ≥ 0,85 | La IA está segura |
+| **Naranja** | confianza < 0,85 | **La IA duda: lo revisa una persona** |
+| Rojo | sin confianza | La clasificación falló |
+
+Una regla clínica del proyecto (**RN-02**) obliga a que ningún caso con naranjas
+sin resolver pueda emitir informe. Es el mecanismo *human-in-the-loop*: un
+cariotipo es un diagnóstico, y un modelo que acierta el 70% no puede firmarlo
+solo. En vez de exigir revisión manual de los 46 cromosomas —lo que anularía el
+valor de automatizar— **se concentra la atención humana donde la máquina flaquea**.
+
+### El flujo de un caso, que es lo que consultan las herramientas
+
+```
+   registrada ──> EN PROCESO ──> VALIDADA ──> FIRMADA ──> REPORTADA
+                  (la IA          (el analista  (el supervisor   (informe
+                   analiza)        resolvió      firmó con        emitido
+                                   los naranjas)  segundo factor)  con ISCN)
+```
+
+Las cuatro herramientas publicadas responden **«¿qué hay en cada etapa?»**:
+
+| Herramienta | Pregunta que responde |
+|---|---|
+| `CASOS_EN_PROCESO` | ¿Qué está analizando el sistema ahora? |
+| `CROMOSOMAS_PARA_REVISION` | ¿Qué le toca revisar al analista? (los naranjas) |
+| `CASOS_PENDIENTES_FIRMA` | ¿Qué espera la firma del supervisor? |
+| `CASOS_REPORTADOS` | ¿Qué ya se entregó al médico? |
+
+Por eso la herramienta de cromosomas no responde una curiosidad: responde
+**«¿qué trabajo tengo pendiente?»**. Y por eso importó descubrir que la lista
+truncaba en silencio —mostraba 50 de 100— sin avisar: un analista podía creer
+tener su cola vacía faltándole la mitad.
+
+---
+
 ## 2. La regla que ordena el diseño
 
 > **El modelo ELIGE la herramienta. El código PRODUCE la respuesta.**
