@@ -99,8 +99,10 @@ de ajuste contra el mismo banco. Los arreglos atacan clases de fallo, no ejemplo
 concretos, pero la medida ya está contaminada. La prueba honesta sería un
 conjunto nuevo escrito sin mirar los fallos; queda pendiente.
 
-**La latencia del camino LLM es inaceptable para uso interactivo, y empeoró al
-corregir la abstención: de ~94 s a ~190 s**, contra 28 ms del camino KEYWORD.
+**La latencia del camino LLM es inaceptable para uso interactivo, y muy
+inestable:** en corridas distintas sobre el mismo equipo se midieron **22 s,
+190 s y 335 s** para la misma pregunta, contra 28 ms del camino KEYWORD. Antes de
+endurecer la abstención rondaba los 94 s.
 Enseñar al modelo a abstenerse exigió un prompt mucho más largo, y en un modelo
 de 3B sobre CPU cada token del prompt se paga en cada consulta. Es un intercambio
 deliberado —velocidad por no dar datos equivocados— y se resuelve con GPU o con

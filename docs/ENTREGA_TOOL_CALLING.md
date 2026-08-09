@@ -201,6 +201,11 @@ Latencia    : 190386 ms
   ... y 48 más   ← idénticas al escenario 1
 ```
 
+> **La latencia varía mucho entre corridas.** Esta dio 190 s; otras sobre el
+> mismo equipo dieron 22 s y 335 s para la misma pregunta, según lo que Ollama
+> tuviera cargado. Lo estable es el orden de magnitud frente a los 28 ms del
+> camino KEYWORD, no la cifra concreta.
+
 ### Escenario 3 — Fuera de alcance
 
 **Pregunta:** «¿Cuál es el presupuesto del laboratorio para 2027?»
@@ -585,9 +590,14 @@ consultar.
 Vale la pena documentarlo porque la consigna lo pide y porque son hallazgos
 reales, no hipotéticos:
 
-**La latencia del camino LLM es alta y empeoró al corregir la abstención: de
-~94 s se pasó a ~190 s**, contra 28 ms del camino KEYWORD. Son casi cuatro
-órdenes de magnitud. La causa es directa: enseñar al modelo a abstenerse exigió
+**La latencia del camino LLM es alta y empeoró al corregir la abstención**,
+contra 28 ms del camino KEYWORD. Y es muy **inestable**: en corridas distintas
+sobre el mismo equipo se midieron **22 s, 190 s y 335 s** para la misma pregunta,
+según lo que Ollama tuviera cargado en memoria. Antes de endurecer el prompt
+rondaba los 94 s. Son entre tres y cuatro órdenes de magnitud sobre el camino
+rápido, con una varianza que por sí sola desaconseja el uso interactivo.
+
+La causa es directa: enseñar al modelo a abstenerse exigió
 un prompt de sistema mucho más largo (categorías de lo que no cubre, regla de
 forma, fronteras entre herramientas), y en un modelo de 3B sobre CPU cada token
 del prompt se paga en cada consulta.
@@ -630,13 +640,25 @@ herramienta principal devolvía cero filas. Hubo que sembrar un caso específico
 | `backend-clinic/apps/samples/views.py` → `ToolQueryView` | Endpoint |
 | `backend-clinic/apps/samples/management/commands/demo_tools.py` | Los cuatro escenarios |
 | `backend-clinic/apps/samples/management/commands/seed_demo_tools.py` | Datos para la demo |
-| `backend-clinic/apps/samples/management/commands/eval_enrutado.py` | Banco de 30 preguntas etiquetadas + medición |
-| `backend-clinic/apps/samples/tests/test_tool_router.py` | 31 tests |
+| `backend-clinic/apps/samples/management/commands/eval_enrutado.py` | Banco de 56 preguntas etiquetadas + medición |
+| `backend-clinic/apps/samples/management/commands/demo_codigo_salida.py` | Imprime el código que llama al modelo y su salida, en la misma pantalla |
+| `backend-clinic/apps/samples/tests/test_tool_router.py` | 34 tests |
 
-**Tests:** 31, sin necesidad de Ollama corriendo (el modelo se sustituye por
+**Tests:** 34, sin necesidad de Ollama corriendo (el modelo se sustituye por
 dobles). El más importante verifica que **el escenario 1 y el 2 devuelvan
 exactamente los mismos datos** — si difirieran, significaría que el modelo influyó
-en la respuesta.
+en la respuesta. Los 3 últimos fijan el aviso de truncado (§8).
+
+### Código y salida en una sola captura
+
+```bash
+python manage.py demo_codigo_salida
+```
+
+Imprime `_elegir_con_modelo()` y **acto seguido lo ejecuta** con la pregunta del
+escenario 2. El código no está copiado en el comando: se lee de la fuente real
+con `inspect.getsource()`, así que lo que se ve impreso es literalmente la
+función que corre un segundo después — no pueden divergir.
 
 ```bash
 .venv/Scripts/python -m pytest apps/samples/tests/test_tool_router.py -v --no-cov
