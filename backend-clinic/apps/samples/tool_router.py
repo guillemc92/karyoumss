@@ -45,8 +45,14 @@ SELECCION_JSON_SCHEMA = {
             'properties': {
                 'herramienta': {
                     'type': 'string',
-                    'enum': [t.name for t in CATALOGO] + ['NINGUNA'],
-                    'description': 'Nombre exacto de la herramienta, o NINGUNA si ninguna aplica.',
+                    # DOCUMENTACION no es una herramienta: es la puerta al RAG.
+                    # El modelo elige entre consultar ESTADO (las herramientas),
+                    # consultar DOCUMENTACION (el corpus) o no saber — que es la
+                    # misma disyuntiva «tool o RAG» del bucle agéntico.
+                    'enum': [t.name for t in CATALOGO] + ['DOCUMENTACION', 'NINGUNA'],
+                    'description': ('Nombre exacto de la herramienta; DOCUMENTACION '
+                                    'si la pregunta es sobre reglas, definiciones o '
+                                    'procedimientos; NINGUNA si nada aplica.'),
                 },
                 'motivo': {
                     'type': 'string',
@@ -88,10 +94,15 @@ def _prompt_sistema() -> str:
         'se calcula algo, quién tiene permiso para hacer algo, cuánto tarda un '
         'proceso, qué umbral conviene usar, qué significa un estado o un color.',
         '',
-        'REGLA DE FORMA, útil cuando dudes: si la pregunta se responde con una '
-        'LISTA de casos o de cromosomas que existen ahora en la base, hay '
-        'herramienta. Si pide una explicación, una definición, una regla, un '
-        'permiso o un número calculado, NO la hay — devuelve "NINGUNA".',
+        'REGLA DE FORMA, útil cuando dudes:',
+        '- Si se responde con una LISTA de casos o cromosomas que existen ahora '
+        'en la base → hay herramienta.',
+        '- Si pide una EXPLICACIÓN, una definición, una regla del sistema, un '
+        'permiso o cómo funciona algo → devuelve "DOCUMENTACION": hay un corpus '
+        'con el estándar ISCN, las decisiones de arquitectura y las reglas de '
+        'negocio del laboratorio.',
+        '- Si no es ni una cosa ni la otra (personas, precios, inventario, '
+        'agenda, compras) → devuelve "NINGUNA".',
         '',
         'Las herramientas SOLO listan el estado ACTUAL de casos y cromosomas del '
         'flujo de trabajo. No cuentan, no promedian, no explican, no consultan '
@@ -151,6 +162,37 @@ def _ejecutar(tool: ToolSpec, camino: str, inicio: float, motivo: str = '') -> R
         source=tool.source,
         filas=filas,
         mensaje=_mensaje_resultados(filas),
+        motivo=motivo,
+        latency_ms=int((time.time() - inicio) * 1000),
+    )
+
+
+def _documental(pregunta: str, inicio: float, motivo: str = '') -> Respuesta:
+    """Camino RAG: responde con el corpus documental, citando la fuente.
+
+    Aquí el dato no sale de una tabla sino de un documento, así que `source`
+    lleva los documentos citados y `filas` el desglose con su similitud. La
+    procedencia sigue siendo obligatoria: una afirmación clínica sin fuente no
+    es verificable.
+
+    Si el corpus no cubre la pregunta se degrada a SIN_MATCH — decir «no sé» es
+    la respuesta correcta, no un fallo (medido: ver `rag_qa`).
+    """
+    from .rag_qa import responder_documental
+
+    r = responder_documental(pregunta)
+    if not r.responde:
+        return _sin_match(inicio, 'El corpus documental no cubre esa pregunta.')
+
+    fuentes = sorted({c.fragmento.fuente for c in r.citas})
+    return Respuesta(
+        camino='RAG',
+        tool='CORPUS_DOCUMENTAL',
+        source=', '.join(fuentes) or 'corpus',
+        filas=[{'documento': c.fragmento.fuente,
+                'seccion': c.fragmento.seccion or '—',
+                'similitud': c.porcentaje} for c in r.citas],
+        mensaje=r.texto,
         motivo=motivo,
         latency_ms=int((time.time() - inicio) * 1000),
     )
@@ -225,6 +267,10 @@ def responder(pregunta: str) -> Respuesta:
     except Exception as exc:                      # noqa: BLE001 — degradación
         logger.warning('Enrutador LLM no disponible: %s', exc)
         return _sin_match(inicio, 'La asistencia por IA no está disponible en este momento.')
+
+    # Camino 3 — el modelo pide documentación: responde el RAG sobre el corpus.
+    if nombre == 'DOCUMENTACION':
+        return _documental(pregunta, inicio, motivo)
 
     if nombre == 'NINGUNA' or nombre not in POR_NOMBRE:
         # El modelo puede devolver un nombre inexistente pese al enum: se trata
