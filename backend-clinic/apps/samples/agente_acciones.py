@@ -11,20 +11,22 @@ descripción, misma función. Si mañana se añade una quinta herramienta al
 catálogo, el agente la ve sin tocar este módulo. Es la misma propiedad que hace
 que el servidor MCP sea un envoltorio y no una copia.
 
-## Por qué todas las acciones son de LECTURA
+## Seis acciones: cinco de lectura y una de escritura con guardrail
 
-El agente puede consultar cualquier cosa, pero **no escribe nada**. No es una
-limitación técnica: RN-01 exige que la validación de un cromosoma naranja y la
-firma de un informe las haga una persona identificada, no un proceso automático.
+Las cinco de lectura —cuatro consultas de estado y el RAG— no necesitan
+protección: leer no rompe nada.
 
-El patrón para cuando se añada una acción de escritura ya está decidido y es el
-del material de clase: la herramienta recibe `confirmado: bool`, con
-`confirmado=false` devuelve el plan de lo que haría, y **solo un humano puede
-poner `confirmado=true`** — el modelo nunca. Se documenta aquí para que quien
-añada la primera escritura no improvise.
+La sexta, `preparar_validacion_de_caso`, sí escribe en el dominio, y por eso
+lleva el guardrail **dentro de la herramienta** y no en el bucle: así viaja con
+ella cuando se publica por MCP, a cualquier cliente que la descubra. Ver
+`agente_escritura.py` para la política que implementa (RN-01) y por qué aquí es
+más estricta que en el ejemplo de clase.
 """
 from __future__ import annotations
 
+from .agente_escritura import NOMBRE as NOMBRE_ESCRITURA
+from .agente_escritura import SCHEMA as SCHEMA_ESCRITURA
+from .agente_escritura import ejecutar as ejecutar_escritura
 from .tools import CATALOGO, POR_NOMBRE
 
 NOMBRE_RAG = 'buscar_documentacion'
@@ -100,7 +102,7 @@ SCHEMA_RAG = {
 
 def schemas() -> list[dict]:
     """Todo lo que el agente puede hacer, en formato de tool calling."""
-    return [_schema_de(t) for t in CATALOGO] + [SCHEMA_RAG]
+    return [_schema_de(t) for t in CATALOGO] + [SCHEMA_RAG, SCHEMA_ESCRITURA]
 
 
 def ejecutar(nombre: str, argumentos: dict) -> dict:
@@ -109,6 +111,9 @@ def ejecutar(nombre: str, argumentos: dict) -> dict:
     Devuelve siempre un dict — nunca lanza — porque el bucle entrega la
     observación al modelo y un error es información útil para que rectifique.
     """
+    if nombre == NOMBRE_ESCRITURA:
+        return ejecutar_escritura(argumentos)
+
     if nombre == NOMBRE_RAG:
         from .rag_qa import responder_documental
 
@@ -129,7 +134,7 @@ def ejecutar(nombre: str, argumentos: dict) -> dict:
         # El modelo puede inventar un nombre pese al schema. Se le dice qué
         # existe en vez de fallar en silencio.
         return {'error': f'no existe la herramienta «{nombre}»',
-                'disponibles': [t.name for t in CATALOGO] + [NOMBRE_RAG]}
+                'disponibles': [t.name for t in CATALOGO] + [NOMBRE_RAG, NOMBRE_ESCRITURA]}
 
     filas = tool.run()
     return {'herramienta': tool.name, 'fuente': tool.source,

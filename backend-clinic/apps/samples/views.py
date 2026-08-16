@@ -742,3 +742,72 @@ class ToolQueryView(APIView):
     def get(self, request):
         """Publica el catalogo: que sabe responder el sistema."""
         return Response({'herramientas': catalogo_publicado()}, status=status.HTTP_200_OK)
+
+
+class AgenteView(APIView):
+    """POST /agente/ - bucle agentico con traza completa (Modulo 6, nivel 4).
+
+    Body: {"pregunta": "...", "mcp": false, "max_pasos": 6}
+
+    Diferencia con /tools/query/: alli el modelo elige UNA herramienta y se
+    acaba. Aqui encadena — puede consultar el estado, despues la documentacion,
+    y combinar ambas. El orden lo decide el modelo, no el codigo.
+
+    La respuesta incluye la TRAZA de cada paso (accion, observacion, tokens).
+    No es depuracion: es lo unico que permite auditar por que el agente dijo lo
+    que dijo. Un agente sin traza es un oraculo.
+
+    `mcp: true` ejecuta las herramientas DESCUBIERTAS por protocolo en vez de
+    las importadas. El bucle es el mismo — ese es el desacople que MCP explota.
+
+    Siempre 200 salvo que el modelo no este disponible (503): quedarse sin IA
+    degrada, no rompe (RN-07).
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.list')]
+
+    def post(self, request):
+        from .agente import AgenteError, MAX_PASOS, ejecutar_agente
+        from .agente_acciones import INSTRUCCIONES, ejecutar, schemas
+
+        pregunta = (request.data.get('pregunta') or '').strip()
+        if not pregunta:
+            return Response({'code': 'VALIDATION_ERROR',
+                             'detail': 'Falta la pregunta.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        max_pasos = int(request.data.get('max_pasos') or MAX_PASOS)
+        via_mcp = bool(request.data.get('mcp'))
+
+        try:
+            if via_mcp:
+                from .mcp_conexion import ConexionMCP
+
+                with ConexionMCP() as conexion:
+                    resultado = ejecutar_agente(
+                        pregunta, conexion.descubrir_tools(),
+                        conexion.ejecutar_tool, INSTRUCCIONES,
+                        max_pasos=max_pasos)
+            else:
+                resultado = ejecutar_agente(pregunta, schemas(), ejecutar,
+                                            INSTRUCCIONES, max_pasos=max_pasos)
+        except AgenteError as exc:
+            return Response({'code': 'AGENT_UNAVAILABLE', 'detail': str(exc)},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        salida = resultado.as_dict()
+        salida['via'] = 'mcp' if via_mcp else 'local'
+        return Response(salida, status=status.HTTP_200_OK)
+
+    def get(self, request):
+        """Publica lo que el agente puede hacer."""
+        from .agente import MAX_PASOS
+        from .agente_acciones import schemas
+
+        return Response({
+            'acciones': [{'nombre': s['function']['name'],
+                          'descripcion': s['function']['description'][:160]}
+                         for s in schemas()],
+            'max_pasos': MAX_PASOS,
+        }, status=status.HTTP_200_OK)

@@ -41,6 +41,9 @@ class Command(BaseCommand):
         parser.add_argument('-p', '--pregunta', default='',
                             help='una consulta suelta en vez de los tres casos')
         parser.add_argument('--max-pasos', type=int, default=MAX_PASOS)
+        parser.add_argument('--mcp', action='store_true',
+                            help='usa las herramientas DESCUBIERTAS por protocolo '
+                                 'en vez de las importadas. El bucle es el mismo.')
 
     def _regla(self, titulo=''):
         if titulo:
@@ -48,15 +51,19 @@ class Command(BaseCommand):
             self.stdout.write(titulo)
         self.stdout.write('-' * ANCHO)
 
-    def _correr(self, etiqueta, pregunta, nota, max_pasos):
+    def _correr(self, etiqueta, pregunta, nota, max_pasos, acciones=None):
         self._regla(f'[{etiqueta}]')
         if nota:
             self.stdout.write(f'   {nota}')
         self.stdout.write(f'   Pregunta: "{pregunta}"')
         self._regla()
 
+        # Aqui esta la gracia de la fase 5: el bucle recibe (schemas, ejecutar)
+        # y le da igual si vienen de un import o del protocolo.
+        mis_schemas, mi_ejecutar = acciones or (schemas(), ejecutar)
+
         try:
-            r = ejecutar_agente(pregunta, schemas(), ejecutar,
+            r = ejecutar_agente(pregunta, mis_schemas, mi_ejecutar,
                                 INSTRUCCIONES, max_pasos=max_pasos)
         except AgenteError as exc:
             self.stdout.write(f'   AGENTE NO DISPONIBLE: {exc}')
@@ -79,17 +86,32 @@ class Command(BaseCommand):
         self.stdout.write('')
 
     def handle(self, *args, **opts):
+        if opts['mcp']:
+            from apps.samples.mcp_conexion import ConexionMCP
+
+            with ConexionMCP() as conexion:
+                acciones = (conexion.descubrir_tools(), conexion.ejecutar_tool)
+                self._cabecera(opts, acciones[0], via='MCP (descubiertas por protocolo)')
+                self._todos(opts, acciones)
+            return
+
+        acciones = (schemas(), ejecutar)
+        self._cabecera(opts, acciones[0], via='import local')
+        self._todos(opts, acciones)
+
+    def _cabecera(self, opts, mis_schemas, via):
         self._regla('DEMO - Bucle agentico (ReAct)  |  BIOMED UMSS')
-        self.stdout.write(f'   acciones disponibles: {len(schemas())}')
-        for s in schemas():
+        self.stdout.write(f'   herramientas: {len(mis_schemas)}  via {via}')
+        for s in mis_schemas:
             self.stdout.write(f'     - {s["function"]["name"]}')
         self.stdout.write(f'   tope de pasos: {opts["max_pasos"]}  '
                           f'(un agente sin tope es un bucle infinito con factura)')
         self.stdout.write('')
 
+    def _todos(self, opts, acciones):
         if opts['pregunta']:
-            self._correr('CONSULTA', opts['pregunta'], '', opts['max_pasos'])
+            self._correr('CONSULTA', opts['pregunta'], '',
+                         opts['max_pasos'], acciones)
             return
-
         for etiqueta, pregunta, nota in CASOS:
-            self._correr(etiqueta, pregunta, nota, opts['max_pasos'])
+            self._correr(etiqueta, pregunta, nota, opts['max_pasos'], acciones)

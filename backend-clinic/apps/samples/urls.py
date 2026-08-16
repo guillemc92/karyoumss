@@ -6,6 +6,7 @@ from .views import (
     AuditTrailView,
     CaseIscnView,
     ToolQueryView,
+    AgenteView,
     CaseNarrativeView,
     CaseSignView,
     CaseValidateView,
@@ -67,4 +68,7 @@ urlpatterns = [
 
     # Tool calling (Modulo 6): el modelo elige la herramienta, el codigo responde
     path('tools/query/', ToolQueryView.as_view(), name='tool-query'),
+
+    # Nivel 4 — el agente encadena herramientas y RAG, y devuelve la traza
+    path('agente/', AgenteView.as_view(), name='agente'),
 ]

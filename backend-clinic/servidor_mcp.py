@@ -21,13 +21,17 @@ vez usa el mismo `CATALOGO` de `tools.py` que responde el endpoint HTTP y el
 enrutador. **Una sola definición de cada consulta, tres transportes.** Si esto
 fuera una copia, se desincronizaría en la primera semana.
 
-## Solo lectura, y es deliberado
+## El guardrail viaja con la herramienta
 
-Ninguna herramienta publicada escribe. Un servidor MCP es, por diseño, algo que
-clientes ajenos pueden invocar; exponer por ahí la validación de un cromosoma o
-la firma de un informe rompería RN-01, que exige una persona identificada. Si
-algún día se publica una escritura, el contrato es `confirmado: bool` con el
-plan en `confirmado=false` y el `true` puesto por un humano, nunca por el modelo.
+Cinco de las seis publicadas son de lectura. La sexta,
+`preparar_validacion_de_caso`, toca el dominio clínico y lleva su guardrail
+**dentro** (ver `apps/samples/agente_escritura.py`).
+
+Eso es deliberado y es el argumento de la diapositiva 11 del Día 6: si la
+comprobación viviera en nuestro agente, solo protegería a nuestro agente. Un
+servidor MCP existe precisamente para que lo invoquen clientes ajenos —otro
+agente, un IDE, Claude Desktop—, y ninguno de ellos conoce RN-01. Puesta en la
+herramienta, la política viaja con ella a cualquier cliente que la descubra.
 """
 import os
 import sys
@@ -92,6 +96,16 @@ def buscar_documentacion(pregunta: str) -> dict:
     significa algo, como se calcula, quien puede hacer que, o por que el sistema
     se comporta de cierta forma. Devuelve la respuesta con su fuente citada."""
     return ejecutar('buscar_documentacion', {'pregunta': pregunta})
+
+
+@mcp.tool()
+def preparar_validacion_de_caso(chn_code: str, confirmado: bool = False) -> dict:
+    """Prepara la validacion de un caso: informa de que bloquea la validacion y
+    que ocurriria al validarlo. ESCRITURA: llamar siempre con confirmado=false
+    para obtener el plan. La ejecucion real la hace una persona identificada
+    desde la aplicacion — un agente no puede validar un cariotipo (RN-01)."""
+    return ejecutar('preparar_validacion_de_caso',
+                    {'chn_code': chn_code, 'confirmado': confirmado})
 
 
 if __name__ == '__main__':
