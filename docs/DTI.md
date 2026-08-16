@@ -187,6 +187,63 @@ graph TB
     API -->|"Queries ACID"| DB
 ```
 
+### 3.2.1 Diagrama C4 Nivel 2 — Capa conversacional y agéntica
+
+Añadida en el Módulo 6 (ADR-0024, ADR-0029, ADR-0030). Convive con el pipeline
+de visión pero **no lo toca**: la IA generativa razona sobre texto y nunca ve
+imágenes; la discriminativa clasifica imágenes y nunca ve texto.
+
+```mermaid
+graph TB
+    subgraph CLIENTES ["Clientes"]
+        UI["⚛️ Página de consultas<br/>/clinic/consultas"]
+        EXT["🔌 Cliente MCP externo<br/>IDE · otro agente"]
+    end
+
+    subgraph ORQ ["Orquestación"]
+        ROUTER["🔀 Enrutador<br/>KEYWORD · LLM · RAG · SIN_MATCH"]
+        AGENTE["🤖 Agente ReAct<br/>tope 6 pasos · temp 0 · traza"]
+    end
+
+    subgraph ACC ["Acciones (una definición)"]
+        TOOLS["🛠️ CATALOGO<br/>4 consultas · Django ORM"]
+        RAG["📚 RAG documental<br/>índice 1.144 fragmentos"]
+        ESCR["✋ Escritura<br/>guardrail RN-01 dentro"]
+    end
+
+    subgraph MCP_L ["Transporte estándar"]
+        MCPS["🔗 servidor_mcp.py<br/>JSON-RPC 2.0 · stdio"]
+    end
+
+    LLM(["🧠 Ollama local<br/>llama3.2:3b + nomic-embed-text"])
+    DBC[("🗄️ clinic_samples<br/>clinic_chromosomes")]
+    CORPUS["📄 Corpus<br/>ISCN 2024 · ADRs · FSD/BRD"]
+
+    UI -->|"POST /tools/query/"| ROUTER
+    UI -->|"POST /agente/"| AGENTE
+    EXT -->|"tools/list · tools/call"| MCPS
+    ROUTER -->|"elige"| TOOLS
+    ROUTER -->|"elige"| RAG
+    AGENTE -->|"encadena"| TOOLS
+    AGENTE -->|"encadena"| RAG
+    AGENTE -->|"propone"| ESCR
+    AGENTE -.->|"o descubre por protocolo"| MCPS
+    MCPS -->|"delega"| TOOLS
+    MCPS -->|"delega"| RAG
+    MCPS -->|"delega"| ESCR
+    ROUTER -->|"decide"| LLM
+    AGENTE -->|"razona"| LLM
+    RAG -->|"embeddings + juez"| LLM
+    TOOLS -->|"lee"| DBC
+    ESCR -->|"lee estado"| DBC
+    RAG -->|"indexa"| CORPUS
+```
+
+**Lo que el diagrama muestra y conviene leer:** las tres cajas de acciones tienen
+**una sola definición** y tres consumidores —el enrutador, el agente y el
+servidor MCP—. El cliente externo llega a la misma lógica sin importar Django. Y
+el LLM no toca nunca la base ni el corpus directamente: decide, y el código lee.
+
 ### 3.3 Diagrama C4 Nivel 3 (Componentes FastAPI)
 Se detalla en la sección **§5.3** (Diagrama de Puertos y Adaptadores).
 
@@ -365,16 +422,61 @@ Detallado en el diagrama de arquitectura cloud del **[ADR-0005](file:///c:/Users
 
 ## §9. Capa de IA / Agentes
 
-### 9.1 Arquitectura Agéntica
-El pipeline de IA está compuesto por dos modelos especializados en serie y un motor de explicabilidad:
-1. **Segmentación (U-Net):** Identifica píxeles cromosómicos. Si detecta solapamientos (>30%), activa una heurística de separación por cuenca hidrográfica (watershed).
-2. **Clasificación (EfficientNet-B3):** Clasifica en uno de los 24 grupos y asigna el score de confianza Softmax.
-3. **Explicabilidad (Grad-CAM):** Genera mapas de calor de activación en las bandas G para cromosomas con confianza <85% (naranjas).
+### 9.1 Pipeline de visión — diseño frente a implementación
+
+> ⚠️ **Esta sección distingue lo diseñado de lo construido.** El diseño previsto
+> es U-Net + EfficientNet-B3 + Grad-CAM; **solo el clasificador está entrenado**.
+> Declararlo evita presentar como implementado algo que no lo está.
+
+| Componente | Diseñado | Estado real (verificado 2026-08-06) |
+|:---|:---|:---|
+| Segmentación | U-Net | **`OpenCVSegmenter`** — Otsu + morfología + watershed. Visión clásica, sin aprendizaje |
+| Clasificación | EfficientNet-B3 | **Implementado y entrenado** — torchvision, dataset MetaClass v3, macro-F1 0.6958 |
+| Explicabilidad | Grad-CAM | **Mock** — PNG 1×1; el evento `XAI_VIEWED` sí es real y bloquea el flujo (BR-004) |
+
+La cadena de versión que emite el servicio lo declara sin ambigüedad:
+`opencv-watershed-v0+efficientnet-b3-metaclass-v3`.
+
+El puerto `SegmenterPort` (hexagonal) permite sustituir el adaptador clásico por
+`UNetSegmenter` sin tocar el pipeline. **Medido:** contra el cariograma del
+experto en 453 casos pareados, MAE 3,8 cromosomas. El error residual es
+sub-segmentación —cúmulos que se tocan contados como uno— y se probó y descartó
+por medición resolverlo con más visión clásica: el centrómero es un
+estrangulamiento y cualquier umbral agresivo parte el cromosoma en sus brazos.
+Requiere aprender la forma, es decir, U-Net.
 
 ### 9.2 Tabla de Modelos y Umbrales
-* **U-Net:** Segmentación semántica. IoU objetivo: **>0.92**.
-* **EfficientNet-B3:** Clasificación. Umbral de confianza: **0.85**. Si `score < 0.85`, el cromosoma se cataloga como naranja y bloquea el reporte.
-* **Grad-CAM:** Motor de explicabilidad. Log obligatorio `XAI_VIEWED` en base de datos.
+* **EfficientNet-B3:** Clasificación en 24 clases. Umbral de confianza **0.85**
+  (RN-02): si `score < 0.85` el cromosoma se marca naranja y bloquea el reporte.
+* **`nomic-embed-text`:** Embeddings del corpus documental (ADR-0029). 768 dims.
+* **`llama3.2:3b`** (Ollama local): narrativa, enrutado, RAG y agente. Versión
+  fija, nunca `latest`.
+
+### 9.3 Capa conversacional y agéntica
+
+IA **generativa**, complementaria a la discriminativa de §9.1: aquella clasifica
+imágenes y nunca ve texto; esta razona sobre texto y **nunca ve la base de
+datos**. Cinco niveles, todos implementados y medidos:
+
+| Nivel | Qué es | Componente | Medición |
+|:---|:---|:---|:---|
+| 0 | Llamada al modelo | `llm_client.py` | ADR-0024 |
+| 1 | Salida estructurada | `llm_schemas.py` — Pydantic + validación anti-alucinación | caso adversario bloqueado 3/3 |
+| 2 | Tool calling | `tools.py`, `tool_router.py` | **48/56 (86%)** sobre banco etiquetado |
+| 3 | RAG documental | `rag_corpus/index/qa.py` | **16/18 (89%)** — ADR-0029 |
+| 4 | Agente + MCP | `agente.py`, `servidor_mcp.py` | traza verificada — ADR-0030 |
+
+**La regla que ordena la capa entera:** el modelo **elige**, el código
+**produce**. El LLM devuelve el nombre de una herramienta o decide si unos
+fragmentos responden; los datos siempre salen de Django ORM o del índice.
+
+**Guardrails del agente** (ADR-0030): tope de 6 pasos, `temperature=0`, traza
+por paso con acción/observación/tokens, y confirmación de escritura **dentro de
+la herramienta** para que viaje por MCP a cualquier cliente.
+
+**Interoperabilidad:** `servidor_mcp.py` publica 6 herramientas por JSON-RPC
+sobre stdio. Un cliente MCP externo las descubre y ejecuta **sin importar
+Django** — una definición, tres transportes (HTTP, agente local, MCP).
 
 ---
 
@@ -393,6 +495,28 @@ El detalle completo de prompts y su mapeo a código y a casos de uso del FSD se 
 | NFR-02 | Privacidad | Exclusión de datos personales (PII) | 100% | Inspección automatizada de logs y S3 |
 | NFR-03 | Resiliencia | Disponibilidad en modo degradado elegante | Transición <30s | Simulación de caída de TorchServe |
 | NFR-04 | Seguridad | Inalterabilidad del Audit Trail | Solo INSERT | Revocación de UPDATE/DELETE en SQL |
+| NFR-05 | Rendimiento | Consulta por vocabulario del dominio (camino KEYWORD) | **<100 ms** | `manage.py demo_tools` — medido 28-34 ms |
+| NFR-06 | Corrección | Acierto del enrutador sobre banco etiquetado | **≥85%**, abstención ≥75% | `manage.py eval_enrutado` — 48/56 (86%), abstención 78% |
+| NFR-07 | Corrección | Acierto del RAG documental | **≥85%**, abstención 100% | `manage.py eval_rag --con-juez` — 16/18 (89%), 6/6 |
+| NFR-08 | Auditabilidad | Traza del agente con acción, observación y tokens | 100% de los pasos | `POST /agente` devuelve `traza.pasos[]` |
+| NFR-09 | Seguridad | Ninguna escritura clínica sin humano identificado | 0 excepciones | `preparar_validacion_de_caso(confirmado=true)` desde cliente MCP externo |
+| NFR-10 | Rendimiento | Latencia del agente (nivel 4) | **asíncrono**, ver nota | `POST /agente` — medido 300-843 s |
+
+### 11.1 Nota sobre NFR-10 — por qué no se fija un umbral interactivo
+
+Un umbral tipo «p95 < 15 s» sería **incumplible y por tanto inútil**. Medido:
+300 s una consulta simple de 4 pasos, 843 s una multipaso de 6. La causa es
+estructural, no optimizable a este nivel: cada paso del bucle reenvía todo el
+historial y todos los *schemas* a un modelo de 3B corriendo en CPU.
+
+Se declara como **requisito de arquitectura, no de latencia**: el nivel 4 se
+consume de forma asíncrona —encolado, con el resultado consultable después— y
+nunca detrás de una caja de búsqueda. Las preguntas que necesitan respuesta
+inmediata bajan un peldaño de la escalera: el camino KEYWORD las resuelve en
+30 ms (NFR-05) y el RAG en decenas de segundos.
+
+Fijar un umbral que no se cumple es peor que declarar el real: oculta la
+decisión de diseño que sí importa, que es **dónde aplicar cada nivel**.
 
 ---
 
