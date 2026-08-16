@@ -158,11 +158,41 @@ class TestKaryotypeP2Services:
 # Endpoints
 # ============================================================================
 class TestKaryotypeP2Endpoints:
-    def test_xai_endpoint_returns_heatmap(self, analyst_client, own_sample):
+    def test_xai_declara_si_hay_explicacion_o_por_que_no(self, analyst_client, own_sample):
+        """El contrato es `xai_disponible`, no que siempre haya mapa.
+
+        Antes se devolvía un PNG de 1x1 fijo, así que el test podía exigir
+        `heatmap_base64` siempre. Ahora el mapa lo produce Grad-CAM real en
+        backend-ml: si el cromosoma no tiene bbox, o el servicio no responde,
+        **se dice** en vez de devolver una imagen que aparente ser una
+        explicación. Un XAI falso es peor que ninguno, porque el gate BR-004
+        obliga al analista a mirarlo antes de resolver.
+        """
         _, _, orange = _karyo_with_orange(own_sample)
+
         resp = analyst_client.post(_xai_url(own_sample, orange))
+
         assert resp.status_code == 200
-        assert 'heatmap_base64' in resp.data
+        assert 'xai_disponible' in resp.data
+        if resp.data['xai_disponible']:
+            assert resp.data.get('heatmap_base64')
+            assert resp.data.get('metodo') == 'grad-cam'
+        else:
+            # Si no hay explicación, hay motivo. Nunca las dos cosas vacías.
+            assert resp.data.get('motivo')
+            assert 'heatmap_base64' not in resp.data
+
+    def test_xai_marca_el_cromosoma_aunque_no_haya_mapa(self, analyst_client, own_sample):
+        """El gate BR-004 tiene que poder cumplirse con el servicio caído.
+
+        Si una caída de infraestructura impidiera marcar el cromosoma como
+        visto, bloquearía la validación clínica de todos los casos — justo lo
+        que RN-07 prohíbe.
+        """
+        _, _, orange = _karyo_with_orange(own_sample)
+
+        analyst_client.post(_xai_url(own_sample, orange))
+
         orange.refresh_from_db()
         assert orange.xai_viewed is True
 

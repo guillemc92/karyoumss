@@ -281,26 +281,75 @@ def _unresolved_count(karyotype: Karyotype) -> int:
     return count
 
 
+def _pedir_heatmap(sample, chromosome) -> dict:
+    """Grad-CAM real desde backend-ml. Devuelve `{}` si no se puede.
+
+    Nunca lanza: el gate BR-004 —haber consultado la explicabilidad— tiene que
+    poder cumplirse aunque el servicio de inferencia esté caído, o una caída de
+    infraestructura bloquearía la validación clínica de todos los casos (RN-07).
+    Lo que NO se hace es devolver un mapa falso: si no hay explicación, se dice.
+    """
+    if not chromosome.bbox:
+        return {'xai_disponible': False,
+                'motivo': 'el cromosoma no tiene bbox (caso anterior a P3)'}
+
+    image = sample.images.order_by('order', 'captured_at').first()
+    if image is None:
+        return {'xai_disponible': False, 'motivo': 'la muestra no tiene imagen'}
+
+    abs_path = Path(settings.MEDIA_ROOT) / image.image_path
+    if not abs_path.exists():
+        return {'xai_disponible': False, 'motivo': 'imagen no encontrada'}
+
+    try:
+        datos = pipeline_client.xai_heatmap(abs_path.read_bytes(),
+                                            chromosome.bbox,
+                                            filename=abs_path.name)
+    except MLDegradedError as exc:
+        return {'xai_disponible': False,
+                'motivo': f'servicio de inferencia no disponible: {exc}'}
+
+    return {
+        'xai_disponible': True,
+        'heatmap_base64': datos.get('heatmap_base64'),
+        'activacion': datos.get('activacion'),
+        'modelo': datos.get('modelo'),
+        'metodo': datos.get('metodo'),
+    }
+
+
 def view_xai(sample, chromosome, actor, mode='auto') -> dict:
-    """Registra XAI_VIEWED y marca el cromosoma como visto (gate BR-004).
-    El heatmap Grad-CAM real lo genera el microservicio de inferencia
-    (ADR-0007); acá se devuelve una referencia mock."""
+    """Registra XAI_VIEWED y devuelve el Grad-CAM real (gate BR-004, ADR-0007).
+
+    El mapa lo produce el microservicio de inferencia, que es donde vive el
+    modelo: calcularlo aquí obligaría a cargar torch en el backend clínico.
+
+    El resumen de activación se guarda en el evento de auditoría, no solo la
+    imagen: permite revisar meses después por qué el modelo dijo lo que dijo sin
+    tener que regenerar el mapa.
+    """
+    xai = _pedir_heatmap(sample, chromosome)
+
     with transaction.atomic():
         if not chromosome.xai_viewed:
             chromosome.xai_viewed = True
             chromosome.save(update_fields=['xai_viewed'])
         emit_audit_event(
             sample, actor, AuditEventType.XAI_VIEWED, chromosome=chromosome,
-            payload={'confidence_pre_xai': str(chromosome.confidence_score)}, mode=mode,
+            payload={
+                'confidence_pre_xai': str(chromosome.confidence_score),
+                'xai_disponible': xai.get('xai_disponible', False),
+                'activacion': xai.get('activacion'),
+                'modelo_xai': xai.get('modelo'),
+            },
+            mode=mode,
         )
+
     return {
         'chromosome_id': str(chromosome.id),
         'predicted_class': chromosome.predicted_class,
         'confidence_score': str(chromosome.confidence_score) if chromosome.confidence_score is not None else None,
-        # Heatmap mock (el ML service produce el real). PNG 1x1 rojo base64.
-        'heatmap_base64': (
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
-        ),
+        **xai,
     }
 
 

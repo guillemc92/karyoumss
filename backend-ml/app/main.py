@@ -9,7 +9,7 @@ Ejecutar:  uvicorn app.main:app --reload --port 8000
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
 from .pipeline import get_classifier, run_pipeline
 from .schemas import HealthOut, SegmentResult
@@ -46,3 +46,56 @@ async def segment_endpoint(file: UploadFile = File(...)) -> SegmentResult:
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e)) from e
     return run_pipeline(gray)
+
+
+@app.post('/api/v1/xai/')
+async def xai_endpoint(
+    file: UploadFile = File(...),
+    x: int = Form(...), y: int = Form(...),
+    w: int = Form(...), h: int = Form(...),
+) -> dict:
+    """Grad-CAM real de UN cromosoma de la metafase (ADR-0007, BR-004).
+
+    Recibe la metafase completa y el bbox del cromosoma. Necesita la imagen
+    entera y no solo el recorte porque el preprocesado usa `ref_h` —la altura
+    mediana de TODOS los cromosomas de esa metafase—, que es la señal de escala
+    con la que se entrenó el clasificador. Con un recorte suelto el mapa
+    correspondería a una entrada que el modelo nunca vio.
+
+    Devuelve el mapa superpuesto en PNG base64 y un resumen auditable de dónde
+    se concentra la activación.
+    """
+    from .gradcam import GradCamNoDisponible, heatmap_png, resumen_activacion
+    from .preprocess import reference_height
+    from .segmentation import segment
+
+    try:
+        gray = load_gray(await file.read())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    alto, ancho = gray.shape
+    if not (0 <= x < ancho and 0 <= y < alto and w > 0 and h > 0
+            and x + w <= ancho and y + h <= alto):
+        raise HTTPException(status_code=400, detail='bbox fuera de la imagen')
+
+    clf = get_classifier()
+    if not clf.is_trained:
+        # Sin modelo entrenado no hay gradientes que explicar. Se dice, en vez
+        # de devolver un mapa vacío que parezca una explicación.
+        raise HTTPException(status_code=503,
+                            detail='XAI no disponible: el clasificador no está entrenado')
+
+    ref_h = reference_height([d.bbox[3] for d in segment(gray)])
+    crop = gray[y:y + h, x:x + w]
+
+    try:
+        return {
+            'heatmap_base64': heatmap_png(clf, crop, ref_h),
+            'activacion': resumen_activacion(clf, crop, ref_h),
+            'modelo': clf.name,
+            'metodo': 'grad-cam',
+            'ref_h': round(float(ref_h), 1),
+        }
+    except GradCamNoDisponible as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc

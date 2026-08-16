@@ -75,6 +75,32 @@ class PipelineClient:
             raise MLDegradedError(str(exc)) from exc
 
 
+    def xai_heatmap(self, image_bytes: bytes, bbox: dict,
+                    filename: str = 'metafase.bmp') -> dict:
+        """Grad-CAM real de un cromosoma (/api/v1/xai/, ADR-0007, BR-004).
+
+        Se manda la metafase ENTERA y el bbox, no el recorte: el preprocesado
+        del clasificador usa `ref_h` —la altura mediana de todos los cromosomas
+        de esa imagen— como señal de escala. Con un recorte suelto el mapa
+        correspondería a una entrada que el modelo nunca vio.
+        """
+        if self._circuit_open():
+            raise MLDegradedError('circuit_open')
+        try:
+            with httpx.Client(timeout=max(self.timeout, 60.0)) as client:
+                resp = client.post(
+                    f'{self.base_url}/api/v1/xai/',
+                    files={'file': (filename, image_bytes, 'application/octet-stream')},
+                    data={k: int(bbox.get(k, 0)) for k in ('x', 'y', 'w', 'h')},
+                )
+                resp.raise_for_status()
+                self._record_success()
+                return resp.json()
+        except (httpx.TimeoutException, httpx.HTTPError) as exc:
+            self._record_failure()
+            raise MLDegradedError(str(exc)) from exc
+
+
 pipeline_client = PipelineClient(
     base_url=settings.CLINIC_FASTAPI_URL,
     timeout=settings.CLINIC_FASTAPI_TIMEOUT,
