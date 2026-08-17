@@ -11,6 +11,7 @@
  * react-konva se mockea en tests (jsdom no tiene canvas); la interacción real
  * se valida en E2E.
  */
+import { useState } from 'react';
 import { Circle, Group, Layer, Line, Rect, Stage, Text } from 'react-konva';
 import type { Chromosome } from '../types/karyotype';
 import { CHROMOSOME_SLOTS } from '../types/karyotype';
@@ -27,6 +28,7 @@ import {
 import type { ViewportState } from '../lib/viewport';
 import { INITIAL_VIEWPORT, cssFilter, stageScale } from '../lib/viewport';
 import type { Punto } from '../lib/medicion';
+import { esRecorteUtil, rectanguloDeRecorte } from '../lib/recorte';
 
 const SEMAPHORE_FILL: Record<string, string> = {
   green: '#1e8868',
@@ -57,6 +59,12 @@ interface KaryotypeCanvasProps {
   measureMode?: boolean;
   measurePoints?: Punto[];
   onMeasureClick?: (punto: Punto) => void;
+  /**
+   * Modo recorte: arrastrar dibuja el nuevo límite del cromosoma seleccionado.
+   * Al soltar se envía; el servidor reclasifica con el recorte nuevo.
+   */
+  cropMode?: boolean;
+  onCropDone?: (bbox: { x: number; y: number; w: number; h: number }) => void;
 }
 
 export function KaryotypeCanvas({
@@ -71,26 +79,68 @@ export function KaryotypeCanvas({
   measureMode = false,
   measurePoints = [],
   onMeasureClick,
+  cropMode = false,
+  onCropDone,
 }: KaryotypeCanvasProps) {
+  // Rectángulo en curso. Vive aquí y no en la página porque solo importa
+  // mientras se arrastra: al soltar se emite el bbox y se olvida.
+  const [cropInicio, setCropInicio] = useState<Punto | null>(null);
+  const [cropActual, setCropActual] = useState<Punto | null>(null);
   const active = chromosomes.filter((c) => c.is_active);
   // En modo "Mover" el lienzo se arrastra y los cromosomas NO (evita el
   // conflicto con el drag de reclasificación).
   // Midiendo, nada se arrastra: un clic marca un punto, no mueve un cromosoma.
-  const chromoDraggable = editable && !viewport.panMode && !measureMode;
+  const chromoDraggable = editable && !viewport.panMode && !measureMode && !cropMode;
 
-  // El clic llega en coordenadas de pantalla; las medidas se calculan sobre las
-  // del lienzo. Sin deshacer zoom, rotación y offset, medir con la vista
-  // ampliada daría longitudes distintas del mismo cromosoma.
-  const handleStageClick = (e: { target: { getStage: () => unknown } }) => {
-    if (!measureMode || !onMeasureClick) return;
+  // El clic llega en coordenadas de pantalla; las medidas y los recortes se
+  // calculan sobre las del lienzo. Sin deshacer zoom, rotación y offset, medir
+  // con la vista ampliada daría longitudes distintas del mismo cromosoma, y un
+  // recorte hecho con zoom recortaría una región que no es la que se ve.
+  const puntoEnLienzo = (e: { target: { getStage: () => unknown } }): Punto | null => {
     const stage = e.target.getStage() as {
       getPointerPosition: () => { x: number; y: number } | null;
       getAbsoluteTransform: () => { copy: () => { invert: () => { point: (p: Punto) => Punto } } };
     } | null;
     const pos = stage?.getPointerPosition();
-    if (!stage || !pos) return;
-    onMeasureClick(stage.getAbsoluteTransform().copy().invert().point(pos));
+    if (!stage || !pos) return null;
+    return stage.getAbsoluteTransform().copy().invert().point(pos);
   };
+
+  const handleStageClick = (e: { target: { getStage: () => unknown } }) => {
+    if (!measureMode || !onMeasureClick) return;
+    const punto = puntoEnLienzo(e);
+    if (punto) onMeasureClick(punto);
+  };
+
+  const handleCropStart = (e: { target: { getStage: () => unknown } }) => {
+    if (!cropMode) return;
+    const punto = puntoEnLienzo(e);
+    if (!punto) return;
+    setCropInicio(punto);
+    setCropActual(punto);
+  };
+
+  const handleCropMove = (e: { target: { getStage: () => unknown } }) => {
+    if (!cropMode || !cropInicio) return;
+    const punto = puntoEnLienzo(e);
+    if (punto) setCropActual(punto);
+  };
+
+  // Se emite al soltar, no en cada movimiento: el recorte dispara una
+  // reclasificación en el servidor y no tiene sentido pedirla por cada píxel.
+  const handleCropEnd = () => {
+    if (!cropMode || !cropInicio || !cropActual) return;
+    const rect = rectanguloDeRecorte(cropInicio, cropActual);
+    setCropInicio(null);
+    setCropActual(null);
+    // Un clic sin arrastre no es un recorte: sería un bbox degenerado que el
+    // servidor rechazaría (w o h nulos).
+    if (!esRecorteUtil(rect)) return;
+    onCropDone?.(rect);
+  };
+
+  const recorteEnCurso =
+    cropInicio && cropActual ? rectanguloDeRecorte(cropInicio, cropActual) : null;
 
   return (
     <div className="karyo-canvas" data-testid="karyotype-viewer" style={{ filter: cssFilter(viewport) }}>
@@ -105,6 +155,12 @@ export function KaryotypeCanvas({
         draggable={viewport.panMode}
         onDragEnd={viewport.panMode && onPan ? (e) => onPan(e.target.x(), e.target.y()) : undefined}
         onClick={measureMode ? handleStageClick : undefined}
+        onMouseDown={cropMode ? handleCropStart : undefined}
+        onMouseMove={cropMode ? handleCropMove : undefined}
+        onMouseUp={cropMode ? handleCropEnd : undefined}
+        // Soltar fuera del lienzo cancelaría el arrastre dejando el rectángulo
+        // pegado al cursor para siempre.
+        onMouseLeave={cropMode ? handleCropEnd : undefined}
         data-testid="karyo-stage"
       >
         <Layer>
@@ -189,6 +245,23 @@ export function KaryotypeCanvas({
               strokeWidth={2}
             />
           )}
+          {/* Recorte en curso: se dibuja mientras se arrastra y desaparece al
+              soltar. Sin relleno para no tapar el cromosoma que se recorta. */}
+          {recorteEnCurso && (
+            <Rect
+              data-testid="recorte-rect"
+              x={recorteEnCurso.x}
+              y={recorteEnCurso.y}
+              width={recorteEnCurso.w}
+              height={recorteEnCurso.h}
+              stroke="#0b7285"
+              strokeWidth={2}
+              dash={[6, 4]}
+              fillEnabled={false}
+              listening={false}
+            />
+          )}
+
           {measurePoints.map((p, i) => (
             <Circle
               key={`medicion-${i}`}

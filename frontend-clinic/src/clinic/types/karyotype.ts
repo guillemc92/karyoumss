@@ -15,6 +15,14 @@ export const CHROMOSOME_SLOTS: string[] = [
   'Y',
 ];
 
+/** Recorte de un cromosoma sobre la metafase, en pixeles de la imagen. */
+export interface BBox {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
 export interface ChromosomeMeasures {
   length_um?: number;
   centromeric_index?: number;
@@ -33,7 +41,7 @@ export interface Chromosome {
   is_anomaly: boolean;
   is_active: boolean; // P3: JOIN desactiva el fragmento absorbido (DD-KARYO-003)
   measures: ChromosomeMeasures;
-  bbox: Record<string, number>;
+  bbox: BBox | Record<string, number>;
   order: number;
 }
 
@@ -54,7 +62,8 @@ export type AuditEventType =
   | 'XAI_VIEWED' | 'ACCEPT_CHROMOSOME' | 'RECLASSIFY' | 'CORRECT_CLASS'
   | 'MARK_ANOMALY' | 'SPLIT' | 'JOIN' | 'RESOLVE_CROSS'
   | 'ANALYST_VALIDATED' | 'AUDIT_DECISION' | 'ISCN_OVERRIDE' | 'SIGN_REPORT'
-  | 'NARRATIVE_GENERATED'; // ADR-0024: borrador redactado por el LLM
+  | 'NARRATIVE_GENERATED' // ADR-0024: borrador redactado por el LLM
+  | 'RECROP'; // recorte manual del cromosoma + reclasificación
 
 export type AuditMode = 'auto' | 'degradado';
 
@@ -98,6 +107,7 @@ export const AUDIT_LABELS: Record<AuditEventType, string> = {
   ISCN_OVERRIDE: 'Override ISCN',
   SIGN_REPORT: 'Firmó reporte',
   NARRATIVE_GENERATED: 'Generó borrador narrativo (IA)',
+  RECROP: 'Recortó y reclasificó',
 };
 
 export interface KaryotypeSummary {

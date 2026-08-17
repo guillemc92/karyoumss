@@ -19,9 +19,23 @@ import { setClinicMode } from '../src/clinic/api/samplesClient';
  * (`querySelectorAll('button')`). El drag & drop de reclasificación se dispara
  * en tests con un CustomEvent 'konvadragend' + `globalThis.__konvaDrop`.
  * La geometría real de Konva se valida en E2E (Chromium).
+ *
+ * Los eventos de ratón (recorte manual) se reenvían al DOM con un stage falso
+ * que lee `globalThis.__konvaPointer`. La transformación de coordenadas es de
+ * Konva y se valida en E2E; lo que esto permite probar aquí es la máquina de
+ * estados del arrastre —empezar, mover, soltar— sin canvas.
  */
 vi.mock('react-konva', async () => {
   const React = await import('react');
+  /** Stage falso: devuelve el puntero que el test haya fijado. */
+  const stageFalso = () => {
+    const pos = (globalThis as unknown as { __konvaPointer?: { x: number; y: number } }).__konvaPointer ?? { x: 0, y: 0 };
+    return {
+      getPointerPosition: () => pos,
+      // Identidad: sin zoom ni rotación, pantalla y lienzo coinciden.
+      getAbsoluteTransform: () => ({ copy: () => ({ invert: () => ({ point: (p: unknown) => p }) }) }),
+    };
+  };
   function konvaNode(tag: string) {
     return function KonvaMock(props: Record<string, unknown>) {
       const { children, onClick, onDragEnd } = props as {
@@ -44,8 +58,14 @@ vi.mock('react-konva', async () => {
       for (const [k, v] of Object.entries(props)) {
         if (k.startsWith('data-') || k === 'aria-label') domProps[k] = v;
       }
-      if (onClick) domProps.onClick = () => onClick({ cancelBubble: false });
-      const element = onClick ? 'button' : 'div';
+      if (onClick) domProps.onClick = () => onClick({ cancelBubble: false, target: { getStage: stageFalso } });
+      for (const nombre of ['onMouseDown', 'onMouseMove', 'onMouseUp', 'onMouseLeave'] as const) {
+        const manejador = props[nombre] as ((e: unknown) => void) | undefined;
+        if (manejador) domProps[nombre] = () => manejador({ target: { getStage: stageFalso } });
+      }
+      // El Stage también acepta onClick (medición), pero anidar los botones de
+      // los cromosomas dentro de otro <button> es HTML inválido.
+      const element = onClick && tag !== 'stage' ? 'button' : 'div';
       if (element === 'button') domProps.type = 'button';
       return React.createElement(element, domProps, children as React.ReactNode);
     };

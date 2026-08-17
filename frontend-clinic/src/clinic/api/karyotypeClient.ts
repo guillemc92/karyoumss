@@ -12,8 +12,7 @@
 import { clinicRequest, CLINIC_DEFAULT_BASE_URL } from './samplesClient';
 import type {
   AuditEvent, AuditReview, AuditReviewResponse, Chromosome, IscnResult, Karyotype,
-  NarrativeResult, PipelineHealth, ValidateResult, XaiResult,
-} from '../types/karyotype';
+  NarrativeResult, PipelineHealth, ValidateResult, XaiResult, BBox } from '../types/karyotype';
 
 export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL) {
   return {
@@ -55,6 +54,21 @@ export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL)
         body: { target_class: targetClass },
       });
     },
+    /**
+     * POST /chromosomes/{cid}/recrop/ — corregir el recorte de UNO.
+     *
+     * Distinto de `split`, que parte en dos por la mitad del bbox. El recorte
+     * arrastra reclasificación en el servidor: la clase predicha sobre el
+     * recorte anterior deja de valer.
+     */
+    recrop(sampleId: string, chromosomeId: string, bbox: BBox): Promise<Chromosome> {
+      return clinicRequest<Chromosome>(
+        baseUrl,
+        `/samples/${sampleId}/chromosomes/${chromosomeId}/recrop/`,
+        { method: 'POST', body: { bbox } },
+      );
+    },
+
     /** POST /chromosomes/{cid}/split/ — separar touching (crea 2º cromosoma). */
     split(sampleId: string, chromosomeId: string): Promise<Chromosome> {
       return clinicRequest<Chromosome>(baseUrl, `/samples/${sampleId}/chromosomes/${chromosomeId}/split/`, { method: 'POST' });

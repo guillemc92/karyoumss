@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { BBox } from '../types/karyotype';
 import { karyotypeClient } from '../api/karyotypeClient';
 
 /** Acciones de P2 (XAI, resolver, anomalía, validar) + bitácora de auditoría.
@@ -33,6 +34,11 @@ export function useKaryotypeActions(sampleId: string | undefined) {
       karyotypeClient.reclassify(sampleId as string, v.chromosomeId, v.targetClass),
     onSuccess: invalidate,
   });
+  const recrop = useMutation({
+    mutationFn: (v: { chromosomeId: string; bbox: BBox }) =>
+      karyotypeClient.recrop(sampleId as string, v.chromosomeId, v.bbox),
+    onSuccess: invalidate,
+  });
   const split = useMutation({
     mutationFn: (chromosomeId: string) => karyotypeClient.split(sampleId as string, chromosomeId),
     onSuccess: invalidate,
@@ -47,7 +53,7 @@ export function useKaryotypeActions(sampleId: string | undefined) {
     onSuccess: invalidate,
   });
 
-  return { viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross };
+  return { viewXai, resolve, markAnomaly, validate, reclassify, recrop, split, join, resolveCross };
 }
 
 export function useAuditTrail(sampleId: string | undefined, enabled = false) {

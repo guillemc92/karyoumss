@@ -462,6 +462,36 @@ export const handlers = [
     return HttpResponse.json(chromo);
   }),
 
+  // Recorte manual (RECROP): el recorte nuevo arrastra una clasificación
+  // nueva. El doble no tiene modelo, así que simula lo que importa para la
+  // interfaz —que la clase cambia y el cromosoma vuelve a estar pendiente—
+  // derivando la clase del tamaño, que es lo que de verdad la determina.
+  http.post(`${API}/samples/:id/chromosomes/:cid/recrop/`, async ({ params, request }) => {
+    const sid = String(params.id);
+    if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
+    const k = getOrBuildKaryotype(sid);
+    const chromo = k.chromosomes.find((c) => c.id === params.cid);
+    if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
+    const body = (await request.json()) as { bbox?: { x: number; y: number; w: number; h: number } };
+    const bbox = body.bbox;
+    if (!bbox || !(bbox.w > 0) || !(bbox.h > 0)) {
+      return HttpResponse.json({ code: 'INVALID_BBOX', detail: 'El bbox necesita ancho y alto positivos' }, { status: 400 });
+    }
+    chromo.bbox = bbox;
+    // Recortar más pequeño sugiere que antes había un cúmulo: clase mayor.
+    const previo = Number(chromo.predicted_class);
+    if (Number.isFinite(previo)) {
+      chromo.predicted_class = String(Math.min(22, previo + 2));
+    }
+    chromo.confidence_score = '0.620';
+    chromo.semaphore = 'orange';
+    chromo.resolution_status = 'PENDING';
+    chromo.xai_viewed = false;      // la decisión anterior miraba otros píxeles
+    recomputeSummary(k);
+    pushAudit(sid, 'RECROP', chromo.id, modeOf(request));
+    return HttpResponse.json(chromo);
+  }),
+
   http.post(`${API}/samples/:id/chromosomes/:cid/split/`, ({ params, request }) => {
     const sid = String(params.id);
     if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });

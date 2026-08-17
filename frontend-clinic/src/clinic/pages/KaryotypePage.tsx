@@ -33,7 +33,7 @@ import {
   puedeRehacer,
 } from '../lib/historial';
 import { ClinicApiException } from '../types/sample';
-import type { Chromosome, XaiResult } from '../types/karyotype';
+import type { BBox, Chromosome, XaiResult } from '../types/karyotype';
 import { AUDIT_LABELS } from '../types/karyotype';
 
 function SemaphoreLegend() {
@@ -79,6 +79,10 @@ export function KaryotypePage() {
   // y no en el canvas porque el panel lateral tambien lo necesita.
   const [midiendo, setMidiendo] = useState(false);
   const [puntos, setPuntos] = useState<Punto[]>([]);
+  // Recorte manual: se guarda el id del cromosoma que se está recortando, no un
+  // booleano, porque el rectángulo se dibuja sobre el lienzo entero y hay que
+  // saber a cuál de los 46 se le aplica.
+  const [recortando, setRecortando] = useState<string | null>(null);
 
   // Ctrl+Z / Ctrl+Y sobre la vista. Si hay medicion en curso, deshacer quita
   // el ultimo punto marcado: es lo que el usuario espera con puntos a medias.
@@ -100,13 +104,19 @@ export function KaryotypePage() {
   const marcarPunto = (p: Punto) =>
     setPuntos((previos) => (previos.length >= 3 ? [p] : [...previos, p]));
   const limpiarMedicion = () => setPuntos([]);
+  // Medir y recortar se excluyen: ambos capturan el arrastre sobre el lienzo.
   const alternarMedicion = () => {
     setMidiendo((v) => !v);
     setPuntos([]);
+    setRecortando(null);
+  };
+  const alternarRecorte = (c: Chromosome) => {
+    setRecortando((previo) => (previo === c.id ? null : c.id));
+    setMidiendo(false);
   };
   const { degraded, justRestored, dismissRestored } = useDegradedMode();
 
-  const { viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross } =
+  const { viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross, recrop } =
     useKaryotypeActions(id);
   const audit = useAuditTrail(id, showAudit);
 
@@ -148,7 +158,8 @@ export function KaryotypePage() {
   const showIscn = isSupervisor && (karyotype.sample_status === 'SIGNED' || karyotype.sample_status === 'REPORTED');
   const busy =
     viewXai.isPending || resolve.isPending || markAnomaly.isPending || validate.isPending ||
-    reclassify.isPending || split.isPending || join.isPending || resolveCross.isPending;
+    reclassify.isPending || split.isPending || join.isPending || resolveCross.isPending ||
+    recrop.isPending;
 
   async function handleViewXai(c: Chromosome) {
     setActionError(null);
@@ -214,6 +225,16 @@ export function KaryotypePage() {
 
   function handleJoinPick(c: Chromosome) {
     setJoinPick((prev) => (prev?.id === c.id ? null : { id: c.id, label: c.predicted_class }));
+  }
+
+  // El modo se apaga al soltar: recortar es un acto puntual, no un estado en el
+  // que uno se queda. Dejarlo activo invitaría a recortar dos veces sin ver el
+  // resultado de la primera.
+  async function handleCropDone(bbox: BBox) {
+    const chromosomeId = recortando;
+    setRecortando(null);
+    if (!chromosomeId) return;
+    await runP3('Error al recortar', () => recrop.mutateAsync({ chromosomeId, bbox }));
   }
 
   async function handleJoinConfirm(c: Chromosome) {
@@ -286,6 +307,8 @@ export function KaryotypePage() {
             measureMode={midiendo}
             measurePoints={puntos}
             onMeasureClick={marcarPunto}
+            cropMode={Boolean(recortando) && !validated}
+            onCropDone={handleCropDone}
           />
         </div>
         <aside className="karyo-workspace__panel">
@@ -307,6 +330,8 @@ export function KaryotypePage() {
             onJoinPick={validated ? undefined : handleJoinPick}
             onJoinConfirm={validated ? undefined : handleJoinConfirm}
             joinPick={joinPick}
+            onToggleCrop={validated ? undefined : alternarRecorte}
+            cropActivo={recortando === selected?.id}
           />
           <div className="karyo-gating">
             <button

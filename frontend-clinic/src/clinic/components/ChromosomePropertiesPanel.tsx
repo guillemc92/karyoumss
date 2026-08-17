@@ -26,6 +26,9 @@ interface Actions {
   onJoinConfirm?: (c: Chromosome) => void;
   /** Primer fragmento marcado para unir (lo gestiona la página). */
   joinPick?: { id: string; label: string } | null;
+  /** Recorte manual: activa el dibujo del rectángulo sobre el lienzo. */
+  onToggleCrop?: (c: Chromosome) => void;
+  cropActivo?: boolean;
 }
 
 export function ChromosomePropertiesPanel({
@@ -40,6 +43,8 @@ export function ChromosomePropertiesPanel({
   onJoinPick,
   onJoinConfirm,
   joinPick = null,
+  onToggleCrop,
+  cropActivo = false,
 }: { chromosome: Chromosome | null } & Actions) {
   if (!chromosome) {
     return (
@@ -52,7 +57,7 @@ export function ChromosomePropertiesPanel({
 
   const m = chromosome.measures ?? {};
   const showActions = Boolean(onViewXai || onResolve || onMarkAnomaly);
-  const showP3 = Boolean(onReclassify || onSplit || onResolveCross || onJoinPick);
+  const showP3 = Boolean(onReclassify || onSplit || onResolveCross || onJoinPick || onToggleCrop);
   const isOrange = chromosome.semaphore === 'orange';
   const isResolved = chromosome.resolution_status === 'RESOLVED';
   const isJoinPicked = joinPick?.id === chromosome.id;
@@ -176,10 +181,32 @@ export function ChromosomePropertiesPanel({
                 {isJoinPicked ? '🔗 Marcado — elija el otro fragmento' : '🔗 Unir: marcar este fragmento'}
               </button>
             )}
+            {/* Recortar es la corrección de raíz: cuando la segmentación mete
+                dos cromosomas en una detección, la clase se calculó sobre
+                píxeles equivocados y ninguna reclasificación manual arregla
+                eso. Al soltar el rectángulo el servidor vuelve a clasificar. */}
+            {onToggleCrop && (
+              <button
+                type="button"
+                className={cropActivo ? 'btn-primary' : 'btn-outline'}
+                onClick={() => onToggleCrop(chromosome)}
+                disabled={busy}
+                data-testid="action-crop"
+                aria-pressed={cropActivo}
+              >
+                {cropActivo ? '⬚ Dibuje el recorte en el visor' : '⬚ Recortar y reclasificar'}
+              </button>
+            )}
           </div>
           <p className="karyo-props__hint" data-testid="reclassify-hint">
             Arrastre el cromosoma a otro par en el visor, o use "Mover a par" (override manual, BR-003).
           </p>
+          {cropActivo && (
+            <p className="karyo-props__hint" data-testid="crop-hint">
+              Arrastre un rectángulo sobre el cromosoma en el visor. Al soltar se
+              reclasifica con el recorte nuevo y vuelve a quedar pendiente de revisión.
+            </p>
+          )}
         </div>
       )}
     </div>
