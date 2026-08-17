@@ -32,6 +32,11 @@ Cuando el pipeline de IA está caído (circuit breaker abierto), el visor:
 **Fuera de P4** (requiere imágenes reales / pipeline ADR-0007): editor de
 segmentación manual desde cero (dibujar bounding boxes, §5). Se difiere.
 
+> **Actualización 2026-08-17** — [DD-KARYO-005](DD-KARYO-005.md) levanta este
+> diferimiento **a medias**: el recorte manual (RECROP) permite mover el borde
+> de una detección **existente** y reclasificarla. Sigue diferido **crear**
+> detecciones nuevas donde la segmentación no vio nada.
+
 ## 2. Backend
 
 ### 2.1 `AuditEvent.mode` (migración 0008)

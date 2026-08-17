@@ -2869,5 +2869,60 @@ Refs: ADR-0007, AGENTS.md §9, DD-ML-001, PM-ML-001/002.
 
 ---
 
+## PM-KARYO-005 — Recorte manual del cromosoma con reclasificación (RECROP)
+
+| Campo | Valor |
+|---|---|
+| **ID** | PM-KARYO-005 |
+| **Título** | El analista corrige a mano el límite de un cromosoma sobre el lienzo Konva y el servidor vuelve a clasificar con el recorte nuevo |
+| **Estado** | Ejecutado y verificado |
+| **Fecha** | 2026-08-17 |
+| **ADR origen** | [ADR-0021](adr/0021-visor-correccion-cariotipo.md) §D5 + [ADR-0022](adr/0022-audit-trail-clinico-django.md) |
+| **Design Doc** | [DD-KARYO-005](design/DD-KARYO-005.md) |
+| **Commits** | `f541914` (backend + backend-ml), `9235dce` (frontend) |
+
+### Alcance ejecutado
+Ataca el fallo **medido** que bloqueaba el uso clínico del visor: la
+segmentación (OpenCV+watershed, no U-Net) **sub-segmenta** — cúmulos que se
+tocan contados como un objeto — y ese recorte malo produce las falsas «clase
+1» (18 de 36 objetos en `metafase_1`). El analista dibuja el nuevo límite sobre
+el lienzo y, **al soltar, el servidor reclasifica**: el cromosoma vuelve a
+`PENDING` con `xai_viewed=False`, así que BR-004 se reabre. Dejar la clase
+anterior sería peor que no tener la herramienta — parecería correcta estando
+calculada sobre píxeles que ya nadie ve.
+
+Levanta **parcialmente** el diferimiento de DD-KARYO-004 §1: mover el borde de
+una detección existente ya es posible; **crear** detecciones nuevas donde la
+segmentación no vio nada sigue diferido.
+
+### Verificación
+Con datos reales, partir por la mitad el bbox del primer cromosoma de
+`metafase_1` cambia la predicción de clase 1 a clase 3 — el bucle se cierra.
+11 tests backend + 14 frontend; 361/361 verdes, 97.52% stmts / 91.83% branch
+(RN-09). Degradación (RN-07): sin IA el recorte se guarda igual y el evento
+anota `reclasificado: false` + motivo.
+
+### Honestidad / limitaciones
+La herramienta es un **parche del analista sobre un segmentador insuficiente**,
+no un arreglo del segmentador. La vía de fondo sigue siendo U-Net (ADR-0007);
+ver `docs/DTI.md` §9 (diseñado vs. construido). Un bug de doble serialización
+en el cliente HTTP llegó a producirse y **solo lo cazó el test de integración
+contra MSW**, no el unitario del lienzo (DD-KARYO-005 §5.1).
+
+### Trazabilidad
+```
+FSD-UC-003 (corrección manual) + fallo medido de sub-segmentación
+  → ADR-0021 §D5 → DD-KARYO-005
+    → backend-clinic: recrop_chromosome + AuditEventType.RECROP + migración 0016
+      → backend-ml: POST /api/v1/classify/ (metafase entera + bbox, por ref_h)
+        → frontend-clinic: lib/recorte.ts + cropMode en KaryotypeCanvas
+          → 11 tests backend + 14 frontend, cobertura 97.52%
+```
+
+Refs: ADR-0021 §D5, ADR-0022, DD-KARYO-004 §1 (diferimiento que levanta),
+DD-KARYO-005, RN-05/RN-07, BR-004, PM-KARYO-001/002/003.
+
+---
+
 *Documento vivo — agregar nuevo PM por cada feature implementada*
 *Trazabilidad: PROMPT_MAPPING.md ← FSD_vFinal.md ← PRD_vFinal.md ← BRD_vFinal.md*
