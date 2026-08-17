@@ -99,3 +99,55 @@ async def xai_endpoint(
         }
     except GradCamNoDisponible as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+
+@app.post('/api/v1/classify/')
+async def classify_endpoint(
+    file: UploadFile = File(...),
+    x: int = Form(...), y: int = Form(...),
+    w: int = Form(...), h: int = Form(...),
+) -> dict:
+    """Clasifica UN recorte de la metafase (bbox dado por el usuario).
+
+    Existe para cerrar el bucle del recorte manual: si el analista corrige el
+    límite de un cromosoma, la clase que se predijo sobre el recorte anterior
+    queda obsoleta. Volver a clasificar con el recorte bueno es justo lo que
+    ataca el fallo medido —recortes malos producen clases falsas—, así que la
+    corrección manual tiene que arrastrar una nueva predicción.
+
+    Recibe la metafase entera, no el recorte, por la misma razón que /xai/: el
+    preprocesado usa `ref_h`, la altura mediana de TODOS los cromosomas de esa
+    imagen, como señal de escala.
+    """
+    from .preprocess import reference_height
+    from .segmentation import Detection, segment
+
+    try:
+        gray = load_gray(await file.read())
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    alto, ancho = gray.shape
+    if not (0 <= x < ancho and 0 <= y < alto and w > 0 and h > 0
+            and x + w <= ancho and y + h <= alto):
+        raise HTTPException(status_code=400, detail='bbox fuera de la imagen')
+
+    clf = get_classifier()
+    # La escala de referencia sale de la segmentación automática de ESTA
+    # metafase, no del recorte: es la mediana de la imagen completa.
+    ref_h = reference_height([d.bbox[3] for d in segment(gray)])
+
+    deteccion = Detection(bbox=(x, y, w, h), area=w * h,
+                          centroid=(x + w / 2.0, y + h / 2.0))
+    resultados = clf.classify_all(gray, [deteccion])
+    if not resultados:
+        raise HTTPException(status_code=503, detail='el clasificador no devolvió resultado')
+
+    clase, confianza = resultados[0]
+    return {
+        'predicted_class': clase,
+        'confidence_score': confianza,
+        'modelo': clf.name,
+        'entrenado': clf.is_trained,
+        'ref_h': round(float(ref_h), 1),
+    }

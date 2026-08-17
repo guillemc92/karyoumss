@@ -867,3 +867,92 @@ def generate_case_iscn(sample, actor, override: str = '', justification: str = '
                 mode=mode,
             )
     return sample
+
+
+def recrop_chromosome(sample, chromosome, bbox: dict, actor, mode='auto') -> Chromosome:
+    """Corrige a mano el recorte de un cromosoma y vuelve a clasificarlo.
+
+    ## Por qué reclasifica
+
+    La segmentación automática falla por sub-segmentación: cúmulos que se tocan
+    se cuentan como uno solo, y un recorte que abarca dos cromosomas produce un
+    objeto grande que el clasificador manda a las clases grandes. Ese es el
+    origen medido de las falsas «clase 1».
+
+    Si el analista corrige el límite, la clase predicha sobre el recorte
+    anterior deja de valer. Dejarla sería peor que no tener recorte: el sistema
+    mostraría una clase calculada sobre píxeles que ya nadie ve. Por eso el
+    recorte arrastra una nueva predicción — verificado que cambia (un bbox
+    partido por la mitad pasó de clase 1 a clase 3).
+
+    ## Por qué es un evento distinto de SPLIT
+
+    `split` divide uno en dos por la mitad del bbox, que es una heurística
+    cruda. Esto no divide nada: mueve el límite de UNO. La traza guarda el bbox
+    y la clase de antes y de después, que es lo que permite revisar si la
+    corrección manual mejoró o empeoró el caso.
+
+    Si el servicio de inferencia no responde, se guarda el recorte igual y se
+    marca la clase como pendiente de revisar: perder la corrección manual del
+    analista por una caída de infraestructura sería peor (RN-07).
+    """
+    _assert_editable(sample)
+
+    requeridos = ('x', 'y', 'w', 'h')
+    if not all(k in (bbox or {}) for k in requeridos):
+        raise ValueError('el bbox necesita x, y, w, h')
+    nuevo_bbox = {k: int(bbox[k]) for k in requeridos}
+    if nuevo_bbox['w'] <= 0 or nuevo_bbox['h'] <= 0:
+        raise ValueError('el bbox debe tener ancho y alto positivos')
+
+    bbox_previo = dict(chromosome.bbox or {})
+    clase_previa = chromosome.predicted_class
+    confianza_previa = chromosome.confidence_score
+
+    # Reclasificar es lo deseable, pero no puede bloquear la corrección.
+    nueva_clase, nueva_confianza, motivo = clase_previa, confianza_previa, ''
+    image = sample.images.order_by('order', 'captured_at').first()
+    if image is None:
+        motivo = 'sin imagen: no se pudo reclasificar'
+    else:
+        abs_path = Path(settings.MEDIA_ROOT) / image.image_path
+        if not abs_path.exists():
+            motivo = 'imagen no encontrada: no se pudo reclasificar'
+        else:
+            try:
+                r = pipeline_client.classify_crop(abs_path.read_bytes(), nuevo_bbox,
+                                                  filename=abs_path.name)
+                nueva_clase = r.get('predicted_class') or clase_previa
+                nueva_confianza = _Decimal(str(r.get("confidence_score", 0)))
+            except MLDegradedError as exc:
+                motivo = f'IA no disponible: {exc}'
+
+    with transaction.atomic():
+        chromosome.bbox = nuevo_bbox
+        chromosome.predicted_class = nueva_clase
+        chromosome.confidence_score = nueva_confianza
+        # Un recorte nuevo es un cromosoma nuevo a efectos de revisión: si
+        # estaba resuelto, vuelve a la cola. La decisión anterior se tomó
+        # mirando otra cosa.
+        chromosome.resolution_status = 'PENDING'
+        chromosome.xai_viewed = False
+        chromosome.save(update_fields=[
+            'bbox', 'predicted_class', 'confidence_score',
+            'resolution_status', 'xai_viewed',
+        ])
+        emit_audit_event(
+            sample, actor, AuditEventType.RECROP, chromosome=chromosome,
+            payload={
+                'bbox_previo': bbox_previo,
+                'bbox_nuevo': nuevo_bbox,
+                'clase_previa': clase_previa,
+                'clase_nueva': nueva_clase,
+                'confianza_previa': str(confianza_previa) if confianza_previa is not None else None,
+                'confianza_nueva': str(nueva_confianza) if nueva_confianza is not None else None,
+                'reclasificado': not motivo,
+                'motivo': motivo,
+            },
+            mode=mode,
+        )
+    chromosome.refresh_from_db()
+    return chromosome

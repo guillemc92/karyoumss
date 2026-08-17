@@ -811,3 +811,40 @@ class AgenteView(APIView):
                          for s in schemas()],
             'max_pasos': MAX_PASOS,
         }, status=status.HTTP_200_OK)
+
+
+class ChromosomeRecropView(APIView):
+    """POST /samples/{id}/chromosomes/{cid}/recrop/ — corregir el recorte.
+
+    Body: {"bbox": {"x": .., "y": .., "w": .., "h": ..}}
+
+    Distinto de `split`, que parte uno en dos por la mitad del bbox: esto mueve
+    el limite de UNO. El recorte arrastra RECLASIFICACION, porque la clase que
+    se predijo sobre el recorte anterior deja de valer en cuanto cambia lo que
+    el modelo mira.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk, cid):
+        from .services import recrop_chromosome
+
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        chromo, error = _get_owned_chromosome_or_error(sample, cid)
+        if error:
+            return error
+        try:
+            actualizado = recrop_chromosome(
+                sample, chromo, request.data.get('bbox') or {},
+                request.user, mode=_request_mode(request),
+            )
+        except CaseLockedError as e:
+            return Response({'code': 'CASE_LOCKED', 'detail': str(e)},
+                            status=status.HTTP_409_CONFLICT)
+        except ValueError as e:
+            return Response({'code': 'VALIDATION_ERROR', 'detail': str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response(ChromosomeSerializer(actualizado).data, status=status.HTTP_200_OK)

@@ -256,6 +256,11 @@ class AuditEventType(models.TextChoices):
     SPLIT = 'SPLIT', 'Separado'                          # P3
     JOIN = 'JOIN', 'Unido'                              # P3
     RESOLVE_CROSS = 'RESOLVE_CROSS', 'Cruce resuelto'    # P3
+    # Recorte manual del bbox. Es un evento aparte de SPLIT porque no divide
+    # nada: corrige el limite de UN cromosoma cuando la segmentacion agarro de
+    # mas o de menos. Arrastra reclasificacion, asi que la traza guarda la
+    # clase de antes y la de despues.
+    RECROP = 'RECROP', 'Recorte corregido'
     ANALYST_VALIDATED = 'ANALYST_VALIDATED', 'Validado por analista'
     AUDIT_DECISION = 'AUDIT_DECISION', 'Decisión de auditoría'  # futuro
     ISCN_OVERRIDE = 'ISCN_OVERRIDE', 'Override ISCN'            # futuro

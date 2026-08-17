@@ -16,6 +16,7 @@ from .views import (
     ChromosomeReclassifyView,
     ChromosomeResolveView,
     ChromosomeSplitView,
+    ChromosomeRecropView,
     ChromosomeXaiView,
     KaryotypeView,
     PipelineHealthView,
@@ -47,6 +48,8 @@ urlpatterns = [
     # Cariotipo P3 (ADR-0021 P3, DD-KARYO-003) — corrección manual.
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/reclassify/', ChromosomeReclassifyView.as_view(), name='chromosome-reclassify'),
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/split/', ChromosomeSplitView.as_view(), name='chromosome-split'),
+    # Recorte manual: mueve el limite de UNO y reclasifica (distinto de split)
+    path('samples/<uuid:pk>/chromosomes/<uuid:cid>/recrop/', ChromosomeRecropView.as_view(), name='chromosome-recrop'),
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/join/', ChromosomeJoinView.as_view(), name='chromosome-join'),
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/cross/', ChromosomeCrossView.as_view(), name='chromosome-cross'),
 

@@ -101,6 +101,30 @@ class PipelineClient:
             raise MLDegradedError(str(exc)) from exc
 
 
+    def classify_crop(self, image_bytes: bytes, bbox: dict,
+                      filename: str = 'metafase.bmp') -> dict:
+        """Clasifica un recorte concreto (/api/v1/classify/).
+
+        Se usa tras un recorte manual: la clase que se predijo sobre el recorte
+        anterior deja de valer en cuanto el analista mueve el límite.
+        """
+        if self._circuit_open():
+            raise MLDegradedError('circuit_open')
+        try:
+            with httpx.Client(timeout=max(self.timeout, 60.0)) as client:
+                resp = client.post(
+                    f'{self.base_url}/api/v1/classify/',
+                    files={'file': (filename, image_bytes, 'application/octet-stream')},
+                    data={k: int(bbox.get(k, 0)) for k in ('x', 'y', 'w', 'h')},
+                )
+                resp.raise_for_status()
+                self._record_success()
+                return resp.json()
+        except (httpx.TimeoutException, httpx.HTTPError) as exc:
+            self._record_failure()
+            raise MLDegradedError(str(exc)) from exc
+
+
 pipeline_client = PipelineClient(
     base_url=settings.CLINIC_FASTAPI_URL,
     timeout=settings.CLINIC_FASTAPI_TIMEOUT,
