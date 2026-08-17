@@ -11,7 +11,7 @@
  * react-konva se mockea en tests (jsdom no tiene canvas); la interacción real
  * se valida en E2E.
  */
-import { Group, Layer, Rect, Stage, Text } from 'react-konva';
+import { Circle, Group, Layer, Line, Rect, Stage, Text } from 'react-konva';
 import type { Chromosome } from '../types/karyotype';
 import { CHROMOSOME_SLOTS } from '../types/karyotype';
 import {
@@ -25,7 +25,8 @@ import {
   slotOrigin,
 } from '../lib/karyoLayout';
 import type { ViewportState } from '../lib/viewport';
-import { INITIAL_VIEWPORT, cssFilter } from '../lib/viewport';
+import { INITIAL_VIEWPORT, cssFilter, stageScale } from '../lib/viewport';
+import type { Punto } from '../lib/medicion';
 
 const SEMAPHORE_FILL: Record<string, string> = {
   green: '#1e8868',
@@ -48,6 +49,14 @@ interface KaryotypeCanvasProps {
   onReclassify?: (chromosome: Chromosome, targetClass: string) => void;
   /** Nuevo offset del lienzo tras un arrastre en modo "Mover" (P4). */
   onPan?: (offsetX: number, offsetY: number) => void;
+  /**
+   * Modo medición: los clics marcan puntos en vez de seleccionar cromosomas.
+   * Se necesitan tres —extremo p, centrómero, extremo q— porque el índice
+   * centromérico exige saber dónde está la constricción, no solo los extremos.
+   */
+  measureMode?: boolean;
+  measurePoints?: Punto[];
+  onMeasureClick?: (punto: Punto) => void;
 }
 
 export function KaryotypeCanvas({
@@ -59,24 +68,43 @@ export function KaryotypeCanvas({
   onSelect,
   onReclassify,
   onPan,
+  measureMode = false,
+  measurePoints = [],
+  onMeasureClick,
 }: KaryotypeCanvasProps) {
   const active = chromosomes.filter((c) => c.is_active);
   // En modo "Mover" el lienzo se arrastra y los cromosomas NO (evita el
   // conflicto con el drag de reclasificación).
-  const chromoDraggable = editable && !viewport.panMode;
+  // Midiendo, nada se arrastra: un clic marca un punto, no mueve un cromosoma.
+  const chromoDraggable = editable && !viewport.panMode && !measureMode;
+
+  // El clic llega en coordenadas de pantalla; las medidas se calculan sobre las
+  // del lienzo. Sin deshacer zoom, rotación y offset, medir con la vista
+  // ampliada daría longitudes distintas del mismo cromosoma.
+  const handleStageClick = (e: { target: { getStage: () => unknown } }) => {
+    if (!measureMode || !onMeasureClick) return;
+    const stage = e.target.getStage() as {
+      getPointerPosition: () => { x: number; y: number } | null;
+      getAbsoluteTransform: () => { copy: () => { invert: () => { point: (p: Punto) => Punto } } };
+    } | null;
+    const pos = stage?.getPointerPosition();
+    if (!stage || !pos) return;
+    onMeasureClick(stage.getAbsoluteTransform().copy().invert().point(pos));
+  };
 
   return (
     <div className="karyo-canvas" data-testid="karyotype-viewer" style={{ filter: cssFilter(viewport) }}>
       <Stage
         width={STAGE_WIDTH}
         height={STAGE_HEIGHT}
-        scaleX={viewport.scale}
-        scaleY={viewport.scale}
+        scaleX={stageScale(viewport).x}
+        scaleY={stageScale(viewport).y}
         rotation={viewport.rotation}
         x={viewport.offsetX}
         y={viewport.offsetY}
         draggable={viewport.panMode}
         onDragEnd={viewport.panMode && onPan ? (e) => onPan(e.target.x(), e.target.y()) : undefined}
+        onClick={measureMode ? handleStageClick : undefined}
         data-testid="karyo-stage"
       >
         <Layer>
@@ -141,6 +169,38 @@ export function KaryotypeCanvas({
               </Group>
             );
           })}
+
+          {/* Medición: los dos segmentos son los brazos p y q. Se dibujan de
+              colores distintos porque el índice centromérico depende de cuál es
+              cuál, y confundirlos cambia la morfología. */}
+          {measurePoints.length >= 2 && (
+            <Line
+              data-testid="medicion-brazo-p"
+              points={[measurePoints[0].x, measurePoints[0].y, measurePoints[1].x, measurePoints[1].y]}
+              stroke="#0b7285"
+              strokeWidth={2}
+            />
+          )}
+          {measurePoints.length >= 3 && (
+            <Line
+              data-testid="medicion-brazo-q"
+              points={[measurePoints[1].x, measurePoints[1].y, measurePoints[2].x, measurePoints[2].y]}
+              stroke="#7b2cbf"
+              strokeWidth={2}
+            />
+          )}
+          {measurePoints.map((p, i) => (
+            <Circle
+              key={`medicion-${i}`}
+              data-testid={`medicion-punto-${i}`}
+              x={p.x}
+              y={p.y}
+              radius={i === 1 ? 6 : 4}       // el centrómero, más grande
+              fill={i === 1 ? '#d45100' : '#0b7285'}
+              stroke="#fff"
+              strokeWidth={1.5}
+            />
+          ))}
         </Layer>
       </Stage>
     </div>

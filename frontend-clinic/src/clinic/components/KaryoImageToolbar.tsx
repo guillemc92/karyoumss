@@ -37,6 +37,16 @@ export function KaryoImageToolbar({ viewport, dispatch, disabled = false }: Prop
           onClick={() => dispatch({ type: 'rotateLeft' })} disabled={disabled} title="Rotar izquierda" aria-label="Rotar izquierda">↺</button>
         <button type="button" className="tool-icon" data-testid="viewport-rotate-right"
           onClick={() => dispatch({ type: 'rotateRight' })} disabled={disabled} title="Rotar derecha" aria-label="Rotar derecha">↻</button>
+        {/* Voltear es transformación de VISTA: no altera la orientación
+            guardada de ningún cromosoma. Por convención ISCN el brazo corto (p)
+            se dibuja arriba, y comparar un cromosoma capturado al revés es más
+            fácil volteando el lienzo que girando la cabeza. */}
+        <button type="button" className={`tool-icon${viewport.flipX ? ' tool-icon--active' : ''}`} data-testid="viewport-flip-h"
+          onClick={() => dispatch({ type: 'flipHorizontal' })} disabled={disabled}
+          aria-pressed={viewport.flipX} title="Voltear horizontal (solo la vista)" aria-label="Voltear horizontal">⇄</button>
+        <button type="button" className={`tool-icon${viewport.flipY ? ' tool-icon--active' : ''}`} data-testid="viewport-flip-v"
+          onClick={() => dispatch({ type: 'flipVertical' })} disabled={disabled}
+          aria-pressed={viewport.flipY} title="Voltear vertical (solo la vista)" aria-label="Voltear vertical">⇅</button>
       </div>
 
       <label className="karyo-imagebar__slider">

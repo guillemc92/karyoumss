@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   INITIAL_VIEWPORT,
+  stageScale,
   SCALE_MAX,
   SCALE_MIN,
   cssFilter,
@@ -61,5 +62,45 @@ describe('viewport — reducer puro de herramientas de imagen (DD-KARYO-004)', (
     expect(zoomPercent(1)).toBe('100%');
     expect(zoomPercent(1.5)).toBe('150%');
     expect(cssFilter({ brightness: 120, contrast: 90 })).toBe('brightness(120%) contrast(90%)');
+  });
+});
+
+describe('voltear — transformación de vista', () => {
+  it('el espejo horizontal alterna y no toca el resto del estado', () => {
+    const volteado = viewportReducer(INITIAL_VIEWPORT, { type: 'flipHorizontal' });
+
+    expect(volteado.flipX).toBe(true);
+    expect(volteado.flipY).toBe(false);
+    expect(volteado.scale).toBe(INITIAL_VIEWPORT.scale);
+    expect(volteado.rotation).toBe(INITIAL_VIEWPORT.rotation);
+  });
+
+  it('voltear dos veces vuelve al original', () => {
+    const ida = viewportReducer(INITIAL_VIEWPORT, { type: 'flipVertical' });
+    const vuelta = viewportReducer(ida, { type: 'flipVertical' });
+
+    expect(vuelta.flipY).toBe(false);
+  });
+
+  it('stageScale devuelve escala con signo sin perder el zoom', () => {
+    const conZoom = { scale: 2, flipX: true, flipY: false };
+
+    expect(stageScale(conZoom)).toEqual({ x: -2, y: 2 });
+  });
+
+  it('sin voltear, stageScale es la escala tal cual', () => {
+    expect(stageScale({ scale: 1.5, flipX: false, flipY: false })).toEqual({ x: 1.5, y: 1.5 });
+  });
+
+  it('restablecer deshace también el volteo', () => {
+    const volteado = viewportReducer(
+      viewportReducer(INITIAL_VIEWPORT, { type: 'flipHorizontal' }),
+      { type: 'flipVertical' },
+    );
+
+    const limpio = viewportReducer(volteado, { type: 'reset' });
+
+    expect(limpio.flipX).toBe(false);
+    expect(limpio.flipY).toBe(false);
   });
 });

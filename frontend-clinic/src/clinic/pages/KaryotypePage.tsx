@@ -14,6 +14,7 @@ import { BiomedShell } from '../components/BiomedShell';
 import { Skeleton } from '../components/Skeleton';
 import { KaryotypeCanvas } from '../components/KaryotypeCanvas';
 import { KaryoImageToolbar } from '../components/KaryoImageToolbar';
+import { MedicionPanel } from '../components/MedicionPanel';
 import { ChromosomePropertiesPanel } from '../components/ChromosomePropertiesPanel';
 import { SupervisorAuditPanel } from '../components/SupervisorAuditPanel';
 import { SupervisorIscnPanel } from '../components/SupervisorIscnPanel';
@@ -23,6 +24,7 @@ import { useKaryotype } from '../hooks/useKaryotype';
 import { useAuditTrail, useKaryotypeActions } from '../hooks/useKaryotypeActions';
 import { useDegradedMode } from '../hooks/useDegradedMode';
 import { INITIAL_VIEWPORT, viewportReducer } from '../lib/viewport';
+import type { Punto } from '../lib/medicion';
 import { ClinicApiException } from '../types/sample';
 import type { Chromosome, XaiResult } from '../types/karyotype';
 import { AUDIT_LABELS } from '../types/karyotype';
@@ -49,6 +51,18 @@ export function KaryotypePage() {
   const [showAudit, setShowAudit] = useState(false);
   const [joinPick, setJoinPick] = useState<{ id: string; label: string } | null>(null);
   const [viewport, dispatchViewport] = useReducer(viewportReducer, INITIAL_VIEWPORT);
+  // Medicion: tres puntos (extremo p, centromero, extremo q). Vive en la pagina
+  // y no en el canvas porque el panel lateral tambien lo necesita.
+  const [midiendo, setMidiendo] = useState(false);
+  const [puntos, setPuntos] = useState<Punto[]>([]);
+
+  const marcarPunto = (p: Punto) =>
+    setPuntos((previos) => (previos.length >= 3 ? [p] : [...previos, p]));
+  const limpiarMedicion = () => setPuntos([]);
+  const alternarMedicion = () => {
+    setMidiendo((v) => !v);
+    setPuntos([]);
+  };
   const { degraded, justRestored, dismissRestored } = useDegradedMode();
 
   const { viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross } =
@@ -221,9 +235,18 @@ export function KaryotypePage() {
             onSelect={setSelected}
             onReclassify={validated ? undefined : handleReclassify}
             onPan={(x, y) => dispatchViewport({ type: 'pan', dx: x - viewport.offsetX, dy: y - viewport.offsetY })}
+            measureMode={midiendo}
+            measurePoints={puntos}
+            onMeasureClick={marcarPunto}
           />
         </div>
         <aside className="karyo-workspace__panel">
+          <MedicionPanel
+            activo={midiendo}
+            puntos={puntos}
+            onActivar={alternarMedicion}
+            onLimpiar={limpiarMedicion}
+          />
           <ChromosomePropertiesPanel
             chromosome={selected}
             onViewXai={validated ? undefined : handleViewXai}

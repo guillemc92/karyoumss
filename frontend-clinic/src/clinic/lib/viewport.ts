@@ -14,6 +14,17 @@ export interface ViewportState {
   brightness: number; // %
   contrast: number; // %
   panMode: boolean; // "Mover": arrastra el lienzo en vez de reclasificar
+  /**
+   * Espejo del lienzo. Es una transformación de VISTA, no del dato: no cambia
+   * la orientación guardada de ningún cromosoma ni deja evento de auditoría.
+   *
+   * Sirve para leer: por convención ISCN el brazo corto (p) se dibuja arriba, y
+   * un cromosoma capturado al revés se compara mejor volteando la vista que
+   * girando la cabeza. Voltear un cromosoma *concreto* de forma persistente
+   * sería una operación de dato, con su endpoint y su traza.
+   */
+  flipX: boolean;
+  flipY: boolean;
 }
 
 export const SCALE_MIN = 0.5;
@@ -31,6 +42,8 @@ export const INITIAL_VIEWPORT: ViewportState = {
   brightness: 100,
   contrast: 100,
   panMode: false,
+  flipX: false,
+  flipY: false,
 };
 
 export type ViewportAction =
@@ -42,6 +55,8 @@ export type ViewportAction =
   | { type: 'setContrast'; value: number }
   | { type: 'pan'; dx: number; dy: number }
   | { type: 'togglePan' }
+  | { type: 'flipHorizontal' }
+  | { type: 'flipVertical' }
   | { type: 'reset' };
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -68,6 +83,10 @@ export function viewportReducer(state: ViewportState, action: ViewportAction): V
       return { ...state, offsetX: state.offsetX + action.dx, offsetY: state.offsetY + action.dy };
     case 'togglePan':
       return { ...state, panMode: !state.panMode };
+    case 'flipHorizontal':
+      return { ...state, flipX: !state.flipX };
+    case 'flipVertical':
+      return { ...state, flipY: !state.flipY };
     case 'reset':
       return { ...INITIAL_VIEWPORT };
     default:
@@ -83,4 +102,15 @@ export function zoomPercent(scale: number): string {
 /** String de CSS filter para brillo/contraste. */
 export function cssFilter(state: Pick<ViewportState, 'brightness' | 'contrast'>): string {
   return `brightness(${state.brightness}%) contrast(${state.contrast}%)`;
+}
+
+/**
+ * Escala con signo para el Stage de Konva: -1 en un eje lo dibuja en espejo.
+ * Se combina con `scale` para no perder el zoom al voltear.
+ */
+export function stageScale(state: Pick<ViewportState, 'scale' | 'flipX' | 'flipY'>) {
+  return {
+    x: state.scale * (state.flipX ? -1 : 1),
+    y: state.scale * (state.flipY ? -1 : 1),
+  };
 }
