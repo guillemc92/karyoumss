@@ -25,6 +25,13 @@ import { useAuditTrail, useKaryotypeActions } from '../hooks/useKaryotypeActions
 import { useDegradedMode } from '../hooks/useDegradedMode';
 import { INITIAL_VIEWPORT, viewportReducer } from '../lib/viewport';
 import type { Punto } from '../lib/medicion';
+import {
+  accionDeTeclado,
+  conHistorial,
+  estadoInicial,
+  puedeDeshacer,
+  puedeRehacer,
+} from '../lib/historial';
 import { ClinicApiException } from '../types/sample';
 import type { Chromosome, XaiResult } from '../types/karyotype';
 import { AUDIT_LABELS } from '../types/karyotype';
@@ -39,6 +46,17 @@ function SemaphoreLegend() {
   );
 }
 
+/**
+ * El reducer envuelto se crea UNA vez, no en cada render: `useReducer` solo
+ * toma el primero, y recrearlo desperdicia trabajo en cada pintada.
+ */
+const viewportConHistorial = conHistorial(viewportReducer, {
+  // Alternar "Mover" y restablecer no son cosas que uno deshaga por separado.
+  ignorar: ['togglePan', 'reset'],
+  // Arrastrar un deslizador emite decenas de acciones: se fusionan en una.
+  fusionar: ['setBrightness', 'setContrast', 'pan'],
+});
+
 export function KaryotypePage() {
   const { id } = useParams<{ id: string }>();
   const { role } = useSession();
@@ -50,11 +68,34 @@ export function KaryotypePage() {
   const [validated, setValidated] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
   const [joinPick, setJoinPick] = useState<{ id: string; label: string } | null>(null);
-  const [viewport, dispatchViewport] = useReducer(viewportReducer, INITIAL_VIEWPORT);
+  // Historial de la VISTA (zoom, rotacion, volteo, brillo...). Las acciones
+  // clinicas quedan fuera a proposito: ver historial.ts.
+  const [histViewport, dispatchViewport] = useReducer(
+    viewportConHistorial,
+    estadoInicial(INITIAL_VIEWPORT),
+  );
+  const viewport = histViewport.presente;
   // Medicion: tres puntos (extremo p, centromero, extremo q). Vive en la pagina
   // y no en el canvas porque el panel lateral tambien lo necesita.
   const [midiendo, setMidiendo] = useState(false);
   const [puntos, setPuntos] = useState<Punto[]>([]);
+
+  // Ctrl+Z / Ctrl+Y sobre la vista. Si hay medicion en curso, deshacer quita
+  // el ultimo punto marcado: es lo que el usuario espera con puntos a medias.
+  useEffect(() => {
+    const alPulsar = (e: KeyboardEvent) => {
+      const accion = accionDeTeclado(e);
+      if (!accion) return;
+      e.preventDefault();
+      if (accion.type === 'deshacer' && puntos.length > 0) {
+        setPuntos((previos) => previos.slice(0, -1));
+        return;
+      }
+      dispatchViewport(accion);
+    };
+    window.addEventListener('keydown', alPulsar);
+    return () => window.removeEventListener('keydown', alPulsar);
+  }, [puntos.length]);
 
   const marcarPunto = (p: Punto) =>
     setPuntos((previos) => (previos.length >= 3 ? [p] : [...previos, p]));
@@ -225,7 +266,14 @@ export function KaryotypePage() {
 
       <div className="karyo-workspace">
         <div className="karyo-workspace__viewer">
-          <KaryoImageToolbar viewport={viewport} dispatch={dispatchViewport} />
+          <KaryoImageToolbar
+            viewport={viewport}
+            dispatch={dispatchViewport}
+            onDeshacer={() => dispatchViewport({ type: 'deshacer' })}
+            onRehacer={() => dispatchViewport({ type: 'rehacer' })}
+            hayQueDeshacer={puedeDeshacer(histViewport)}
+            hayQueRehacer={puedeRehacer(histViewport)}
+          />
           <KaryotypeCanvas
             chromosomes={karyotype.chromosomes}
             selectedId={selected?.id ?? null}

@@ -14,9 +14,22 @@ interface Props {
   dispatch: Dispatch<ViewportAction>;
   /** Deshabilita todo (p.ej. mientras carga o si el caso está validado). */
   disabled?: boolean;
+  /** Deshacer/rehacer de la VISTA. Si no se pasan, los botones no se muestran. */
+  onDeshacer?: () => void;
+  onRehacer?: () => void;
+  hayQueDeshacer?: boolean;
+  hayQueRehacer?: boolean;
 }
 
-export function KaryoImageToolbar({ viewport, dispatch, disabled = false }: Props) {
+export function KaryoImageToolbar({
+  viewport,
+  dispatch,
+  disabled = false,
+  onDeshacer,
+  onRehacer,
+  hayQueDeshacer = false,
+  hayQueRehacer = false,
+}: Props) {
   return (
     <div className="karyo-imagebar" data-testid="karyo-imagebar" role="toolbar" aria-label="Herramientas de imagen">
       <div className="karyo-imagebar__group">
@@ -59,6 +72,21 @@ export function KaryoImageToolbar({ viewport, dispatch, disabled = false }: Prop
           disabled={disabled} onChange={(e) => dispatch({ type: 'setContrast', value: Number(e.target.value) })}
           aria-label="Contraste" />
       </label>
+
+      {/* Deshacer solo afecta a la VISTA y a los puntos de medición. Las
+          acciones clínicas (reclasificar, separar, unir, resolver) NO se
+          deshacen desde aquí: se persisten al instante y dejan traza
+          append-only (RN-05). Revertirlas exige una acción deliberada. */}
+      {onDeshacer && (
+        <div className="karyo-imagebar__group">
+          <button type="button" className="tool-icon" data-testid="viewport-undo"
+            onClick={onDeshacer} disabled={disabled || !hayQueDeshacer}
+            title="Deshacer vista (Ctrl+Z)" aria-label="Deshacer">↶</button>
+          <button type="button" className="tool-icon" data-testid="viewport-redo"
+            onClick={onRehacer} disabled={disabled || !hayQueRehacer}
+            title="Rehacer vista (Ctrl+Y)" aria-label="Rehacer">↷</button>
+        </div>
+      )}
 
       <button type="button" className="btn-outline" data-testid="viewport-reset"
         onClick={() => dispatch({ type: 'reset' })} disabled={disabled} title="Restablecer vista">Restablecer</button>
