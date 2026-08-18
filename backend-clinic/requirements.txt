@@ -11,3 +11,10 @@ cryptography==43.0.0
 # Opcional: sin este paquete el sistema corre igual, sin narrativa (RN-07).
 openai>=1.0
 
+
+# ADR-0032: memoria conversacional del agente (nivel 5). El grafo y su
+# checkpointer. Opcional: sin estos paquetes el sistema arranca igual y
+# `POST /agente` sigue funcionando sin `thread_id` (RN-07).
+langgraph>=1.0
+langgraph-checkpoint-sqlite>=3.0
+langchain-openai>=1.0

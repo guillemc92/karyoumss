@@ -760,6 +760,11 @@ class AgenteView(APIView):
     `mcp: true` ejecuta las herramientas DESCUBIERTAS por protocolo en vez de
     las importadas. El bucle es el mismo — ese es el desacople que MCP explota.
 
+    `thread_id: "..."` (nivel 5, ADR-0032) resuelve el turno sobre un GRAFO con
+    memoria persistente: la conversacion sobrevive al proceso y una repregunta
+    -«y de esos cual es el primero?»- llega con su referente. Sin `thread_id` el
+    comportamiento es el de siempre, sin memoria: el contrato no cambia.
+
     Siempre 200 salvo que el modelo no este disponible (503): quedarse sin IA
     degrada, no rompe (RN-07).
     """
@@ -779,6 +784,26 @@ class AgenteView(APIView):
 
         max_pasos = int(request.data.get('max_pasos') or MAX_PASOS)
         via_mcp = bool(request.data.get('mcp'))
+        thread_id = (request.data.get('thread_id') or '').strip()
+
+        # Nivel 5: el grafo se importa AQUI y no en la cabecera del modulo. Sin
+        # LangGraph instalado el resto del sistema sigue arrancando (RN-07).
+        if thread_id:
+            try:
+                from .agente_grafo import conversar
+                resultado = conversar(pregunta, thread_id)
+            except AgenteError as exc:
+                return Response({'code': 'AGENT_UNAVAILABLE', 'detail': str(exc)},
+                                status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            except ImportError as exc:
+                return Response(
+                    {'code': 'MEMORY_UNAVAILABLE',
+                     'detail': f'memoria conversacional no disponible: {exc}'},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            salida = resultado.as_dict()
+            salida['via'] = 'grafo'
+            salida['thread_id'] = thread_id
+            return Response(salida, status=status.HTTP_200_OK)
 
         try:
             if via_mcp:

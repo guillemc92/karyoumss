@@ -15,3 +15,6 @@ backend-ml/models_v1_backup/
 
 # Archivos temporales de Word (~$NOMBRE.docx)
 ~$*
+
+# Memoria conversacional del agente (ADR-0032): local, fuera de git.
+backend-clinic/agente_memoria.sqlite3
