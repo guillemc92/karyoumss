@@ -217,15 +217,62 @@ versión.
 
 ---
 
+## 6.bis El paso 6: comparar similitudes y sugerir
+
+El pipeline se cierra con lo que la consigna llama «comparar porcentajes de
+similitud para ofrecer la respuesta más óptima y sugerencias apropiadas».
+
+**Antes de construirlo se midió si el puntaje puede sostener esa promesa**, con
+el banco de 18 preguntas y el índice de 1.144 fragmentos:
+
+| señal | cubiertas por corpus | fuera del corpus |
+|---|---|---|
+| similitud top-1 | 0.601 – 0.695 | 0.608 – 0.662 |
+| margen top1−top2 | 0.000 – 0.033 | 0.006 – 0.024 |
+| dispersión del top-5 | 0.002 – 0.019 | 0.004 – 0.018 |
+
+Las tres se solapan; en margen y dispersión el rango de las preguntas a
+rechazar queda *dentro* del de las buenas. El mejor umbral concebible sobre
+cualquiera de ellas acierta 67-72%, por debajo del 89% que ya da el juez.
+
+De ahí salen las dos reglas del diseño: **la respuesta más óptima la elige el
+juez, no el puntaje**, y **ninguna sugerencia afirma pertinencia** — solo puede
+decir «esto es lo más parecido que hay».
+
+Dónde aporta de verdad es en la abstención. Un «no sé» a secas es un callejón
+sin salida; con el paso 6 el usuario ve qué contiene el corpus cerca de su
+pregunta y puede reformular:
+
+```
+PREGUNTA: Cual es el telefono del doctor Rojas?
+responde=False   MOTIVO: el corpus no cubre la pregunta
+
+El corpus no cubre esa pregunta. Lo más parecido que contiene es:
+  - ADR: 0011-rol-administrador.md — Contexto (62.9%)
+  - ADR: 0018-permisos-rol-backend-clinic.md — Positivas (59.0%)
+  - BRD: BRD_vFinal.md — 14. Restricciones y supuestos (57.7%)
+```
+
+Las sugerencias viajan también en la observación del **agente**, y también
+cuando no encuentra: así puede reintentar con una pregunta mejor en vez de
+rendirse en el primer paso.
+
+Ejecutarlo contra el índice real corrigió dos cosas que el diseño en papel no
+vio: al explorar salían tres secciones del mismo documento (ahora se agrupa por
+documento), y las secciones venían como migas de pan ilegibles del troceador.
+Reproducible con `python manage.py demo_sugerencias`, que imprime el código y
+su salida en la misma pantalla.
+
+---
+
 ## 7. Qué falta
 
 1. **Volver a medir el RAG con consultas generadas por el agente** (§5.2). Es el
    hueco metodológico más importante.
-2. **Paso 6 del pipeline RAG**: sugerencias basadas en similitud.
-3. **Volver a medir el enrutador**: las 6 preguntas de documentación del banco
+2. **Volver a medir el enrutador**: las 6 preguntas de documentación del banco
    de 56 que antes caían en «no sé» deberían resolverse ahora. El «antes» ya
    está medido (48/56).
-4. Aplicar el patrón a los otros módulos troncales.
+3. Aplicar el patrón a los otros módulos troncales.
 
 ---
 

@@ -100,6 +100,42 @@ Sin juez no hay forma de saber si los fragmentos son pertinentes. Se prefiere
 callar antes que volcar el fragmento más parecido y dejar que el usuario decida.
 El camino KEYWORD sigue funcionando (RN-07: degradar, no romper).
 
+### D7 — Las sugerencias comparan el ranking, no confían en el puntaje
+
+El paso 6 de la consigna pide «comparar porcentajes de similitud para ofrecer
+la respuesta más óptima y sugerencias apropiadas». Antes de construirlo se
+midió si el puntaje puede sostener esa promesa, sobre el mismo banco de 18:
+
+| señal | cubiertas por corpus | fuera del corpus |
+|---|---|---|
+| similitud top-1 | 0.601 – 0.695 | 0.608 – 0.662 |
+| margen top1−top2 | 0.000 – 0.033 | 0.006 – 0.024 |
+| dispersión del top-5 | 0.002 – 0.019 | 0.004 – 0.018 |
+
+**Las tres se solapan**, y en margen y dispersión el rango de las preguntas a
+rechazar queda *contenido dentro* del de las buenas: no existe corte. El mejor
+umbral concebible sobre cualquiera acierta 67-72%, por debajo del 89% del juez.
+Es la tercera confirmación del mismo fenómeno (D4, y ADR-0027 sobre tablas).
+
+Hallazgo secundario, más útil: **los márgenes son diminutos** —los candidatos
+llegan separados por milésimas—. «El fragmento más parecido es la respuesta» no
+se sostiene: el top-1 no destaca lo suficiente como para que la diferencia
+signifique algo.
+
+En consecuencia: la **respuesta más óptima la elige el juez, no el puntaje**, y
+ninguna sugerencia afirma pertinencia. Solo puede decir *«esto es lo más
+parecido que hay»*. El valor está en el caso de abstención, donde convierte un
+«no sé» en una pista para reformular.
+
+Al ejecutarlo contra el índice real aparecieron dos defectos que el diseño en
+papel no anticipó, y ambos cambiaron el código: al explorar, las tres primeras
+sugerencias eran tres secciones del **mismo** documento (ahora `explorar`
+agrupa por documento y `ampliar` por sección), y las secciones venían como
+migas de pan ilegibles heredadas del troceador (ahora se muestra el último
+tramo). La búsqueda pasó a traer 8 vecinos en vez de 3 —sin coste: el mismo
+ranking ya calculado— porque con 3 solo se podía sugerir un sitio; el juez
+sigue viendo 3.
+
 ## Consecuencias
 
 **Resultado medido** (`manage.py eval_rag --con-juez`, 18 preguntas):
@@ -146,6 +182,11 @@ agente.
 ## Implementación
 
 `backend-clinic/apps/samples/rag_corpus.py` (carga y troceado, 10 tests),
-`rag_index.py` (embeddings, índice, top-k), `rag_qa.py` (el juez).
-Comandos `build_rag_index` y `eval_rag`. Cuarto camino del enrutador:
-`KEYWORD → LLM → RAG → SIN_MATCH`.
+`rag_index.py` (embeddings, índice, top-k), `rag_qa.py` (el juez),
+`rag_sugerencias.py` (paso 6, puro, 24 tests). Comandos `build_rag_index` y
+`eval_rag`. Cuarto camino del enrutador: `KEYWORD → LLM → RAG → SIN_MATCH`.
+
+Las sugerencias viajan en las tres salidas: `Respuesta.sugerencias` del
+enrutador, la observación del agente (ADR-0030) —también cuando no encuentra,
+para que pueda reintentar con una pregunta mejor en vez de rendirse en el
+primer paso— y `RespuestaRag.as_dict()`.

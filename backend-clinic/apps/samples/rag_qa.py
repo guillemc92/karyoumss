@@ -42,6 +42,7 @@ from dataclasses import dataclass, field
 from django.conf import settings
 
 from .rag_index import RagError, Resultado, indice
+from .rag_sugerencias import Sugerencia, sugerir
 
 # Umbral de RECUPERACIÓN, no de decisión: se quiere que el fragmento correcto
 # entre entre los candidatos aunque venga acompañado de ruido. Quien descarta
@@ -53,6 +54,12 @@ UMBRAL_RECUPERACION = 0.50
 # ruido en vez de encontrar la respuesta.
 CANDIDATOS = 3
 MAX_CHARS_FRAGMENTO = 900
+# El juez sigue viendo 3 —más lo ahogaban—, pero la búsqueda trae más vecinos
+# porque las sugerencias (paso 6) los aprovechan. No cuesta nada: la consulta
+# ya está embebida y el producto matriz-vector ya está hecho; solo se conservan
+# más filas del mismo ranking. Con 3 pasaba que los tres eran del mismo
+# documento y solo se podía sugerir un sitio.
+VECINOS = 8
 
 SYSTEM_PROMPT = (
     'Eres un asistente documental de un laboratorio de citogenética. '
@@ -110,8 +117,21 @@ class RespuestaRag:
     texto: str
     citas: list[Resultado] = field(default_factory=list)
     candidatos: list[Resultado] = field(default_factory=list)
+    # Los que se recuperaron pero NO se le dieron al juez. Solo alimentan las
+    # sugerencias; nunca la respuesta, que se funda únicamente en `citas`.
+    vecinos: list[Resultado] = field(default_factory=list)
     latency_ms: int = 0
     motivo: str = ''
+
+    @property
+    def sugerencias(self) -> list[Sugerencia]:
+        """Dónde seguir mirando (paso 6). Se calcula sobre lo ya recuperado.
+
+        Importa sobre todo cuando `responde` es False: sin esto, el «no sé» es
+        un callejón sin salida y el usuario no sabe si reformular o rendirse.
+        """
+        return sugerir(self.candidatos + self.vecinos, self.citas,
+                       respondio=self.responde)
 
     def as_dict(self) -> dict:
         return {
@@ -120,6 +140,7 @@ class RespuestaRag:
             'citas': [{'fuente': r.fragmento.fuente,
                        'seccion': r.fragmento.seccion,
                        'similitud': r.porcentaje} for r in self.citas],
+            'sugerencias': [s.as_dict() for s in self.sugerencias],
             'candidatos_evaluados': len(self.candidatos),
             'latency_ms': self.latency_ms,
             'motivo': self.motivo,
@@ -145,27 +166,30 @@ def responder_documental(pregunta: str) -> RespuestaRag:
     """
     inicio = time.time()
 
-    def cerrar(responde, texto, citas=(), candidatos=(), motivo=''):
+    def cerrar(responde, texto, citas=(), candidatos=(), vecinos=(), motivo=''):
         return RespuestaRag(responde=responde, texto=texto, citas=list(citas),
-                            candidatos=list(candidatos), motivo=motivo,
+                            candidatos=list(candidatos), vecinos=list(vecinos),
+                            motivo=motivo,
                             latency_ms=int((time.time() - inicio) * 1000))
 
     if not (pregunta or '').strip():
         return cerrar(False, '', motivo='consulta vacía')
 
     try:
-        candidatos = indice().buscar(pregunta, k=CANDIDATOS,
-                                     umbral=UMBRAL_RECUPERACION)
+        recuperados = indice().buscar(pregunta, k=VECINOS,
+                                      umbral=UMBRAL_RECUPERACION)
     except RagError as exc:
         return cerrar(False, '', motivo=f'índice no disponible: {exc}')
 
-    if not candidatos:
+    if not recuperados:
         return cerrar(False, '', motivo='ningún fragmento supera el umbral de recuperación')
+
+    candidatos, vecinos = recuperados[:CANDIDATOS], recuperados[CANDIDATOS:]
 
     if not getattr(settings, 'CLINIC_LLM_ENABLED', False):
         # Sin modelo no hay juez. Se prefiere no responder antes que volcar el
         # fragmento más parecido y dejar que el usuario decida si le vale.
-        return cerrar(False, '', candidatos=candidatos,
+        return cerrar(False, '', candidatos=candidatos, vecinos=vecinos,
                       motivo='IA desactivada: sin juez no se puede fundamentar')
 
     try:
@@ -189,11 +213,11 @@ def responder_documental(pregunta: str) -> RespuestaRag:
         )
         datos = json.loads(r.choices[0].message.content or '{}')
     except Exception as exc:                        # noqa: BLE001 — degradación
-        return cerrar(False, '', candidatos=candidatos,
+        return cerrar(False, '', candidatos=candidatos, vecinos=vecinos,
                       motivo=f'modelo no disponible: {exc}')
 
     if not datos.get('responde'):
-        return cerrar(False, '', candidatos=candidatos,
+        return cerrar(False, '', candidatos=candidatos, vecinos=vecinos,
                       motivo='el corpus no cubre la pregunta')
 
     # Las citas se resuelven contra los candidatos REALES: si el modelo cita un
@@ -201,4 +225,5 @@ def responder_documental(pregunta: str) -> RespuestaRag:
     citas = [candidatos[n - 1] for n in datos.get('fuentes', [])
              if isinstance(n, int) and 1 <= n <= len(candidatos)]
     return cerrar(True, (datos.get('respuesta') or '').strip(),
-                  citas=citas or candidatos[:1], candidatos=candidatos)
+                  citas=citas or candidatos[:1], candidatos=candidatos,
+                  vecinos=vecinos)

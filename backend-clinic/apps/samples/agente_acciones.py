@@ -118,15 +118,21 @@ def ejecutar(nombre: str, argumentos: dict) -> dict:
         from .rag_qa import responder_documental
 
         r = responder_documental(argumentos.get('pregunta') or '')
+        sugerencias = [s.as_dict() for s in r.sugerencias]
         if not r.responde:
+            # Las sugerencias viajan también en el fallo, y sobre todo ahí: el
+            # modelo recibe esto como observación y puede reintentar con una
+            # pregunta mejor en vez de darse por vencido en el primer paso.
             return {'encontrado': False,
-                    'motivo': r.motivo or 'la documentación no cubre eso'}
+                    'motivo': r.motivo or 'la documentación no cubre eso',
+                    'sugerencias': sugerencias}
         return {
             'encontrado': True,
             'respuesta': r.texto,
             'fuentes': [{'documento': c.fragmento.fuente,
                          'seccion': c.fragmento.seccion or '—',
                          'similitud': c.porcentaje} for c in r.citas],
+            'sugerencias': sugerencias,
         }
 
     tool = POR_NOMBRE.get(nombre)

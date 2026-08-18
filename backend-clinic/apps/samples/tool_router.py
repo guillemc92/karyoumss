@@ -129,11 +129,16 @@ class Respuesta:
     motivo: str = ''             # por qué el modelo eligió (solo camino LLM)
     latency_ms: int = 0
     catalogo: list[dict] | None = None   # se adjunta solo en SIN_MATCH
+    # Paso 6 del RAG: dónde seguir mirando. Solo lo llena el camino RAG; los
+    # caminos de consulta a base leen datos exactos y no hay nada que sugerir.
+    sugerencias: list[dict] | None = None
 
     def as_dict(self) -> dict:
         d = asdict(self)
         if self.catalogo is None:
             d.pop('catalogo')
+        if self.sugerencias is None:
+            d.pop('sugerencias')
         return d
 
 
@@ -179,10 +184,16 @@ def _documental(pregunta: str, inicio: float, motivo: str = '') -> Respuesta:
     la respuesta correcta, no un fallo (medido: ver `rag_qa`).
     """
     from .rag_qa import responder_documental
+    from .rag_sugerencias import texto as texto_sugerencias
 
     r = responder_documental(pregunta)
     if not r.responde:
-        return _sin_match(inicio, 'El corpus documental no cubre esa pregunta.')
+        # Paso 6: el «no sé» deja de ser un callejón sin salida. Se dice qué
+        # tiene el corpus cerca de la pregunta, para que el usuario pueda
+        # reformular en vez de rendirse.
+        cercano = texto_sugerencias(r.sugerencias)
+        detalle = 'El corpus documental no cubre esa pregunta.'
+        return _sin_match(inicio, f'{detalle}\n{cercano}' if cercano else detalle)
 
     fuentes = sorted({c.fragmento.fuente for c in r.citas})
     return Respuesta(
@@ -192,6 +203,7 @@ def _documental(pregunta: str, inicio: float, motivo: str = '') -> Respuesta:
         filas=[{'documento': c.fragmento.fuente,
                 'seccion': c.fragmento.seccion or '—',
                 'similitud': c.porcentaje} for c in r.citas],
+        sugerencias=[s.as_dict() for s in r.sugerencias],
         mensaje=r.texto,
         motivo=motivo,
         latency_ms=int((time.time() - inicio) * 1000),
