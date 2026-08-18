@@ -35,11 +35,18 @@ frase de apertura debería ser esa, no «implementé un agente».
 | 2 · tool calling | 4 escenarios de la consigna | `manage.py demo_tools` |
 | 3 · RAG | corpus del proyecto, 1.144 fragmentos | `manage.py demo_sugerencias` |
 | 4 · agente + MCP | bucle ReAct, 6 tools por MCP | `manage.py demo_agente` |
+| 5 · LangGraph | memoria conversacional por `thread_id` | `manage.py eval_memoria` |
 
-Nivel 5 (LangGraph) **no se implementa**, y eso es una decisión, no una
-carencia: el propio docente lo sitúa en memoria persistente entre sesiones
-—«eso todavía no»— y en este sistema el estado clínico ya vive en PostgreSQL
-con audit trail encadenado. Ver ADR-0031.
+**Del nivel 5 entra solo la memoria conversacional**, y eso es una decisión
+acotada, no una implementación a medias (ADR-0032). El estado clínico **no**
+vive en los checkpoints: ya vive en PostgreSQL con un audit trail encadenado
+que sostiene la firma electrónica, y duplicarlo crearía una segunda fuente de
+verdad para un proceso auditado. Tampoco se usa `interrupt` para la aprobación
+humana: `preparar_validacion_de_caso` nunca ejecuta, así que aprobar algo que
+de todos modos no escribe sería teatro.
+
+Es aditivo: `POST /agente` sin `thread_id` se comporta exactamente igual que
+antes. El nivel 4 sigue siendo la línea base de la comparación.
 
 ---
 
@@ -155,11 +162,23 @@ versiona bien en git. Es la regla del nivel mínimo aplicada a la
 infraestructura. Si el corpus creciera dos órdenes de magnitud, `buscar()` es
 la única función que habría que cambiar. ADR-0029 D3.
 
-**«¿Por qué no LangGraph?»**
-Porque el estado clínico ya vive en PostgreSQL con un audit trail append-only
-encadenado por SHA-256, que es lo que sostiene la firma electrónica. Meterlo en
-checkpoints de LangGraph crearía **una segunda fuente de verdad para un proceso
-auditado**. No es objeción de complejidad, es de cumplimiento. ADR-0031.
+**«¿Por qué no LangGraph?»** — *matizar: LangGraph SÍ está, acotado.*
+Está, como memoria conversacional del agente (ADR-0032). Lo que no está —y es
+deliberado— es el estado clínico dentro de los checkpoints: ya vive en
+PostgreSQL con un audit trail append-only encadenado por SHA-256, que sostiene
+la firma electrónica. Meterlo en LangGraph crearía **una segunda fuente de
+verdad para un proceso auditado**: objeción de cumplimiento, no de complejidad.
+Y tampoco orquesta el pipeline de visión, que no tiene decisiones que tomar
+(ADR-0031).
+
+**«¿La memoria mejora el agente?»** — *la pregunta incómoda, hay que darla uno
+mismo.*
+Medido: **1/3 con memoria contra 0/3 sin ella**. Con n=3 eso **no sostiene una
+afirmación fuerte**, y así está declarado. El checkpoint sí persiste —probado en
+tests con modelo falso y contra Ollama—; lo que falla es que `llama3.2:3b` lo
+aproveche: vuelve a consultar las herramientas en vez de leer el historial. **El
+límite es el modelo, no la arquitectura.** El primer número que salió (1/4 vs
+3/4) estaba inflado por testigos degenerados y se descartó.
 
 **«¿Por qué un solo agente y no uno por módulo?»**
 Es literalmente lo que el docente advierte: «un agente confundido es una fuga
