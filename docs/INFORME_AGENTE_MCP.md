@@ -217,6 +217,44 @@ versión.
 
 ---
 
+### 5.4 Integrar el RAG en el enrutador costó dos aciertos — medido con A/B
+
+Al añadir `DOCUMENTACION` como cuarto camino, el banco de 56 preguntas bajó de
+**48/56 (86%) a 44/56 (79%)**. Para saber si era regresión o efecto de las
+etiquetas se reprodujo el estado anterior en un *worktree* de git sobre el
+commit previo al RAG, con **el mismo banco, la misma base y el mismo modelo**:
+dio **48/56 exacto**. La causa queda aislada en la integración del RAG.
+
+Comparando los fallos uno a uno —8 antes, 12 después— el saldo real es otro:
+
+| | |
+|---|---|
+| **7 fallos ya existían** y fallan igual | no son regresión |
+| **3 nuevos son fallo por etiqueta, acierto por diseño** | el RAG las responde; el banco es anterior a esa capacidad |
+| **2 nuevos son regresión real** | el RAG se lleva preguntas que **sí** tenían herramienta |
+| **1 se arregló** | |
+
+La **regresión real son 2 preguntas**, no las siete que aparentaba el número:
+«¿Dónde no confío en lo que dijo la IA?» y «¿Qué tengo que confirmar a mano?»
+esperaban `CROMOSOMAS_PARA_REVISION` y acabaron en documentación. El RAG
+compite con las herramientas por preguntas de estado formuladas en tono vago.
+
+Leído con el banco corregido para la capacidad nueva —las 3 preguntas
+documentales pasan a esperar `CORPUS_DOCUMENTAL`— el resultado es **47/56
+(84%)**. Se reportan **los dos números**: el crudo contra el banco intacto, y
+el corregido explicando por qué cambió la expectativa.
+
+**Hallazgo que el A/B destapó y que la métrica escondía:** las 4 preguntas
+adversarias que reciben una herramienta equivocada —«¿qué significa que un
+cromosoma esté naranja?», «¿por qué el sistema los marca?», «¿cuánto tarda en
+procesar una muestra?», «¿qué porcentaje sale alterado?»— **ya fallaban antes
+del RAG, con exactamente la misma herramienta equivocada**. No las rompió el
+RAG. Y dos de ellas son preguntas que el RAG responde bien: el arreglo no es
+tocar el RAG, es que el enrutador las mande a `DOCUMENTACION`. Objetivo
+medible y acotado.
+
+---
+
 ## 6.bis El paso 6: comparar similitudes y sugerir
 
 El pipeline se cierra con lo que la consigna llama «comparar porcentajes de
