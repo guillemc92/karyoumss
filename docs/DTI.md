@@ -252,6 +252,11 @@ Se detalla en la sección **§7.2** (Sagas y Pipeline de Procesamiento).
 
 ### 3.5 Flujo extremo a extremo del caso clínico
 
+> **Decisión registrada en [ADR-0031](adr/0031-orquestacion-pipeline-clinico.md)**
+> — la orquestación del pipeline clínico es una cola de tareas, no un sistema
+> multiagente. Lo que sigue resume el porqué; el ADR tiene las alternativas
+> descartadas y la deuda que la decisión abre.
+
 > ⚠️ **Por qué esto no es un diagrama de agentes.** Una versión anterior de esta
 > sección dibujaba un «Agent Orchestrator» repartiendo trabajo entre servicios.
 > Era incorrecto por dos motivos. Primero, los servicios que repartía —U-Net,
