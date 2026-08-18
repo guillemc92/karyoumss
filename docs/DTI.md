@@ -514,6 +514,52 @@ por medición resolverlo con más visión clásica: el centrómero es un
 estrangulamiento y cualquier umbral agresivo parte el cromosoma en sus brazos.
 Requiere aprender la forma, es decir, U-Net.
 
+### 9.1.1 Coste de corrección por caso — la métrica que decide si esto asiste
+
+`macro-F1 0.6958` no dice si el producto sirve. Lo que lo decide es **cuántas
+acciones necesita el analista** para llevar la propuesta de la IA hasta un
+cariotipo correcto, contra la vara de ordenarlo a mano.
+
+**Medido** (`backend-ml/training/eval_correccion.py`, 20 casos con cariograma
+del experto de total plausible 45-48):
+
+| | Mediana | Mín | Máx |
+|:---|---:|---:|---:|
+| **Acciones por caso** | **64** | 51 | 87 |
+| — estructura (separar/unir) | 4 | 0 | 12 |
+| — clase (reclasificar) | 28 | 16 | 37 |
+| — resolución (ver XAI + aceptar) | 34 | 14 | 46 |
+
+**Ordenar a mano un cariograma ya segmentado son 46 acciones. En 20 de 20 casos
+corregir la IA cuesta más que eso.** Hoy el pipeline añade trabajo en lugar de
+ahorrarlo.
+
+**Lo que la medición corrigió del diagnóstico previo.** Se venía asumiendo que
+el cuello de botella era la segmentación. En coste de corrección **no lo es**:
+la estructura son 4 de 64 acciones (6%). El grueso está en la clasificación y,
+sobre todo, en resolver naranjas — 34 acciones, más de la mitad del total.
+
+Matiz que impide sobreinterpretarlo: la sub-segmentación **causa** parte de los
+errores de clase —un cúmulo contado como un objeto se clasifica «1» por
+tamaño—, así que las 28 acciones de clase no son independientes del detector.
+Lo que sí es independiente es la resolución: nace del umbral 0.85 (RN-02) y de
+la obligación de consultar XAI antes de aceptar (BR-004), a dos acciones por
+cromosoma naranja. Con un clasificador perfecto al 0.84 se pagaría igual.
+
+**Consecuencia de producto:** una resolución **en bloque** —consultar la
+explicabilidad de un grupo y aceptarlo de una vez, sin romper BR-004— recorta
+del orden de 30 acciones por caso sin tocar ningún modelo. Es más barato que
+entrenar U-Net y ataca la mitad del coste.
+
+**Sesgos declarados de la medición**, ambos a favor de la IA salvo el último:
+- `clase` es **cota inferior**: se comparan repartos por clase, no objeto a
+  objeto. El coste real es mayor, nunca menor.
+- Solo el **43%** de los 1.150 cariogramas suma un total plausible (mediana 44,
+  casos de 38): el resto son extracciones incompletas de recortes y se
+  excluyen, porque cobrarían acciones que no son culpa de la IA.
+- La vara de 46 supone la segmentación **gratis** en la vía manual, lo que no
+  es cierto. Es un listón exigente a propósito.
+
 ### 9.2 Tabla de Modelos y Umbrales
 * **EfficientNet-B3:** Clasificación en 24 clases. Umbral de confianza **0.85**
   (RN-02): si `score < 0.85` el cromosoma se marca naranja y bloquea el reporte.
