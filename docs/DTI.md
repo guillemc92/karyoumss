@@ -250,17 +250,86 @@ Se detalla en la sección **§5.3** (Diagrama de Puertos y Adaptadores).
 ### 3.4 Data Flow Diagram (Secuencia del Caso de Uso Crítico)
 Se detalla en la sección **§7.2** (Sagas y Pipeline de Procesamiento).
 
-### 3.5 Contenedores Agénticos del Producto
-El sistema incorpora un contenedor agéntico en runtime para ejecutar la orquestación de la IA y el control de calidad automático del cariograma.
+### 3.5 Flujo extremo a extremo del caso clínico
+
+> ⚠️ **Por qué esto no es un diagrama de agentes.** Una versión anterior de esta
+> sección dibujaba un «Agent Orchestrator» repartiendo trabajo entre servicios.
+> Era incorrecto por dos motivos. Primero, los servicios que repartía —U-Net,
+> Grad-CAM— no existen (§9.1). Segundo, y más de fondo: **el preprocesado, la
+> detección y la clasificación tienen un orden fijo e inevitable** —no se puede
+> clasificar antes de segmentar—, así que no hay decisión que tomar y no hay
+> nada que orquestar. Un agente se justifica con ramificación real y estado; un
+> orquestador que reparte siempre en el mismo orden es una caja de paso.
+>
+> La ramificación real del sistema está **después** del pipeline, en la
+> semaforización: los cromosomas naranjas y rojos desvían el caso a corrección
+> manual (RN-01/RN-02). Ahí es donde el diagrama se bifurca, y es donde está el
+> valor clínico.
+>
+> El único agente del producto (bucle ReAct + MCP, ADR-0030) **no aparece en
+> este flujo**: es una capa conversacional que consulta el estado por encima de
+> él, no un paso del pipeline. Ver §3.2.1 y §9.3.
 
 ```mermaid
-graph LR
-    API["FastAPI Backend"] -->|"Rutea inferencia"| ORCH["🧠 Agent Orchestrator"]
-    ORCH -->|"Segmenta"| UNET["U-Net Service"]
-    ORCH -->|"Clasifica"| EFFNET["EfficientNet-B3 Service"]
-    ORCH -->|"Explicabilidad"| CAM["Grad-CAM Engine"]
-    ORCH -->|"Valida Calidad"| QC["Overlap Detector (>30%)"]
+graph TD
+    IMG["Imagen de metafase<br/>(microscopía)"] --> PRE
+
+    subgraph AUTO ["Pipeline automatico - sin decisiones que tomar"]
+        PRE["Preprocesado<br/>normalización, contraste, ruido"] --> DET
+        DET["Detección y segmentación<br/>OpenCV + watershed"] --> CLS
+        CLS["Clasificación 1-22/X/Y<br/>EfficientNet-B3"] --> SEM
+        SEM["Semaforización<br/>umbral 0.85 · RN-02"]
+    end
+
+    SEM --> Q{"¿Hay naranjas<br/>o rojos?"}
+
+    Q -->|"sí — el caso NO puede avanzar"| CORR
+    Q -->|"no"| VAL
+
+    subgraph HITL ["Correccion del analista - aqui esta la ramificacion"]
+        CORR["Revisión cromosoma a cromosoma"] --> XAI
+        XAI["Ver explicabilidad XAI<br/>obligatorio antes de aceptar · BR-004"] --> FIX
+        FIX["Corregir: reclasificar, separar,<br/>unir, recortar y reclasificar"] --> CORR
+    end
+
+    CORR --> VAL["Validación del analista<br/>ANALYST_VALIDATED · RN-01"]
+    VAL --> AUD["Auditoría del 5% aleatorio<br/>supervisor ≠ analista · RN-06/RN-08"]
+    AUD --> FIRMA["Firma electrónica con MFA<br/>SIGNED · 21 CFR Part 11"]
+    FIRMA --> ISCN["Nomenclatura ISCN<br/>función determinista · solo lectura · RN-04"]
+    ISCN --> NARR["Narrativa clínica<br/>llama3.2:3b — redacta, NO calcula"]
+    NARR --> INF["Informe emitido<br/>REPORTED"]
+
+    AT[("Audit trail append-only<br/>cadena SHA-256 · RN-05")]
+    FIX -.-> AT
+    VAL -.-> AT
+    AUD -.-> AT
+    FIRMA -.-> AT
+
+    classDef construido fill:#e6f4ea,stroke:#1e8868,color:#14322a
+    classDef humano fill:#fff4e5,stroke:#d45100,color:#4a2400
+    classDef traza fill:#eef2f7,stroke:#5a7688,color:#1b3a4b
+    class PRE,DET,CLS,SEM,ISCN,NARR construido
+    class CORR,XAI,FIX,VAL,AUD,FIRMA humano
+    class AT traza
 ```
+
+**Tres decisiones que el diagrama hace explícitas:**
+
+1. **Baja confianza exige *más* revisión humana, no menos.** Un cromosoma
+   naranja bloquea el avance del caso; no existe atajo que lleve un resultado
+   de baja confianza al informe. Es RN-01/RN-02 y está implementado en el gate
+   del visor (`unresolved_orange`).
+2. **El ISCN se genera después de la firma**, no antes (ADR-0025 D5). Generarlo
+   sobre un cariotipo que nadie ha validado dejaría congelado —es de solo
+   lectura tras emitirse, RN-04— un dato que aún podía cambiar.
+3. **El LLM redacta, no calcula.** La nomenclatura sale de una función
+   determinista; el modelo solo la pone en prosa (ADR-0024).
+
+**Lo que falta y este diagrama no oculta:** el pipeline automático corre hoy de
+forma **síncrona** dentro de la petición —Celery está declarado en el stack pero
+no implementado—, y el bloque de detección es visión clásica, con
+sub-segmentación medida como error dominante (§9.1). El emparejamiento de
+homólogos tampoco existe todavía.
 
 ---
 
