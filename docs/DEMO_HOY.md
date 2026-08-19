@@ -129,6 +129,51 @@ Y el remate, enseñando el informe real del laboratorio:
 
 ---
 
+## 5.bis · Cierre — dónde va el nivel 5, y dónde no  *(60 s)*
+
+> **Cuándo:** solo al final, después del informe. Si vas justo de tiempo,
+> sáltalo: no lo ha pedido.
+>
+> **Cómo NO decirlo:** «también implementé el nivel 5». Eso invita a que lo
+> evalúe contra el Día 7 entero —checkpoints, reanudar, HITL persistente,
+> fallbacks, Langfuse— y cuente 1 de 5.
+>
+> **Cómo sí:** como una decisión ya tomada, no como una funcionalidad de más.
+
+**Leerlo casi literal:**
+
+> «Sé que la orquestación es el siguiente paso. Ya tengo decidido dónde va
+> LangGraph y dónde no, y está firmado en el ADR-0032.
+>
+> **Va** en la memoria conversacional del agente: hoy la lista de mensajes
+> muere con la petición, así que una repregunta —"¿y de esos cuál mencionaste
+> primero?"— llega sin referente.
+>
+> **No va** en el estado clínico. Un caso avanza en PostgreSQL con un audit
+> trail encadenado por SHA-256, que es lo que sostiene la firma electrónica bajo
+> 21 CFR Part 11. Meter eso en checkpoints crearía una segunda fuente de verdad
+> para un proceso auditado: cuando alguien pregunte en qué estado estaba un
+> caso, no puede haber dos respuestas. Es una objeción de cumplimiento, no de
+> complejidad.
+>
+> Lo implementé y lo medí: **gana 4 de 8 repreguntas, contra 0 de 8 sin
+> memoria**. El checkpoint persiste siempre —está probado—; lo que falla es que
+> un modelo de 3B lo aproveche: vuelve a consultar las herramientas en vez de
+> leer el historial. El límite es el modelo, no la arquitectura.»
+
+**El remate, si hay ambiente para uno más:**
+
+> «Y por eso tampoco uso el `interrupt` de LangGraph, aunque "aprobar desde otra
+> sesión" sea literalmente mi RN-06: como la herramienta nunca escribe, aprobar
+> algo que de todos modos no se ejecuta sería teatro con aspecto de guardrail.»
+
+**Ten abierto en una pestaña:** `docs/adr/0032-memoria-conversacional-langgraph.md`
+
+**No lo demuestres en vivo.** `eval_memoria` tarda casi dos horas y no hay nada
+visual: es una tabla. Con la del informe basta.
+
+---
+
 ## 6 · Si preguntan
 
 **«¿Por qué solo analiza una metafase si pide tres?»**
@@ -140,6 +185,12 @@ es justo lo que separa esto de un informe clínico emitible.
 No todavía, y lo tengo medido: 64 acciones de corrección frente a 46 a mano. El
 cuello de botella no es el clasificador —son 4 de esas 64 acciones—, es que el
 detector junta cromosomas. Ese es el siguiente hito.
+
+**«¿Por qué no hiciste el resto del Día 7 —fallbacks, caché semántica,
+Langfuse?»**
+Porque no se pidió y porque son infraestructura, no capacidad del agente. Lo que
+sí faltaba —que la memoria muriese con el proceso— es lo que ADR-0030 dejó
+anotado como carencia, y es lo único del Día 7 que resolví.
 
 **«¿Es U-Net?»**
 No. Es OpenCV con watershed. La cadena de versión lo declara sin ambigüedad:
