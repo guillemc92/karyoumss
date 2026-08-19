@@ -57,9 +57,117 @@ transportes** — HTTP, agente local y MCP.
 
 ---
 
-## 3. Traza — la evidencia
+## 3. Recorrido del sistema — qué pasa cuando el usuario pregunta
 
-### 3.1 `POST /agente` — caso simple
+> Esta sección existe porque explicar el código importa tanto como escribirlo.
+> Se recorre el camino completo desde que alguien escribe una pregunta en
+> pantalla hasta que ve la respuesta, señalando qué archivo hace cada cosa.
+
+### 3.1 La pantalla que lista las herramientas
+
+El analista entra en `/clinic/consultas` (`ToolQueryPage.tsx`). Lo primero que
+ve es **la lista de lo que el sistema sabe hacer**, en lenguaje llano:
+
+```
+cromosomas_para_revision     Lista los cromosomas marcados en naranja…
+casos_pendientes_firma       Lista los casos que el analista ya validó…
+casos_reportados             Lista los casos ya cerrados y firmados…
+```
+
+Esa lista **no está escrita en el frontend**. El hook `useToolCatalogo` pide
+`GET /api/clinic/tools/query/`, que responde con el catálogo publicado por
+`tools.py`. Cada herramienta lleva su `description`, y **esa descripción es a la
+vez lo que lee el usuario y lo que lee el modelo** para decidir si la usa. Por
+eso escribir descripciones es escribir código: si una descripción es ambigua,
+se equivocan los dos.
+
+Si mañana se añade una séptima herramienta al catálogo, aparece sola en la
+pantalla y en las opciones del modelo. Nadie toca el frontend.
+
+### 3.2 La pregunta baja al backend y se decide el camino
+
+El usuario escribe «¿qué cromosomas están naranjas?» y el frontend hace
+`POST /api/clinic/tools/query/`. En `tool_router.py` se decide **cómo** se va a
+resolver, y el camino elegido se devuelve al frontend para que se vea en
+pantalla:
+
+```
+KEYWORD    una palabra del catálogo coincide  → se ejecuta SIN modelo
+LLM        no coincide nada                   → el modelo elige la herramienta
+RAG        es una pregunta de documentación   → va al corpus
+SIN_MATCH  nadie puede responder              → se dice que no se sabe
+```
+
+El modelo **solo elige un nombre**. No redacta la respuesta ni toca los datos:
+las filas salen de una consulta a PostgreSQL en `tools.py`. Por eso la pantalla
+muestra siempre `tool` y `source` — la tabla real de la que salió el dato. Un
+usuario puede distinguir un dato consultado de uno inventado, que es justamente
+lo que esta arquitectura hace imposible.
+
+### 3.3 Cuando hace falta encadenar, entra el agente
+
+Las preguntas de un solo paso terminan ahí. Otras no:
+
+> «¿Hay cromosomas pendientes de revisar, y por qué hay que revisarlos?»
+
+La primera mitad es estado (una herramienta), la segunda es una regla (el
+corpus). Ese caso va a `POST /api/clinic/agente/`, y `agente.py` abre el bucle
+**pensar → actuar → observar** hasta que el modelo responde con texto en vez de
+pedir otra herramienta, o hasta agotar `MAX_PASOS`.
+
+El bucle **no sabe qué herramientas existen**. Recibe dos cosas: la lista de
+`schemas` y una función `ejecutar`. Ese desacople es lo que permite el paso
+siguiente sin reescribir nada.
+
+### 3.4 La comunicación con el MCP, paso a paso
+
+Si la petición lleva `"mcp": true`, las herramientas **ya no se importan: se
+descubren hablando el protocolo**. Esto es lo que ocurre por dentro:
+
+```
+1. mcp_conexion.py lanza `python servidor_mcp.py` como PROCESO HIJO
+   No hay puerto ni red: se hablan por stdin/stdout (JSON-RPC 2.0).
+
+2. initialize          handshake de la sesión
+
+3. tools/list          el servidor devuelve las 6 herramientas con su
+                       nombre, su descripción y su JSON Schema
+
+4. se traduce el schema al formato que espera el SDK del modelo:
+   {"type": "function", "function": {name, description, parameters}}
+   Es el MISMO JSON Schema con otro envoltorio.
+
+5. tools/call          cuando el modelo pide una herramienta, se invoca
+                       por protocolo y la observación vuelve al bucle
+```
+
+En `servidor_mcp.py` publicar una herramienta es **un decorador**: `@mcp.tool()`
+sobre una función que delega en el catálogo que ya existía. La lógica no se
+duplica — si hay un fallo, se arregla en un solo sitio.
+
+Y el bucle del agente es **exactamente el mismo** en los dos modos:
+
+```
+sin MCP:  schemas=agente_acciones.schemas()   ejecutar=agente_acciones.ejecutar
+con MCP:  schemas=conexion.descubrir_tools()  ejecutar=conexion.ejecutar_tool
+```
+
+Cambia el enchufe, no la lógica. `cliente_mcp.py` lo demuestra: descubre y
+ejecuta las 6 herramientas **sin importar Django ni el catálogo**, hablando
+solo el protocolo.
+
+### 3.5 Qué ve el usuario al final
+
+La respuesta vuelve con la **traza completa**: cada paso con su tipo —acción,
+observación, respuesta— y el consumo de tokens. No es información de
+depuración: es lo que permite comprobar si el agente encadenó de verdad o
+rellenó el hueco inventando. Sin ella, un agente es un oráculo.
+
+---
+
+## 4. Traza — la evidencia
+
+### 4.1 `POST /agente` — caso simple
 
 ```
 POST /api/clinic/agente/  {"pregunta": "¿Qué casos están reportados?"}
@@ -73,7 +181,7 @@ POST /api/clinic/agente/  {"pregunta": "¿Qué casos están reportados?"}
 pasos 4/6 · tokens 1.853 entrada / 43 salida · 300 s · completado: sí
 ```
 
-### 3.2 Multipaso — encadena herramienta + RAG
+### 4.2 Multipaso — encadena herramienta + RAG
 
 ```
 [01] pregunta     ¿Hay cromosomas pendientes de revisar, y por qué hay que revisarlos?
@@ -89,7 +197,7 @@ pasos 6/6 · tokens 2.705 / 279 · 843 s
 Ninguna de las dos preguntas la resuelve un nivel inferior: la primera necesita
 el estado, la segunda necesita **estado y regla**.
 
-### 3.3 Las 6 herramientas descubiertas por protocolo
+### 4.3 Las 6 herramientas descubiertas por protocolo
 
 ```
 $ python cliente_mcp.py
@@ -106,7 +214,7 @@ Este cliente NO importa Django ni tools.py: solo habla el protocolo.
 
 ---
 
-## 4. El guardrail de escritura, y por qué aquí es más estricto
+## 5. El guardrail de escritura, y por qué aquí es más estricto
 
 El laboratorio de clase permite que `confirmado=true` cancele el pedido. **Aquí
 nunca ejecuta**, y la diferencia es de dominio, no de implementación.
@@ -146,9 +254,9 @@ MCP a cualquier cliente que la descubra.
 
 ---
 
-## 5. Qué no funcionó — hallazgos medidos
+## 6. Qué no funcionó — hallazgos medidos
 
-### 5.1 El modelo de 3B no encadenaba, y rellenaba el hueco inventando
+### 6.1 El modelo de 3B no encadenaba, y rellenaba el hueco inventando
 
 Ante «¿hay cromosomas pendientes, y por qué hay que revisarlos?» hacía **una**
 consulta y se inventaba la segunda mitad. Dio un umbral del **90%** —el real es
@@ -162,7 +270,7 @@ argumento de por qué la traza es un guardrail y no una utilidad de depuración.
 Corregido reforzando las instrucciones con el ejemplo concreto y prohibiciones
 explícitas. Ahora encadena (§3.2).
 
-### 5.2 Medir el RAG aislado no predice su comportamiento dentro del agente
+### 6.2 Medir el RAG aislado no predice su comportamiento dentro del agente
 
 El RAG mide **89%** (16/18) con preguntas escritas por una persona. Dentro del
 bucle las escribe el modelo, y las escribe peor: reformuló la consulta como
@@ -176,7 +284,7 @@ naranja?» **sí** la acierta; está en el banco de evaluación.
 para su uso dentro de un agente. Queda pendiente volver a medir el RAG con las
 consultas que genera el modelo.
 
-### 5.3 El umbral de similitud no decide (nivel 3, se arrastra al 4)
+### 6.3 El umbral de similitud no decide (nivel 3, se arrastra al 4)
 
 Medido sobre 18 preguntas etiquetadas:
 
@@ -191,7 +299,7 @@ monotemático. Se resolvió separando responsabilidades — el índice recupera,
 modelo decide — y el juez se midió **dos veces**: la primera versión (39%) era
 **peor que no tener juez** (56%); la segunda llega a 89%.
 
-### 5.4 Latencia
+### 6.4 Latencia
 
 | | |
 |---|---|
@@ -204,20 +312,7 @@ aplicarlo, no un fallo del diseño.
 
 ---
 
-## 6. Dos desviaciones del laboratorio, justificadas
-
-**La sesión MCP se mantiene abierta durante todo el bucle.** El ejemplo abre una
-por llamada; ahí vale porque su servidor es ligero. El nuestro arranca Django
-entero, así que abrir y cerrar por acción costaría varios segundos cada vez. Se
-resolvió con un hilo con su propio bucle de eventos.
-
-**El SDK cambió de nombres entre versiones.** `FastMCP` → `MCPServer`, e
-`inputSchema` → `input_schema`. Se prueban ambas formas en vez de fijar una
-versión.
-
----
-
-### 5.4 Integrar el RAG en el enrutador costó dos aciertos — medido con A/B
+### 6.5 Integrar el RAG en el enrutador costó dos aciertos — medido con A/B
 
 Al añadir `DOCUMENTACION` como cuarto camino, el banco de 56 preguntas bajó de
 **48/56 (86%) a 44/56 (79%)**. Para saber si era regresión o efecto de las
@@ -255,7 +350,7 @@ medible y acotado.
 
 ---
 
-## 6.bis El paso 6: comparar similitudes y sugerir
+## 7. El paso 6: comparar similitudes y sugerir
 
 El pipeline se cierra con lo que la consigna llama «comparar porcentajes de
 similitud para ofrecer la respuesta más óptima y sugerencias apropiadas».
@@ -303,7 +398,20 @@ su salida en la misma pantalla.
 
 ---
 
-## 7. Qué falta
+## 8. Dos desviaciones del laboratorio, justificadas
+
+**La sesión MCP se mantiene abierta durante todo el bucle.** El ejemplo abre una
+por llamada; ahí vale porque su servidor es ligero. El nuestro arranca Django
+entero, así que abrir y cerrar por acción costaría varios segundos cada vez. Se
+resolvió con un hilo con su propio bucle de eventos.
+
+**El SDK cambió de nombres entre versiones.** `FastMCP` → `MCPServer`, e
+`inputSchema` → `input_schema`. Se prueban ambas formas en vez de fijar una
+versión.
+
+---
+
+## 9. Qué falta
 
 1. **Volver a medir el RAG con consultas generadas por el agente** (§5.2). Es el
    hueco metodológico más importante.
@@ -314,7 +422,7 @@ su salida en la misma pantalla.
 
 ---
 
-## 8. Cómo reproducirlo
+## 10. Cómo reproducirlo
 
 ```bash
 cd backend-clinic
