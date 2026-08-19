@@ -101,6 +101,17 @@ TESTIGO = re.compile(r'\b(?:CHN-[\w-]+|ANON-[\w-]+|par \d{1,2})\b', re.I)
 LARGO_MINIMO = 6
 
 
+# Marcas de que el modelo volcó la salida cruda de la herramienta como si fuera
+# su respuesta. Contiene el testigo, así que pasaría por acierto —medido: pasó—,
+# pero volcar un dict no es haber recordado nada.
+VOLCADO_CRUDO = ("'herramienta':", '"herramienta":', "'fuente':", '"fuente":')
+
+
+def es_respuesta(texto: str) -> bool:
+    """¿Es una respuesta, o el modelo escupió la observación tal cual?"""
+    return not any(m in texto for m in VOLCADO_CRUDO)
+
+
 def testigos_de(traza) -> list[str]:
     """Datos concretos que aparecieron en las OBSERVACIONES del turno 1."""
     vistos = []
@@ -173,8 +184,12 @@ class Command(BaseCommand):
             # El par solo cuenta si AMBOS niveles respondieron: comparar uno que
             # corrió contra otro que se cayó no compara nada.
             medidos[grupo] += 1
-            n5 = any(t.lower() in t2.respuesta.lower() for t in esperados)
-            n4 = any(t.lower() in r4.respuesta.lower() for t in esperados)
+            def acierta(texto):
+                return (es_respuesta(texto)
+                        and any(t.lower() in texto.lower() for t in esperados))
+
+            n5 = acierta(t2.respuesta)
+            n4 = acierta(r4.respuesta)
             aciertos[grupo]['n5'] += n5
             aciertos[grupo]['n4'] += n4
 

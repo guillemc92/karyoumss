@@ -35,7 +35,7 @@ frase de apertura debería ser esa, no «implementé un agente».
 | 2 · tool calling | 4 escenarios de la consigna | `manage.py demo_tools` |
 | 3 · RAG | corpus del proyecto, 1.144 fragmentos | `manage.py demo_sugerencias` |
 | 4 · agente + MCP | bucle ReAct, 6 tools por MCP | `manage.py demo_agente` |
-| 5 · LangGraph | memoria conversacional por `thread_id` | `manage.py eval_memoria` |
+| 5 · LangGraph | memoria conversacional por `thread_id` — **0/8 → 4/8** | `manage.py eval_memoria` |
 
 **Del nivel 5 entra solo la memoria conversacional**, y eso es una decisión
 acotada, no una implementación a medias (ADR-0032). El estado clínico **no**
@@ -173,12 +173,33 @@ Y tampoco orquesta el pipeline de visión, que no tiene decisiones que tomar
 
 **«¿La memoria mejora el agente?»** — *la pregunta incómoda, hay que darla uno
 mismo.*
-Medido: **1/3 con memoria contra 0/3 sin ella**. Con n=3 eso **no sostiene una
-afirmación fuerte**, y así está declarado. El checkpoint sí persiste —probado en
-tests con modelo falso y contra Ollama—; lo que falla es que `llama3.2:3b` lo
-aproveche: vuelve a consultar las herramientas en vez de leer el historial. **El
-límite es el modelo, no la arquitectura.** El primer número que salió (1/4 vs
-3/4) estaba inflado por testigos degenerados y se descartó.
+
+Medido sobre 10 pares, desglosado porque el total engañaría:
+
+| Grupo | Nivel 4 | Nivel 5 |
+|---|---|---|
+| Conversación (exigen memoria) | **0/8** | **4/8** |
+| Dato (control: reconsultables) | 0/2 | 0/2 |
+
+Sí, y el grupo de conversación lo aísla: sus repreguntas apuntan a lo que el
+agente **dijo**, no al dato, así que reconsultar no sirve. El nivel 4 acierta
+**cero de ocho**, y responde lo correcto para su nivel: «no dije nada
+anteriormente».
+
+Tres cosas que conviene decir sin que las pregunten:
+
+1. **La cifra bruta era 5/8 y la bajé a 4/8.** Uno de los aciertos era falso:
+   el modelo volcó la observación cruda como respuesta y, al contener el código
+   CHN, pasaba el test. El instrumento ahora lo descarta.
+2. **El grupo de control da 0/2 en ambos niveles.** Está ahí para que el banco
+   pueda darle la razón al nivel 4 — sin él, solo cabrían preguntas que el
+   nivel 5 gana.
+3. **4 de 8 no es 8 de 8.** El checkpoint persiste siempre —probado en tests
+   con modelo falso—; lo que falla es que `llama3.2:3b` lo aproveche: reconsulta
+   en vez de leer el historial. **El límite es el modelo, no la arquitectura.**
+
+Y el primer número de todos (1/4 vs 3/4) se descartó entero: los testigos eran
+dígitos sueltos y estaba inflado por los dos lados.
 
 **«¿Por qué un solo agente y no uno por módulo?»**
 Es literalmente lo que el docente advierte: «un agente confundido es una fuga

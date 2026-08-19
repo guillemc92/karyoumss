@@ -99,6 +99,32 @@ en vez de leer el historial, y emitir una llamada a herramienta como texto
 plano en vez de como `tool_call`. Tener memoria y saber usarla son cosas
 distintas; lo segundo depende del modelo.
 
+### Resultado medido (`manage.py eval_memoria`, 10 pares, 2026-08-19)
+
+| Grupo | Nivel 4 (sin memoria) | Nivel 5 (con memoria) |
+|---|---|---|
+| **Conversación** (exigen memoria) | **0/8** | **4/8** |
+| Dato (control: reconsultables) | 0/2 | 0/2 |
+
+El grupo de conversación aísla lo que la memoria aporta: sus repreguntas
+apuntan a lo que el agente **dijo**, no al dato, así que no hay forma de
+contestarlas volviendo a consultar. **El nivel 4 acierta cero de ocho** y su
+comportamiento es el correcto sin memoria — «no dije nada anteriormente».
+
+El grupo de control existe para que el banco pueda dar la razón al nivel 4: sus
+repreguntas sí son reconsultables. Que ambos den 0/2 dice que el 3B tampoco
+aprovecha esa vía, no que la vía no exista.
+
+**La cifra bruta fue 5/8 y se corrigió a la baja.** Uno de los aciertos era
+falso: el modelo volcó la observación cruda —`{'herramienta': …, 'fuente': …}`—
+como si fuera su respuesta, y como contenía el código CHN pasaba el test.
+Volcar un dict no es haber recordado. El instrumento ahora lo descarta
+(`es_respuesta`).
+
+De los 4 restantes, **3 son inequívocos** —el mejor devuelve exactamente
+`CHN-2026-08-06-1384` y nada más— y **1 es parcial**: recordó la conversación
+pero enumeró los dos casos en vez del primero.
+
 ## Alternativas descartadas
 
 | Alternativa | Por qué no |
