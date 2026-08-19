@@ -28,6 +28,26 @@ supervisor  demo_supervisor@umss.bo        Demo2026!
 
 **Abrir** `http://localhost:5174` y entrar como analista.
 
+**Respaldo en terminal** — si la interfaz falla o vas justo de tiempo:
+
+```bash
+cd backend-clinic
+CLINIC_LLM_ENABLED=true .venv/Scripts/python manage.py demo_flujo_clinico
+```
+
+Recorre las 7 etapas con datos reales en **27 segundos**: segmenta una metafase
+del dataset, aplica la semaforización, anuncia el salto con su motivo, y termina
+en el ISCN y la narrativa. Es el mismo guion de abajo, sin depender del
+navegador.
+
+> ⚠️ **Arreglado hoy, y era un riesgo real:** `CLINIC_FASTAPI_TIMEOUT` valía 2 s
+> por defecto y `segment_image` usa `max(timeout, 30)`. La segmentación real
+> tarda **26-32 s**: iba al filo, y un pico daba «modo degradado» en vez de
+> resultados en mitad de la demo. Ahora está en 180 s en el `.env`. **Si
+> reinicias el backend clínico, asegúrate de que lo lee.**
+
+
+
 ---
 
 ## 1 · Registrar y analizar con IA  *(en vivo, ~32 s)*
