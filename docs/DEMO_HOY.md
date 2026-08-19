@@ -5,48 +5,66 @@
 
 ---
 
-## 0 · Antes de empezar (2 min)
+## 0 · Antes de empezar (3 min)
 
-**Servicios** — los cuatro tienen que estar arriba:
+### Los CINCO procesos — no cuatro
 
-| | | |
-|---|---|---|
-| `:8000` | backend-ml | `cd backend-ml && python -m uvicorn app.main:app --port 8000` |
-| `:8001` | backend-admin | `cd backend-admin && .venv/Scripts/python manage.py runserver 127.0.0.1:8001 --noreload` |
-| `:8002` | backend-clinic | `cd backend-clinic && CLINIC_LLM_ENABLED=true .venv/Scripts/python manage.py runserver 127.0.0.1:8002 --noreload` |
-| `:5174` | frontend | `cd frontend-clinic && npm run dev` |
+Las dos SPA tienen que servirse desde el **mismo origen** o no comparten el
+`localStorage` donde vive el token (ADR-0020, DD-SSO-001 §4.1). Por eso hace
+falta Caddy.
 
-Comprobar de un vistazo: `curl http://127.0.0.1:8000/health/` debe responder
-`"trained_model":true`.
+```bash
+# 1 · motor de inferencia
+cd backend-ml      && python -m uvicorn app.main:app --port 8000
 
-**Credenciales** — el campo del login es el **email**, no un nombre de usuario:
+# 2 · autoridad de JWT
+cd backend-admin   && .venv/Scripts/python manage.py runserver 127.0.0.1:8001 --noreload
+
+# 3 · backend clinico
+cd backend-clinic  && CLINIC_LLM_ENABLED=true .venv/Scripts/python manage.py runserver 127.0.0.1:8002 --noreload
+
+# 4 · SPA de administracion
+cd frontend-admin  && npm run dev                       # :5173
+
+# 5 · SPA clinica  (OJO: MSYS_NO_PATHCONV en Git Bash)
+cd frontend-clinic && MSYS_NO_PATHCONV=1 VITE_BASE_PATH=/clinic/ npm run dev   # :5174
+
+# 6 · el proxy que las une en un solo origen
+caddy run --config Caddyfile.dev                        # :3000
+```
+
+> **`MSYS_NO_PATHCONV=1` no es opcional en Git Bash.** Sin él, `/clinic/` se
+> convierte en una ruta de Windows y la app queda servida en
+> `/Program%20Files/Git/clinic/`.
+
+### La URL — y la que NO hay que usar
+
+| | |
+|---|---|
+| ✅ **`http://localhost:3000`** | login, y de ahí todo |
+| ❌ `http://localhost:5174` | **la lista sale VACIA**: otro origen, sin token |
+
+Si durante la demo escribes `:5174` por costumbre, verás cero muestras y
+parecerá que el sistema falla. **Deja una sola pestaña abierta, en `:3000`.**
+
+### Credenciales — el campo es el EMAIL
 
 ```
 analista    demo.analista@biomed.umss.bo   Demo2026!
 supervisor  demo_supervisor@umss.bo        Demo2026!
 ```
 
-**Abrir** `http://localhost:5174` y entrar como analista.
+Tras el login te lleva solo a `/clinic/samples` con **15 muestras** en todos
+los estados. Para el ISCN de `CHN-DEMO-T21`, entra como **supervisor**: ese
+panel solo se le muestra a él.
 
-**Respaldo en terminal** — si la interfaz falla o vas justo de tiempo:
+### Comprobacion rapida
 
 ```bash
-cd backend-clinic
-CLINIC_LLM_ENABLED=true .venv/Scripts/python manage.py demo_flujo_clinico
+curl http://127.0.0.1:8000/health/        # debe decir "trained_model":true
+curl -o /dev/null -w "%{http_code}
+" http://localhost:3000/clinic/samples   # 200
 ```
-
-Recorre las 7 etapas con datos reales en **27 segundos**: segmenta una metafase
-del dataset, aplica la semaforización, anuncia el salto con su motivo, y termina
-en el ISCN y la narrativa. Es el mismo guion de abajo, sin depender del
-navegador.
-
-> ⚠️ **Arreglado hoy, y era un riesgo real:** `CLINIC_FASTAPI_TIMEOUT` valía 2 s
-> por defecto y `segment_image` usa `max(timeout, 30)`. La segmentación real
-> tarda **26-32 s**: iba al filo, y un pico daba «modo degradado» en vez de
-> resultados en mitad de la demo. Ahora está en 180 s en el `.env`. **Si
-> reinicias el backend clínico, asegúrate de que lo lee.**
-
-
 
 ---
 
