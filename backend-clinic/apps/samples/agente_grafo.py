@@ -70,6 +70,44 @@ from langgraph.graph.message import add_messages
 from .agente import MAX_PASOS, TEMPERATURA, AgenteError, ResultadoAgente, Traza
 from .agente_acciones import INSTRUCCIONES, ejecutar, schemas
 
+# El prompt del nivel 4 prohibe "responder de memoria", y con razon: alli
+# memoria significa el conocimiento propio del modelo, que seria alucinar. En el
+# nivel 5 esa misma palabra designa tambien el HISTORIAL, que es una fuente
+# legitima —lo que hay en el ya salio de una observacion de herramienta—.
+#
+# Medido: con el prompt del nivel 4 tal cual, el agente ganaba 4 de 8
+# repreguntas; fallaba volviendo a consultar las herramientas en vez de leer lo
+# que el mismo habia dicho. La instruccion que impide alucinar era la que
+# impedia recordar.
+#
+# Este anadido separa los dos sentidos SIN aflojar el guardrail: el historial
+# vale, el conocimiento propio sigue sin valer.
+#
+# *** MEDIDO Y DESCARTADO (2026-08-19) ***
+# La hipotesis era razonable y salio FALSA: con este anadido el resultado bajo
+# de 4/8 a 2/8. El modelo obedecio media instruccion —dejo de llamar a la
+# herramienta— pero no empezo a leer el historial: paso a responder «no
+# mencione ningun caso en primer lugar» y «no tengo informacion sobre el primer
+# caso que cite». Antes, al reconsultar, acertaba por accidente; la instruccion
+# le quito los aciertos accidentales sin darle los deliberados.
+#
+# Se conserva aqui, sin usar, porque el hallazgo vale mas que el codigo: a un
+# modelo de 3B no le basta con AUTORIZARLE a leer el historial. Volver a
+# activarlo exige volver a medir.
+MEMORIA_CONVERSACIONAL = (
+    '\n\nSOBRE EL HISTORIAL DE ESTA CONVERSACION:\n'
+    'Lo que TU dijiste antes en este hilo salio de observaciones de tus '
+    'herramientas, asi que es una fuente valida. Si la pregunta se refiere a lo '
+    'ya dicho —«de esos», «el primero que mencionaste», «repite el ultimo»—, '
+    'RESPONDE LEYENDO EL HISTORIAL. No vuelvas a llamar a la herramienta: la '
+    'respuesta ya esta arriba.\n'
+    'Esto NO afloja la regla anterior: sigues sin poder inventar datos ni '
+    'citar cifras que no aparezcan en una observacion. Cambia solo de donde '
+    'puedes leerlas: tambien de lo que ya respondiste en este hilo.'
+)
+
+INSTRUCCIONES_CON_MEMORIA = INSTRUCCIONES + MEMORIA_CONVERSACIONAL
+
 # La memoria del agente es SUYA: fichero aparte de la base clínica. Mezclarlas
 # invitaría justo a la confusión que este módulo evita (ver docstring).
 RUTA_MEMORIA = Path(__file__).resolve().parents[2] / 'agente_memoria.sqlite3'
@@ -205,6 +243,8 @@ def conversar(pregunta: str, thread_id: str) -> ResultadoAgente:
         # El system prompt se inyecta solo al abrir el hilo: repetirlo en cada
         # turno lo duplicaría en el historial y encarecería cada llamada.
         from langchain_core.messages import SystemMessage
+        # Se usa el prompt del nivel 4 TAL CUAL. Ver MEMORIA_CONVERSACIONAL:
+        # el anadido se probo y salio PEOR (2/8 frente a 4/8).
         entrada['messages'].insert(0, SystemMessage(content=INSTRUCCIONES))
 
     completado = True

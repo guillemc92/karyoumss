@@ -125,6 +125,30 @@ De los 4 restantes, **3 son inequívocos** —el mejor devuelve exactamente
 `CHN-2026-08-06-1384` y nada más— y **1 es parcial**: recordó la conversación
 pero enumeró los dos casos en vez del primero.
 
+### Se intentó subirlo con el prompt, y salió peor
+
+El prompt del nivel 4 prohíbe «responder de memoria», y con razón: allí memoria
+significa el conocimiento propio del modelo, y responder desde ahí sería
+inventar. En el nivel 5 esa misma palabra designa **también el historial**, que
+es una fuente legítima —lo que hay en él ya salió de una observación—.
+
+La hipótesis era que la instrucción que impide alucinar era la que impedía
+recordar. Se añadió un bloque que separa los dos sentidos sin aflojar el
+guardrail, y **se midió: bajó de 4/8 a 2/8**.
+
+El mecanismo del fallo es lo interesante. El modelo obedeció **media
+instrucción**: dejó de llamar a la herramienta, pero no empezó a leer el
+historial. Pasó a responder «no mencioné ningún caso en primer lugar» y «no
+tengo información sobre el primer caso que cité». Antes, al reconsultar,
+acertaba por accidente; la instrucción le quitó los aciertos accidentales sin
+darle los deliberados.
+
+**Revertido.** El bloque se conserva en el código sin usar, con su medición,
+porque el hallazgo vale más que el código: a un modelo de 3B **no le basta con
+autorizarle** a leer el historial. Refuerza la conclusión anterior — el límite
+es el modelo, no la arquitectura — con una prueba adicional: se le pidió
+explícitamente y aun así no lo hizo.
+
 ## Alternativas descartadas
 
 | Alternativa | Por qué no |
