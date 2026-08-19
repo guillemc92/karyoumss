@@ -411,7 +411,108 @@ versión.
 
 ---
 
-## 9. Qué falta
+## 9. Reflexión — qué se corrigió respecto de versiones previas
+
+> Esta sección recoge lo que cambió **por haberlo medido y haber encontrado que
+> estaba mal**, no lo que se añadió. Cada punto tiene su commit y su número.
+
+### 9.1 Un banco de evaluación fácil daba un 97% falso
+
+La primera medición del enrutador, con 30 preguntas, dio **97%**. Al ampliarlo a
+56 —añadiendo preguntas fuera de alcance escritas **con el vocabulario del
+propio dominio**— cayó a **80%**, y la abstención se desplomó del 100% al 61%.
+
+Las 6 preguntas fuera de alcance del banco pequeño (presupuesto, jefe del
+servicio, precio) no compartían **ni una palabra** con el catálogo: abstenerse
+ante ellas es trivial. Las que de verdad miden son las que suenan a dominio pero
+piden otra cosa: «¿quién tiene permiso para firmar?», «¿qué umbral deberíamos
+usar?».
+
+**Lo que enseñó:** un número alto sobre un banco fácil es peor que no medir,
+porque da confianza injustificada y esconde justo el fallo que importa. En
+aquella versión, uno de los escenarios de la consigna *pasaba por suerte*.
+
+### 9.2 El prompt del juez del RAG era peor que no tener juez
+
+La v1 decía «ante la duda, responde=false». El modelo tomó la duda por norma y
+se abstuvo en **11 de 12** preguntas que sí estaban cubiertas: acierto global
+**39%**, contra el **56%** de no tener juez en absoluto.
+
+La v2 invierte el defecto —responder es lo normal, abstenerse la excepción
+acotada a categorías concretas— y recorta el contexto de 5 fragmentos × 2.000
+caracteres a 3 × 900. Resultado: **89%**, y la latencia cayó de 420-671 s a
+27-200 s.
+
+**Lo que enseñó:** un prompt es código y hay que medirlo dos veces. La
+intuición «sé conservador» produjo el peor sistema posible.
+
+### 9.3 Los guardrails no tenían un solo test
+
+Los tres «no negociables» —freno, cinturón y caja negra— estaban implementados y
+documentados, pero **sin pruebas**. El informe afirmaba que este sistema es más
+estricto que el laboratorio en la confirmación de escritura y, si alguien abría
+los tests a comprobarlo, no había nada.
+
+Corregido: `agente.py` pasó del 39% al 93% de cobertura y
+`agente_escritura.py` al 100%. La prueba que más importa es que **el estado del
+caso no cambia ni con `confirmado=true`** — que la política no sea solo un
+mensaje. El puente MCP pasó del 0% al 84%.
+
+**Lo que enseñó:** un guardrail sin test es una intención. Si alguien invierte
+una condición mañana, el sistema seguiría *pareciendo* seguro.
+
+### 9.4 Cinco veces el instrumento falló antes que el sistema
+
+| Instrumento | Qué estaba mal | Efecto |
+|---|---|---|
+| `eval_rag` | el prompt del juez (§9.2) | 39%, peor que sin juez |
+| `eval_correccion` | solo el 43% del ground truth tenía totales plausibles | cobraba como error de la IA el ruido de la etiqueta |
+| `eval_memoria` | un timeout hacía `return` y borraba la corrida | se perdían los pares ya medidos |
+| `eval_memoria` | testigos de un solo dígito («0», «1», «08») | **1/4 vs 3/4, inflado por los dos lados** |
+| `eval_memoria` | el modelo volcaba la observación cruda como respuesta | contenía el código CHN → pasaba por acierto |
+
+De ahí salieron tres reglas que ahora aplican a cualquier medición del proyecto:
+un testigo tiene que ser **específico** (formato o longitud mínima, no dígitos
+sueltos); un fallo de infraestructura **anota y continúa**, nunca aborta; y hay
+que declarar qué casos del banco son **débiles por diseño** y leer el resultado
+desglosado, no por el total.
+
+**Lo que enseñó:** el número es lo último en lo que hay que creer. Antes de
+interpretarlo, mirar caso por caso si los aciertos son aciertos.
+
+### 9.5 Un A/B desmintió un análisis hecho a ojo
+
+Al integrar el RAG el enrutador bajó de 48/56 a 44/56. El análisis por
+inspección concluyó que había **cuatro regresiones graves**. Se reprodujo el
+estado anterior en un worktree de git sobre el commit previo, con el mismo banco
+y el mismo modelo: **48/56 exacto**.
+
+Comparando fallo a fallo, aquella conclusión era **falsa**: esas cuatro
+preguntas ya fallaban antes, con la misma herramienta equivocada. Tres de las
+cuatro pérdidas son **etiqueta desactualizada** —el banco es anterior a que
+existiera el camino RAG— y **la regresión real son dos preguntas**.
+
+**Lo que enseñó:** si se puede correr el A/B, no razonar sobre el diff. Y se
+reportan **dos números** —44/56 con el banco intacto, 47/56 con el banco al
+día— en vez de tocar el banco para que suba.
+
+### 9.6 Medir la precisión no decía si el producto sirve
+
+`macro-F1 0.6958` no responde a la pregunta del laboratorio. La que importa es
+**cuántas acciones necesita el analista** para llevar la propuesta de la IA a un
+cariotipo correcto. Medido contra el cariograma del experto: **mediana de 64
+acciones, frente a 46 de hacerlo a mano. En 20 de 20 casos la IA cuesta más.**
+
+Y corrigió un diagnóstico que se daba por cerrado: se asumía que el cuello de
+botella era la segmentación, pero **la estructura son 4 de 64 acciones (6%)**;
+el grueso está en resolver naranjas (34).
+
+**Lo que enseñó:** la métrica de laboratorio y la métrica de producto no son la
+misma, y solo la segunda dice si esto sirve para alguien.
+
+---
+
+## 10. Qué falta
 
 1. **Volver a medir el RAG con consultas generadas por el agente** (§5.2). Es el
    hueco metodológico más importante.
@@ -422,7 +523,7 @@ versión.
 
 ---
 
-## 10. Cómo reproducirlo
+## 11. Cómo reproducirlo
 
 ```bash
 cd backend-clinic
