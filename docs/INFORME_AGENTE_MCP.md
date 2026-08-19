@@ -1,6 +1,6 @@
 # Informe de progreso — Agente + MCP (Nivel 4)
 
-**Módulo 6 · Día 6** · Entrega del viernes 14 de agosto de 2026
+**Módulo 6** · Entrega del viernes 21 de agosto de 2026
 
 | | |
 |---|---|
@@ -19,14 +19,18 @@
 | Requisito | Estado | Evidencia |
 |---|---|---|
 | Bucle ReAct con tope de pasos | ✅ | `apps/samples/agente.py`, `MAX_PASOS = 6` |
-| Multipaso encadenando ≥2 herramientas | ✅ | traza de 6 pasos, §3.2 |
+| Multipaso encadenando ≥2 herramientas | ✅ | traza de 6 pasos, §4.2 |
 | 4 tools en servidor MCP propio | ✅ **6** | `servidor_mcp.py` |
 | Cliente que descubre por protocolo, sin import | ✅ | `cliente_mcp.py` |
-| Escritura solo con confirmación explícita | ✅ | `agente_escritura.py`, §4 |
-| `POST /agente` con respuesta + traza | ✅ | `AgenteView`, §3.1 |
+| Escritura solo con confirmación explícita | ✅ | `agente_escritura.py`, §5 |
+| `POST /agente` con respuesta + traza | ✅ | `AgenteView`, §4.1 |
 
-**Estado de la escalera:** niveles 0 a 4 implementados y medidos. El nivel 3
-(RAG) se cerró esta misma semana; este informe cubre el 4.
+**Estado de la escalera:** los seis niveles —del 0 al 5— están implementados y
+**medidos**. Este informe cubre el nivel 4, que es el entregable; el 5 se
+resume en §9.7 porque acota una decisión que afecta al 4.
+
+Nada de lo que sigue es una afirmación sin respaldo: cada número tiene un
+comando que lo reproduce (§11).
 
 ---
 
@@ -268,7 +272,7 @@ mirando la traza: sin ella, la respuesta parece fundamentada. Es exactamente el
 argumento de por qué la traza es un guardrail y no una utilidad de depuración.
 
 Corregido reforzando las instrucciones con el ejemplo concreto y prohibiciones
-explícitas. Ahora encadena (§3.2).
+explícitas. Ahora encadena (§4.2).
 
 ### 6.2 Medir el RAG aislado no predice su comportamiento dentro del agente
 
@@ -512,9 +516,39 @@ misma, y solo la segunda dice si esto sirve para alguien.
 
 ---
 
+### 9.7 El nivel 5, y por qué su resultado acota este informe
+
+El nivel 5 (LangGraph, memoria conversacional) está implementado, medido y
+firmado en [ADR-0032](adr/0032-memoria-conversacional-langgraph.md). No es el
+entregable de este informe, pero su medición **acota una conclusión del nivel
+4**, así que corresponde declararla aquí.
+
+| Grupo | Nivel 4 (sin memoria) | Nivel 5 (con memoria) |
+|---|---|---|
+| Conversación (exigen memoria) | **0/8** | **4/8** |
+| Dato (control: reconsultables) | 0/2 | 0/2 |
+
+El nivel 4 acierta **cero de ocho** repreguntas que dependen del turno anterior,
+y responde lo correcto para su nivel: «no dije nada anteriormente». Esa es su
+limitación real, medida, no supuesta.
+
+Y hay un intento fallido que conviene contar. El prompt del nivel 4 prohíbe
+«responder de memoria» —correcto allí: memoria significa el conocimiento propio
+del modelo, y responder desde ahí sería inventar—. La hipótesis fue que esa
+misma instrucción impedía leer el **historial**, que sí es fuente legítima. Se
+añadió un bloque que separaba ambos sentidos sin aflojar el guardrail, y **el
+resultado bajó de 4/8 a 2/8**.
+
+El modelo obedeció media instrucción: dejó de llamar a la herramienta, pero no
+empezó a leer el historial. Se revirtió. **A un modelo de 3B no le basta con
+autorizarle a recordar**, y eso refuerza la conclusión con una prueba
+adicional: se le pidió explícitamente y aun así no lo hizo.
+
+---
+
 ## 10. Qué falta
 
-1. **Volver a medir el RAG con consultas generadas por el agente** (§5.2). Es el
+1. **Volver a medir el RAG con consultas generadas por el agente** (§6.2). Es el
    hueco metodológico más importante.
 2. **Volver a medir el enrutador**: las 6 preguntas de documentación del banco
    de 56 que antes caían en «no sé» deberían resolverse ahora. El «antes» ya
