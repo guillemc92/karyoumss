@@ -48,21 +48,46 @@ import uuid
 
 from django.core.management.base import BaseCommand
 
-# (pregunta que abre contexto, repregunta SIN sentido por sí sola)
+# (apertura, repregunta SIN sentido por sí sola, grupo)
 #
-# Los pares 1 y 4 apuntan a la CONVERSACIÓN («mencionaste», «dijiste»): sin
-# memoria no hay forma de contestarlos. Los pares 2 y 3 apuntan al DATO, y el
-# nivel 4 puede resolverlos volviendo a consultar la herramienta — ahí un
-# acierto suyo es legítimo, no ruido.
+# CONVERSACION: la repregunta apunta a lo que el agente DIJO —«mencionaste»,
+# «dijiste», «tu respuesta anterior»—. El referente no está en la base: sin
+# memoria no hay forma de contestarla. Son las que miden el nivel 5.
+#
+# DATO: la repregunta apunta al dato. El nivel 4 puede resolverla volviendo a
+# consultar la herramienta, así que un acierto suyo NO es ruido: es una vía
+# legítima distinta. Se conservan **a propósito, como grupo de control** — para
+# mostrar dónde el nivel 4 compite de verdad. Quitarlas dejaría un banco que
+# solo puede dar la razón al nivel 5.
+#
+# Las aperturas están verificadas: las tres herramientas devuelven filas con
+# códigos CHN. `CASOS_EN_PROCESO` se excluyó porque devuelve 0 filas y sus
+# pares se descartaban por falta de testigo.
+CONVERSACION, DATO = 'conversacion', 'dato'
+
 BANCO = [
     ('Que cromosomas hay pendientes de revisar?',
-     'De esos, cual mencionaste primero?'),               # conversación
-    ('Que casos estan pendientes de firma?',
-     'Y cuantos eran en total?'),                          # dato
-    ('Que casos estan en proceso ahora mismo?',
-     'Dame el codigo del primero.'),                       # dato
+     'De esos, cual mencionaste primero?', CONVERSACION),
     ('Que cromosomas hay pendientes de revisar?',
-     'Repite solo el ultimo que dijiste.'),                # conversación
+     'Repite solo el ultimo que dijiste.', CONVERSACION),
+    ('Que cromosomas hay pendientes de revisar?',
+     'De tu respuesta anterior, dame solo el primer codigo.', CONVERSACION),
+    ('Que casos estan pendientes de firma?',
+     'Cual nombraste en primer lugar?', CONVERSACION),
+    ('Que casos estan pendientes de firma?',
+     'Repite el primer caso que citaste, sin anadir nada mas.', CONVERSACION),
+    ('Que casos estan pendientes de firma?',
+     'Del listado que acabas de darme, dime el primero.', CONVERSACION),
+    ('Que casos ya fueron reportados?',
+     'Cual mencionaste al principio?', CONVERSACION),
+    ('Que casos ya fueron reportados?',
+     'Vuelve a decirme el primero que dijiste.', CONVERSACION),
+
+    # --- control: resolubles volviendo a consultar --------------------------
+    ('Que casos estan pendientes de firma?',
+     'Dame el codigo del primero.', DATO),
+    ('Que casos ya fueron reportados?',
+     'Y cuantos eran en total?', DATO),
 ]
 
 # Un testigo útil es un dato concreto que solo pudo salir de la observación.
@@ -100,16 +125,18 @@ class Command(BaseCommand):
         from apps.samples.agente_grafo import conversar, olvidar
 
         pares = BANCO[:opts['pares']]
-        aciertos = {'nivel4': 0, 'nivel5': 0}
+        # Desglosado por grupo: el total mezcla lo que mide el nivel 5 con lo
+        # que el nivel 4 puede resolver por otra vía, y leerlo junto engaña.
+        aciertos = {CONVERSACION: {'n4': 0, 'n5': 0}, DATO: {'n4': 0, 'n5': 0}}
+        medidos = {CONVERSACION: 0, DATO: 0}
         caidos = 0
-        medidos = 0
         inicio = time.time()
 
         self.stdout.write(f'pares: {len(pares)}  |  4 llamadas al modelo por par\n')
         self.stdout.write('=' * 74)
 
-        for i, (abre, repregunta) in enumerate(pares, 1):
-            self.stdout.write(f'\n[{i}] {abre}')
+        for i, (abre, repregunta, grupo) in enumerate(pares, 1):
+            self.stdout.write(f'\n[{i}] ({grupo}) {abre}')
             self.stdout.write(f'    -> {repregunta}')
 
             # --- nivel 5: mismo hilo, el checkpoint conserva el turno 1 -------
@@ -145,11 +172,11 @@ class Command(BaseCommand):
 
             # El par solo cuenta si AMBOS niveles respondieron: comparar uno que
             # corrió contra otro que se cayó no compara nada.
-            medidos += 1
+            medidos[grupo] += 1
             n5 = any(t.lower() in t2.respuesta.lower() for t in esperados)
             n4 = any(t.lower() in r4.respuesta.lower() for t in esperados)
-            aciertos['nivel5'] += n5
-            aciertos['nivel4'] += n4
+            aciertos[grupo]['n5'] += n5
+            aciertos[grupo]['n4'] += n4
 
             self.stdout.write(f'    testigos del turno 1: {esperados[:4]}')
             self.stdout.write(f'    nivel 4 (sin memoria): {"OK " if n4 else "MAL"}  '
@@ -157,15 +184,30 @@ class Command(BaseCommand):
             self.stdout.write(f'    nivel 5 (con memoria): {"OK " if n5 else "MAL"}  '
                               f'{t2.respuesta[:70]!r}')
 
+        total = sum(medidos.values())
         self.stdout.write('\n' + '=' * 74)
-        self.stdout.write(f'Pares medidos           {medidos}/{len(pares)}'
+        self.stdout.write(f'Pares medidos           {total}/{len(pares)}'
                           + (f'   ({caidos} caidos por timeout)' if caidos else ''))
-        if medidos:
-            self.stdout.write(f'Nivel 4 - sin memoria   {aciertos["nivel4"]}/{medidos}')
-            self.stdout.write(f'Nivel 5 - con memoria   {aciertos["nivel5"]}/{medidos}')
+        self.stdout.write('-' * 74)
+        for grupo, etiqueta in ((CONVERSACION, 'CONVERSACION (exigen memoria)'),
+                                (DATO, 'DATO (control: reconsultables) ')):
+            n = medidos[grupo]
+            if not n:
+                self.stdout.write(f'{etiqueta}  sin pares medidos')
+                continue
+            a = aciertos[grupo]
+            self.stdout.write(f'{etiqueta}   nivel 4: {a["n4"]}/{n}   '
+                              f'nivel 5: {a["n5"]}/{n}')
         self.stdout.write('=' * 74)
-        if aciertos['nivel5'] <= aciertos['nivel4']:
+
+        # El veredicto se lee SOLO sobre el grupo que aísla la memoria.
+        conv, n = aciertos[CONVERSACION], medidos[CONVERSACION]
+        if n and conv['n5'] <= conv['n4']:
             self.stdout.write(
-                'La memoria NO mejoro el resultado. Es un dato, no un fallo del '
-                'experimento: hay que decirlo tal cual.')
+                'La memoria NO mejoro el resultado en el grupo que la aisla. Es un '
+                'dato, no un fallo del experimento: hay que decirlo tal cual.')
+        if n and n < 6:
+            self.stdout.write(
+                f'AVISO: solo {n} pares de conversacion medidos. Con esa n no se '
+                'sostiene ninguna afirmacion fuerte.')
         self.stdout.write(f'({time.time() - inicio:.0f}s)')
