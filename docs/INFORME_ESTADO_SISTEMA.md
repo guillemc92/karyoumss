@@ -275,7 +275,72 @@ existiera el camino RAG— y **la regresión real son dos preguntas**.
 
 ---
 
-## 6. Lo que falta, sin maquillar
+## 6. Contraste con el estado del arte — Ikaros de MetaSystems
+
+El laboratorio trabaja con **Ikaros 7.0** (MetaSystems), el software comercial
+de cariotipado asistido. Contrastar con él no es una cortesía: es la única
+manera de saber si las decisiones tomadas aquí son razonables o caprichosas.
+
+### 6.1 Tres decisiones que Ikaros confirma
+
+**Su salida se llama «Proposal», no diagnóstico.** En pantalla, abajo a la
+izquierda: `Proposal 47,XXY`. El producto de referencia presenta el cariotipo
+como una **propuesta** que el citogenetista acepta o corrige — exactamente el
+papel que cumple aquí la semaforización. Que la IA proponga y la persona decida
+no es una limitación de este proyecto: es cómo funciona el estándar del sector.
+
+**Cuenta células analizadas.** El panel inferior muestra `Analyzed Cells: 9` y
+`Karyogramm Count: 9` como campos de primer nivel. Es el mismo dato que el
+informe del laboratorio expresa como `[20]` y que aquí falta (§7.2). La
+necesidad de un caso multi-metafase queda validada por el producto real, no
+solo por la lectura de un informe.
+
+**Expone un control manual del umbral de segmentación** (`Lower Threshold`).
+Incluso el software comercial asume que ninguna segmentación automática basta y
+le entrega la perilla al analista. La sub-segmentación medida en §5.1 no es una
+carencia exclusiva de este prototipo: es el estado del problema.
+
+### 6.2 Lo que Ikaros hace y aquí no está
+
+`Est. Overlaps: 0` — **Ikaros mide los solapamientos y los muestra como
+métrica**, para que el analista decida si una metafase merece su tiempo *antes*
+de invertirlo. Es el problema de sub-segmentación convertido en un número
+accionable.
+
+Aquí eso está **decidido y sin construir**: [ADR-0026](adr/0026-estimacion-bandas-solapamientos.md)
+—«Estimación de conteo de bandas y detección de solapamientos»— está en estado
+`accepted` desde el 5 de agosto. La comparación con Ikaros lo eleva de idea
+propia a requisito validado por el mercado.
+
+### 6.3 Mapa de operaciones
+
+| Operación en Ikaros | Equivalente aquí |
+|---|---|
+| Auto Separate | ✅ `SPLIT` |
+| Classify | ✅ `CORRECT_CLASS` |
+| Check Objects | ✅ `XAI_VIEWED` + `ACCEPT_CHROMOSOME` |
+| Region | ✅ `RECROP` |
+| Count | ✅ conteo por clase |
+| **Reject Objects** | ❌ no se puede descartar una detección |
+| **Annotate** | ❌ falta anotar sobre la metafase |
+| **Estimate Band Count** | ❌ ADR-0026, sin construir |
+
+**Cinco de ocho**, y las tres ausentes están identificadas con su decisión
+escrita. Ninguna es un descubrimiento tardío.
+
+### 6.4 Lo que este contraste no dice
+
+No dice que este sistema compita con Ikaros. Ikaros es un producto maduro,
+certificado y en uso clínico; esto es un prototipo cuyo coste de corrección se
+midió y salió desfavorable (§5.1).
+
+Lo que sí dice es que **las decisiones de diseño apuntan en la misma dirección
+que el producto de referencia**, y que las diferencias son de madurez, no de
+criterio.
+
+---
+
+## 7. Lo que falta, sin maquillar
 
 **El detector.** La segmentación junta cromosomas que se tocan, y ese recorte
 malo produce clasificaciones erróneas. La vía de fondo es U-Net; la vía
@@ -297,7 +362,7 @@ vez de leer el historial. El límite es el modelo, no la arquitectura.
 
 ---
 
-## 7. Trazabilidad documental
+## 8. Trazabilidad documental
 
 | ADR | Decisión |
 |---|---|
@@ -313,7 +378,7 @@ entre elegir una tecnología y justificarla.
 
 ---
 
-## 8. Cómo reproducir todo
+## 9. Cómo reproducir todo
 
 ```bash
 # servicios
