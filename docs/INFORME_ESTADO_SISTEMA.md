@@ -275,46 +275,52 @@ existiera el camino RAG— y **la regresión real son dos preguntas**.
 
 ---
 
-## 6. Contraste con el estado del arte — Ikaros de MetaSystems
+## 6. Contraste con el estado del arte
 
-El laboratorio trabaja con **Ikaros 7.0** (MetaSystems), el software comercial
-de cariotipado asistido. Contrastar con él no es una cortesía: es la única
+Contrastar con un producto comercial maduro no es una cortesía: es la única
 manera de saber si las decisiones tomadas aquí son razonables o caprichosas.
 
-### 6.1 Tres decisiones que Ikaros confirma
+> **Precisión sobre la fuente.** Lo que sigue procede de una captura de
+> **Ikaros 7 (MetaSystems)**, software comercial de cariotipado asistido. **No
+> es el sistema que usa este laboratorio** — el laboratorio tiene un sistema
+> legado propio (base SQL Server `SCAMC`, 48 tablas) que este proyecto
+> reemplaza. Ikaros se usa aquí como **referencia externa del estado del
+> arte**, no como el sistema desplazado.
+
+### 6.1 Tres decisiones que el estado del arte confirma
 
 **Su salida se llama «Proposal», no diagnóstico.** En pantalla, abajo a la
-izquierda: `Proposal 47,XXY`. El producto de referencia presenta el cariotipo
-como una **propuesta** que el citogenetista acepta o corrige — exactamente el
-papel que cumple aquí la semaforización. Que la IA proponga y la persona decida
-no es una limitación de este proyecto: es cómo funciona el estándar del sector.
+izquierda: `Proposal 47,XXY`. Un producto de referencia presenta el cariotipo
+como **propuesta** que el citogenetista acepta o corrige — exactamente el papel
+que cumple aquí la semaforización. Que la IA proponga y la persona decida no es
+una limitación de este proyecto: es cómo funciona el estándar del sector.
 
 **Cuenta células analizadas.** El panel inferior muestra `Analyzed Cells: 9` y
 `Karyogramm Count: 9` como campos de primer nivel. Es el mismo dato que el
-informe del laboratorio expresa como `[20]` y que aquí falta (§7.2). La
-necesidad de un caso multi-metafase queda validada por el producto real, no
-solo por la lectura de un informe.
+informe del laboratorio expresa como `[20]` y que aquí falta (§7). La necesidad
+de un caso multi-metafase queda validada por un producto real, no solo por la
+lectura de un informe.
 
 **Expone un control manual del umbral de segmentación** (`Lower Threshold`).
 Incluso el software comercial asume que ninguna segmentación automática basta y
 le entrega la perilla al analista. La sub-segmentación medida en §5.1 no es una
 carencia exclusiva de este prototipo: es el estado del problema.
 
-### 6.2 Lo que Ikaros hace y aquí no está
+### 6.2 Lo que el estado del arte hace y aquí no está
 
-`Est. Overlaps: 0` — **Ikaros mide los solapamientos y los muestra como
-métrica**, para que el analista decida si una metafase merece su tiempo *antes*
-de invertirlo. Es el problema de sub-segmentación convertido en un número
-accionable.
+`Est. Overlaps: 0` — **mide los solapamientos y los muestra como métrica**, para
+que el analista decida si una metafase merece su tiempo *antes* de invertirlo.
+Es el problema de sub-segmentación convertido en un número accionable.
 
-Aquí eso está **decidido y sin construir**: [ADR-0026](adr/0026-estimacion-bandas-solapamientos.md)
-—«Estimación de conteo de bandas y detección de solapamientos»— está en estado
-`accepted` desde el 5 de agosto. La comparación con Ikaros lo eleva de idea
-propia a requisito validado por el mercado.
+Aquí eso está **decidido y sin construir**:
+[ADR-0026](adr/0026-estimacion-bandas-solapamientos.md) —«Estimación de conteo
+de bandas y detección de solapamientos»— está en estado `accepted` desde el 5 de
+agosto, **antes** de ver esa pantalla. La comparación no originó la idea: la
+valida.
 
 ### 6.3 Mapa de operaciones
 
-| Operación en Ikaros | Equivalente aquí |
+| Operación en Ikaros 7 | Equivalente aquí |
 |---|---|
 | Auto Separate | ✅ `SPLIT` |
 | Classify | ✅ `CORRECT_CLASS` |
@@ -330,9 +336,13 @@ escrita. Ninguna es un descubrimiento tardío.
 
 ### 6.4 Lo que este contraste no dice
 
-No dice que este sistema compita con Ikaros. Ikaros es un producto maduro,
-certificado y en uso clínico; esto es un prototipo cuyo coste de corrección se
-midió y salió desfavorable (§5.1).
+No dice que este sistema compita con un producto comercial certificado y en uso
+clínico; esto es un prototipo cuyo coste de corrección se midió y salió
+desfavorable (§5.1).
+
+Y tampoco dice que el laboratorio use ese producto. **Lo que este proyecto
+reemplaza es un sistema legado propio**, del que se conserva hasta el esquema de
+base de datos y del que salieron las 1.113 imágenes usadas para entrenar.
 
 Lo que sí dice es que **las decisiones de diseño apuntan en la misma dirección
 que el producto de referencia**, y que las diferencias son de madurez, no de

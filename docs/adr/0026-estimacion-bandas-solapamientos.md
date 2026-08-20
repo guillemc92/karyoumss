@@ -23,7 +23,7 @@ disponibles en el sistema:
   trabajo manual de separación (P3, ADR-0021) y una fuente de error de
   clasificación.
 
-**Referencia externa (no requisito):** Ikaros 7 de MetaSystems —el estándar
+**Referencia externa (no requisito, y NO el software del laboratorio):** Ikaros 7 de MetaSystems —un estándar
 comercial del dominio, IVDR Clase A— publica ambas métricas y las justifica así:
 *«permite evaluar rápidamente la calidad de la imagen y reemplaza el conteo
 manual tedioso por una verificación rápida de los resultados propuestos»*. Se cita

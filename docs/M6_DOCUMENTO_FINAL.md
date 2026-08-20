@@ -57,12 +57,18 @@ El cuello de botella no es el microscopio. Es el tiempo de un especialista.
 
 ### 2.2 · Cómo se resuelve hoy (sin el sistema)
 
-El laboratorio trabaja con **Ikaros 7.0 de MetaSystems** para el recorte y el
-ordenamiento, y redacta el informe final en Word a partir de una plantilla.
+El laboratorio tiene un **sistema legado propio**, que este proyecto reemplaza.
+Su base de datos —SQL Server, `SCAMC`, **48 tablas**— cubre bastante más que la
+citogenética: junto a `SCAAnalisisCariotipos` conviven `SCAAnalisisFISH`,
+`SCAAnalisisMovilidad`, `SCAAnalisisVitalidad` y `SCAAglutinaciones`. De ahí
+salieron las 1.113 imágenes de cariograma y metafase con las que se entrenó el
+clasificador.
 
-El archivo histórico lo confirma: de 462 informes revisados, **208 son documentos
-escaneados** —el cariotipo está dibujado, no escrito— y 251 están redigitados. La
-transición de papel a digital está a medias.
+El informe final, en cambio, **se redacta a mano en Word** a partir de una
+plantilla. El archivo histórico lo confirma: de 462 informes revisados, **208 son
+documentos escaneados** —el cariotipo está dibujado, no escrito— y 251 están
+redigitados. La transición de papel a digital está a medias, y el paso del
+cariotipo al documento sigue siendo manual.
 
 ### 2.3 · El producto
 
@@ -675,6 +681,6 @@ regresión real eran dos.
    sintéticas con máscaras exactas a partir de los 50.864 recortes reales, lo que
    convierte un problema de etiquetado en uno de cómputo.
 4. **Celery** — para que la inferencia deje de bloquear la petición.
-5. **Estimación de solapamientos** (ADR-0026, ya decidido) — Ikaros la muestra
-   como métrica y permite descartar una metafase antes de invertir tiempo en
-   ella.
+5. **Estimación de solapamientos** (ADR-0026, ya decidido) — permite descartar
+   una metafase antes de invertir tiempo en corregirla. El software comercial
+   del sector la expone como métrica de primer nivel.
