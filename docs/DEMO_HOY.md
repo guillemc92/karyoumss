@@ -111,6 +111,46 @@ Enseñar el banner de bloqueo y la leyenda del semáforo.
 
 ---
 
+## 2.bis · El caso real del archivo — la comparación que más pesa  *(3 min)*
+
+Tres casos del archivo del laboratorio están cargados, procesados por la IA. Lo
+que los hace valiosos es que **existe el cariograma que un citogenetista produjo
+a mano para esa misma metafase**.
+
+```bash
+manage.py seed_casos_reales     # ya ejecutado; recarga si hiciera falta
+```
+
+| Caso | Lo que dijo el EXPERTO | Lo que propone la IA |
+|---|---|---|
+| `CHN-2026-08-20-R018` | **47,XX,+21** — trisomía 21, síndrome de Down | 44 cromosomas, 42 naranjas |
+| `CHN-2026-08-20-R131` | 46,XY — varón normal | 53 cromosomas, 49 naranjas |
+| `CHN-2026-08-20-R123` | 46,XX — mujer normal | 42 cromosomas, 39 naranjas |
+
+**Enseña el R018.** Abre el visor con el caso, y al lado el cariograma del
+experto:
+
+```
+datasets/metaclass/cariogramas/cario_18.bmp
+```
+
+En ese cariograma **se ve la trisomía a simple vista**: tres cromosomas en el
+par 21 en vez de dos.
+
+**Qué decir:**
+
+> «A la izquierda, lo que propone mi sistema. A la derecha, lo que un
+> citogenetista de este laboratorio produjo a mano para esta misma metafase, y
+> que está en su archivo. No estoy midiéndome contra un dataset público:
+> **me mido contra el trabajo real de la persona a la que quiero ayudar**.
+>
+> Y como ven, hoy no le ayudo: propone 44 cromosomas donde hay 47, y no
+> encuentra la trisomía. Por eso el sistema la bloquea en vez de emitirla.»
+
+Es el momento más honesto de la demo y el que mejor explica las 64 acciones.
+
+---
+
 ## 3 · Corregir UNO, con trazabilidad  *(4 min)*
 
 Seleccionar un cromosoma naranja:
