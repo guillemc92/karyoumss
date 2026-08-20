@@ -57,12 +57,13 @@ El cuello de botella no es el microscopio. Es el tiempo de un especialista.
 
 ### 2.2 · Cómo se resuelve hoy (sin el sistema)
 
-El laboratorio tiene un **sistema legado propio**, que este proyecto reemplaza.
-Su base de datos —SQL Server, `SCAMC`, **48 tablas**— cubre bastante más que la
-citogenética: junto a `SCAAnalisisCariotipos` conviven `SCAAnalisisFISH`,
-`SCAAnalisisMovilidad`, `SCAAnalisisVitalidad` y `SCAAglutinaciones`. De ahí
-salieron las 1.113 imágenes de cariograma y metafase con las que se entrenó el
-clasificador.
+El laboratorio trabaja hoy con **MetaClass**, el sistema que este proyecto
+reemplaza. Su base de datos —SQL Server, `SCAMC`, **48 tablas**— cubre bastante
+más que la citogenética: junto a `SCAAnalisisCariotipos` conviven
+`SCAAnalisisFISH`, `SCAAnalisisMovilidad`, `SCAAnalisisVitalidad` y
+`SCAAglutinaciones`. De ahí salieron las **1.113 imágenes** de cariograma y
+metafase con las que se entrenó el clasificador: el dataset de entrenamiento de
+este sistema es el archivo real del sistema al que sustituye.
 
 El informe final, en cambio, **se redacta a mano en Word** a partir de una
 plantilla. El archivo histórico lo confirma: de 462 informes revisados, **208 son

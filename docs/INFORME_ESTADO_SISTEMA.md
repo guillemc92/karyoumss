@@ -282,10 +282,10 @@ manera de saber si las decisiones tomadas aquí son razonables o caprichosas.
 
 > **Precisión sobre la fuente.** Lo que sigue procede de una captura de
 > **Ikaros 7 (MetaSystems)**, software comercial de cariotipado asistido. **No
-> es el sistema que usa este laboratorio** — el laboratorio tiene un sistema
-> legado propio (base SQL Server `SCAMC`, 48 tablas) que este proyecto
-> reemplaza. Ikaros se usa aquí como **referencia externa del estado del
-> arte**, no como el sistema desplazado.
+> es el sistema que usa este laboratorio** — el laboratorio trabaja con
+> **MetaClass** (base SQL Server `SCAMC`, 48 tablas), que es lo que este
+> proyecto reemplaza. Ikaros se usa aquí como **referencia externa del estado
+> del arte**, no como el sistema desplazado.
 
 ### 6.1 Tres decisiones que el estado del arte confirma
 
@@ -341,8 +341,8 @@ clínico; esto es un prototipo cuyo coste de corrección se midió y salió
 desfavorable (§5.1).
 
 Y tampoco dice que el laboratorio use ese producto. **Lo que este proyecto
-reemplaza es un sistema legado propio**, del que se conserva hasta el esquema de
-base de datos y del que salieron las 1.113 imágenes usadas para entrenar.
+reemplaza es MetaClass**, del que se conserva hasta el esquema de base de datos
+y del que salieron las 1.113 imágenes usadas para entrenar el clasificador.
 
 Lo que sí dice es que **las decisiones de diseño apuntan en la misma dirección
 que el producto de referencia**, y que las diferencias son de madurez, no de
