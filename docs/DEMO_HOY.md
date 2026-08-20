@@ -230,6 +230,25 @@ Porque no se pidió y porque son infraestructura, no capacidad del agente. Lo qu
 sí faltaba —que la memoria muriese con el proceso— es lo que ADR-0030 dejó
 anotado como carencia, y es lo único del Día 7 que resolví.
 
+**«¿Con qué se compara esto? ¿Existe algo así ya?»**
+Sí, y conviene distinguir dos cosas que suenan parecido:
+
+> «Reemplazo **MetaClass**, que es lo que el laboratorio usa hoy. Tengo su
+> esquema de base de datos —SQL Server, `SCAMC`, 48 tablas— y de ahí saqué las
+> 1.113 imágenes con las que entrené el clasificador: **el sistema aprende del
+> archivo real del sistema al que sustituye**.
+>
+> Y me comparo con **Ikaros 7 de MetaSystems**, que es el producto de referencia
+> del sector. No para competir con él —es maduro y certificado, y lo mío es un
+> prototipo cuyo coste de corrección salió desfavorable—, sino para comprobar si
+> mis decisiones apuntan en la misma dirección. Tres que confirma: llama
+> *proposal* a su salida, cuenta células analizadas, y expone un control manual
+> del umbral de segmentación.»
+
+Si sacas la captura de Ikaros, **di explícitamente que no es vuestro sistema**.
+Dejarlo ambiguo invita a que te pregunten por qué construiste algo que ya
+tenéis.
+
 **«¿Es U-Net?»**
 No. Es OpenCV con watershed. La cadena de versión lo declara sin ambigüedad:
 `opencv-watershed-v0+efficientnet-b3-metaclass-v3`. U-Net es el diseño; está
