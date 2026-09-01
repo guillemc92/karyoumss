@@ -115,8 +115,6 @@ export function SampleRegisterPage() {
         <i className="fas fa-info-circle"></i> <strong>Información importante:</strong> Los campos marcados con <span style={{ color: 'var(--umss-red)' }}>*</span> son obligatorios. Se requieren al menos 20 metafases de calidad.
       </div>
 
-      {formError && <p role="alert" style={{ color: 'var(--umss-red)', marginBottom: '1rem' }}>{formError}</p>}
-
       <div className="form-card">
         <div className="card-header">
           <h2><i className="fas fa-dna"></i> Datos de la Muestra</h2>
@@ -144,13 +142,22 @@ export function SampleRegisterPage() {
               <i className="fas fa-times"></i> Cancelar
             </button>
             <button type="button" className="btn btn-primary" onClick={handleSubmit} disabled={registration.isPending}>
-              <i className="fas fa-robot"></i> Registrar y analizar con IA
+              <i className="fas fa-robot"></i> {registration.isPending ? 'Analizando...' : 'Registrar y analizar con IA'}
             </button>
           </div>
+
+          {/* El error también aquí: el aviso de arriba queda fuera de pantalla
+              cuando se pulsa el botón al final de un formulario largo, y un
+              fallo de validación se confunde con un botón que no responde. */}
+          {formError && (
+            <p role="alert" style={{ color: 'var(--umss-red)', marginTop: '0.75rem', textAlign: 'right' }}>
+              {formError}
+            </p>
+          )}
         </div>
       </div>
 
-      {processingSampleId && (
+      {(registration.isPending || processingSampleId) && (
         <RegisterProcessingModal
           sampleId={processingSampleId}
           degraded={processingDegraded}
