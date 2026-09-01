@@ -27,6 +27,7 @@ from .services import (
     CaseLockedError,
     ChnDuplicateError,
     CrossKaryotypeError,
+    ImagenNoEsMetafaseError,
     InvalidClassError,
     InvalidDecisionError,
     JoinSelfError,
@@ -160,6 +161,11 @@ class SampleRegisterView(APIView):
             result = sample_registration_service.register(serializer.validated_data, request.user)
         except ChnDuplicateError:
             return Response({'code': 'CHN_DUPLICATE', 'detail': 'CHN ya existe'}, status=status.HTTP_409_CONFLICT)
+        except ImagenNoEsMetafaseError as exc:
+            return Response(
+                {'code': 'IMAGE_TOO_SMALL', 'detail': str(exc)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         return Response(result, status=status.HTTP_201_CREATED)
 

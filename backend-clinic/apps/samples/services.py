@@ -1,11 +1,12 @@
 import base64
 import binascii
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal as _Decimal
 from pathlib import Path
 
 from django.conf import settings
 from django.db import transaction
+from django.utils import timezone as django_timezone
 
 from .models import (
     CONFIDENCE_THRESHOLD,
@@ -16,12 +17,22 @@ from .models import (
     SampleImage,
     SampleStatus,
 )
+from .imagen import ANCHO_MINIMO, ALTO_MINIMO, dimensiones, es_metafase_plausible
 from .iscn import IscnError, generate_iscn, validate_iscn
 from .pipeline_client import MLDegradedError, pipeline_client
 
 
 class ChnDuplicateError(Exception):
     pass
+
+
+class ImagenNoEsMetafaseError(Exception):
+    """Una de las imágenes es demasiado pequeña para ser una metafase.
+
+    Se detectó en un ensayo: subir recortes de cromosomas sueltos (60x119 px)
+    producía un cariotipo de un cromosoma, sin aviso ninguno. Ver `imagen.py`
+    para el umbral y de dónde sale.
+    """
 
 
 class SampleRegistrationService:
@@ -37,6 +48,12 @@ class SampleRegistrationService:
 
         if Sample.objects.filter(chn_code=chn_code, is_active=True).exists():
             raise ChnDuplicateError(chn_code)
+
+        # Antes de crear nada: si lo que suben no puede ser una metafase, se
+        # rechaza el registro entero. Un borrador no se analiza, así que ahí no
+        # aplica. Ver `imagen.py` para el umbral y su medición.
+        if not is_draft:
+            self._validar_metafases(data.get('images', []))
 
         with transaction.atomic():
             sample = self._create_sample(data, user, is_draft)
@@ -130,6 +147,27 @@ class SampleRegistrationService:
             )
             created += 1
         return created
+
+    def _validar_metafases(self, images: list) -> None:
+        """Rechaza el registro si alguna imagen es demasiado pequeña.
+
+        Se comprueban TODAS, no solo la primera que se segmenta: el resto queda
+        guardado y se reprocesa después, así que colar un recorte ahí solo
+        retrasa el problema.
+        """
+        for idx, img in enumerate(images):
+            try:
+                raw = self._decode_base64(img['data_base64'])
+            except (binascii.Error, ValueError, KeyError):
+                continue  # ilegible: ya lo descarta _create_images
+            if es_metafase_plausible(raw):
+                continue
+            ancho, alto = dimensiones(raw)
+            raise ImagenNoEsMetafaseError(
+                f'La imagen {idx + 1} mide {ancho}x{alto} px y una metafase necesita al '
+                f'menos {ANCHO_MINIMO}x{ALTO_MINIMO}. ¿Es el recorte de un cromosoma '
+                f'suelto en vez de la fotografía completa?'
+            )
 
     def _first_image_bytes(self, images: list) -> bytes | None:
         for img in images:
@@ -225,6 +263,33 @@ class CaseBlockedError(Exception):
     """Se intentó validar el caso con naranjas sin resolver (RN-01)."""
 
 
+def _instante_posterior_a(ultimo) -> 'datetime':
+    """Devuelve un `created_at` ESTRICTAMENTE posterior al del último evento.
+
+    La cadena se escribe en orden de inserción, pero `verify_audit_chain` la
+    recorre con `order_by('created_at', 'id')`. Cuando dos eventos comparten el
+    instante —y en Windows la granularidad del reloj lo provoca a menudo— el
+    desempate lo decide el `id`, que es un UUID aleatorio: la mitad de las veces
+    el segundo evento se verifica ANTES que el primero y la cadena entera queda
+    rota, con el mismo aspecto que tendría una manipulación.
+
+    Medido: una sonda que forzaba el mismo `created_at` en dos eventos falló 7
+    de 12 vueltas —el ~50% que predice un desempate por UUID— y
+    `test_karyotype_p4::test_mode_is_part_of_hash_chain` fallaba 1 de cada 3.
+    Con esta corrección ese test pasa 6 de 6, y la regresión vive en
+    `test_cadena_orden_instante.py`, que va por esta función y no construye los
+    eventos a mano (hacerlo se saltaría el arreglo y no probaría nada).
+
+    Adelantar un microsegundo es preferible a un empate: el orden de la
+    evidencia importa más que su precisión al microsegundo, y sin esto la
+    integridad del audit trail (RN-05, 21 CFR Part 11) depende del azar.
+    """
+    ahora = django_timezone.now()
+    if ultimo is not None and ahora <= ultimo.created_at:
+        return ultimo.created_at + timedelta(microseconds=1)
+    return ahora
+
+
 def emit_audit_event(sample, actor, event_type, chromosome=None, payload=None, mode='auto') -> AuditEvent:
     """Emite un evento de auditoría encadenado (ADR-0022 D1). Debe llamarse
     DENTRO de una transacción atómica junto con la acción de dominio.
@@ -246,6 +311,7 @@ def emit_audit_event(sample, actor, event_type, chromosome=None, payload=None, m
         actor=actor,
         payload=payload or {},
         mode=mode,
+        created_at=_instante_posterior_a(last),
         previous_hash=last.current_hash if last else '',
     )
     event.current_hash = event.compute_hash()
