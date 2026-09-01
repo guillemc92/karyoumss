@@ -18,3 +18,8 @@ backend-ml/models_v1_backup/
 
 # Memoria conversacional del agente (ADR-0032): local, fuera de git.
 backend-clinic/agente_memoria.sqlite3
+
+# RN-03: informes clinicos REALES con PII (paciente, fechas, facultativos).
+# Nunca deben entrar al repositorio. Se usan solo como referencia local.
+docs/INFORMES CARIOTIPOS/
+docs/INFORMES CARIOTIPOS - Acceso directo.lnk
