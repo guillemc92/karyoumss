@@ -1,4 +1,4 @@
-import { createContext, useCallback, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import * as authClient from '../api/authClient';
 
 export type ClinicRole = 'analista' | 'supervisor' | 'admin';
@@ -18,6 +18,9 @@ export const SessionContext = createContext<SessionContextValue | undefined>(und
 
 /** SSO (ADR-0020): storage real, compartido con frontend-admin. */
 const SESSION_ACCESS_KEY = 'biomed.auth.access';
+
+/** Espera antes de reintentar una renovación que falló por red. */
+const REINTENTO_MS = 30_000;
 
 /** Decodifica el payload de un JWT sin verificar firma — la firma ya la
  * valida el backend; acá solo se leen claims para UX (mismo patrón que
@@ -67,6 +70,45 @@ export function SessionProvider({ children, forceAnalystOnMount = false }: Sessi
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [forceAnalystOnMount]);
+
+  // --- Renovación automática de la sesión SSO ------------------------------
+  // El SPA clínico es otra aplicación que la de administración: al entrar aquí
+  // el temporizador de refresco de frontend-admin ya no existe. Sin esto, la
+  // sesión moría a los 30 minutos en mitad del trabajo.
+  const temporizador = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const programarRenovacion = useCallback((token: string) => {
+    const exp = authClient.decodeExp(token);
+    if (exp === null) return;
+    const ahora = Date.now() / 1000;
+    const demora = Math.max((exp - ahora - authClient.MARGEN_RENOVACION_SEGUNDOS) * 1000, 0);
+    temporizador.current = setTimeout(() => {
+      void authClient.renovarSesion().then((nuevo) => {
+        if (nuevo) {
+          programarRenovacion(nuevo);
+          return;
+        }
+        // Que falle una renovación no significa que la sesión haya muerto:
+        // puede ser un corte de red momentáneo. Mientras al token le quede
+        // vida se reintenta; solo se cierra cuando ya está caducado de verdad.
+        // Echar al usuario de una sesión válida es peor que el fallo original.
+        if (Date.now() / 1000 < exp) {
+          temporizador.current = setTimeout(() => programarRenovacion(token), REINTENTO_MS);
+        } else {
+          setSession({ isAuthenticated: false, role: null, username: null });
+        }
+      });
+    }, demora);
+  }, []);
+
+  useEffect(() => {
+    const token = authClient.getAccessToken();
+    if (!token) return;
+    programarRenovacion(token);
+    return () => {
+      if (temporizador.current) clearTimeout(temporizador.current);
+    };
+  }, [session.isAuthenticated, programarRenovacion]);
 
   return (
     <SessionContext.Provider value={{ ...session, login: doLogin, logout: doLogout }}>

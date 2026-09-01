@@ -79,6 +79,86 @@ export function getAccessToken(): string | null {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Renovación de la sesión SSO
+//
+// El refresco automático vivía SOLO en el AuthProvider de frontend-admin, que
+// es otra aplicación: al navegar a /clinic/ la página se recarga, ese
+// temporizador muere, y aquí el token se leía sin renovarse nunca. A los 30
+// minutos (ACCESS_TOKEN_LIFETIME en backend-admin) todo respondía
+// «El token dado no es válido para ningún tipo de token».
+//
+// No se emite un token nuevo aquí: se llama al endpoint de backend-admin, que
+// sigue siendo la única autoridad de JWT (ADR-0020). El refresh token se lee
+// del storage compartido, que es legible porque Caddy sirve ambas SPA desde el
+// mismo origen (DD-SSO-001 §4.1).
+// ---------------------------------------------------------------------------
+
+/** Storage de refresco REAL, escrito por frontend-admin en el login único. */
+const SESSION_REFRESH_KEY = 'biomed.auth.refresh';
+
+/** Base del backend-admin, NO de /api/clinic: la autoridad de JWT es admin. */
+const AUTH_BASE = (import.meta.env.VITE_AUTH_API_BASE as string | undefined) ?? '/api/auth';
+
+/** Segundos de margen para renovar antes de que el token expire de verdad. */
+export const MARGEN_RENOVACION_SEGUNDOS = 60;
+
+/** Lee el `exp` del JWT sin verificar firma (la valida el backend). */
+export function decodeExp(token: string): number | null {
+  const claims = decodeJwtPayload(token);
+  return typeof claims?.exp === 'number' ? claims.exp : null;
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const payload = token.split('.')[1];
+    return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Renueva el access token contra backend-admin.
+ * Devuelve el token nuevo, o null si no hay refresh o el backend lo rechaza.
+ */
+export async function renovarSesion(): Promise<string | null> {
+  let refreshToken: string | null = null;
+  try {
+    refreshToken = localStorage.getItem(SESSION_REFRESH_KEY);
+  } catch {
+    return null;
+  }
+  if (!refreshToken) return null;
+
+  let res: Response;
+  try {
+    res = await fetch(`${AUTH_BASE}/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+  } catch {
+    // Caída de red: no se cierra la sesión, se reintentará en el próximo ciclo.
+    return null;
+  }
+  if (!res.ok) return null;
+
+  const data = await res.json();
+  if (typeof data?.access !== 'string') return null;
+  try {
+    localStorage.setItem(SESSION_ACCESS_KEY, data.access);
+    // La rotación de refresh está activada en backend-admin: si viene uno
+    // nuevo, el viejo deja de servir y hay que guardarlo.
+    if (typeof data.refresh === 'string') {
+      localStorage.setItem(SESSION_REFRESH_KEY, data.refresh);
+    }
+  } catch {
+    return null;
+  }
+  return data.access;
+}
+
 export function isAuthenticated(): boolean {
   return getAccessToken() !== null;
 }
