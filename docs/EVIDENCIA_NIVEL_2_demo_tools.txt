@@ -1,0 +1,121 @@
+========================================================================
+EVIDENCIA · NIVEL 2 — Tool calling
+BIOMED UMSS · Módulo 6
+Comando:  CLINIC_LLM_ENABLED=true python manage.py demo_tools
+Ejecutado: 2026-08-21 · modelo llama3.2:3b (versión fija, nunca "latest")
+========================================================================
+
+REGLA QUE DEMUESTRAN LOS CUATRO BLOQUES
+    El modelo ELIGE la herramienta.  El código PRODUCE la respuesta.
+
+========================================================================
+(1) CONTROLADO — camino KEYWORD                          ANOTAR: sin modelo
+========================================================================
+   Pregunta    : "¿Qué cromosomas están naranjas?"
+   Camino      : KEYWORD
+   Herramienta : CROMOSOMAS_PARA_REVISION
+   Fuente      : clinic_chromosomes
+   Latencia    : 95 ms          <-- ANOTAR: milisegundos, NO llama al modelo
+
+     - caso=CHN-2026-08-20-R131 | clase=1  | confianza=13.0% | Pendiente de revisión
+     - caso=CHN-2026-08-20-R131 | clase=11 | confianza=14.9% | Pendiente de revisión
+     - caso=CHN-2026-08-19-2414 | clase=9  | confianza=15.1% | Pendiente de revisión
+     - caso=CHN-2026-08-19-2414 | clase=14 | confianza=15.7% | Pendiente de revisión
+     - caso=CHN-2026-08-20-R018 | clase=7  | confianza=16.7% | Pendiente de revisión
+     ... y 45 más   (aviso de truncado explícito: nunca miente sobre el total)
+
+   La palabra "naranjas" está en el catálogo de la herramienta -> se resuelve
+   sin gastar el modelo. Datos REALES del pipeline: esas confianzas de 13-17 %
+   son las que produce la segmentación sobre metafases crudas.
+
+========================================================================
+(2) SINÓNIMO — camino LLM                          ANOTAR: MISMAS FILAS
+========================================================================
+   Pregunta    : "¿Cuáles necesitan que el analista los mire de nuevo?"
+   Camino      : LLM
+   Herramienta : CROMOSOMAS_PARA_REVISION      <-- la eligió el MODELO
+   Fuente      : clinic_chromosomes
+   Motivo (LLM): "dudosos"
+   Latencia    : 245.638 ms  (4 min 6 s)
+
+     - caso=CHN-2026-08-20-R131 | clase=1  | confianza=13.0% | Pendiente de revisión
+     - caso=CHN-2026-08-20-R131 | clase=11 | confianza=14.9% | Pendiente de revisión
+     - caso=CHN-2026-08-19-2414 | clase=9  | confianza=15.1% | Pendiente de revisión
+     - caso=CHN-2026-08-19-2414 | clase=14 | confianza=15.7% | Pendiente de revisión
+     - caso=CHN-2026-08-20-R018 | clase=7  | confianza=16.7% | Pendiente de revisión
+     ... y 45 más
+
+   >>> ANOTAR CON FLECHA ENTRE (1) Y (2): las cinco filas son IDÉNTICAS,
+       byte por byte, y salieron por caminos distintos. Ninguna palabra de
+       la pregunta está en el catálogo: el modelo tuvo que elegir. Lo único
+       que devolvió fue el NOMBRE de la herramienta y un motivo de dos
+       palabras. Las filas las produjo Django ORM.
+       Hay un test que compara ambas salidas.
+
+========================================================================
+(3) FUERA DE ALCANCE — camino SIN_MATCH        ANOTAR: publica el catálogo
+========================================================================
+   Pregunta    : "¿Cuál es el presupuesto del laboratorio para 2027?"
+   Camino      : SIN_MATCH
+   Herramienta : -
+   Latencia    : 22.032 ms
+
+   "No puedo responder eso. Ninguna herramienta del catálogo responde esa
+    pregunta.
+    Lo que SÍ puedo responder:
+      - CROMOSOMAS_PARA_REVISION  (clinic_chromosomes)
+      - CASOS_PENDIENTES_FIRMA    (clinic_samples)
+      - CASOS_REPORTADOS          (clinic_samples)
+      - CASOS_EN_PROCESO          (clinic_samples)"
+
+   >>> ANOTAR: no es un error 500 ni una respuesta inventada. El sistema
+       sabe decir que no sabe, y además publica lo que sí puede hacer.
+
+========================================================================
+(4) MODELO APAGADO — RN-07             ANOTAR: sigue respondiendo, 30 ms
+========================================================================
+   Misma pregunta del (1), con CLINIC_LLM_ENABLED=false
+   Camino      : KEYWORD
+   Herramienta : CROMOSOMAS_PARA_REVISION
+   Fuente      : clinic_chromosomes
+   Latencia    : 30 ms         <-- ANOTAR: con la IA APAGADA
+
+     ... las mismas cinco filas de (1) y (2)
+
+   >>> ANOTAR: los datos salen igual porque la respuesta la produce el
+       código. Degradación elegante (RN-07): apagar la IA no rompe el
+       sistema.
+
+------------------------------------------------------------------------
+(4-bis) SINÓNIMO SIN IA — lo que aporta el modelo, medido
+------------------------------------------------------------------------
+   Pregunta    : "¿Cuáles necesitan que el analista los mire de nuevo?"
+   Camino      : SIN_MATCH        Latencia: 1 ms
+
+   "No puedo responder eso. La asistencia por IA está desactivada y la
+    consulta no usa el vocabulario del catálogo."
+
+   >>> Eso está bien, y es el punto: apagar la IA no rompe el sistema,
+       solo le quita la TOLERANCIA A SINÓNIMOS. Esa diferencia —(2) frente
+       a (4-bis)— es exactamente lo que aporta el modelo, aislado.
+
+========================================================================
+EL CONTRASTE QUE RESUME EL NIVEL
+========================================================================
+
+   mismo dato, dos caminos:     30 ms  (KEYWORD)   vs   245.638 ms  (LLM)
+   el camino sin modelo es      8.188 veces más rápido
+
+   Intercambio deliberado: se paga latencia solo cuando hace falta
+   entender la pregunta, no para obtener el dato.
+
+========================================================================
+AVISO PARA LA DEFENSA
+========================================================================
+
+   NO EJECUTAR EN VIVO. El comando entero tarda ~268 s (4 min 28 s), casi
+   todo en el escenario 2. Es el 30 % de una defensa de 15 minutos.
+   Usar esta captura.
+
+   Si te piden ver algo en vivo, lanza SOLO el escenario 4 (modelo
+   apagado): son 30 ms y es el que mejor demuestra RN-07.

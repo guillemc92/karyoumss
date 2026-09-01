@@ -1,0 +1,74 @@
+========================================================================
+EVIDENCIA · NIVELES 0 y 1 — Llamada al LLM con salida validada
+BIOMED UMSS · Módulo 6 · ADR-0024
+Comando:  CLINIC_LLM_ENABLED=true python manage.py demo_llm --chn CHN-DEMO-T21
+========================================================================
+
+[1] PROVEEDOR Y MODELO
+    proveedor : Ollama (local, API compatible con el SDK de OpenAI)
+    endpoint  : http://localhost:11434/v1
+    modelo    : llama3.2:3b          <-- ANOTAR: modelo fijo, nunca "latest"
+    habilitado: True                 <-- feature flag CLINIC_LLM_ENABLED
+
+[2] DATO REAL DE LA APLICACIÓN
+    caso (CHN)  : CHN-DEMO-T21
+    tipo muestra: sangre
+    cromosomas  : 47 activos
+    ISCN        : 47,XY,+21          <-- ANOTAR: dato REAL, no un texto de ejemplo
+    origen ISCN : campo persistido del caso (S3)
+
+    >>> Lo calcula una función pura determinística, NO el LLM (ADR-0024 D1)
+
+[3] RESPUESTA DEL MODELO (borrador, campo separado)
+------------------------------------------------------------------------
+Se observa un cromosoma X y un Y en el complemento sexual masculino, y tres
+copias del cromosoma 21 en lugar de dos. El resultado del análisis de
+citometría de flujo muestra una aneuploidía autosómica, específicamente una
+trisomía del cromosoma 21. Esto se traduce en una presencia excesiva de tres
+copias del cromosoma 21 en lugar de las dos normales. Este hallazgo es
+consistente con el síndrome de Down, una aneuploidía autosómica que es la más
+común y compatible con la vida. Es importante destacar que la presencia de un
+cromosoma X y un Y en el complemento sexual masculino es normal, lo que
+sugiere que el individuo es masculino y no tiene alteraciones en el número
+cromosómico en la cromosoma sexuada. Sin embargo, la trisomía del cromosoma
+21 es un hallazgo significativo que requiere correlación clínica para
+determinar su impacto en la salud del individuo.
+------------------------------------------------------------------------
+    latencia total: 379.519 ms  (6 min 19 s, CPU sin GPU)
+
+[4] CAMPOS ESTRUCTURADOS Y PERSISTENCIA
+    Sample.iscn_nomenclature : 47,XY,+21        (read-only tras generarse, RN-04)
+    Sample.narrative_draft   : 867 chars        (BORRADOR, no dato clínico)
+    Sample.narrative_model   : llama3.2:3b      (trazabilidad: qué modelo lo escribió)
+    Sample.narrative_generated_at : 2026-08-21 10:52:42 UTC
+    AuditEvent               : NARRATIVE_GENERATED
+    hash encadenado          : 219158cd0ddad42fe1dbacb5e2b651e9...
+
+========================================================================
+LO QUE ESTA CAPTURA DEMUESTRA
+========================================================================
+
+  1. Llamada real al modelo desde el SDK, con datos de la base — no un
+     texto de ejemplo.
+  2. El ISCN (el diagnóstico) lo produce código determinista; el modelo
+     solo redacta prosa, en un campo aparte marcado como borrador.
+  3. La salida queda tipada, persistida y auditada: modelo, fecha y evento
+     encadenado por hash.
+
+========================================================================
+DOS AVISOS PARA LA DEFENSA
+========================================================================
+
+  A) NO EJECUTAR EN VIVO. 379 s son 6 minutos: el 42 % de una defensa de
+     15 minutos. Usar esta captura.
+
+  B) EL MODELO INVENTÓ UN MÉTODO. Dice «análisis de citometría de flujo»,
+     y este resultado NO viene de citometría de flujo: viene de análisis
+     de imagen de una metafase.
+
+     Es una alucinación de metodología, y conviene señalarla ANTES de que
+     alguien la lea. Es exactamente el argumento del diseño: por eso la
+     narrativa es un borrador en un campo separado, por eso no entra al
+     informe firmado sin revisión humana, y por eso el ISCN lo calcula
+     código. El diagnóstico —47,XY,+21— es correcto aunque la prosa
+     invente el método.
