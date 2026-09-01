@@ -8,15 +8,27 @@ de torch perezoso: si torch o el modelo no están, el pipeline cae al
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 import numpy as np
 
+from .asignacion import PENALIZACION, repartir
 from .ports import ClassifierPort
 from .preprocess import letterbox, reference_height
 from .segmentation import Detection
 
 MODELS_DIR = Path(__file__).resolve().parent.parent / 'models'
+
+#: Interruptor del reparto global (ADR-0033). Apagado por defecto: el ADR está
+#: en `proposed`, no en `accepted`, y encenderlo por defecto sería desplegar una
+#: decisión sin firmar. Existe para poder comparar los dos caminos sobre los
+#: mismos casos, igual que `CLINIC_LLM_ENABLED` en el backend clínico.
+ASIGNACION_ENV = 'ML_ASIGNACION_ENABLED'
+
+
+def _asignacion_activada() -> bool:
+    return os.environ.get(ASIGNACION_ENV, '').strip().lower() in ('1', 'true', 'yes', 'on')
 
 
 class EfficientNetClassifier(ClassifierPort):
@@ -38,6 +50,7 @@ class EfficientNetClassifier(ClassifierPort):
         self._preprocess = meta.get('preprocess', 'resize')
         self._img_size = img_size
         self._version = meta.get('version', 'v1')
+        self._asignacion = _asignacion_activada()
 
         model = models.efficientnet_b3(weights=None)
         in_feats = model.classifier[1].in_features
@@ -67,7 +80,10 @@ class EfficientNetClassifier(ClassifierPort):
     def name(self) -> str:
         # Se persiste en Karyotype.model_version de cada caso: tiene que decir
         # qué modelo produjo ese resultado, o la trazabilidad clínica miente.
-        return f'efficientnet-b3-metaclass-{self._version}'
+        # ADR-0033 D5: el reparto cambia la clase que se persiste, así que
+        # también tiene que aparecer aquí.
+        base = f'efficientnet-b3-metaclass-{self._version}'
+        return f'{base}+asignacion-p{PENALIZACION}' if self._asignacion else base
 
     @property
     def is_trained(self) -> bool:
@@ -91,6 +107,19 @@ class EfficientNetClassifier(ClassifierPort):
             tensors.append(self._tf(img))
         batch = torch.stack(tensors)
         with torch.no_grad():
-            probs = torch.softmax(self._model(batch), dim=1)
-            conf, idx = probs.max(dim=1)
-        return [(self.classes[int(i)], round(float(c), 3)) for i, c in zip(idx.tolist(), conf.tolist())]
+            probs = torch.softmax(self._model(batch), dim=1).cpu().numpy()
+
+        if self._asignacion:
+            # ADR-0033: el modelo propone la distribución, el código reparte
+            # respetando la estructura del cariotipo (2 copias por autosoma,
+            # con cupo blando para no prohibir las trisomías).
+            elegidas = repartir(probs, PENALIZACION)
+        else:
+            elegidas = probs.argmax(axis=1)
+
+        # ADR-0033 D4: la confianza sigue siendo la del MODELO para la clase
+        # finalmente elegida, no el coste de la asignación. Mezclarlas daría un
+        # número sin significado clínico y rompería la comparabilidad con todas
+        # las mediciones anteriores.
+        return [(self.classes[int(i)], round(float(probs[fila, i]), 3))
+                for fila, i in enumerate(elegidas)]
