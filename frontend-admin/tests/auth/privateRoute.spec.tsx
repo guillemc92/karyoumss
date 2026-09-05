@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from '../../src/admin/auth/AuthContext';
 import { PrivateRoute } from '../../src/admin/auth/PrivateRoute';
 import * as authClient from '../../src/admin/auth/authClient';
+import { getRedirectForRole } from '../../src/admin/auth/roleRedirect';
 
 function Protected() {
   return <div data-testid="protected">contenido protegido</div>;
@@ -67,11 +68,17 @@ describe('PrivateRoute (ADR-0017)', () => {
 
   it('con sesión pero rol no permitido (con destino externo) navega fuera vía roleRedirect', async () => {
     // demo_supervisor no está en allowedRoles=['admin'] → roleRedirect da un
-    // destino no-nulo (/supervisor.html) → PrivateRoute navega afuera en vez
-    // de mostrar el contenido protegido de esta SPA.
+    // destino no-nulo → PrivateRoute navega afuera en vez de mostrar el
+    // contenido protegido de esta SPA.
+    //
+    // Se compara contra el destino que devuelve roleRedirect, no contra un
+    // literal: ese valor lo fija `VITE_SUPERVISOR_LEGACY_URL` desde un `.env`
+    // local y gitignored. Afirmar el literal hacía que la prueba fallara en la
+    // máquina del desarrollador y pasara en cualquier otra.
+    const destino = getRedirectForRole('supervisor') as string;
     await authClient.login('demo_supervisor@biomed.umss.bo', 'demo12345');
     renderAt('/', ['admin']);
-    await waitFor(() => expect(window.location.href).toContain('supervisor.html'));
+    await waitFor(() => expect(window.location.href).toContain(destino));
     expect(screen.queryByTestId('protected')).not.toBeInTheDocument();
   });
 
