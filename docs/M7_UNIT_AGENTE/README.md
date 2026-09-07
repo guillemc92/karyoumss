@@ -46,7 +46,35 @@ Y un cuarto que no puede faltar: **401** sin token.
 
 ---
 
-## 2 · El ciclo, medido
+## 2 · El punto de partida: los tests a mano
+
+El ciclo del LabX empieza por los tests escritos y revisados a mano. En este
+producto ya existían, y son los que se le dieron al agente como contexto:
+
+| Ejercicio | Fichero a mano | Tests | Corrida |
+|---|---|---:|---|
+| 1 · motor ISCN | `apps/samples/tests/test_iscn.py` | 37 funciones (**85** con parametrización) | `85 passed in 0.94s` |
+| 2 · endpoint | `apps/samples/tests/test_contrato_karyotype.py` | **14** | `14 passed in 21.57s` |
+
+```bash
+cd backend-clinic
+.venv/Scripts/python -m pytest apps/samples/tests/test_iscn.py -q --no-cov
+.venv/Scripts/python -m pytest apps/samples/tests/test_contrato_karyotype.py -q --no-cov
+```
+
+Los del ejercicio 1 prueban el motor contra **síndromes reales con nomenclatura
+publicada** —Down, Edwards, Patau, Turner, Klinefelter— y contra el estándar
+ISCN 2024 citado sección por sección. Los del ejercicio 2 validan la respuesta
+del endpoint contra su **JSON Schema** (`contratos.py`) y barren los cuatro
+códigos HTTP del contrato.
+
+Ese es el listón contra el que se mide lo que devuelva el agente. Y adelanta el
+resultado: **una unidad ya probada así deja muy poco que pedirle a un agente**
+— ver §6.
+
+---
+
+## 3 · El ciclo, medido
 
 ```
                       generados   corrieron   sobrevivieron   coste (tokens/tiempo)
@@ -73,7 +101,7 @@ cd backend-clinic
 
 ---
 
-## 3 · El primer tropiezo es el que el LabX anticipa
+## 4 · El primer tropiezo es el que el LabX anticipa
 
 ```
 apps\samples\tests\test_iscn_agente.py:1: in <module>
@@ -93,53 +121,60 @@ por eso, y el código se lee perfecto.
 
 ---
 
-## 4 · La auditoría, test por test
+## 5 · La auditoría, test por test
 
-Las tres preguntas del LabX §3:
+Las tres preguntas del LabX §3, aplicadas una a una:
 
-1. Si rompo la función, ¿este test se pone rojo?
-2. ¿El assert dice lo que el código **debe** hacer, o copió lo que hace hoy?
-3. ¿El nombre dice algo?
+| # | La pregunta | Si la respuesta es «no»… |
+|---|---|---|
+| **P1** | Si rompo la función, ¿este test se pone **rojo**? | No prueba nada. Se borra. |
+| **P2** | ¿El assert dice lo que el código **debe** hacer, o copió lo que hace hoy? | Es una foto. Se decide el comportamiento correcto y se reescribe. |
+| **P3** | ¿El **nombre** dice algo? | Se renombra. |
+
+A la que un test falla una, deja de ser aceptable tal cual. La cuarta columna es
+la decisión; la marca solo pasa a `auditado` cuando las tres son «sí».
 
 ### Ejercicio 1 · el motor ISCN
 
-| # | Test del agente | Estado | Veredicto |
-|---|---|---|---|
-| 1 | `test_cariotipo_femenino_normal` | verde | **Borrado** — copia literal de `TestCariotiposNormales.test_femenino` |
-| 2 | `test_cariotipo_masculino_normal` | verde | **Borrado** — copia literal de `test_masculino` |
-| 3 | `test_trisomia_21` | rojo | **Borrado** — `{'21': 3}` son tres cromosomas, no un cariotipo; y el caso ya está a mano (`test_down_trisomia_21`) |
-| 4 | `test_monosomia_X` | rojo | **Borrado** — espera `'45,XX,-X'`, que se contradice a sí mismo; el estándar es `45,X` y ya está a mano |
-| 5 | `test_klinefelter` | rojo | **Borrado** — `{'21': 1}` no es Klinefelter. Falla la pregunta 3: **el nombre miente**. Es el mismo assert que el #3 con otro dato |
-| 6 | `test_conteo_vacio` | rojo | **Borrado** — espera `''`. Falla la pregunta 2 del peor modo posible: **la regla de negocio, invertida** |
-| 7 | `test_cariotipo_femenino_trisomia_13` | rojo | **Borrado** — dos errores: el conteo y el total (48 con una sola trisomía es imposible). Ya está a mano (`test_patau_trisomia_13`) |
-| 8 | `test_cariotipo_masculino_trisomia_8` | rojo | **Corregido y aceptado** → `auditado` |
+| # | Test del agente | P1 | P2 | P3 | Decisión |
+|---|---|:--:|:--:|:--:|---|
+| 1 | `test_cariotipo_femenino_normal` | sí | sí | sí | **Borrado** — pasa las tres, pero es **copia literal** de `TestCariotiposNormales.test_femenino` |
+| 2 | `test_cariotipo_masculino_normal` | sí | sí | sí | **Borrado** — copia literal de `test_masculino` |
+| 3 | `test_trisomia_21` | — | **no** | sí | **Borrado** — `{'21': 3}` son tres cromosomas, no un cariotipo. El caso ya está a mano |
+| 4 | `test_monosomia_X` | — | **no** | sí | **Borrado** — espera `'45,XX,-X'`, que se contradice a sí mismo. El estándar es `45,X` y ya está a mano |
+| 5 | `test_klinefelter` | — | **no** | **no** | **Borrado** — `{'21': 1}` no es Klinefelter: **el nombre miente**. Y es el mismo assert que el #3 con otro dato |
+| 6 | `test_conteo_vacio` | — | **no** | sí | **Borrado** — espera `''` donde la regla es **lanzar**. P2 falla del peor modo posible |
+| 7 | `test_cariotipo_femenino_trisomia_13` | — | **no** | sí | **Borrado** — dos errores: el conteo y el total (48 con una sola trisomía es imposible). Ya está a mano |
+| 8 | `test_cariotipo_masculino_trisomia_8` | — | **no** | sí | **Corregido** → `auditado`. La idea del caso era buena y no estaba a mano; la entrada estaba mal |
+
+*(«—» en P1 significa que no se pudo evaluar: el test ya salía rojo por su propia
+entrada, así que no llegaba a decir nada sobre la función.)*
 
 **El #6 es el hallazgo pedagógico.** Es el análogo exacto del error que el LabX
 predice en la calculadora —probar `dividir(1, 0)` esperando `ZeroDivisionError`,
 la foto de lo que haría Python en vez de lo que hace la clase—. Aquí el modelo
 esperó que un conteo vacío devolviera cadena vacía. Si ese test se hubiera
 aceptado y alguien hubiera «arreglado» el motor para que pasara, el sistema
-emitiría una nomenclatura vacía en lugar de negarse a emitir.
+**emitiría una nomenclatura vacía en lugar de negarse a emitir un diagnóstico**.
 
 ### Ejercicio 2 · el endpoint
 
-| # | Test del agente | Estado | Veredicto |
-|---|---|---|---|
-| 1 | `test_admin_ve_cualquier_caso` | error | **Borrado** — usa `supervisor_client`, no admin: el nombre miente. Y duplica `test_el_supervisor_ve_cualquier_caso` |
-| 2 | `test_muestra_desactivada_devuelve_404` | rojo | **Corregido y aceptado** — ver abajo |
-| 3 | `test_cromosomas_estan_ordenados_por_order` | error | **Corregido y aceptado** |
-| 4 | `test_sample_iscn_es_cadena_vacia_mientras_no_seha_generado` | error | **Corregido y aceptado** — solo el nombre |
-| 5 | `test_model_version_viaja_en_la_respuesta` | error | **Corregido y aceptado** |
-| 6 | `test_admin_ve_caso_desactivado` | error | **Borrado** — usa una variable que no recibe, y **contradice al #2**: uno dice 404 y el otro 200 para el mismo caso |
+| # | Test del agente | P1 | P2 | P3 | Decisión |
+|---|---|:--:|:--:|:--:|---|
+| 1 | `test_admin_ve_cualquier_caso` | sí | sí | **no** | **Borrado** — usa `supervisor_client`, no admin: el nombre miente. Y duplica `test_el_supervisor_ve_cualquier_caso` |
+| 2 | `test_muestra_desactivada_devuelve_404` | **no** | sí | sí | **Corregido** → `auditado`. Habría pasado en verde **sin probar nada** |
+| 3 | `test_cromosomas_estan_ordenados_por_order` | sí | **no** | sí | **Corregido** → `auditado`. Afirmaba el fixture, no el orden |
+| 4 | `test_sample_iscn_es_cadena_vacia_mientras_no_seha_generado` | sí | sí | **no** | **Corregido** → `auditado`. Solo el nombre: venía con una palabra partida |
+| 5 | `test_model_version_viaja_en_la_respuesta` | **no** | **no** | sí | **Corregido** → `auditado`. `is not None` pasa con la cadena vacía |
+| 6 | `test_admin_ve_caso_desactivado` | — | **no** | **no** | **Borrado** — usa una variable que no recibe, y **contradice al #2**: uno dice 404 y el otro 200 para el mismo caso |
 
 Tres de estos merecen el detalle:
 
-**El #2 habría pasado en verde sin probar nada.** El agente creó una muestra
-desactivada **sin cariotipo** y esperó 404. El 404 habría salido igual aunque el
-endpoint ignorara por completo `is_active`, porque la muestra no tenía cariotipo.
-Corregido: el caso sí tiene cariotipo, y entonces el 404 solo puede venir del
-borrado lógico. Es la pregunta 1 en su forma más difícil de ver — el test no era
-rojo, era **vacío**.
+**El #2 falla P1, que es la pregunta más difícil de ver.** El agente creó una
+muestra desactivada **sin cariotipo** y esperó 404. El 404 habría salido igual
+aunque el endpoint ignorara por completo `is_active`, porque la muestra no tenía
+cariotipo. El test no era rojo: era **vacío**. Corregido, el caso sí tiene
+cariotipo, y entonces el 404 solo puede venir del borrado lógico.
 
 **El #5 desobedeció una regla explícita del prompt.** Se le pidió «assert exacto
 sobre el JSON» y escribió `assert model_version is not None`. Ese assert pasa con
@@ -147,12 +182,25 @@ la cadena vacía — que es exactamente el fallo que importa: un cariotipo sin
 declarar qué modelo lo produjo no es trazable (ADR-0021).
 
 **El #3 afirmaba el fixture, no el orden.** `chromosomes[0]['order'] == 0`,
-`[1] == 1`, `[2] == 2` funciona solo mientras haya exactamente tres cromosomas.
-Corregido a comparar la lista contra su propia versión ordenada.
+`[1] == 1`, `[2] == 2` funciona solo mientras la fixture tenga exactamente tres
+cromosomas. Corregido a comparar la lista contra su propia versión ordenada.
+
+### El recuento de la auditoría
+
+```
+                         generados   borrados   corregidos y aceptados
+ejercicio 1 · ISCN            8          7               1
+ejercicio 2 · endpoint        6          2               4
+                             --         --              --
+                             14          9               5
+```
+
+De los 9 borrados: **6 eran duplicados** del fichero a mano, **2 tenían un nombre
+que mentía** y **1 se contradecía con otro test del mismo fichero**.
 
 ---
 
-## 5 · Lo que falló del prompt, y es culpa mía
+## 6 · Lo que falló del prompt, y es culpa mía
 
 En el ejercicio 1 le pedí al agente «casos que **NO** estén ya en el archivo a
 mano» y a continuación le listé seis casos que **sí estaban todos**. El modelo
@@ -174,7 +222,7 @@ suposiciones de quien mide que sobre el sistema medido.**
 
 ---
 
-## 6 · Lo que se aprendió
+## 7 · Lo que se aprendió
 
 El agente escribió 14 tests en 27 minutos de modelo local. **Cero corrieron tal
 cual.** Dos quedaron en verde y los dos eran copias del fichero a mano — el verde
@@ -197,7 +245,7 @@ persona, con el informe de cobertura delante.
 
 ---
 
-## 7 · Qué queda en el repositorio
+## 8 · Qué queda en el repositorio
 
 | Ruta | Qué es |
 |---|---|

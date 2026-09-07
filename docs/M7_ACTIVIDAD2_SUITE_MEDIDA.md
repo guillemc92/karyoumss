@@ -24,7 +24,7 @@ Por eso se reportan tres, y la que manda es la última:
 | Alcance | Antes | Actividad 2 | Frontera | Contrato | Últimos huecos | Δ total |
 |---|---:|---:|---:|---:|---:|---:|
 | Lo que reporta `pytest-cov` | 82,25 % | 84,04 % | 86,00 % | 86,82 % | 88,54 % | +6,29 pp |
-| Sin ficheros de test | 65,41 % | — | — | — | — | — |
+| Sin ficheros de test † | 65,41 % | — | — | — | — | — |
 | **Código de producción** (sin tests ni CLI) | **85,63 %** | **88,60 %** | **91,74 %** | **93,38 %** | **96,33 %** | **+10,70 pp** |
 
 ```
@@ -51,6 +51,13 @@ cd backend-clinic
 .venv/Scripts/python -m pytest --cov=. --cov-report=json:cov.json --cov-fail-under=0
 .venv/Scripts/python scripts/cobertura_produccion.py cov.json apps/
 ```
+
+† Ese alcance intermedio —quitar los ficheros de test pero dejar los
+`management/commands/`— se midió **una sola vez, al principio**, para enseñar
+cuánto infla la cifra el hecho de contar los propios tests: 82,25 % frente a
+65,41 % sobre la misma suite. No se sigue en las mediciones posteriores porque
+no es el número que decide dónde trabajar; el que decide es el de la última
+fila.
 
 El segundo argumento acota el agregado a `apps/`, que es el alcance de las
 mediciones anteriores: deja fuera `manage.py`, `wsgi/asgi` y los dos guiones MCP
