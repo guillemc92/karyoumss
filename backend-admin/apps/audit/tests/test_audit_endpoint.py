@@ -36,7 +36,14 @@ class TestAuditEndpointAuth:
         resp = client.get(URL)
         assert resp.status_code == 200
 
-    def test_anon_returns_401(self, anon_client):
+    @pytest.mark.skip(
+        reason='DUPLICADO de test_anon_returns_401 (linea 20): misma fixture, '
+               'misma URL, mismo assert. Ademas compartian NOMBRE dentro de la '
+               'misma clase, asi que Python sustituia el primero por este y el '
+               'de arriba no llegaba a ejecutarse nunca. Se renombra y se omite '
+               'para que el original vuelva a correr. No se borra: queda como '
+               'evidencia del hallazgo (Actividad 2, M7).')
+    def test_anon_returns_401_duplicado(self, anon_client):
         resp = anon_client.get(URL)
         assert resp.status_code == 401
 
