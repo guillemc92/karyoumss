@@ -513,7 +513,43 @@ parametrizada: la tabla es una fila por endpoint, no un bloque copiado.
 
 ---
 
-## 7 · Lo que queda declarado
+## 7 · El ciclo del LabX sobre el producto
+
+El laboratorio del módulo cierra pidiendo repetir su ciclo —**tests a mano →
+tests con agente → auditoría**— sobre una clase de lógica y un endpoint del
+propio producto. Está hecho y documentado aparte, en
+[`docs/M7_UNIT_AGENTE/README.md`](M7_UNIT_AGENTE/README.md).
+
+Se eligieron el **motor ISCN** (función pura con una regla que no puede
+reventar, el equivalente de la calculadora) y **`GET /samples/{id}/karyotype/`**
+(200 / 403 / 404, el equivalente del servicio de pedidos). El agente fue el
+modelo local del M6, `llama3.2:3b`.
+
+```
+generados por el agente   14
+corrieron tal cual         0
+quedaron en verde          2   (y los dos eran copias del fichero a mano)
+sobrevivieron              5
+coste                      5.314 tokens entrada + 878 salida · 26 min 39 s
+```
+
+Los 5 auditados se suman a la suite: **863 + 5 = 868**. Se pueden aislar, porque
+las marcas estan registradas en `backend-clinic/pytest.ini`:
+
+```bash
+pytest -m auditado -q --no-cov      # 5 passed, 863 deselected
+pytest -m agente   -q --no-cov      # 0: no queda ninguno sin auditar
+```
+
+Los 5 llevan `@pytest.mark.auditado`; no queda ninguno con `@pytest.mark.agente`.
+El hallazgo que más enseña: el modelo escribió un test que esperaba que un
+conteo vacío devolviera cadena vacía, cuando la regla es que **lance**. Si se
+hubiera aceptado, el sistema emitiría una nomenclatura vacía en lugar de negarse
+a emitir un diagnóstico.
+
+---
+
+## 8 · Lo que queda declarado
 
 **El código de producción del clínico ya cumple RN-09**: 91,74 %, por encima del
 90 % exigido. La cifra que reporta `pytest-cov` en bruto sigue por debajo
