@@ -21,41 +21,52 @@ tests sería inflar la cifra sin proteger nada.
 
 Por eso se reportan tres, y la que manda es la última:
 
-| Alcance | Antes | Después | Δ |
-|---|---:|---:|---:|
-| Lo que reporta `pytest-cov` | 82,25 % | 84,04 % | +1,79 pp |
-| Sin ficheros de test | 65,41 % | — | — |
-| **Código de producción** (sin tests ni CLI) | **85,63 %** | **88,60 %** | **+2,97 pp** |
+| Alcance | Antes | Actividad 2 | Tras cerrar los huecos | Δ total |
+|---|---:|---:|---:|---:|
+| Lo que reporta `pytest-cov` | 82,25 % | 84,04 % | 86,00 % | +3,75 pp |
+| Sin ficheros de test | 65,41 % | — | — | — |
+| **Código de producción** (sin tests ni CLI) | **85,63 %** | **88,60 %** | **91,74 %** | **+6,11 pp** |
 
 ```
 antes    46 ficheros · 2.798 sentencias · 2.396 cubiertas
-después  47 ficheros · 2.806 sentencias · 2.486 cubiertas
-tests    627  →  663   (+36)
+act. 2   47 ficheros · 2.806 sentencias · 2.486 cubiertas
+cierre   47 ficheros · 2.809 sentencias · 2.577 cubiertas
+tests    627  →  663  →  724   (+97)
 ```
+
+**Con el cierre, el código de producción del clínico pasa el 90 % que exige
+RN-09** (91,74 %). Las tres sentencias que aparecen de más entre la Actividad 2
+y el cierre son el guard que se añadió a `agente_acciones.ejecutar` — ver §4.
 
 Reproducible con:
 
 ```bash
 cd backend-clinic
-.venv/Scripts/python -m pytest --cov=apps --cov-report=json:cov.json
-python docs/../scripts/huecos_produccion.py cov.json
+.venv/Scripts/python -m pytest --cov=. --cov-report=json:cov.json --cov-fail-under=0
+.venv/Scripts/python scripts/cobertura_produccion.py cov.json apps/
 ```
+
+El segundo argumento acota el agregado a `apps/`, que es el alcance de las
+mediciones anteriores: deja fuera `manage.py`, `wsgi/asgi` y los dos guiones MCP
+sueltos, que no son código de dominio. Los porcentajes por fichero no dependen
+de ese recorte; lo que cambia es sobre qué población se suman.
 
 ### Los huecos que la medición encontró
 
-| Módulo | Cobertura antes | Sentencias sin cubrir |
-|---|---:|---:|
-| **`rag_qa.py`** | **0,0 %** | **62** |
-| `rag_index.py` | 37,8 % | 51 |
-| `agente_acciones.py` | 40,7 % | 16 |
-| `admin_client.py` | 52,9 % | 16 |
-| `pipeline_client.py` | 67,5 % | 25 |
+| Módulo | Antes | Después | Sentencias que faltaban |
+|---|---:|---:|---:|
+| **`rag_qa.py`** | **0,0 %** | **100 %** | **62** |
+| `rag_index.py` | 37,8 % | **100 %** | 51 |
+| `agente_acciones.py` | 40,7 % | **100 %** | 16 |
+| `admin_client.py` | 52,9 % | **100 %** | 16 |
+| `pipeline_client.py` | 67,5 % | **100 %** | 25 |
 
 `rag_qa.py` es el que decide **si el sistema responde una pregunta clínica o
 dice que no sabe**, y no tenía ni una prueba. Es el hueco que se atacó primero.
 
 Los cinco están en la **frontera** —modelo, disco y red—, que es exactamente
-donde la consigna pide dobles.
+donde la consigna pide dobles. Los cinco quedan cerrados: 170 sentencias que
+antes nadie ejercitaba.
 
 ---
 
@@ -68,7 +79,16 @@ entrada y mismo assert, **aunque el nombre cambie***. Comparar texto no vale, as
 que se compara una huella del **AST** de cada test: llamadas, literales, asserts
 normalizados, fixtures y decoradores.
 
-Se analizaron **820 tests con assert** de los tres backends.
+Se analizaron **820 tests con assert** de los tres backends. El detector está
+versionado en [`scripts/detectar_duplicados.py`](../scripts/detectar_duplicados.py)
+y se vuelve a correr sin argumentos:
+
+```bash
+python scripts/detectar_duplicados.py
+```
+
+Tras el cierre de huecos se corrió otra vez sobre **897 tests** y devolvió 0
+grupos (§6).
 
 ### La primera pasada dio 9 grupos, y los 9 eran falsos
 
@@ -129,7 +149,13 @@ y su razón escrita en el propio código.
 | **Integración** | 4 | **4** | 2 corregidos en auditoría | `test_integracion_rag_flujo.py` |
 | **Contrato** | 14 | **14** | 0 | `test_contrato_karyotype.py` |
 | *(detección de duplicados)* | 9 grupos | 1 | **8 descartados** | — |
-| **Total** | **36** | **36** | — | |
+| **Subtotal Actividad 2** | **36** | **36** | — | |
+| Unit — frontera MFA | 10 | **10** | 0 | `test_admin_client.py` |
+| Unit — frontera backend-ml | 17 | **17** | 0 | `test_pipeline_client.py` (ampliado) |
+| Unit — despachador del agente | 17 | **17** | 0 | `test_agente_acciones.py` |
+| Unit — índice y embeddings | 17 | **17** | 0 | `test_rag_index.py` |
+| **Subtotal cierre de huecos** | **61** | **61** | — | |
+| **Total** | **97** | **97** | — | |
 
 ### Unit — `rag_qa.py`, de 0 % a 100 %
 
@@ -185,6 +211,59 @@ produciría una prueba que falla cada vez que el clasificador mejora.
 
 Incluye un test que **valida el propio esquema** (`check_schema`): un JSON Schema
 mal escrito acepta cualquier cosa y no protege de nada.
+
+### Cierre — los cuatro huecos que quedaban
+
+Los cuatro estaban en la misma frontera y admitían el mismo tratamiento que
+`rag_qa.py`: doblar la red y el disco, dejar real todo lo demás.
+
+**`test_admin_client.py` (10)** — la verificación MFA de la firma del
+supervisor, que es un acto de cumplimiento 21 CFR Part 11. La prueba que más
+pesa es `test_ninguna_caida_se_traduce_en_veredicto`: pase lo que pase en la red
+sale `MfaServiceError`, nunca un veredicto inventado. Degradar a `valid: True`
+sería firmar sin segundo factor; degradar a `valid: False` en silencio haría
+creer al supervisor que su código está mal cuando el problema es que
+backend-admin está caído. El contador del circuito cuenta fallos **seguidos**:
+`test_un_mfa_invalido_no_cuenta_como_fallo_del_servicio` fija que un supervisor
+tecleando mal tres veces no deja sin firmar a todo el laboratorio.
+
+**`test_pipeline_client.py` (+17)** — `segment_image`, `xai_heatmap` y
+`classify_crop` comparten estructura, así que se prueban con **una batería
+parametrizada** en lugar de tres bloques copiados: mañana se añade una fila, no
+un bloque. Se afirma el suelo de timeout (30 s y 60 s): con los 2 s de
+configuración, una Grad-CAM en CPU expiraría siempre y el circuito acabaría
+abierto — el sistema entero parecería caído cuando lo único que pasa es que el
+modelo tarda.
+
+**`test_agente_acciones.py` (17)** — el despachador del agente. Es
+**determinista** y se prueba con asserts: si el modelo *elige bien* la
+herramienta es otra cosa, y se mide aparte con el banco de `eval_enrutado`.
+`test_una_herramienta_nueva_aparece_sin_tocar_este_modulo` fija la propiedad que
+impide que el agente y el servidor MCP se desincronicen.
+
+**`test_rag_index.py` (17)** — `embeber` por lotes con progreso acumulado,
+normalización a norma 1 (sin ella el umbral de 0,55 no significaría nada), un
+vector nulo que no revienta la división, y que la ausencia de índice explique
+**cómo** construirlo en vez de soltar un «fichero no encontrado».
+
+#### Un defecto real que la cobertura destapó
+
+El docstring de `agente_acciones.ejecutar` promete *«devuelve siempre un dict —
+nunca lanza»*, y `agente_grafo.py:165` llama sin envolver apoyándose en esa
+promesa. Pero `tool.run()` es una consulta al ORM: **una caída de la base salía
+disparada hacia arriba y tumbaba el turno entero del agente**, en vez de llegar
+al modelo como una observación de la que pudiera rectificar.
+
+Se añadió el guard, y solo alrededor de las cuatro consultas de **lectura**. La
+asimetría es deliberada y está probada en las dos direcciones
+(`test_una_consulta_que_revienta_es_una_observacion_no_una_caida` y
+`test_un_fallo_de_escritura_si_sale_disparado`): tragarse una excepción a mitad
+de una escritura dejaría al modelo diciendo «hecho» sobre algo que no se guardó,
+y RN-05 no admite eso.
+
+Es el argumento de la consigna en un caso concreto: la cobertura no valía por el
+número, sino porque al ir a cubrir esas 16 sentencias apareció una diferencia
+entre lo que el código decía hacer y lo que hacía.
 
 ---
 
@@ -286,12 +365,12 @@ qué hacer con otra cosa.
 
 ```bash
 CLINIC_LLM_ENABLED=false CLINIC_LLM_URL=http://127.0.0.1:1/v1 \
-  .venv/Scripts/python -m pytest --cov=apps
+  .venv/Scripts/python -m pytest -p no:randomly --cov=. --cov-fail-under=0
 ```
 
 ```
-TOTAL                                    7555   1206    84%
-663 passed, 2 warnings in 471.71s (0:07:51)
+TOTAL                                    8130   1214    85%
+724 passed, 2 warnings in 478.67s (0:07:58)
 ```
 
 **El modelo apagado no basta como prueba.** Por eso la URL apunta a
@@ -299,16 +378,37 @@ TOTAL                                    7555   1206    84%
 fallaría con «connection refused» en vez de pasar por casualidad porque Ollama
 estaba encendido en la máquina.
 
-Los 663 pasan en 7 min 51 s sin tocar la red.
+Los 724 pasan en 7 min 58 s sin tocar la red. Los 61 tests del cierre no la
+tocan tampoco: doblan `httpx` en la frontera y usan `tmp_path` para el disco.
+
+El detector de duplicados, corrido de nuevo sobre las **897 pruebas con assert**
+del repositorio completo, devuelve **0 grupos con huella repetida**: los 61
+tests nuevos no introdujeron ninguno.
 
 ---
 
 ## 7 · Lo que queda declarado
 
-**La cobertura sigue por debajo del 90 % que exige RN-09** (84,04 % en el
-informe, 88,60 % en producción). Es deuda anterior a esta actividad y no se
-disimula. Los siguientes huecos ya están identificados: `rag_index.py` 37,8 %,
-`agente_acciones.py` 40,7 %, `admin_client.py` 52,9 %.
+**El código de producción del clínico ya cumple RN-09**: 91,74 %, por encima del
+90 % exigido. La cifra que reporta `pytest-cov` en bruto sigue por debajo
+(86,00 %) porque mezcla los ficheros de test y los `management/commands`; se
+explica en §1 y no se disimula.
+
+**Lo que queda sin cubrir, ordenado por lo que falta:**
+
+| Módulo | Cobertura | Sentencias sin cubrir |
+|---|---:|---:|
+| `views.py` | 79,6 % | 87 |
+| `services.py` | 95,0 % | 22 |
+| `tool_router.py` | 75,6 % | 19 |
+| `migrations/` (4 ficheros de seed) | 68-73 % | 45 |
+| `mcp_conexion.py` | 83,8 % | 12 |
+| `rag_corpus.py` | 85,2 % | 12 |
+
+De las 232 sentencias sin cubrir, **45 están en migraciones de seed** —código
+que se ejecutó una vez al aplicar la migración y no se vuelve a ejecutar—. El
+hueco que sí importa es `views.py`: 87 sentencias, casi todas ramas de error de
+endpoints que sí tienen probado el camino feliz.
 
 **Hay un test intermitente sin diagnosticar**: `sampleListPage · filtro por
 status VALIDATED`, en `frontend-clinic`. Pasa aislado y ha pasado en las últimas

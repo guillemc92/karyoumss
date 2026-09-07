@@ -142,6 +142,19 @@ def ejecutar(nombre: str, argumentos: dict) -> dict:
         return {'error': f'no existe la herramienta «{nombre}»',
                 'disponibles': [t.name for t in CATALOGO] + [NOMBRE_RAG, NOMBRE_ESCRITURA]}
 
-    filas = tool.run()
+    try:
+        filas = tool.run()
+    except Exception as exc:                       # noqa: BLE001
+        # Las cuatro consultas son de SOLO LECTURA: si la base falla, decírselo
+        # al modelo es preferible a abortar. `agente_grafo.actuar` llama aquí
+        # sin envolver —da por hecho el contrato del docstring—, así que sin
+        # este guard una caída de la base tumbaría el turno entero en vez de
+        # producir una observación de la que el agente pueda rectificar.
+        #
+        # No se extiende a `ejecutar_escritura`: esa sí escribe, y tragarse una
+        # excepción a mitad de una transacción esconde un fallo de integridad.
+        return {'error': f'la consulta «{nombre}» falló: {exc}',
+                'herramienta': tool.name, 'fuente': tool.source}
+
     return {'herramienta': tool.name, 'fuente': tool.source,
             'n': len(filas), 'filas': filas[:20]}
