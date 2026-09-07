@@ -146,3 +146,43 @@ def test_el_mensaje_orienta_en_vez_de_solo_negar(analista):
     mensaje = str(exc.value)
     assert f'{ANCHO_MINIMO}x{ALTO_MINIMO}' in mensaje
     assert 'cromosoma' in mensaje
+
+
+# --- ficheros malformados: «no lo sé» no es «lo rechazo» --------------------
+#
+# El lector es de fabricacion propia y trabaja sobre bytes que llegan de fuera.
+# Estas son sus tres salidas de emergencia. Todas terminan en `None`, que
+# `es_metafase_plausible` traduce a «deja pasar»: bloquear una imagen porque la
+# cabecera no se supo leer seria rechazar formatos legitimos que no contemplamos.
+
+def test_una_cabecera_truncada_no_revienta_el_registro():
+    """Un BMP cortado a la mitad hace que `struct.unpack` lance. Sin el except,
+    subir un fichero incompleto daria un 500 en vez de un mensaje."""
+    truncado = b'BM' + b'\x00' * 10           # dice ser BMP y no llega a 26 bytes
+    assert dimensiones(truncado) is None
+    assert es_metafase_plausible(truncado) is True
+
+
+def test_un_formato_desconocido_se_deja_pasar():
+    """TIFF, por ejemplo: el laboratorio tiene equipos que exportan formatos que
+    este lector no cubre. «No lo sé» tiene que dejar trabajar."""
+    assert dimensiones(b'II*\x00' + b'\x00' * 40) is None
+    assert es_metafase_plausible(b'II*\x00' + b'\x00' * 40) is True
+
+
+def test_un_jpeg_con_relleno_entre_segmentos_se_recorre_igual():
+    """Entre marcadores puede haber bytes de relleno que no son 0xFF. El lector
+    avanza de uno en uno hasta el siguiente marcador en vez de rendirse."""
+    cuerpo = (b'\xff\xd8'
+              + b'\x00\x00\x00'                       # relleno: no empieza por FF
+              + b'\xff\xc0\x00\x11\x08' + struct.pack('>HH', 768, 1024)
+              + b'\x00' * 12)
+    assert dimensiones(cuerpo) == (1024, 768)
+
+
+def test_un_jpeg_con_una_longitud_imposible_se_abandona():
+    """Una longitud de segmento menor que 2 haria que el indice no avanzara: el
+    bucle se quedaria dando vueltas sobre el mismo byte para siempre."""
+    cuerpo = b'\xff\xd8' + b'\xff\xe0\x00\x01' + b'\x00' * 20
+    assert dimensiones(cuerpo) is None
+    assert es_metafase_plausible(cuerpo) is True

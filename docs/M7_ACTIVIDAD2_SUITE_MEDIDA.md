@@ -21,24 +21,28 @@ tests sería inflar la cifra sin proteger nada.
 
 Por eso se reportan tres, y la que manda es la última:
 
-| Alcance | Antes | Actividad 2 | Cierre de frontera | Contrato de errores | Δ total |
-|---|---:|---:|---:|---:|---:|
-| Lo que reporta `pytest-cov` | 82,25 % | 84,04 % | 86,00 % | 86,82 % | +4,57 pp |
-| Sin ficheros de test | 65,41 % | — | — | — | — |
-| **Código de producción** (sin tests ni CLI) | **85,63 %** | **88,60 %** | **91,74 %** | **93,38 %** | **+7,75 pp** |
+| Alcance | Antes | Actividad 2 | Frontera | Contrato | Últimos huecos | Δ total |
+|---|---:|---:|---:|---:|---:|---:|
+| Lo que reporta `pytest-cov` | 82,25 % | 84,04 % | 86,00 % | 86,82 % | 88,54 % | +6,29 pp |
+| Sin ficheros de test | 65,41 % | — | — | — | — | — |
+| **Código de producción** (sin tests ni CLI) | **85,63 %** | **88,60 %** | **91,74 %** | **93,38 %** | **96,33 %** | **+10,70 pp** |
 
 ```
 antes     46 ficheros · 2.798 sentencias · 2.396 cubiertas
 act. 2    47 ficheros · 2.806 sentencias · 2.486 cubiertas
-cierre    47 ficheros · 2.809 sentencias · 2.577 cubiertas
+frontera  47 ficheros · 2.809 sentencias · 2.577 cubiertas
 contrato  47 ficheros · 2.809 sentencias · 2.623 cubiertas
-tests     627  →  663  →  724  →  784   (+157)
+final     47 ficheros · 2.809 sentencias · 2.706 cubiertas
+tests     627 → 663 → 724 → 784 → 863   (+236)
 ```
 
-**Con el cierre, el código de producción del clínico pasa el 90 % que exige
-RN-09** (91,74 %), y con el contrato de errores llega al 93,38 %. Las tres
-sentencias que aparecen de más entre la Actividad 2 y el cierre son el guard que
-se añadió a `agente_acciones.ejecutar` — ver §4.
+**El código de producción del clínico pasa el 90 % que exige RN-09 y termina en
+96,33 %.** De las 103 sentencias que quedan sin cubrir, **45 están en cuatro
+migraciones de seed** —código que se ejecutó una vez al aplicar la migración y
+no se vuelve a ejecutar—: descontadas esas, el código vivo está al **97,76 %**.
+
+Las tres sentencias que aparecen de más entre la Actividad 2 y el cierre son el
+guard que se añadió a `agente_acciones.ejecutar` — ver §4.
 
 Reproducible con:
 
@@ -89,9 +93,9 @@ y se vuelve a correr sin argumentos:
 python scripts/detectar_duplicados.py
 ```
 
-Se volvió a correr tras cada tanda —**897** tests con assert tras el cierre de
-frontera, **917** tras el contrato de errores— y devolvió 0 grupos las dos veces
-(§6).
+Se volvió a correr tras cada tanda —**897** tras el cierre de frontera, **917**
+tras el contrato de errores y **968** al final— y devolvió 0 grupos las tres
+veces (§6).
 
 ### La primera pasada dio 9 grupos, y los 9 eran falsos
 
@@ -159,7 +163,15 @@ y su razón escrita en el propio código.
 | Unit — índice y embeddings | 17 | **17** | 0 | `test_rag_index.py` |
 | **Subtotal cierre de huecos** | **61** | **61** | — | |
 | Contrato — errores de los endpoints | 60 | **60** | 12 corregidos en auditoría | `test_contrato_errores_endpoints.py` |
-| **Total** | **157** | **157** | — | |
+| Contrato — resto del mapeo excepción → HTTP | 23 | **23** | 2 corregidos en auditoría | `test_contrato_errores_endpoints.py` (ampliado) |
+| Unit — frontera del enrutador | 16 | **16** | 1 corregido en auditoría | `test_tool_router_frontera.py` |
+| Unit — apertura de la sesión MCP | 8 | **8** | 0 | `test_mcp_apertura.py` |
+| Unit — fuentes del corpus | 11 | **11** | 6 corregidos en auditoría | `test_rag_corpus_fuentes.py` |
+| Unit — integridad y degradación | 16 | **16** | 4 corregidos en auditoría | `test_servicios_degradacion.py` |
+| Unit — valor heredado sin cifrar | 3 | **3** | 0 | `test_fields.py` (ampliado) |
+| Unit — imágenes malformadas | 4 | **4** | 0 | `test_imagen_metafase.py` (ampliado) |
+| **Subtotal últimos huecos** | **81** | **81** | — | |
+| **Total** | **238** | **238** | — | |
 
 ### Unit — `rag_qa.py`, de 0 % a 100 %
 
@@ -305,6 +317,76 @@ sistema. Ninguna se «arregló» quitando el assert.
 
 ---
 
+### Los últimos huecos — lo que solo pasa cuando algo va mal
+
+Cerrados los cinco de frontera y el contrato de errores, lo que quedaba en el
+clínico eran ramas defensivas: las que solo se ejecutan cuando la entrada está
+mal, el disco falla o alguien manipula la base. Son las más fáciles de dejar sin
+probar y las que peor fallan, porque nadie las ve fallar hasta que hace falta.
+
+| Módulo | Antes | Después | Qué se cubrió |
+|---|---:|---:|---|
+| `tool_router.py` | 75,6 % | **100 %** | el prompt del enrutador, la llamada real al modelo y el camino RAG |
+| `mcp_conexion.py` | 83,8 % | **100 %** | la apertura y el cierre reales de la sesión MCP |
+| `rag_corpus.py` | 85,2 % | **100 %** | qué documentos entran al corpus y cuáles se ignoran |
+| `services.py` | 95,0 % | **99 %** | integridad de la cadena, bloqueo y degradación |
+| `imagen.py` | 89,4 % | **95,7 %** | ficheros truncados y formatos desconocidos |
+| `fields.py` | 88,9 % | **100 %** | valores heredados que no son un token Fernet |
+| `views.py` | 90,4 % | **94,4 %** | el resto del mapeo excepción → código HTTP |
+
+#### El enrutador: probado a fondo, y con tres piezas sin ejecutar nunca
+
+`test_tool_router.py` prueba muy bien los tres caminos —KEYWORD, LLM,
+SIN_MATCH—, pero para hacerlo sustituye `_elegir_con_modelo` en **todos** sus
+tests. Es la decisión correcta allí. El efecto lateral es que tres piezas no se
+ejecutaban nunca: el prompt del sistema, la llamada real y el camino documental.
+
+No es cobertura por la cobertura. `_prompt_sistema` **es** el contrato con el
+modelo: si se añade una herramienta al catálogo y el prompt no la lista, el
+modelo no puede elegirla — y ningún test de enrutado lo detectaría, precisamente
+porque todos doblan la elección.
+
+#### Tres hallazgos que la cobertura destapó
+
+**1. `QuerySet.update()` esquiva el guard append-only de RN-05.** El guard vive
+en `Model.save()`, así que protege del error honesto —un `save()` de más en un
+servicio— pero no de la manipulación: un `.update()` reescribe el payload de un
+evento de auditoría sin que el modelo se entere. Lo que sí lo detecta es la
+cadena de hashes… y `verify_audit_chain` **nunca se había probado con datos
+manipulados**: solo se había ejercitado con cadenas intactas. Una función de
+verificación que solo se prueba en verde no está probada. Las dos capas quedan
+ahora fijadas por separado, con su alcance real escrito.
+
+**2. El troceador descarta en silencio los fragmentos de menos de 120
+caracteres.** El documento se lee bien, no hay error, y simplemente no entra al
+índice. Es la decisión correcta —un fragmento de dos líneas no lleva contexto
+suficiente para que su embedding signifique algo— pero al ser invisible, una
+regresión tampoco haría ruido: el RAG contestaría «no lo sé» a algo que sí
+estaba documentado.
+
+**3. `EncryptedTextField` devuelve el valor tal cual si no es un token Fernet
+válido.** Pasa con filas escritas antes de que el campo se cifrara y con dumps
+restaurados de otro entorno. Es deliberado y estaba sin probar: si lanzara, una
+sola fila heredada tumbaría cualquier consulta que la incluyera —incluido el
+listado de muestras— y el laboratorio se quedaría sin poder trabajar por un dato
+viejo.
+
+#### Cuatro suposiciones más que la primera pasada refutó
+
+Mismo patrón que en §2 con los duplicados y en el contrato de errores:
+
+| Lo que yo suponía | Lo que el sistema hace |
+|---|---|
+| «¿qué es un naranja?» va por el camino documental | «naranja» dispara el atajo por palabra clave; el que lo evita es «qué significa…», que `_es_atajo_inseguro` reconoce como petición de explicación |
+| Un corpus de prueba con secciones cortas produce fragmentos | `MIN_CHARS = 120`: devolvía cero y parecía que la carga fallaba |
+| El payload de un evento se puede reescribir con `save()` | RN-05 lo bloquea en el modelo; hay que usar `.update()`, que es justo el agujero |
+| El registro llega al servicio con una imagen | El serializer exige **tres** metáfases: con menos no se toca la base ni se cifra la PII |
+
+Ninguna se resolvió quitando el assert. Las cuatro están escritas como pruebas
+con su motivo.
+
+---
+
 ## 5 · Esquema del endpoint principal
 
 **`GET /api/clinic/samples/{id}/karyotype/`** — devuelve el producto: el
@@ -407,8 +489,8 @@ CLINIC_LLM_ENABLED=false CLINIC_LLM_URL=http://127.0.0.1:1/v1 \
 ```
 
 ```
-TOTAL                                    8293   1170    86%
-784 passed, 2 warnings in 541.22s (0:09:01)
+TOTAL                                    8783   1086    88%
+863 passed, 2 warnings in 603.29s (0:10:03)
 ```
 
 **El modelo apagado no basta como prueba.** Por eso la URL apunta a
@@ -416,11 +498,13 @@ TOTAL                                    8293   1170    86%
 fallaría con «connection refused» en vez de pasar por casualidad porque Ollama
 estaba encendido en la máquina.
 
-Los 784 pasan en 9 min 1 s sin tocar la red. Los 121 tests añadidos no la tocan
-tampoco: doblan `httpx` en la frontera y usan `tmp_path` para el disco.
+Los 863 pasan en 10 min 3 s sin tocar la red. Los 236 tests añadidos no la tocan
+tampoco: doblan `httpx` y `openai` en la frontera y usan `tmp_path` para el
+disco. El único que lanza un proceso —la sesión MCP— tiene el doble puesto en el
+SDK, no en el sistema operativo.
 
-El detector de duplicados, corrido de nuevo sobre las **917 pruebas con assert**
-del repositorio completo, devuelve **0 grupos con huella repetida**: los 121
+El detector de duplicados, corrido de nuevo sobre las **968 pruebas con assert**
+del repositorio completo, devuelve **0 grupos con huella repetida**: los 236
 tests nuevos no introdujeron ninguno.
 
 La batería de contrato es donde más fácil habría sido introducirlos —doce
@@ -436,23 +520,27 @@ parametrizada: la tabla es una fila por endpoint, no un bloque copiado.
 (86,00 %) porque mezcla los ficheros de test y los `management/commands`; se
 explica en §1 y no se disimula.
 
-**Lo que queda sin cubrir, ordenado por lo que falta:**
+**Lo que queda sin cubrir son 103 sentencias, y casi la mitad no son código
+vivo:**
 
 | Módulo | Cobertura | Sentencias sin cubrir |
 |---|---:|---:|
-| `views.py` | 90,4 % | 41 |
-| `services.py` | 95,0 % | 22 |
-| `tool_router.py` | 75,6 % | 19 |
 | `migrations/` (4 ficheros de seed) | 68-73 % | 45 |
-| `mcp_conexion.py` | 83,8 % | 12 |
-| `rag_corpus.py` | 85,2 % | 12 |
+| `views.py` | 94,4 % | 24 |
+| `agente_grafo.py` | 93,3 % | 7 |
+| `agente.py` | 92,8 % | 6 |
+| `services.py` | 99,0 % | 5 |
+| `iscn.py` | 96,2 % | 4 |
 
-De las 186 sentencias que quedan, **45 están en migraciones de seed** —código
-que se ejecutó una vez al aplicar la migración y no se vuelve a ejecutar—. Lo
-que queda en `views.py` es sobre todo la rama `mcp: true` del agente, que exige
-levantar el servidor MCP: es integración de proceso, no unit.
+Descontadas las migraciones de seed —código que se ejecutó una vez al aplicar la
+migración y no se vuelve a ejecutar—, **el código vivo del clínico está al
+97,76 %**.
 
-`tool_router.py` al 75,6 % es el siguiente objetivo con sentido.
+Lo que queda en `views.py` es sobre todo la rama `mcp: true` del agente y el
+turno con memoria conversacional: las dos levantan un proceso aparte (el
+servidor MCP, el grafo de LangGraph). **Eso es integración de proceso, no
+unit**, y forzarlo con dobles probaría el doble en vez del sistema. Es el
+siguiente paso natural, en la capa E2E que este módulo todavía no tiene.
 
 **Hay un test intermitente sin diagnosticar**: `sampleListPage · filtro por
 status VALIDATED`, en `frontend-clinic`. Pasa aislado y ha pasado en las últimas

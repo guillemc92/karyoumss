@@ -41,10 +41,22 @@ from apps.samples.admin_client import MfaServiceError
 from apps.samples.models import Chromosome, Karyotype, Sample, SampleStatus
 from apps.samples.models_rbac import Opcion, PrivilegioIndividual
 from apps.samples.services import (
+    CaseBlockedError,
+    CaseLockedError,
+    ChnDuplicateError,
+    CrossKaryotypeError,
+    ImagenNoEsMetafaseError,
+    InvalidClassError,
+    InvalidDecisionError,
+    JoinSelfError,
     MfaLockedError,
     MfaNotEnrolledError,
+    NotAuditableError,
+    NotOrangeError,
     NotSignableError,
+    SameClassError,
     SegregationError,
+    XaiRequiredError,
 )
 
 pytestmark = pytest.mark.django_db
@@ -450,3 +462,231 @@ def test_el_catalogo_del_agente_se_publica_sin_modelo(analyst_client):
     r = analyst_client.get(reverse('samples:agente'))
     assert r.status_code == 200
     assert r.json()['acciones'] and r.json()['max_pasos'] >= 1
+
+
+# ---------------------------------------------------------------------------
+# El resto del mapeo excepcion -> codigo, en una tabla
+# ---------------------------------------------------------------------------
+#
+# Mismo hueco que con la firma, extendido a las ediciones del cariotipo y a la
+# auditoria: los servicios levantan la excepcion correcta —eso ya lo prueban
+# `test_karyotype_p2/p3.py` y `test_supervisor_s1.py`— pero nadie comprobaba que
+# la vista la convirtiera en el codigo que el visor espera.
+#
+# Cada fila dice: endpoint, funcion del servicio a doblar, excepcion, HTTP,
+# codigo. El servicio se sustituye porque montar el estado real que produce cada
+# excepcion —un caso bloqueado, un cromosoma que no es naranja, dos cariotipos
+# distintos— ya esta probado en su sitio; aqui se prueba la traduccion.
+
+def _lanza(excepcion):
+    def falso(*a, **kw):
+        raise excepcion
+    return falso
+
+
+MAPEO_CROMOSOMA = [
+    ('samples:chromosome-resolve', 'resolve_chromosome',
+     XaiRequiredError('hay que ver el XAI primero'), 409, 'XAI_REQUIRED'),
+    ('samples:chromosome-resolve', 'resolve_chromosome',
+     NotOrangeError('no es naranja'), 400, 'NOT_ORANGE'),
+    ('samples:chromosome-reclassify', 'reclassify_chromosome',
+     CaseLockedError('el caso ya se valido'), 409, 'CASE_LOCKED'),
+    ('samples:chromosome-reclassify', 'reclassify_chromosome',
+     InvalidClassError('la clase 23 no existe'), 400, 'INVALID_CLASS'),
+    ('samples:chromosome-reclassify', 'reclassify_chromosome',
+     SameClassError('ya estaba en esa clase'), 400, 'SAME_CLASS'),
+    ('samples:chromosome-split', 'split_chromosome',
+     CaseLockedError('el caso ya se valido'), 409, 'CASE_LOCKED'),
+    ('samples:chromosome-cross', 'resolve_cross',
+     CaseLockedError('el caso ya se valido'), 409, 'CASE_LOCKED'),
+]
+IDS_MAPEO = [ruta.split(':')[1] + '-' + codigo
+             for ruta, _s, _e, _h, codigo in MAPEO_CROMOSOMA]
+
+
+@pytest.mark.parametrize('ruta,servicio,excepcion,http,codigo', MAPEO_CROMOSOMA,
+                         ids=IDS_MAPEO)
+def test_cada_fallo_de_edicion_sale_con_su_codigo(analyst_client, caso, monkeypatch,
+                                                  ruta, servicio, excepcion, http,
+                                                  codigo):
+    """Un 409 y un 400 piden cosas distintas al analista: reintentar mas tarde
+    frente a corregir lo que mando. Colapsarlos en un 500 los borra a los dos."""
+    monkeypatch.setattr('apps.samples.views.' + servicio, _lanza(excepcion))
+
+    r = analyst_client.post(url_cromosoma(ruta, caso.id, cromosoma_de(caso).id),
+                            {'target_class': '7'}, format='json')
+    assert r.status_code == http
+    assert r.json()['code'] == codigo
+    assert str(excepcion) in r.json()['detail']   # el motivo llega al usuario
+
+
+@pytest.mark.parametrize('excepcion,http,codigo', [
+    (CaseLockedError('el caso ya se valido'), 409, 'CASE_LOCKED'),
+    (ValueError('el bbox se sale de la imagen'), 400, 'VALIDATION_ERROR'),
+])
+def test_el_recorte_manual_traduce_sus_dos_fallos(analyst_client, caso, monkeypatch,
+                                                  excepcion, http, codigo):
+    """`recrop_chromosome` se importa DENTRO del metodo de la vista, asi que el
+    doble va en `services` y no en `views`. La diferencia importa: puesto en el
+    sitio equivocado el test pasaria sin ejercitar nada."""
+    monkeypatch.setattr('apps.samples.services.recrop_chromosome', _lanza(excepcion))
+
+    r = analyst_client.post(
+        url_cromosoma('samples:chromosome-recrop', caso.id, cromosoma_de(caso).id),
+        {'bbox': {'x': 1, 'y': 1, 'w': 5, 'h': 5}}, format='json')
+    assert r.status_code == http
+    assert r.json()['code'] == codigo
+
+
+# --- unir dos cromosomas ----------------------------------------------------
+
+@pytest.mark.parametrize('excepcion,codigo', [
+    (JoinSelfError('es el mismo cromosoma'), 'JOIN_SELF'),
+    (CrossKaryotypeError('cariotipos distintos'), 'CROSS_KARYOTYPE'),
+])
+def test_unir_mal_da_400_con_el_codigo_que_lo_explica(analyst_client, caso,
+                                                      monkeypatch, excepcion, codigo):
+    """`CROSS_KARYOTYPE` no aparecia en ninguna prueba del clinico. Distingue
+    «te equivocaste de cromosoma» de «este caso esta cerrado», y sin el codigo el
+    visor solo podria decir «error»."""
+    monkeypatch.setattr('apps.samples.views.join_chromosomes', _lanza(excepcion))
+
+    r = analyst_client.post(
+        url_cromosoma('samples:chromosome-join', caso.id, cromosoma_de(caso).id),
+        {'other_id': str(cromosoma_de(caso).id)}, format='json')
+    assert r.status_code == 400
+    assert r.json()['code'] == codigo
+
+
+def test_un_other_id_que_no_existe_se_corta_antes_del_servicio(analyst_client, caso,
+                                                               monkeypatch):
+    """La vista resuelve los DOS cromosomas antes de llamar al servicio. Si no,
+    el servicio recibiria `None` y el fallo saldria como AttributeError."""
+    monkeypatch.setattr('apps.samples.views.join_chromosomes',
+                        _lanza(AssertionError('no deberia llamarse')))
+
+    r = analyst_client.post(
+        url_cromosoma('samples:chromosome-join', caso.id, cromosoma_de(caso).id),
+        {'other_id': UUID_INEXISTENTE}, format='json')
+    assert r.status_code == 404
+    assert r.json()['code'] == 'CHROMOSOME_NOT_FOUND'
+
+
+def test_validar_un_caso_con_naranjas_sin_resolver_da_409(analyst_client, caso,
+                                                          monkeypatch):
+    """RN-01 en la capa HTTP. El gate esta probado en el servicio; esto fija que
+    el visor reciba CASE_BLOCKED y pueda decir cuantos quedan."""
+    monkeypatch.setattr('apps.samples.views.validate_case',
+                        _lanza(CaseBlockedError('quedan 3 naranjas sin resolver')))
+
+    r = analyst_client.post(reverse('samples:sample-validate', kwargs={'pk': caso.id}),
+                            {}, format='json')
+    assert r.status_code == 409
+    assert r.json()['code'] == 'CASE_BLOCKED'
+    assert '3 naranjas' in r.json()['detail']
+
+
+# --- la auditoria del 5 % ---------------------------------------------------
+
+def test_decidir_sobre_un_cromosoma_fuera_de_la_muestra_del_5_da_404(
+        supervisor_client, caso):
+    """El supervisor solo audita los que salieron sorteados. Pedir decision
+    sobre otro no es un error del sistema: es que ese no estaba en la muestra."""
+    r = supervisor_client.post(
+        reverse('samples:audit-decide',
+                kwargs={'pk': caso.id, 'cid': cromosoma_de(caso).id}),
+        {'decision': 'CONFIRMED'}, format='json')
+    assert r.status_code == 404
+    assert r.json()['code'] == 'REVIEW_NOT_FOUND'
+
+
+@pytest.mark.parametrize('excepcion,http,codigo', [
+    (NotAuditableError('el caso no esta validado'), 409, 'NOT_AUDITABLE'),
+    (InvalidDecisionError('decision desconocida'), 400, 'INVALID_DECISION'),
+])
+def test_cada_fallo_de_auditoria_sale_con_su_codigo(supervisor_client, caso,
+                                                    monkeypatch, excepcion, http,
+                                                    codigo):
+    cromo = cromosoma_de(caso)
+    caso.audit_reviews.create(chromosome=cromo)
+    monkeypatch.setattr('apps.samples.views.decide_audit', _lanza(excepcion))
+
+    r = supervisor_client.post(
+        reverse('samples:audit-decide', kwargs={'pk': caso.id, 'cid': cromo.id}),
+        {'decision': 'CONFIRMED'}, format='json')
+    assert r.status_code == http
+    assert r.json()['code'] == codigo
+
+
+def test_un_analista_no_puede_auditar(analyst_client, caso):
+    """RN-06: la auditoria del 5 % es del supervisor. `case.audit` no lo tiene el
+    analista, y el corte es de opcion, antes de mirar el caso."""
+    r = analyst_client.get(reverse('samples:audit-review', kwargs={'pk': caso.id}))
+    assert r.status_code == 403
+
+
+# --- el registro: que codigo acompana a cada validacion ---------------------
+
+# El serializer exige TRES metafases (RN: se capturan tres campos por caso), asi
+# que un payload con menos ni siquiera llega al servicio. Este helper deja claro
+# que el minimo es parte del contrato y no un detalle del fixture.
+TRES_IMAGENES = [{'data_base64': 'Qk0=', 'filename': 'm%d.bmp' % i,
+                  'source': 'upload'} for i in range(3)]
+
+
+def test_menos_de_tres_metafases_se_rechaza_antes_del_servicio(analyst_client,
+                                                               monkeypatch):
+    """El corte esta en el serializer, no en el servicio: con dos imagenes el
+    registro no llega a tocar la base ni a cifrar la PII."""
+    monkeypatch.setattr('apps.samples.views.sample_registration_service.register',
+                        _lanza(AssertionError('no deberia llegar al servicio')))
+
+    r = analyst_client.post(reverse('samples:sample-register'), {
+        'sample': {'chn_code': 'CHN-2026-09-07-1502', 'sample_type': 'sangre'},
+        'patient': {'full_name': 'Paciente'},
+        'images': TRES_IMAGENES[:2],
+    }, format='json')
+    assert r.status_code == 400
+    assert r.json()['code'] == 'INSUFFICIENT_IMAGES'
+
+
+def test_el_registro_sin_chn_lo_dice_con_su_codigo(analyst_client):
+    """Un `VALIDATION_ERROR` generico obliga al frontend a leer prosa para saber
+    que campo resaltar. El codigo concreto le dice donde poner el foco."""
+    r = analyst_client.post(reverse('samples:sample-register'), {}, format='json')
+    assert r.status_code == 400
+    assert r.json()['code'] in ('CHN_REQUIRED', 'VALIDATION_ERROR')
+
+
+def test_una_imagen_demasiado_pequena_se_rechaza_con_su_codigo(analyst_client,
+                                                               monkeypatch):
+    """El guardrail de metafase en la capa HTTP: distinto de VALIDATION_ERROR
+    porque el fichero es valido — lo que no encaja es lo que muestra."""
+    monkeypatch.setattr(
+        'apps.samples.views.sample_registration_service.register',
+        _lanza(ImagenNoEsMetafaseError('La imagen 1 mide 60x119 px')))
+
+    r = analyst_client.post(reverse('samples:sample-register'), {
+        'sample': {'chn_code': 'CHN-2026-09-07-1500', 'sample_type': 'sangre'},
+        'patient': {'full_name': 'Paciente'},
+        'images': TRES_IMAGENES,
+    }, format='json')
+    assert r.status_code == 400
+    assert r.json()['code'] == 'IMAGE_TOO_SMALL'
+    assert '60x119' in r.json()['detail']
+
+
+def test_un_chn_repetido_es_409_no_400(analyst_client, monkeypatch):
+    """Duplicar el CHN no es un dato mal escrito: es un caso que ya existe, y el
+    analista tiene que ir a buscarlo en vez de corregir el formulario."""
+    monkeypatch.setattr(
+        'apps.samples.views.sample_registration_service.register',
+        _lanza(ChnDuplicateError()))
+
+    r = analyst_client.post(reverse('samples:sample-register'), {
+        'sample': {'chn_code': 'CHN-2026-09-07-1501', 'sample_type': 'sangre'},
+        'patient': {'full_name': 'Paciente'},
+        'images': TRES_IMAGENES,
+    }, format='json')
+    assert r.status_code == 409
+    assert r.json()['code'] == 'CHN_DUPLICATE'
