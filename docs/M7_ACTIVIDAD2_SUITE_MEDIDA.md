@@ -21,22 +21,24 @@ tests sería inflar la cifra sin proteger nada.
 
 Por eso se reportan tres, y la que manda es la última:
 
-| Alcance | Antes | Actividad 2 | Tras cerrar los huecos | Δ total |
-|---|---:|---:|---:|---:|
-| Lo que reporta `pytest-cov` | 82,25 % | 84,04 % | 86,00 % | +3,75 pp |
-| Sin ficheros de test | 65,41 % | — | — | — |
-| **Código de producción** (sin tests ni CLI) | **85,63 %** | **88,60 %** | **91,74 %** | **+6,11 pp** |
+| Alcance | Antes | Actividad 2 | Cierre de frontera | Contrato de errores | Δ total |
+|---|---:|---:|---:|---:|---:|
+| Lo que reporta `pytest-cov` | 82,25 % | 84,04 % | 86,00 % | 86,82 % | +4,57 pp |
+| Sin ficheros de test | 65,41 % | — | — | — | — |
+| **Código de producción** (sin tests ni CLI) | **85,63 %** | **88,60 %** | **91,74 %** | **93,38 %** | **+7,75 pp** |
 
 ```
-antes    46 ficheros · 2.798 sentencias · 2.396 cubiertas
-act. 2   47 ficheros · 2.806 sentencias · 2.486 cubiertas
-cierre   47 ficheros · 2.809 sentencias · 2.577 cubiertas
-tests    627  →  663  →  724   (+97)
+antes     46 ficheros · 2.798 sentencias · 2.396 cubiertas
+act. 2    47 ficheros · 2.806 sentencias · 2.486 cubiertas
+cierre    47 ficheros · 2.809 sentencias · 2.577 cubiertas
+contrato  47 ficheros · 2.809 sentencias · 2.623 cubiertas
+tests     627  →  663  →  724  →  784   (+157)
 ```
 
 **Con el cierre, el código de producción del clínico pasa el 90 % que exige
-RN-09** (91,74 %). Las tres sentencias que aparecen de más entre la Actividad 2
-y el cierre son el guard que se añadió a `agente_acciones.ejecutar` — ver §4.
+RN-09** (91,74 %), y con el contrato de errores llega al 93,38 %. Las tres
+sentencias que aparecen de más entre la Actividad 2 y el cierre son el guard que
+se añadió a `agente_acciones.ejecutar` — ver §4.
 
 Reproducible con:
 
@@ -87,8 +89,9 @@ y se vuelve a correr sin argumentos:
 python scripts/detectar_duplicados.py
 ```
 
-Tras el cierre de huecos se corrió otra vez sobre **897 tests** y devolvió 0
-grupos (§6).
+Se volvió a correr tras cada tanda —**897** tests con assert tras el cierre de
+frontera, **917** tras el contrato de errores— y devolvió 0 grupos las dos veces
+(§6).
 
 ### La primera pasada dio 9 grupos, y los 9 eran falsos
 
@@ -155,7 +158,8 @@ y su razón escrita en el propio código.
 | Unit — despachador del agente | 17 | **17** | 0 | `test_agente_acciones.py` |
 | Unit — índice y embeddings | 17 | **17** | 0 | `test_rag_index.py` |
 | **Subtotal cierre de huecos** | **61** | **61** | — | |
-| **Total** | **97** | **97** | — | |
+| Contrato — errores de los endpoints | 60 | **60** | 12 corregidos en auditoría | `test_contrato_errores_endpoints.py` |
+| **Total** | **157** | **157** | — | |
 
 ### Unit — `rag_qa.py`, de 0 % a 100 %
 
@@ -265,6 +269,40 @@ Es el argumento de la consigna en un caso concreto: la cobertura no valía por e
 número, sino porque al ir a cubrir esas 16 sentencias apareció una diferencia
 entre lo que el código decía hacer y lo que hacía.
 
+### Contrato — los errores de los endpoints
+
+`views.py` era el hueco grande que quedaba: **80 %, 87 sentencias sin cubrir**,
+casi todas ramas de error de endpoints cuyo camino feliz sí estaba probado.
+
+El diagnóstico fue más concreto que «falta cobertura». Los servicios están bien
+probados —`test_supervisor_s2.py` comprueba que `sign_report` levanta
+`MfaLockedError` cuando toca—, pero **nadie comprobaba el tramo siguiente**: que
+la vista traduzca esa excepción al código HTTP que el frontend espera. Si
+`MfaLockedError` acabara devolviendo 500 en vez de 423, los tests de servicio
+seguirían en verde y la pantalla del supervisor diría «error del sistema» donde
+debe decir «cuenta bloqueada». Catorce códigos del contrato no aparecían en
+ninguna prueba del clínico.
+
+Se probó **en tabla, no un test por endpoint**: doce endpoints de cromosoma
+repiten literalmente las mismas dos guardas, y probarlas una a una serían 24
+tests casi idénticos — la clase de duplicado que la §2 buscaba. Un endpoint
+nuevo que olvide una guarda aparece como una fila roja el día que se añada a la
+lista.
+
+`views.py` pasa de **80 % a 90,4 %**.
+
+#### Doce de las sesenta fallaron en la primera pasada, y las tres causas eran reales
+
+| Lo que yo suponía | Lo que el sistema hace | Qué se hizo |
+|---|---|---|
+| Desactivar una muestra es `is_active = False` | Hay una CHECK en la base, `samples_deactivated_implies_deleted_at`: desactivar sin registrar **cuándo** es un dato perdido | Un helper `borrar()` que pone las dos columnas y explica por qué van juntas |
+| Un analista ajeno recibe `NOT_OWNER` en `narrative` e `iscn` | Esos dos exigen `case.sign`, que solo tienen Supervisor y Admin — y la guarda deja pasar a todo `is_staff` sin mirar de quién es el caso | Se separó la tabla: para esos dos la rama `NOT_OWNER` es **inalcanzable**, y así queda escrito en vez de forzarse |
+| El supervisor no puede sobrescribir el ISCN | La matriz sembrada le da `case.override_iscn` a **todo** Supervisor | Se alcanza la rama con el mecanismo real del RBAC portado de MetaClass: una **excepción individual** que quita la opción (ADR-0019, deny-overrides) |
+
+Las tres son el mismo patrón que la §2 ya había mostrado con los duplicados: la
+primera medición dice más sobre las suposiciones del que mide que sobre el
+sistema. Ninguna se «arregló» quitando el assert.
+
 ---
 
 ## 5 · Esquema del endpoint principal
@@ -369,8 +407,8 @@ CLINIC_LLM_ENABLED=false CLINIC_LLM_URL=http://127.0.0.1:1/v1 \
 ```
 
 ```
-TOTAL                                    8130   1214    85%
-724 passed, 2 warnings in 478.67s (0:07:58)
+TOTAL                                    8293   1170    86%
+784 passed, 2 warnings in 541.22s (0:09:01)
 ```
 
 **El modelo apagado no basta como prueba.** Por eso la URL apunta a
@@ -378,12 +416,16 @@ TOTAL                                    8130   1214    85%
 fallaría con «connection refused» en vez de pasar por casualidad porque Ollama
 estaba encendido en la máquina.
 
-Los 724 pasan en 7 min 58 s sin tocar la red. Los 61 tests del cierre no la
-tocan tampoco: doblan `httpx` en la frontera y usan `tmp_path` para el disco.
+Los 784 pasan en 9 min 1 s sin tocar la red. Los 121 tests añadidos no la tocan
+tampoco: doblan `httpx` en la frontera y usan `tmp_path` para el disco.
 
-El detector de duplicados, corrido de nuevo sobre las **897 pruebas con assert**
-del repositorio completo, devuelve **0 grupos con huella repetida**: los 61
+El detector de duplicados, corrido de nuevo sobre las **917 pruebas con assert**
+del repositorio completo, devuelve **0 grupos con huella repetida**: los 121
 tests nuevos no introdujeron ninguno.
+
+La batería de contrato es donde más fácil habría sido introducirlos —doce
+endpoints con las mismas dos guardas—, y es justo por eso que se escribió
+parametrizada: la tabla es una fila por endpoint, no un bloque copiado.
 
 ---
 
@@ -398,17 +440,19 @@ explica en §1 y no se disimula.
 
 | Módulo | Cobertura | Sentencias sin cubrir |
 |---|---:|---:|
-| `views.py` | 79,6 % | 87 |
+| `views.py` | 90,4 % | 41 |
 | `services.py` | 95,0 % | 22 |
 | `tool_router.py` | 75,6 % | 19 |
 | `migrations/` (4 ficheros de seed) | 68-73 % | 45 |
 | `mcp_conexion.py` | 83,8 % | 12 |
 | `rag_corpus.py` | 85,2 % | 12 |
 
-De las 232 sentencias sin cubrir, **45 están en migraciones de seed** —código
-que se ejecutó una vez al aplicar la migración y no se vuelve a ejecutar—. El
-hueco que sí importa es `views.py`: 87 sentencias, casi todas ramas de error de
-endpoints que sí tienen probado el camino feliz.
+De las 186 sentencias que quedan, **45 están en migraciones de seed** —código
+que se ejecutó una vez al aplicar la migración y no se vuelve a ejecutar—. Lo
+que queda en `views.py` es sobre todo la rama `mcp: true` del agente, que exige
+levantar el servidor MCP: es integración de proceso, no unit.
+
+`tool_router.py` al 75,6 % es el siguiente objetivo con sentido.
 
 **Hay un test intermitente sin diagnosticar**: `sampleListPage · filtro por
 status VALIDATED`, en `frontend-clinic`. Pasa aislado y ha pasado en las últimas
