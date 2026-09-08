@@ -27,6 +27,12 @@ adrs_vigentes:
   - "docs/adr/0003-chn-anonymization.md"
   - "docs/adr/0004-Estrategia-Evolucion-Arquitectonica.md"
   - "docs/adr/0005-cloud-provider-y-estilo-de-despliegue.md"
+  - "docs/adr/0006-semaforizacion-visual.md"
+  - "docs/adr/0007-microservicio-inferencia.md"
+  - "docs/adr/0008-audit-trail-merkle.md"
+  - "docs/adr/0009-websocket-celery-notifications.md"
+  - "docs/adr/0010-testing-strategy.md"
+  - "docs/adr/0011-rol-administrador.md"
 skills_aplicados:
   - ".cursor/skills/skill-read-context/README.md"
 release_objetivo: "release/2.0.0"
@@ -90,7 +96,7 @@ El análisis citogenético tradicional presenta tres fallas estructurales:
 ### 1.3 Propuesta de Valor
 * **Atención dirigida:** Solo el ~13% de pares cromosómicos requieren revisión manual.
 * **Transparencia algorítmica:** Puntuación de confianza (Softmax) y explicabilidad Grad-CAM por cromosoma.
-* **Human-in-the-loop:** Bloqueo de emisión de informes hasta resolver todos los cromosomas naranja (<85% confianza) según la regla clínica **RN-09 / BR-R5**.
+* **Human-in-the-loop:** Bloqueo de emisión de informes hasta resolver todos los cromosomas naranja (<85% confianza) según la regla clínica **BR-R5**.
 
 ### 1.4 Métricas de Éxito
 * **NS-01: TTK (Time to Karyotype):** Reducción de 45 minutos (baseline) a **≤15 minutos** (meta).
@@ -99,7 +105,7 @@ El análisis citogenético tradicional presenta tres fallas estructurales:
 
 ### 1.5 Restricciones de Negocio Clave
 * **RC1:** Ningún informe puede emitirse sin validación manual del analista de TODOS los cromosomas naranjas y la firma del supervisor.
-* **RC2 (RN-09 / BR-R5):** Bloqueo estricto de generación/exportación de reportes si existe al menos un cromosoma con confianza <85% sin validar.
+* **RC2 (BR-R5):** Bloqueo estricto de generación/exportación de reportes si existe al menos un cromosoma con confianza <85% sin validar.
 * **RC3:** Los datos de pacientes (PII) deben anonimizarse localmente (Código CHN) antes de ser transmitidos a la nube.
 
 ---
@@ -132,6 +138,7 @@ graph TD
 ### 2.2 Actores Externos y Dependencias
 * **Analista (Humano):** Carga imágenes, valida y corrige cariotipos en la mesa de edición.
 * **Supervisor (Humano):** Audita el 5% aleatorio de cromosomas verdes y firma digitalmente con MFA.
+* **Administrador institucional / Personal de TI (Humano):** Gestiona usuarios, configura parámetros globales (umbral de confianza) y monitorea logs — **sin acceso a datos clínicos** (ver ADR-0011; persistencia del CRUD de cuentas en PostgreSQL schema dedicado según ADR-0012).
 * **TorchServe (Sistema externo):** Realiza inferencia de visión artificial sobre GPU. SLA: <15s por metafase.
 * **Amazon S3 (Sistema externo):** Almacenamiento duradero de imágenes por código CHN. SLA: <3s.
 
@@ -142,7 +149,7 @@ graph TD
 ### 3.1 Estilo Arquitectónico Adoptado
 Se implementa una **Arquitectura Híbrida** que combina **Arquitectura Hexagonal (Puertos y Adaptadores)** en el núcleo del backend para desacoplar el dominio clínico de las bases de datos y la IA; combinada con un pipeline asíncrono **Event-Driven (Redis + Celery)** para orquestar la inferencia en GPU en segundo plano.
 
-**Justificación:** El desacoplamiento garantiza que la lógica de negocio (como el bloqueo de informes RN-09 y la nomenclatura ISCN) no dependa del proveedor cloud (AWS S3) ni de las librerías específicas de ML. Además, el procesamiento asíncrono evita bloqueos en el hilo HTTP principal durante la segmentación (que puede tardar hasta 15 segundos).
+**Justificación:** El desacoplamiento garantiza que la lógica de negocio (como el bloqueo de informes BR-R5 y la nomenclatura ISCN) no dependa del proveedor cloud (AWS S3) ni de las librerías específicas de ML. Además, el procesamiento asíncrono evita bloqueos en el hilo HTTP principal durante la segmentación (que puede tardar hasta 15 segundos).
 
 ### 3.2 Diagrama C4 Nivel 2 (Contenedores)
 ```mermaid
@@ -180,23 +187,154 @@ graph TB
     API -->|"Queries ACID"| DB
 ```
 
+### 3.2.1 Diagrama C4 Nivel 2 — Capa conversacional y agéntica
+
+Añadida en el Módulo 6 (ADR-0024, ADR-0029, ADR-0030). Convive con el pipeline
+de visión pero **no lo toca**: la IA generativa razona sobre texto y nunca ve
+imágenes; la discriminativa clasifica imágenes y nunca ve texto.
+
+```mermaid
+graph TB
+    subgraph CLIENTES ["Clientes"]
+        UI["⚛️ Página de consultas<br/>/clinic/consultas"]
+        EXT["🔌 Cliente MCP externo<br/>IDE · otro agente"]
+    end
+
+    subgraph ORQ ["Orquestación"]
+        ROUTER["🔀 Enrutador<br/>KEYWORD · LLM · RAG · SIN_MATCH"]
+        AGENTE["🤖 Agente ReAct<br/>tope 6 pasos · temp 0 · traza"]
+    end
+
+    subgraph ACC ["Acciones (una definición)"]
+        TOOLS["🛠️ CATALOGO<br/>4 consultas · Django ORM"]
+        RAG["📚 RAG documental<br/>índice 1.144 fragmentos"]
+        ESCR["✋ Escritura<br/>guardrail RN-01 dentro"]
+    end
+
+    subgraph MCP_L ["Transporte estándar"]
+        MCPS["🔗 servidor_mcp.py<br/>JSON-RPC 2.0 · stdio"]
+    end
+
+    LLM(["🧠 Ollama local<br/>llama3.2:3b + nomic-embed-text"])
+    DBC[("🗄️ clinic_samples<br/>clinic_chromosomes")]
+    CORPUS["📄 Corpus<br/>ISCN 2024 · ADRs · FSD/BRD"]
+
+    UI -->|"POST /tools/query/"| ROUTER
+    UI -->|"POST /agente/"| AGENTE
+    EXT -->|"tools/list · tools/call"| MCPS
+    ROUTER -->|"elige"| TOOLS
+    ROUTER -->|"elige"| RAG
+    AGENTE -->|"encadena"| TOOLS
+    AGENTE -->|"encadena"| RAG
+    AGENTE -->|"propone"| ESCR
+    AGENTE -.->|"o descubre por protocolo"| MCPS
+    MCPS -->|"delega"| TOOLS
+    MCPS -->|"delega"| RAG
+    MCPS -->|"delega"| ESCR
+    ROUTER -->|"decide"| LLM
+    AGENTE -->|"razona"| LLM
+    RAG -->|"embeddings + juez"| LLM
+    TOOLS -->|"lee"| DBC
+    ESCR -->|"lee estado"| DBC
+    RAG -->|"indexa"| CORPUS
+```
+
+**Lo que el diagrama muestra y conviene leer:** las tres cajas de acciones tienen
+**una sola definición** y tres consumidores —el enrutador, el agente y el
+servidor MCP—. El cliente externo llega a la misma lógica sin importar Django. Y
+el LLM no toca nunca la base ni el corpus directamente: decide, y el código lee.
+
 ### 3.3 Diagrama C4 Nivel 3 (Componentes FastAPI)
 Se detalla en la sección **§5.3** (Diagrama de Puertos y Adaptadores).
 
 ### 3.4 Data Flow Diagram (Secuencia del Caso de Uso Crítico)
 Se detalla en la sección **§7.2** (Sagas y Pipeline de Procesamiento).
 
-### 3.5 Contenedores Agénticos del Producto
-El sistema incorpora un contenedor agéntico en runtime para ejecutar la orquestación de la IA y el control de calidad automático del cariograma.
+### 3.5 Flujo extremo a extremo del caso clínico
+
+> **Decisión registrada en [ADR-0031](adr/0031-orquestacion-pipeline-clinico.md)**
+> — la orquestación del pipeline clínico es una cola de tareas, no un sistema
+> multiagente. Lo que sigue resume el porqué; el ADR tiene las alternativas
+> descartadas y la deuda que la decisión abre.
+
+> ⚠️ **Por qué esto no es un diagrama de agentes.** Una versión anterior de esta
+> sección dibujaba un «Agent Orchestrator» repartiendo trabajo entre servicios.
+> Era incorrecto por dos motivos. Primero, los servicios que repartía —U-Net,
+> Grad-CAM— no existen (§9.1). Segundo, y más de fondo: **el preprocesado, la
+> detección y la clasificación tienen un orden fijo e inevitable** —no se puede
+> clasificar antes de segmentar—, así que no hay decisión que tomar y no hay
+> nada que orquestar. Un agente se justifica con ramificación real y estado; un
+> orquestador que reparte siempre en el mismo orden es una caja de paso.
+>
+> La ramificación real del sistema está **después** del pipeline, en la
+> semaforización: los cromosomas naranjas y rojos desvían el caso a corrección
+> manual (RN-01/RN-02). Ahí es donde el diagrama se bifurca, y es donde está el
+> valor clínico.
+>
+> El único agente del producto (bucle ReAct + MCP, ADR-0030) **no aparece en
+> este flujo**: es una capa conversacional que consulta el estado por encima de
+> él, no un paso del pipeline. Ver §3.2.1 y §9.3.
 
 ```mermaid
-graph LR
-    API["FastAPI Backend"] -->|"Rutea inferencia"| ORCH["🧠 Agent Orchestrator"]
-    ORCH -->|"Segmenta"| UNET["U-Net Service"]
-    ORCH -->|"Clasifica"| EFFNET["EfficientNet-B3 Service"]
-    ORCH -->|"Explicabilidad"| CAM["Grad-CAM Engine"]
-    ORCH -->|"Valida Calidad"| QC["Overlap Detector (>30%)"]
+graph TD
+    IMG["Imagen de metafase<br/>(microscopía)"] --> PRE
+
+    subgraph AUTO ["Pipeline automatico - sin decisiones que tomar"]
+        PRE["Preprocesado<br/>normalización, contraste, ruido"] --> DET
+        DET["Detección y segmentación<br/>OpenCV + watershed"] --> CLS
+        CLS["Clasificación 1-22/X/Y<br/>EfficientNet-B3"] --> SEM
+        SEM["Semaforización<br/>umbral 0.85 · RN-02"]
+    end
+
+    SEM --> Q{"¿Hay naranjas<br/>o rojos?"}
+
+    Q -->|"sí — el caso NO puede avanzar"| CORR
+    Q -->|"no"| VAL
+
+    subgraph HITL ["Correccion del analista - aqui esta la ramificacion"]
+        CORR["Revisión cromosoma a cromosoma"] --> XAI
+        XAI["Ver explicabilidad XAI<br/>obligatorio antes de aceptar · BR-004"] --> FIX
+        FIX["Corregir: reclasificar, separar,<br/>unir, recortar y reclasificar"] --> CORR
+    end
+
+    CORR --> VAL["Validación del analista<br/>ANALYST_VALIDATED · RN-01"]
+    VAL --> AUD["Auditoría del 5% aleatorio<br/>supervisor ≠ analista · RN-06/RN-08"]
+    AUD --> FIRMA["Firma electrónica con MFA<br/>SIGNED · 21 CFR Part 11"]
+    FIRMA --> ISCN["Nomenclatura ISCN<br/>función determinista · solo lectura · RN-04"]
+    ISCN --> NARR["Narrativa clínica<br/>llama3.2:3b — redacta, NO calcula"]
+    NARR --> INF["Informe emitido<br/>REPORTED"]
+
+    AT[("Audit trail append-only<br/>cadena SHA-256 · RN-05")]
+    FIX -.-> AT
+    VAL -.-> AT
+    AUD -.-> AT
+    FIRMA -.-> AT
+
+    classDef construido fill:#e6f4ea,stroke:#1e8868,color:#14322a
+    classDef humano fill:#fff4e5,stroke:#d45100,color:#4a2400
+    classDef traza fill:#eef2f7,stroke:#5a7688,color:#1b3a4b
+    class PRE,DET,CLS,SEM,ISCN,NARR construido
+    class CORR,XAI,FIX,VAL,AUD,FIRMA humano
+    class AT traza
 ```
+
+**Tres decisiones que el diagrama hace explícitas:**
+
+1. **Baja confianza exige *más* revisión humana, no menos.** Un cromosoma
+   naranja bloquea el avance del caso; no existe atajo que lleve un resultado
+   de baja confianza al informe. Es RN-01/RN-02 y está implementado en el gate
+   del visor (`unresolved_orange`).
+2. **El ISCN se genera después de la firma**, no antes (ADR-0025 D5). Generarlo
+   sobre un cariotipo que nadie ha validado dejaría congelado —es de solo
+   lectura tras emitirse, RN-04— un dato que aún podía cambiar.
+3. **El LLM redacta, no calcula.** La nomenclatura sale de una función
+   determinista; el modelo solo la pone en prosa (ADR-0024).
+
+**Lo que falta y este diagrama no oculta:** el pipeline automático corre hoy de
+forma **síncrona** dentro de la petición —Celery está declarado en el stack pero
+no implementado—, y el bloque de detección es visión clásica, con
+sub-segmentación medida como error dominante (§9.1). El emparejamiento de
+homólogos tampoco existe todavía.
 
 ---
 
@@ -209,10 +347,10 @@ graph LR
 4. **Contexto de Reportes y Auditoría:** Motor de nomenclatura ISCN 2024, firma con MFA y auditoría aleatoria del 5%.
 
 ### 4.2 Entidades, Value Objects y Aggregates
-* **Sample (Aggregate Root):** Representa la muestra. Invariante: Su código CHN debe ser único. Estados: `Queued`, `Processing`, `Ready`, `Blocked_Conf`, `Analyst_Validated`, `Reported`.
+* **Sample (Aggregate Root):** Representa la muestra. Invariante: Su código CHN debe ser único. Estados (vocabulario conceptual): `Queued`, `Processing`, `Ready`, `Blocked_Conf`, `Analyst_Validated`, `Reported`. *Nota de implementación:* el bounded context clínico Django (`backend-clinic`, ADR-0015) implementa un enum concreto propio (`DRAFT`, `PENDING_AI`, `PROCESSING`, `READY`, `VALIDATED`, `REJECTED`) que no es un mapeo 1:1 de este vocabulario conceptual — ver ADR-0016 D5 para el detalle de `SampleStatus.DRAFT` y los campos de registro/captura de metafases.
 * **CHNCode (Value Object):** Código inmutable en formato `CHN-YYYY-MM-DD-NNNN`. No contiene PII.
 * **Chromosome (Entity):** Cromosoma detectado. Invariantes: Si `confidenceScore < 0.85`, el semáforo es naranja y `requiresReview` es verdadero.
-* **Report (Aggregate Root):** Informe clínico final. Invariante: No puede crearse si `unresolved_orange_count > 0` (bloqueo RN-09 / BR-R5).
+* **Report (Aggregate Root):** Informe clínico final. Invariante: No puede crearse si `unresolved_orange_count > 0` (bloqueo BR-R5).
 * **EditTrail (Entity):** Registro de auditoría inalterable. Solo se permite `INSERT` (ADR-0004).
 
 ### 4.3 DTOs Principales
@@ -358,16 +496,107 @@ Detallado en el diagrama de arquitectura cloud del **[ADR-0005](file:///c:/Users
 
 ## §9. Capa de IA / Agentes
 
-### 9.1 Arquitectura Agéntica
-El pipeline de IA está compuesto por dos modelos especializados en serie y un motor de explicabilidad:
-1. **Segmentación (U-Net):** Identifica píxeles cromosómicos. Si detecta solapamientos (>30%), activa una heurística de separación por cuenca hidrográfica (watershed).
-2. **Clasificación (EfficientNet-B3):** Clasifica en uno de los 24 grupos y asigna el score de confianza Softmax.
-3. **Explicabilidad (Grad-CAM):** Genera mapas de calor de activación en las bandas G para cromosomas con confianza <85% (naranjas).
+### 9.1 Pipeline de visión — diseño frente a implementación
+
+> ⚠️ **Esta sección distingue lo diseñado de lo construido.** El diseño previsto
+> es U-Net + EfficientNet-B3 + Grad-CAM; **solo el clasificador está entrenado**.
+> Declararlo evita presentar como implementado algo que no lo está.
+
+| Componente | Diseñado | Estado real (verificado 2026-08-06) |
+|:---|:---|:---|
+| Segmentación | U-Net | **`OpenCVSegmenter`** — Otsu + morfología + watershed. Visión clásica, sin aprendizaje |
+| Clasificación | EfficientNet-B3 | **Implementado y entrenado** — torchvision, dataset MetaClass v3, macro-F1 0.6958 |
+| Explicabilidad | Grad-CAM | **Mock** — PNG 1×1; el evento `XAI_VIEWED` sí es real y bloquea el flujo (BR-004) |
+
+La cadena de versión que emite el servicio lo declara sin ambigüedad:
+`opencv-watershed-v0+efficientnet-b3-metaclass-v3`.
+
+El puerto `SegmenterPort` (hexagonal) permite sustituir el adaptador clásico por
+`UNetSegmenter` sin tocar el pipeline. **Medido:** contra el cariograma del
+experto en 453 casos pareados, MAE 3,8 cromosomas. El error residual es
+sub-segmentación —cúmulos que se tocan contados como uno— y se probó y descartó
+por medición resolverlo con más visión clásica: el centrómero es un
+estrangulamiento y cualquier umbral agresivo parte el cromosoma en sus brazos.
+Requiere aprender la forma, es decir, U-Net.
+
+### 9.1.1 Coste de corrección por caso — la métrica que decide si esto asiste
+
+`macro-F1 0.6958` no dice si el producto sirve. Lo que lo decide es **cuántas
+acciones necesita el analista** para llevar la propuesta de la IA hasta un
+cariotipo correcto, contra la vara de ordenarlo a mano.
+
+**Medido** (`backend-ml/training/eval_correccion.py`, 20 casos con cariograma
+del experto de total plausible 45-48):
+
+| | Mediana | Mín | Máx |
+|:---|---:|---:|---:|
+| **Acciones por caso** | **64** | 51 | 87 |
+| — estructura (separar/unir) | 4 | 0 | 12 |
+| — clase (reclasificar) | 28 | 16 | 37 |
+| — resolución (ver XAI + aceptar) | 34 | 14 | 46 |
+
+**Ordenar a mano un cariograma ya segmentado son 46 acciones. En 20 de 20 casos
+corregir la IA cuesta más que eso.** Hoy el pipeline añade trabajo en lugar de
+ahorrarlo.
+
+**Lo que la medición corrigió del diagnóstico previo.** Se venía asumiendo que
+el cuello de botella era la segmentación. En coste de corrección **no lo es**:
+la estructura son 4 de 64 acciones (6%). El grueso está en la clasificación y,
+sobre todo, en resolver naranjas — 34 acciones, más de la mitad del total.
+
+Matiz que impide sobreinterpretarlo: la sub-segmentación **causa** parte de los
+errores de clase —un cúmulo contado como un objeto se clasifica «1» por
+tamaño—, así que las 28 acciones de clase no son independientes del detector.
+Lo que sí es independiente es la resolución: nace del umbral 0.85 (RN-02) y de
+la obligación de consultar XAI antes de aceptar (BR-004), a dos acciones por
+cromosoma naranja. Con un clasificador perfecto al 0.84 se pagaría igual.
+
+**Consecuencia de producto:** una resolución **en bloque** —consultar la
+explicabilidad de un grupo y aceptarlo de una vez, sin romper BR-004— recorta
+del orden de 30 acciones por caso sin tocar ningún modelo. Es más barato que
+entrenar U-Net y ataca la mitad del coste.
+
+**Sesgos declarados de la medición**, ambos a favor de la IA salvo el último:
+- `clase` es **cota inferior**: se comparan repartos por clase, no objeto a
+  objeto. El coste real es mayor, nunca menor.
+- Solo el **43%** de los 1.150 cariogramas suma un total plausible (mediana 44,
+  casos de 38): el resto son extracciones incompletas de recortes y se
+  excluyen, porque cobrarían acciones que no son culpa de la IA.
+- La vara de 46 supone la segmentación **gratis** en la vía manual, lo que no
+  es cierto. Es un listón exigente a propósito.
 
 ### 9.2 Tabla de Modelos y Umbrales
-* **U-Net:** Segmentación semántica. IoU objetivo: **>0.92**.
-* **EfficientNet-B3:** Clasificación. Umbral de confianza: **0.85**. Si `score < 0.85`, el cromosoma se cataloga como naranja y bloquea el reporte.
-* **Grad-CAM:** Motor de explicabilidad. Log obligatorio `XAI_VIEWED` en base de datos.
+* **EfficientNet-B3:** Clasificación en 24 clases. Umbral de confianza **0.85**
+  (RN-02): si `score < 0.85` el cromosoma se marca naranja y bloquea el reporte.
+* **`nomic-embed-text`:** Embeddings del corpus documental (ADR-0029). 768 dims.
+* **`llama3.2:3b`** (Ollama local): narrativa, enrutado, RAG y agente. Versión
+  fija, nunca `latest`.
+
+### 9.3 Capa conversacional y agéntica
+
+IA **generativa**, complementaria a la discriminativa de §9.1: aquella clasifica
+imágenes y nunca ve texto; esta razona sobre texto y **nunca ve la base de
+datos**. Cinco niveles, todos implementados y medidos:
+
+| Nivel | Qué es | Componente | Medición |
+|:---|:---|:---|:---|
+| 0 | Llamada al modelo | `llm_client.py` | ADR-0024 |
+| 1 | Salida estructurada | `llm_schemas.py` — Pydantic + validación anti-alucinación | caso adversario bloqueado 3/3 |
+| 2 | Tool calling | `tools.py`, `tool_router.py` | **48/56 (86%)** sobre banco etiquetado |
+| 3 | RAG documental | `rag_corpus/index/qa.py` | **16/18 (89%)** — ADR-0029 |
+| 4 | Agente + MCP | `agente.py`, `servidor_mcp.py` | traza verificada — ADR-0030 |
+
+**La regla que ordena la capa entera:** el modelo **elige**, el código
+**produce**. El LLM devuelve el nombre de una herramienta o decide si unos
+fragmentos responden; los datos siempre salen de Django ORM o del índice.
+
+**Guardrails del agente** (ADR-0030): tope de 6 pasos, `temperature=0`, traza
+por paso con acción/observación/tokens, y confirmación de escritura **dentro de
+la herramienta** para que viaje por MCP a cualquier cliente.
+
+**Interoperabilidad:** `servidor_mcp.py` publica 6 herramientas por JSON-RPC
+sobre stdio. Un cliente MCP externo las descubre y ejecuta **sin importar
+Django** — una definición, tres transportes (HTTP, agente local, MCP).
 
 ---
 
@@ -386,6 +615,28 @@ El detalle completo de prompts y su mapeo a código y a casos de uso del FSD se 
 | NFR-02 | Privacidad | Exclusión de datos personales (PII) | 100% | Inspección automatizada de logs y S3 |
 | NFR-03 | Resiliencia | Disponibilidad en modo degradado elegante | Transición <30s | Simulación de caída de TorchServe |
 | NFR-04 | Seguridad | Inalterabilidad del Audit Trail | Solo INSERT | Revocación de UPDATE/DELETE en SQL |
+| NFR-05 | Rendimiento | Consulta por vocabulario del dominio (camino KEYWORD) | **<100 ms** | `manage.py demo_tools` — medido 28-34 ms |
+| NFR-06 | Corrección | Acierto del enrutador sobre banco etiquetado | **≥85%**, abstención ≥75% | `manage.py eval_enrutado` — 48/56 (86%), abstención 78% |
+| NFR-07 | Corrección | Acierto del RAG documental | **≥85%**, abstención 100% | `manage.py eval_rag --con-juez` — 16/18 (89%), 6/6 |
+| NFR-08 | Auditabilidad | Traza del agente con acción, observación y tokens | 100% de los pasos | `POST /agente` devuelve `traza.pasos[]` |
+| NFR-09 | Seguridad | Ninguna escritura clínica sin humano identificado | 0 excepciones | `preparar_validacion_de_caso(confirmado=true)` desde cliente MCP externo |
+| NFR-10 | Rendimiento | Latencia del agente (nivel 4) | **asíncrono**, ver nota | `POST /agente` — medido 300-843 s |
+
+### 11.1 Nota sobre NFR-10 — por qué no se fija un umbral interactivo
+
+Un umbral tipo «p95 < 15 s» sería **incumplible y por tanto inútil**. Medido:
+300 s una consulta simple de 4 pasos, 843 s una multipaso de 6. La causa es
+estructural, no optimizable a este nivel: cada paso del bucle reenvía todo el
+historial y todos los *schemas* a un modelo de 3B corriendo en CPU.
+
+Se declara como **requisito de arquitectura, no de latencia**: el nivel 4 se
+consume de forma asíncrona —encolado, con el resultado consultable después— y
+nunca detrás de una caja de búsqueda. Las preguntas que necesitan respuesta
+inmediata bajan un peldaño de la escalera: el camino KEYWORD las resuelve en
+30 ms (NFR-05) y el RAG en decenas de segundos.
+
+Fijar un umbral que no se cumple es peor que declarar el real: oculta la
+decisión de diseño que sí importa, que es **dónde aplicar cada nivel**.
 
 ---
 
@@ -482,6 +733,23 @@ Se monitorean los siguientes indicadores:
 * **[ADR-0003 (Anonimización)](file:///c:/Users/qubits/Documents/maestria/mod4/desarrollo/karyoumss-main/docs/adr/0003-chn-anonymization.md):** Privacidad por diseño en el borde.
 * **[ADR-0004 (Evolución)](file:///c:/Users/qubits/Documents/maestria/mod4/desarrollo/karyoumss-main/docs/adr/0004-Estrategia-Evolucion-Arquitectonica.md):** Monolito modular con satélites de procesamiento.
 * **[ADR-0005 (Cloud)](file:///c:/Users/qubits/Documents/maestria/mod4/desarrollo/karyoumss-main/docs/adr/0005-cloud-provider-y-estilo-de-despliegue.md):** Despliegue Container-Native en AWS.
+* **[ADR-0006 (Semaforización)](docs/adr/0006-semaforizacion-visual.md):** Indicador visual por confidence score (verde ≥0.85, naranja <0.85) — RN-02.
+* **[ADR-0007 (Microservicio Inferencia)](docs/adr/0007-microservicio-inferencia.md):** Plan de extracción de AI Inference a satélite (Fase 2 de ADR-0004; hoy se mantiene Fase 1).
+* **[ADR-0008 (Audit Trail Merkle)](docs/adr/0008-audit-trail-merkle.md):** Hash chain lineal + extensión Merkle para pruebas de inclusión en `edits`.
+* **[ADR-0009 (WebSocket)](docs/adr/0009-websocket-celery-notifications.md):** Detalle operativo del push Celery → Redis PubSub → WSManager → Frontend (implementación de ADR-0002).
+* **[ADR-0010 (Testing)](docs/adr/0010-testing-strategy.md):** Estrategia TDD + Gherkin + Integración Clínica con cobertura ≥90% (RN-09).
+* **[ADR-0011 (Rol Administrador)](docs/adr/0011-rol-administrador.md):** Diseño del Rol Administrador TI, separado del flujo clínico (RN-06, FSD §3).
+* **[ADR-0012 (Persistencia Admin PostgreSQL)](docs/adr/0012-persistencia-admin-postgres.md):** Migración del CRUD de cuentas institucionales de `localStorage` a PostgreSQL schema `admin` + API REST FastAPI + soft-delete + `user_audit_log` Append-Only. Supersede alcance MVP de PR-IMPL-ADMIN-001 sin romperlo.
+* **[ADR-0013 (Stack Admin Django+React)](docs/adr/0013-stack-django-react-admin.md):** Stack acotado al bounded context admin: React 18 + Vite + TS en frontend-admin, Django 5 + DRF + django-auditlog + django-guardian en backend-admin, PostgreSQL schema admin. División por bounded context: clínico sigue en FastAPI, admin migra a Django. Auth bridge FastAPI JWT ↔ Django Token.
+* **[ADR-0014 (Port Panel Configuración a React+Backend real)](docs/adr/0014-configuracion-panel-react-real-backend.md):** Port incremental del panel "Configuración del Sistema" desde `configuracion.html` (MVP) a React conectado a backend Django real, creando `apps/config` (Perfil, Seguridad 2FA, Modelos IA, Notificaciones, Integraciones, Apariencia) en 6 fases P1–P6 + shell P7. Plan 53h, una PR por fase, cobertura RN-09 ≥90% por fase. Descarte del estado `localStorage` del MVP con banner one-shot de migración.
+* **[ADR-0015 (Derogación parcial de ADR-0013)](docs/adr/0015-derogacion-parcial-0013.md):** El bounded context clínico (muestras, cariotipado) migra de FastAPI/vanilla a Django+DRF/React+TS (`backend-clinic`/`frontend-clinic`), separado del contexto admin. Deroga el alcance "todo FastAPI" implícito en decisiones previas; JWT propio con secreto independiente del admin.
+* **[ADR-0016 (Registro de Muestras — captura de metafases)](docs/adr/0016-registro-muestras-captura-metafases.md):** Módulo de registro de muestra activado desde "+ Nueva Muestra": `PatientVault` cifrada at-rest con Fernet (RN-03, vinculada por `chn_code`, no FK, para evitar leakage de PII por `select_related`), `SampleImage` (galería 1:N de metafases), `SampleStatus.DRAFT`, endpoint compuesto `POST /api/clinic/samples/register/` (transacción atómica), y corrección del texto "Mask R-CNN" → "U-Net" en el modal de progreso (AGENTS §11).
+* **[ADR-0017 (Sistema de Autenticación — Login unificado)](docs/adr/0017-sistema-autenticacion-login.md):** `backend-admin` pasa a ser la autoridad única de `/api/auth/login|logout|refresh|me`, extendiendo el `CustomUser`+`role` ya existente con SimpleJWT + blacklist (secreto propio `AUTH_ADMIN_JWT_SECRET`, cuarto namespace de token del sistema, independiente de `AUTH_BRIDGE_SECRET`/`AUTH_CLINIC_SECRET`). `frontend-admin` gana `react-router-dom`, `AuthContext`, `PrivateRoute` y una `LoginPage` que replica el modal de `index.html` (selector de rol vuelto cosmético — el rol real lo determina el backend). Redirecciones post-login por rol (admin se queda en la SPA; analista/supervisor navegan fuera, cross-app sin SSO — gap documentado). No deroga ni reemplaza el exchange F0 (`docs/AUTH_BRIDGE.md`, marcado desactualizado para el flujo primario) ni el SimpleJWT propio de `backend-clinic` (ADR-0015).
+* **[ADR-0018 (Permisos por rol en backend-clinic)](docs/adr/0018-permisos-rol-backend-clinic.md):** Cierra el gap entre SPEC-008 §6 (tabla de 3 roles × 6 endpoints) y el código real de `backend-clinic`, que nunca tuvo un modelo de rol. Deriva `analista`/`supervisor`/`admin` de los campos `is_staff`/`is_superuser` ya existentes del `User` de Django (sin migración nueva, sin campo `role` explícito — decisión confirmada por el arquitecto para no reabrir la sincronización cross-backend con `backend-admin`). Agrega `SampleDetailView` (`GET`/`PATCH`/`DELETE /samples/{id}/`, antes inexistente) con `DELETE` restringido a `admin`. El rol de `backend-clinic` sigue siendo independiente del `CustomUser.role` de `backend-admin` (ADR-0017) — sin sincronización, gap conocido y diferido.
+* **[ADR-0019 (RBAC jerárquico portado del módulo Security/ real)](docs/adr/0019-rbac-granular-funcionalidad-rol.md):** Extiende ADR-0018 (no lo deroga) con un RBAC configurable en base de datos: jerarquía `TipoObjeto→Objeto→Opción` + `Grupo`/`PrivilegioGrupo`/`UsuarioGrupo` (N:M real, un usuario puede tener varios grupos) + `PrivilegioIndividual` (excepción por usuario que SIEMPRE gana sobre el resultado de grupo). Port fiel del código C# real compartido por el arquitecto (carpeta `Security/`, proyecto WinForms `iibismed`) — la resolución es **binaria con deny-overrides entre grupos** (basta que un grupo deniegue para bloquear, no "máximo privilegio"), confirmado leyendo `frmUsuariosEdit.cs::nodeValue()`. Un primer borrador basado solo en el esquema SQL de MetaClass (sin código) asumió incorrectamente un modelo de 3 niveles resuelto por máximo privilegio — corregido tras leer el código fuente real (ver ADR-0019 "Historial de revisión"). Seed reproduce ADR-0018 exactamente (cero cambio de comportamiento el día 1); signal auto-asigna grupo `Analista` a usuarios nuevos (gap operativo detectado en implementación). `backend-admin` no se toca.
+* **[ADR-0020 (SSO real — backend-admin autoridad única de JWT)](docs/adr/0020-sso-backend-admin-autoridad-jwt.md):** Deroga parcialmente ADR-0015 D5 ("JWT independiente del admin, por diseño") y resuelve el gap diferido en ADR-0017 D7 ("cross-app sin SSO"), a pedido explícito del arquitecto ("un solo logueo, navegar todo el sistema"). `backend-admin` firma el único JWT real (claims `email`/`role` embebidos vía `get_token()` override); `backend-clinic` deja de emitir tokens propios y valida el mismo JWT con `SharedJWTAuthentication` (mismo patrón que el exchange F0 existente, `auth_bridge.py`, en dirección inversa), sincronizando `is_staff`/`is_superuser` del `User` local en cada request — ADR-0018/ADR-0019 (RBAC de `backend-clinic`) no se tocan, siguen operando sobre el mismo tipo de `User`. `frontend-admin`/`frontend-clinic` siguen siendo 2 SPAs separadas (no se fusionan), comparten `localStorage` vía `Caddyfile.dev` (reverse proxy dev que las sirve bajo el mismo origen `:3000`) — adelanta el trabajo de F8 pendiente de ADR-0013 (Caddy/nginx unificado, nunca implementado). Gap real encontrado en implementación: `VITE_BASE_PATH` es obligatorio en `frontend-clinic` detrás de Caddy, si no los assets se piden sin el prefijo `/clinic/` y Caddy los enruta al catch-all equivocado.
+
+> **Nota de cobertura:** Los ADRs 0006-0012 fueron redactados/ajustados durante junio 2026 y aún no figuraban en este índice. Esta fila los integra formalmente para auditoría.
 
 ---
 
