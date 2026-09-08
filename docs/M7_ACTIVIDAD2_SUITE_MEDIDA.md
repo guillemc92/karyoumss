@@ -602,7 +602,92 @@ parametrizada: la tabla es una fila por endpoint, no un bloque copiado.
 
 ---
 
-## 7 · El ciclo del LabX sobre el producto
+## 7 · El informe no hay que creérselo: se ejecuta
+
+Un informe de pruebas que hay que creerse no es un informe de pruebas. Cada
+cifra de este documento se vuelve a medir desde cero con un solo comando:
+
+```bash
+python scripts/verificar_entrega_m7.py
+```
+
+Tarda **10 min 58 s** —la suite completa se corre entera, medir solo una parte
+sería el mismo atajo que este módulo enseña a no tomar— y termina imprimiendo
+una tabla `AFIRMADO / MEDIDO / VEREDICTO`. **Sale con código 1 si alguna cifra
+no cuadra.**
+
+```
+== 1/5  suite completa, sin modelo ni red (esto tarda ~10 min)
+   868 pasan, 0 fallos, 594.44 s
+== 2/5  cobertura sobre apps/
+   produccion 96.33 %   informe 88.59 %
+== 3/5  detector de duplicados
+   0 grupos sobre 985 tests con assert
+== 4/5  marcas del LabX
+   auditados 5, sin auditar 0
+== 5/5  tests omitidos (viven en backend-admin, no en el clinico)
+   1 omitido(s)
+
+==========================================================================
+AFIRMA EL DOCUMENTO       AFIRMADO        MEDIDO          
+==========================================================================
+tests_verdes              868             868             OK
+tests_omitidos            1               1               OK
+produccion_pct            96.33           96.33           OK
+informe_apps_pct          88.59           88.59           OK
+produccion_ficheros       47              47              OK
+produccion_sentencias     2809            2809            OK
+produccion_cubiertas      2706            2706            OK
+grupos_duplicados         0               0               OK
+tests_auditados           5               5               OK
+tests_sin_auditar         0               0               OK
+--------------------------------------------------------------------------
+rag_qa.py                 100 %           100.0 %         OK
+rag_index.py              100 %           100.0 %         OK
+agente_acciones.py        100 %           100.0 %         OK
+admin_client.py           100 %           100.0 %         OK
+pipeline_client.py        100 %           100.0 %         OK
+--------------------------------------------------------------------------
+fallos                    0               0               OK
+==========================================================================
+verificacion completa en 10 min 58 s
+
+TODAS LAS CIFRAS DEL DOCUMENTO CUADRAN CON LA MEDICION.
+```
+
+### El verificador falló en su primera corrida, y el fallo era suyo
+
+La primera vez que se ejecutó marcó **`tests_omitidos: afirmado 1, medido 0 —
+NO CUADRA`**.
+
+El documento tenía razón. La §3.1 dice explícitamente que el test omitido vive
+en `backend-admin/apps/audit/tests/test_audit_endpoint.py`, y el guion contaba
+los `skipped` únicamente de la corrida del clínico, que es otro módulo. **El que
+medía mal era el medidor.**
+
+Se corrigió añadiendo una quinta medición que busca el omitido donde de verdad
+está, y el motivo quedó escrito en el docstring de `medir_omitidos()` en vez de
+arreglarse en silencio.
+
+Es **la quinta vez en este módulo** que la primera medición falla por el
+instrumento y no por el sistema:
+
+| # | El instrumento | Lo que dijo | Lo que pasaba de verdad |
+|---|---|---|---|
+| 1 | Detector de duplicados | 9 grupos | los 9 falsos: la huella ignoraba las fixtures |
+| 2 | Batería de contrato | 12 rojas | tres hechos del sistema que yo no conocía |
+| 3 | Tests del corpus | 0 fragmentos | `MIN_CHARS = 120` descarta en silencio |
+| 4 | Los 14 tests del modelo local | 2 verdes | y los 2 eran copias del fichero a mano |
+| 5 | **El propio verificador** | **1 cifra no cuadra** | **miraba en el módulo equivocado** |
+
+La regla que sale de las cinco, y que es lo que me llevo del módulo:
+
+> **El número es lo último en lo que hay que creer.** Antes va el instrumento
+> que lo produjo, y antes todavía, las suposiciones de quien lo escribió.
+
+---
+
+## 8 · El ciclo del LabX sobre el producto
 
 El laboratorio del módulo cierra pidiendo repetir su ciclo —**tests a mano →
 tests con agente → auditoría**— sobre una clase de lógica y un endpoint del
@@ -638,7 +723,7 @@ a emitir un diagnóstico.
 
 ---
 
-## 8 · Lo que queda declarado
+## 9 · Lo que queda declarado
 
 **El código de producción del clínico ya cumple RN-09**: **96,33 %**, muy por
 encima del 90 % exigido. La cifra que reporta `pytest-cov` en bruto sigue por
