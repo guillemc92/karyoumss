@@ -258,7 +258,12 @@ class TestEndpointNarrativa:
         _mock_llm(monkeypatch)
         s = _case(supervisor_user)
         r = APIClient().post(self._url(s), {'iscn': '46,XX'}, format='json')
-        assert r.status_code in (401, 403)
+        # Medido: el endpoint devuelve 401 de forma determinista. El
+        # `in (401, 403)` que habia aqui aceptaba un codigo que el sistema
+        # nunca produce, asi que habria seguido verde si la autenticacion
+        # pasara a 403 — que significa otra cosa (credencial valida sin
+        # permiso, no ausencia de credencial).
+        assert r.status_code == 401
 
     def test_devuelve_el_objeto_estructurado(self, monkeypatch, supervisor_client, supervisor_user):
         """ADR-0024 D4: el consumidor recibe campos tipados, no solo prosa."""

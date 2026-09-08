@@ -23,7 +23,7 @@ Por eso se reportan tres, y la que manda es la última:
 
 | Alcance | Antes | Actividad 2 | Frontera | Contrato | Últimos huecos | Δ total |
 |---|---:|---:|---:|---:|---:|---:|
-| Lo que reporta `pytest-cov` | 82,25 % | 84,04 % | 86,00 % | 86,82 % | 88,54 % | +6,29 pp |
+| Lo que reporta `pytest-cov` | 82,25 % | 84,04 % | 86,00 % | 86,82 % | 88,59 % | +6,34 pp |
 | Sin ficheros de test † | 65,41 % | — | — | — | — | — |
 | **Código de producción** (sin tests ni CLI) | **85,63 %** | **88,60 %** | **91,74 %** | **93,38 %** | **96,33 %** | **+10,70 pp** |
 
@@ -33,7 +33,7 @@ act. 2    47 ficheros · 2.806 sentencias · 2.486 cubiertas
 frontera  47 ficheros · 2.809 sentencias · 2.577 cubiertas
 contrato  47 ficheros · 2.809 sentencias · 2.623 cubiertas
 final     47 ficheros · 2.809 sentencias · 2.706 cubiertas
-tests     627 → 663 → 724 → 784 → 863   (+236)
+tests     627 → 663 → 724 → 784 → 868   (+241)
 ```
 
 **El código de producción del clínico pasa el 90 % que exige RN-09 y termina en
@@ -101,8 +101,8 @@ python scripts/detectar_duplicados.py
 ```
 
 Se volvió a correr tras cada tanda —**897** tras el cierre de frontera, **917**
-tras el contrato de errores y **968** al final— y devolvió 0 grupos las tres
-veces (§6).
+tras el contrato de errores, **968** tras las ramas defensivas y **985** con los
+tests auditados del LabX— y devolvió 0 grupos las cuatro veces (§6).
 
 ### La primera pasada dio 9 grupos, y los 9 eran falsos
 
@@ -144,7 +144,12 @@ y se omitió, con lo que el original volvió a la vida. El fichero pasó de 12 a
 
 ---
 
-## 3 · Tests omitidos, con su motivo
+## 3 · Tests omitidos, y la búsqueda de los que ya no aportan
+
+La consigna pide dos cosas distintas: dejar **uno activo por grupo de duplicados**,
+y marcar además **cualquier test que ya no aporte**. Se buscaron por separado.
+
+### 3.1 · Los omitidos
 
 Ninguno se ha borrado. Siguen en el repositorio, marcados con `@pytest.mark.skip`
 y su razón escrita en el propio código.
@@ -152,6 +157,50 @@ y su razón escrita en el propio código.
 | Test | Fichero | Motivo |
 |---|---|---|
 | `test_anon_returns_401_duplicado` | `backend-admin/apps/audit/tests/test_audit_endpoint.py:39` | Duplicado exacto del de la línea 20: misma fixture, misma URL, mismo assert. Además compartían nombre, lo que impedía que el original se ejecutara. Se conserva como evidencia del hallazgo. |
+
+Es **uno solo**, y eso merece explicación: el detector encontró un único grupo de
+duplicados real en todo el repositorio (§2). Marcar más sería inventar trabajo.
+
+### 3.2 · Cómo se buscaron los tests que «ya no aportan»
+
+Un test deja de aportar cuando **seguiría verde aunque la función estuviera
+rota** — la pregunta P1 del checklist de clase, aplicada esta vez a la suite que
+ya existía y no a lo que generó el agente. Se buscaron tres formas concretas:
+
+| Qué se buscó | Cómo | Encontrado |
+|---|---|---|
+| Tests **muertos** (nunca se ejecutan) | nombres repetidos dentro de la misma clase o módulo | **1** — el duplicado de §3.1, que además impedía correr al original |
+| Asserts que **aceptan varios resultados** | `grep` de `status_code in (…)` y `assert … is not None` sobre los 1.093 asserts del clínico | **3** — ver 3.3 |
+| Asserts que **pasan en vacío** | bucles y comprensiones sobre colecciones que pueden venir vacías | **2** — corregidos durante la Actividad 2 (§4, integración) |
+
+### 3.3 · Tres asserts que aceptaban un código que el sistema nunca devuelve
+
+```python
+assert r.status_code in (401, 403)      # test_iscn_service, test_narrative_service, test_tool_router
+```
+
+Es exactamente el anti-patrón que el laboratorio del módulo nombra —*«asegura
+`r.status_code in (200, 404)`: pasa siempre, no dice nada»*—. Se midió qué
+devuelven de verdad los tres endpoints ante una petición anónima:
+
+```
+iscn        -> 401
+narrative   -> 401
+tools/query -> 401
+```
+
+**401 determinista, siempre.** El `403` del assert es un código que el sistema no
+produce nunca en ese escenario, así que el test habría seguido verde si la
+autenticación pasara a devolver 403 — y 403 significa otra cosa: credencial
+válida sin permiso, no ausencia de credencial. Para el frontend son dos
+reacciones distintas (mandar al login frente a mostrar «no tienes acceso»).
+
+**Decisión: apretados a `== 401`, no omitidos.** La consigna ofrece omitir lo que
+ya no aporta, pero omitir estos tres habría dejado los tres endpoints sin ninguna
+prueba de que rechazan al anónimo. No es que no aporten: aportaban **de menos**.
+El motivo de la medición queda escrito en el propio código, encima del assert.
+
+Los 80 tests de esos tres ficheros siguen en verde con el assert apretado.
 
 ---
 
@@ -179,6 +228,39 @@ y su razón escrita en el propio código.
 | Unit — imágenes malformadas | 4 | **4** | 0 | `test_imagen_metafase.py` (ampliado) |
 | **Subtotal últimos huecos** | **81** | **81** | — | |
 | **Total** | **238** | **238** | — | |
+
+### La auditoría: qué se descartó y por qué
+
+La consigna es explícita —*«el agente propone; ustedes auditan test por test»*—
+así que la columna que importa de la tabla de arriba es la tercera. Aquí está
+desglosada: **25 de los 236 tests propuestos no valían tal cual**, y cada uno
+falló una pregunta concreta del checklist de clase.
+
+| # | Tests | Capa | Qué pregunta falló | Qué pasaba de verdad | Decisión |
+|---:|---|---|---|---|---|
+| 1 | 2 | Integración | **P1** — habría seguido verde con la función rota | El bucle sobre `r.vecinos` recorría una lista **vacía**: el test decía probar el reparto candidatos/vecinos y no lo ejercitaba | Corregidos: `assert r.vecinos` antes del bucle |
+| 2 | 1 | Integración | **P2** — el assert no reproducía el sistema real | Vectores ortogonales: solo un fragmento superaba el umbral, y eso **no** es lo que se midió en producción, donde todo el corpus se parece | Reescrito con vectores correlacionados |
+| 3 | 12 | Contrato | **P2** ×3 causas distintas | (a) la base tiene una CHECK que impide desactivar sin registrar cuándo; (b) la rama `NOT_OWNER` de dos endpoints es **inalcanzable** con la matriz RBAC; (c) todo Supervisor tiene `case.override_iscn`, así que `FORBIDDEN_OVERRIDE` solo se alcanza con una excepción individual | Corregidos los 12; las tres causas quedan escritas en el fichero |
+| 4 | 2 | Contrato | **P2** | El serializer exige **tres** metáfases: con menos, el registro no llega al servicio | Corregidos + un test nuevo que fija ese mínimo |
+| 5 | 6 | Unit | **P2** | El troceador descarta en silencio los fragmentos de menos de 120 caracteres: el corpus de prueba devolvía cero y parecía que fallaba la carga | Corregidos + un test que fija ese descarte |
+| 6 | 1 | Unit | **P2** | «¿qué es un naranja?» dispara el atajo por palabra clave; el que lo evita es «qué significa…» | Corregida la pregunta del caso |
+| 7 | 1 | Unit | **P2** | El guard append-only de RN-05 vive en `Model.save()`, así que un `save()` no sirve para simular manipulación: hay que usar `QuerySet.update()`, **que es justo el agujero** | Reescrito, y el hallazgo documentado |
+| | **25** | | | | **25 corregidos, 0 aceptados sin tocar** |
+
+**Ninguno de los 25 se resolvió quitando el assert.** Es la regla que este
+proyecto ya había pisado antes: un assert rojo es una hipótesis refutada, y
+borrarlo es maquillaje. Los 25 se corrigieron y en 5 casos el propio fallo se
+convirtió en un test nuevo que fija lo que el sistema hace de verdad.
+
+Y una cosa que conviene decir en voz alta: **las 25 correcciones fueron de mis
+suposiciones, no del sistema.** En las siete filas la máquina tenía razón y el
+que se equivocaba era quien escribía el test. Es el mismo patrón que la §2 mostró
+con los 9 falsos duplicados.
+
+El ciclo del LabX (§7) va más lejos todavía: allí el que propone es un modelo de
+3B y la tasa es **14 propuestos → 5 aceptados**, con la tabla de las tres
+preguntas test por test.
+
 
 ### Unit — `rag_qa.py`, de 0 % a 100 %
 
@@ -496,8 +578,8 @@ CLINIC_LLM_ENABLED=false CLINIC_LLM_URL=http://127.0.0.1:1/v1 \
 ```
 
 ```
-TOTAL                                    8783   1086    88%
-863 passed, 2 warnings in 603.29s (0:10:03)
+TOTAL                                    8821   1086    88%
+868 passed, 2 warnings in 599.70s (0:09:59)
 ```
 
 **El modelo apagado no basta como prueba.** Por eso la URL apunta a
@@ -505,13 +587,13 @@ TOTAL                                    8783   1086    88%
 fallaría con «connection refused» en vez de pasar por casualidad porque Ollama
 estaba encendido en la máquina.
 
-Los 863 pasan en 10 min 3 s sin tocar la red. Los 236 tests añadidos no la tocan
-tampoco: doblan `httpx` y `openai` en la frontera y usan `tmp_path` para el
-disco. El único que lanza un proceso —la sesión MCP— tiene el doble puesto en el
+Los 868 pasan en 9 min 59 s sin tocar la red. Los 241 tests añadidos —236 de
+esta actividad más los 5 auditados del LabX (§7)— no la tocan tampoco: doblan
+`httpx` y `openai` en la frontera y usan `tmp_path` para el disco. El único que lanza un proceso —la sesión MCP— tiene el doble puesto en el
 SDK, no en el sistema operativo.
 
-El detector de duplicados, corrido de nuevo sobre las **968 pruebas con assert**
-del repositorio completo, devuelve **0 grupos con huella repetida**: los 236
+El detector de duplicados, corrido de nuevo sobre las **985 pruebas con assert**
+del repositorio completo, devuelve **0 grupos con huella repetida**: los 241
 tests nuevos no introdujeron ninguno.
 
 La batería de contrato es donde más fácil habría sido introducirlos —doce
@@ -540,7 +622,7 @@ sobrevivieron              5
 coste                      5.314 tokens entrada + 878 salida · 26 min 39 s
 ```
 
-Los 5 auditados se suman a la suite: **863 + 5 = 868**. Se pueden aislar, porque
+Los 5 auditados están ya dentro de los 868 de la corrida final (§6). Se pueden aislar, porque
 las marcas estan registradas en `backend-clinic/pytest.ini`:
 
 ```bash

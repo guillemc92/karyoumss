@@ -289,7 +289,12 @@ class TestEndpoint:
     def test_anonimo_rechazado(self):
         from rest_framework.test import APIClient
         r = APIClient().post(self.URL, {'pregunta': CONTROLADA}, format='json')
-        assert r.status_code in (401, 403)
+        # Medido: el endpoint devuelve 401 de forma determinista. El
+        # `in (401, 403)` que habia aqui aceptaba un codigo que el sistema
+        # nunca produce, asi que habria seguido verde si la autenticacion
+        # pasara a 403 — que significa otra cosa (credencial valida sin
+        # permiso, no ausencia de credencial).
+        assert r.status_code == 401
 
 
 class TestTruncado:
