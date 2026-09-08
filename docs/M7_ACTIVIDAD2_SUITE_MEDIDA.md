@@ -640,10 +640,10 @@ a emitir un diagnóstico.
 
 ## 8 · Lo que queda declarado
 
-**El código de producción del clínico ya cumple RN-09**: 91,74 %, por encima del
-90 % exigido. La cifra que reporta `pytest-cov` en bruto sigue por debajo
-(86,00 %) porque mezcla los ficheros de test y los `management/commands`; se
-explica en §1 y no se disimula.
+**El código de producción del clínico ya cumple RN-09**: **96,33 %**, muy por
+encima del 90 % exigido. La cifra que reporta `pytest-cov` en bruto sigue por
+debajo (88,59 %) porque mezcla los ficheros de test y los
+`management/commands`; se explica en §1 y no se disimula.
 
 **Lo que queda sin cubrir son 103 sentencias, y casi la mitad no son código
 vivo:**
