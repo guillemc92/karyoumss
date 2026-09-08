@@ -19,7 +19,7 @@ const TERMINAL = new Set(['READY', 'VALIDATED', 'REJECTED']);
 const SEGUNDOS_TIPICOS = 32;
 
 const STEPS = [
-  { key: 'detection', label: 'Detección de metafases y filtrado de calidad', activeAt: 'PROCESSING' },
+  { key: 'detection', label: 'Detección de cromosomas y filtrado de calidad', activeAt: 'PROCESSING' },
   // ADR-0016 D1 corrigió "Mask R-CNN" por "U-Net", pero U-Net tampoco se llegó
   // a construir: es diseño. Lo que corre hoy lo declara la cadena de versión
   // del servicio, `opencv-watershed-v0+efficientnet-b3-metaclass-v3`, y es lo
@@ -64,7 +64,11 @@ export function RegisterProcessingModal({ sampleId, degraded, onComplete }: Regi
   if (isTerminal) {
     texto = 'Cariograma listo para validación.';
   } else if (enVuelo) {
-    texto = `Analizando las metafases... ${transcurridos} s (suele tardar unos ${SEGUNDOS_TIPICOS} s)`;
+    // ADR-0036: se analiza UNA metafase, no las tres que se suben. Decía «las
+    // metafases» en plural, y quien lo leía asumía que se miraban las tres.
+    // Mientras el consenso multi-metafase no exista, el texto no puede
+    // insinuar que existe.
+    texto = `Analizando la primera metafase... ${transcurridos} s (suele tardar unos ${SEGUNDOS_TIPICOS} s)`;
   } else {
     texto = `Procesando... ${progress}%`;
   }

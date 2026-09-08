@@ -13,7 +13,7 @@ Alternativas descartadas → Consecuencias.
 
 <!-- INDICE:INICIO -->
 
-**35 ADRs**: 27 aceptada, 6 propuesta, 1 sin estado, 1 rechazada.
+**36 ADRs**: 27 aceptada, 7 propuesta, 1 sin estado, 1 rechazada.
 
 | ADR | Título | Estado | Fecha |
 |-----|--------|--------|-------|
@@ -52,6 +52,7 @@ Alternativas descartadas → Consecuencias.
 | [0033](0033-asignacion-global-cariotipo.md) | Asignación global con cupos blandos — el modelo propone la clase, el código reparte el cariotipo | **Propuesta** | 2026-08-21 |
 | [0034](0034-segmentacion-interactiva-sam2.md) | Segmentación interactiva asistida (SAM 2) — y la anotación como producto secundario | **Propuesta** | 2026-08-31 |
 | [0035](0035-detector-instancias-cromosomas.md) | Detector de instancias de cromosomas — decisión diferida, con protocolo de evaluación y derogación de AGENTS §11 | **Propuesta** | 2026-08-31 |
+| [0036](0036-multimetafase-consenso.md) | El consenso multi-metáfase se difiere — medido, hoy no hay nada sobre lo que votar | **Propuesta** | 2026-09-08 |
 
 <!-- INDICE:FIN -->
 

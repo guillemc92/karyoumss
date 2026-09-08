@@ -43,7 +43,7 @@ describe('RegisterProcessingModal', () => {
   it('sin sampleId muestra la barra y el tiempo transcurrido, no un porcentaje del servidor', () => {
     renderWithProviders(<RegisterProcessingModal sampleId={null} degraded={false} onComplete={vi.fn()} />);
     expect(screen.getByRole('progressbar')).toBeInTheDocument();
-    expect(screen.getByText(/Analizando las metafases/)).toBeInTheDocument();
+    expect(screen.getByText(/Analizando la primera metafase/)).toBeInTheDocument();
     expect(screen.getByText(/suele tardar unos 32 s/)).toBeInTheDocument();
     expect(screen.queryByText(/Procesando\.\.\./)).not.toBeInTheDocument();
   });
@@ -68,5 +68,17 @@ describe('RegisterProcessingModal', () => {
     const barra = screen.getByRole('progressbar');
     expect(barra).toHaveAttribute('aria-valuenow', '0');
     expect(Number(barra.getAttribute('aria-valuenow'))).toBeLessThan(100);
+  });
+
+  // ADR-0036: se suben tres metafases y se analiza UNA. El texto decia «las
+  // metafases» en plural, y quien lo leia asumia que el cariotipo salia de las
+  // tres. Mientras el consenso multi-metafase no exista —medido: el 90 % de las
+  // metafases no produce ni una nomenclatura— la pantalla no puede insinuar que
+  // existe. Este test existe para que el plural no vuelva sin que nadie lo note.
+  it('no da a entender que analiza mas de una metafase', () => {
+    renderWithProviders(<RegisterProcessingModal sampleId={null} degraded={false} onComplete={vi.fn()} />);
+    expect(screen.getByText(/Analizando la primera metafase/)).toBeInTheDocument();
+    expect(screen.queryByText(/Analizando las metafases/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Deteccion de metafases/i)).not.toBeInTheDocument();
   });
 });

@@ -50,6 +50,13 @@ export interface RegistrationResponse {
   status: 'DRAFT' | 'PENDING_AI';
   task_id: string | null;
   image_count: number;
+  /**
+   * Cuántas de esas imágenes se analizaron de verdad. Hoy es 1 (ADR-0036):
+   * se suben tres metafases y se segmenta la primera. No es lo mismo que
+   * `image_count`, y confundirlos hace creer al analista que el cariotipo
+   * viene de las tres.
+   */
+  analyzed_count: number;
   degraded: boolean;
   created_at: string;
 }

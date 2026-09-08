@@ -78,3 +78,59 @@ class TestSampleRegistrationService:
         ])
         result = sample_registration_service.register(payload, analyst_user)
         assert result['image_count'] == 3
+
+
+@pytest.mark.django_db
+class TestCuantasMetafasesSeAnalizan:
+    """ADR-0036: se guardan N metafases y se analiza UNA. Que se vea.
+
+    Medido sobre 60 metafases reales de 10 muestras
+    (`backend-ml/training/eval_multimetafase.py`): el 90 % no llega ni a
+    producir una nomenclatura, asi que el consenso entre metafases no se puede
+    construir todavia. Pero mientras no se construya, el sistema no puede dar a
+    entender que mira las tres.
+
+    Estos tests no arreglan la limitacion: la fijan. Si alguien quitara
+    `analyzed_count`, o lo igualara a `image_count` sin analizar de verdad, se
+    ponen rojos.
+    """
+
+    def test_se_guardan_tres_y_se_analiza_una(self, analyst_user, monkeypatch):
+        from apps.samples import services
+
+        monkeypatch.setattr(services.pipeline_client, 'segment_image',
+                            lambda raw, **kw: {'chromosomes': []})
+
+        resultado = sample_registration_service.register(_payload(), analyst_user)
+
+        assert resultado['image_count'] == 3, 'las tres se guardan'
+        assert resultado['analyzed_count'] == 1, 'pero solo se analiza una'
+        assert resultado['analyzed_count'] < resultado['image_count']
+
+    def test_si_la_ia_cae_no_se_analiza_ninguna(self, analyst_user, monkeypatch):
+        """RN-07: la muestra se persiste igual, pero el contador dice la verdad.
+
+        Un `analyzed_count` de 1 con el pipeline caido seria peor que no tener
+        el campo: afirmaria un analisis que no ocurrio.
+        """
+        from apps.samples import services
+        from apps.samples.pipeline_client import MLDegradedError
+
+        def caido(*a, **kw):
+            raise MLDegradedError('circuit_open')
+
+        monkeypatch.setattr(services.pipeline_client, 'segment_image', caido)
+
+        resultado = sample_registration_service.register(_payload(), analyst_user)
+
+        assert resultado['degraded'] is True
+        assert resultado['analyzed_count'] == 0
+        assert resultado['image_count'] == 3, 'las imagenes no se pierden (RN-07)'
+
+    def test_un_borrador_no_analiza_nada(self, analyst_user):
+        payload = _payload(is_draft=True,
+                           patient={'full_name': '', 'birth_date': '',
+                                    'document_id': '', 'phone': ''},
+                           images=[])
+        resultado = sample_registration_service.register(payload, analyst_user)
+        assert resultado['analyzed_count'] == 0

@@ -61,6 +61,7 @@ class SampleRegistrationService:
             image_count = self._create_images(data.get('images', []), sample, chn_code)
 
         degraded = False
+        analyzed_count = 0
         if not is_draft:
             # Flujo real (DD-ML-002): segmentar la 1ª imagen con backend-ml e
             # ingestar el cariotipo. RN-07: si la IA cae, la muestra queda
@@ -74,6 +75,7 @@ class SampleRegistrationService:
                     ingest_segmentation(sample, result)
                     sample.status = SampleStatus.READY
                     sample.save(update_fields=['status', 'updated_at'])
+                    analyzed_count = 1     # ADR-0036 D1: una, no las tres
                 except MLDegradedError:
                     degraded = True
 
@@ -84,6 +86,11 @@ class SampleRegistrationService:
             'status': sample.status,
             'task_id': None,
             'image_count': image_count,
+            # ADR-0036, Pendiente 1: se guardan N metafases y se analiza UNA.
+            # El analista tiene derecho a saberlo: sin este campo la pantalla
+            # dice «3 imagenes» y quien la lee asume que se miraron las tres.
+            # Es deuda de honestidad, y se salda diciendolo, no ocultandolo.
+            'analyzed_count': analyzed_count,
             'degraded': degraded,
             'created_at': sample.created_at,
         }

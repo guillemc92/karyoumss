@@ -269,6 +269,9 @@ export const handlers = [
         status: body.is_draft ? 'DRAFT' : 'PENDING_AI',
         task_id: body.is_draft || forceDegraded ? null : 'mock-register-task-1',
         image_count: body.images.length,
+        // ADR-0036: se suben N y se analiza 1. El doble tiene que
+        // mentir igual que el sistema real, o deja de servir.
+        analyzed_count: body.images.length ? 1 : 0,
         degraded: !body.is_draft && forceDegraded,
         created_at: newSample.created_at,
       },
