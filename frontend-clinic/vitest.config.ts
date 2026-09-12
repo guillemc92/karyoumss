@@ -14,6 +14,10 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/**/*.spec.ts', 'tests/**/*.spec.tsx', 'src/**/*.spec.ts', 'src/**/*.spec.tsx'],
+    // Los E2E de Playwright (M8) viven en tests/agente y tests/auditado y
+    // comparten la extensión .spec.ts. Sin excluirlos, Vitest los importa,
+    // no encuentra `@playwright/test` como runner y la suite unit se rompe.
+    exclude: ['tests/agente/**', 'tests/auditado/**', 'tests/fixtures/**', 'node_modules/**'],
     css: false,
     // Las suites de página del cariotipo (XAI/modal + MSW + loops de resolución)
     // son pesadas; 5s por defecto flakea bajo carga concurrente. 15s da margen.

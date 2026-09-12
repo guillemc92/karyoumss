@@ -134,13 +134,21 @@ export function KaryotypePage() {
 
   if (isError || !karyotype) {
     const noKaryotype = error instanceof ClinicApiException && error.code === 'NO_KARYOTYPE';
+    // RN-06 tiene que VERSE. Antes un 403 se pintaba igual que cualquier otro
+    // fallo («No se pudo cargar»), y el analista no sabía si el caso no era
+    // suyo o si el servidor estaba caído. Son dos situaciones con dos acciones
+    // distintas. El `data-testid` propio existe para que el E2E de segregación
+    // pueda afirmar el motivo y no solo «hubo un error» (M8, ancla añadida).
+    const notOwner = error instanceof ClinicApiException && error.code === 'NOT_OWNER';
     return (
       <BiomedShell>
         <h1>Cariotipo</h1>
-        <p role="alert" data-testid="karyo-error">
-          {noKaryotype
-            ? 'Esta muestra aún no tiene un cariotipo generado. Procese la muestra con IA primero.'
-            : 'No se pudo cargar el cariotipo.'}
+        <p role="alert" data-testid={notOwner ? 'karyo-forbidden' : 'karyo-error'}>
+          {notOwner
+            ? 'No es dueño de esta muestra: solo el analista asignado o un supervisor pueden verla.'
+            : noKaryotype
+              ? 'Esta muestra aún no tiene un cariotipo generado. Procese la muestra con IA primero.'
+              : 'No se pudo cargar el cariotipo.'}
         </p>
         <Link to={`/clinic/samples/${id}`}>← Volver a la muestra</Link>
       </BiomedShell>

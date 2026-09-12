@@ -1,0 +1,116 @@
+{
+ "origen": "Plan del agente PLANNER (llama3.2:3b) corregido por auditoria humana",
+ "planner": {
+  "modelo": "llama3.2:3b",
+  "tokens_entrada": 913,
+  "tokens_salida": 894,
+  "segundos": 732.3,
+  "casos_propuestos": 8,
+  "casos_aceptados_sin_tocar": 1,
+  "casos_corregidos": 6,
+  "casos_descartados": 1,
+  "hallazgo": "5 de 8 casos emparejaban el caso de uso N con la regla RN-0N por POSICION, no por significado. Verificado en docs/M8_E2E/auditoria_plan.md"
+ },
+ "casos": [
+  {
+   "id": "E2E-01",
+   "veredicto": "corregido",
+   "flujo": "Registro de muestra con metafases (FSD-UC-001)",
+   "ruta": "/clinic/samples/register",
+   "tipo": "happy",
+   "oraculo": "RN-03 + ADR-0036: la muestra se persiste y la UI declara cuantas metafases se analizan de verdad",
+   "criterio": "Tras registrar con 3 metafases, la muestra existe con su CHN y la UI NO afirma haber analizado las tres",
+   "correccion": "El Planner le puso RN-01 (validar naranjas), que no interviene en la ingesta. Sustituido por el oraculo real del flujo."
+  },
+  {
+   "id": "E2E-02",
+   "veredicto": "corregido",
+   "flujo": "Semaforizacion del cariotipo (FSD-UC-002)",
+   "ruta": "/clinic/samples/:id/karyotype",
+   "tipo": "happy",
+   "oraculo": "RN-02: confianza < 0,85 pinta naranja",
+   "criterio": "Un cromosoma con confianza 0,40 se muestra naranja y uno con 0,95 verde, en la misma pantalla",
+   "correccion": "El oraculo era correcto pero el criterio decia 'confianza SUPERIOR a 0,85', invirtiendo la regla. Criterio reescrito."
+  },
+  {
+   "id": "E2E-03",
+   "veredicto": "corregido",
+   "flujo": "Bloqueo de emision por naranjas sin resolver (FSD-UC-004)",
+   "ruta": "/clinic/samples/:id/karyotype",
+   "tipo": "error",
+   "oraculo": "RN-01 + RN-02: mientras quede un naranja sin resolver, el caso NO puede validarse",
+   "criterio": "Con un naranja PENDING, la accion de validar queda bloqueada y la UI dice cuantos faltan",
+   "correccion": "El Planner mezclaba flujo XAI, ruta /edit (que es el formulario, no el visor) y oraculo RN-03 (PII). Tres cosas que no encajaban. Reasignado al flujo que SI tiene RN-01/RN-02 detras."
+  },
+  {
+   "id": "E2E-04",
+   "veredicto": "corregido",
+   "flujo": "Segregacion de funciones: analista ajeno al caso (FSD-UC-004)",
+   "ruta": "/clinic/samples/:id/karyotype",
+   "tipo": "error",
+   "oraculo": "RN-06: el analista solo ve sus casos; uno ajeno devuelve 403",
+   "criterio": "Un analista que no es dueno del caso recibe 403 y la UI muestra el aviso, no una pantalla rota",
+   "correccion": "El Planner ponia flujo 'bloqueo y validacion' con ruta /supervisor y oraculo RN-04 (ISCN). Reasignado al oraculo que corresponde."
+  },
+  {
+   "id": "E2E-05",
+   "veredicto": "descartado",
+   "flujo": "Auditoria aleatoria del 5 % (FSD-UC-005)",
+   "ruta": "/clinic/supervisor",
+   "tipo": "limite",
+   "oraculo": "RN-08",
+   "criterio": "-",
+   "correccion": "DESCARTADO. El criterio era circular ('la auditoria se ha realizado correctamente'), que es fallar P4: sin oraculo no hay test. Y el flujo depende de que el caso este en ANALYST_VALIDATED con auditoria completa, un estado que E2E no puede montar de forma barata. Va a evals."
+  },
+  {
+   "id": "E2E-06",
+   "veredicto": "corregido",
+   "flujo": "El ISCN es de solo lectura (FSD-UC-006)",
+   "ruta": "/clinic/samples/:id",
+   "tipo": "error",
+   "oraculo": "RN-04: la nomenclatura no se edita; solo cambia por override justificado con permiso",
+   "criterio": "La UI no ofrece ningun control para editar el ISCN generado",
+   "correccion": "El Planner le asigno RN-05 (bitacora append-only) a un flujo de ISCN. Cambiado a RN-04, que es la regla de ese flujo."
+  },
+  {
+   "id": "E2E-07",
+   "veredicto": "aceptado",
+   "flujo": "Modo degradado (FSD-UC-007)",
+   "ruta": "/clinic/samples/:id",
+   "tipo": "error",
+   "oraculo": "RN-07: si la IA cae, la muestra se registra igual y la UI entra en modo manual",
+   "criterio": "Con backend-ml caido, la muestra queda registrada y aparece el banner de modo degradado",
+   "correccion": "Unico caso aceptado sin tocar: flujo, ruta y oraculo coherentes entre si."
+  },
+  {
+   "id": "E2E-08",
+   "veredicto": "corregido",
+   "flujo": "El supervisor ve cualquier caso (FSD-UC-004)",
+   "ruta": "/clinic/samples/:id/karyotype",
+   "tipo": "happy",
+   "oraculo": "RN-06: la segregacion limita al analista, NO al supervisor",
+   "criterio": "Un supervisor abre un caso que no registro el y lo ve completo",
+   "correccion": "El Planner escribio el criterio INVERTIDO: 'el supervisor no puede acceder a casos que no son suyos'. RN-06 dice lo contrario. Ademas el flujo decia 'segmentacion de funciones' en vez de 'segregacion'."
+  },
+  {
+   "id": "E2E-09",
+   "veredicto": "anadido por la auditoria",
+   "flujo": "Listado y filtrado de muestras (FSD-UC-001)",
+   "ruta": "/clinic/samples",
+   "tipo": "happy",
+   "oraculo": "RN-06: el analista solo ve sus propias muestras en el listado",
+   "criterio": "El listado del analista muestra su muestra recien creada y filtra por estado sin perderla",
+   "correccion": "ANADIDO. El Planner no propuso ningun caso para la pantalla de entrada de la aplicacion, que es la unica por la que pasa todo usuario."
+  },
+  {
+   "id": "E2E-10",
+   "veredicto": "anadido por la auditoria",
+   "flujo": "Sesion expirada (transversal)",
+   "ruta": "/clinic/samples",
+   "tipo": "limite",
+   "oraculo": "ADR-0020: backend-admin es la unica autoridad de JWT; sin token valido no se ven datos clinicos",
+   "criterio": "Sin token en localStorage la app no muestra datos de pacientes",
+   "correccion": "ANADIDO. Es el caso limite que protege RN-03 en la frontera de la sesion, y el Planner no lo contemplo."
+  }
+ ]
+}

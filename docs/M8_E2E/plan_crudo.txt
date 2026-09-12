@@ -1,0 +1,70 @@
+```
+{
+  "casos": [
+    {
+      "id": "E2E-01",
+      "flujo": "ingesta y anonimizacion de imagen",
+      "ruta": "/clinic/samples/register",
+      "tipo": "happy",
+      "oraculo": "RN-01 El analista debe validar manualmente los cromosomas naranjas antes de emitir.",
+      "criterio": "La imagen se ha registrado correctamente y se ha generado un ID de muestra."
+    },
+    {
+      "id": "E2E-02",
+      "flujo": "segmentacion, clasificacion y semaforizacion",
+      "ruta": "/clinic/samples/:id/karyotype",
+      "tipo": "happy",
+      "oraculo": "RN-02 Confianza < 0,85 pinta naranja y BLOQUEA la emision del informe.",
+      "criterio": "El cromosoma se ha segmentado correctamente y se ha generado un informe con confianza superior a 0,85."
+    },
+    {
+      "id": "E2E-03",
+      "flujo": "XAI y correccion manual",
+      "ruta": "/clinic/samples/:id/edit",
+      "tipo": "happy",
+      "oraculo": "RN-03 Cero fuga de PII: los datos del paciente van cifrados y no salen en la UI.",
+      "criterio": "Los datos del paciente se han cifrado correctamente y no se han expuesto en la UI."
+    },
+    {
+      "id": "E2E-04",
+      "flujo": "bloqueo y validacion de Analista",
+      "ruta": "/clinic/supervisor",
+      "tipo": "error",
+      "oraculo": "RN-04 La nomenclatura ISCN es de solo lectura tras generarse; solo cambia por override justificado y con permiso case.override_iscn.",
+      "criterio": "El supervisor no puede acceder a la nomenclatura ISCN sin permiso de override."
+    },
+    {
+      "id": "E2E-05",
+      "flujo": "auditoria aleatoria del 5 % de los cromosomas verdes",
+      "ruta": "/clinic/samples/:id/karyotype",
+      "tipo": "limite",
+      "oraculo": "RN-08 Auditoria aleatoria del 5 % de los cromosomas verdes.",
+      "criterio": "La auditoria aleatoria del 5 % de los cromosomas verdes se ha realizado correctamente."
+    },
+    {
+      "id": "E2E-06",
+      "flujo": "generacion de reporte ISCN con override manual",
+      "ruta": "/clinic/samples/:id/karyotype",
+      "tipo": "happy",
+      "oraculo": "RN-05 La bitacora es append-only: no se edita ni se borra un evento.",
+      "criterio": "El reporte ISCN se ha generado correctamente con override manual."
+    },
+    {
+      "id": "E2E-07",
+      "flujo": "modo degradado elegante",
+      "ruta": "/clinic/samples/:id",
+      "tipo": "error",
+      "oraculo": "RN-07 Degradacion elegante: si la IA cae, la muestra se registra igual y la UI entra en modo manual en vez de romperse.",
+      "criterio": "La muestra se ha registrado correctamente en modo degradado elegante."
+    },
+    {
+      "id": "E2E-08",
+      "flujo": "segmentacion de funciones",
+      "ruta": "/clinic/supervisor",
+      "tipo": "error",
+      "oraculo": "RN-06 Segregacion de funciones: quien valida como analista no puede firmar como supervisor, y un analista no ve casos que no son suyos (403).",
+      "criterio": "El supervisor no puede acceder a casos que no son suyos."
+    }
+  ]
+}
+```

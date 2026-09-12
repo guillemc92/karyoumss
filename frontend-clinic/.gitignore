@@ -23,3 +23,9 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright (M8) — reportes y artefactos de corrida, no fuente
+/playwright-report/
+/playwright-report-agente/
+/test-results/
+/test-results-agente/

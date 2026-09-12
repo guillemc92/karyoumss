@@ -1,0 +1,13 @@
+agente,caso,modelo,tokens_entrada,tokens_salida,segundos,veredicto
+planner,plan completo (8 casos),llama3.2:3b,913,894,732.3,corregido
+generator,E2E-01,llama3.2:3b,711,556,1229.5,descartado
+generator,E2E-02,llama3.2:3b,706,390,213.4,descartado
+generator,E2E-03,llama3.2:3b,712,264,292.3,descartado
+generator,E2E-04,llama3.2:3b,707,329,317.4,corregido
+generator,E2E-06,llama3.2:3b,691,254,278.5,descartado
+generator,E2E-07,llama3.2:3b,697,353,333.0,descartado
+generator,E2E-08,llama3.2:3b,684,400,350.9,descartado
+generator,E2E-09,llama3.2:3b,692,348,343.1,descartado
+generator,E2E-10,llama3.2:3b,684,521,425.6,descartado
+TOTAL generator,9 tests,llama3.2:3b,6284,3415,3783.7,1 corregido / 8 descartados
+PROMEDIO generator,por test,llama3.2:3b,698,379,420.4,-
