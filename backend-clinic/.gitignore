@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+*.sqlite3
+htmlcov/
+.coverage
+coverage.xml
+staticfiles/
+
+# Informes de cobertura crudos (688 KB): el resumen versionado vive en
+# docs/M7_cobertura_antes_despues.json
+cov_*.json

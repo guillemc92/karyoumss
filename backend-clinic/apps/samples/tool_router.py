@@ -1,0 +1,292 @@
+"""Enrutador de preguntas a herramientas — tool calling (Módulo 6, semana 3).
+
+Decide **qué** herramienta responde una pregunta. Nunca decide **qué** contesta:
+eso lo produce el código de `tools.py` contra la base de datos.
+
+## Los tres caminos posibles
+
+    KEYWORD    la pregunta usa una palabra del catálogo → se ejecuta sin modelo
+    LLM        ninguna palabra coincide → el modelo elige entre las publicadas
+    SIN_MATCH  ni las palabras ni el modelo encontraron herramienta → "no sé"
+
+`SIN_MATCH` **no es un error**. Es la respuesta correcta cuando el dato no está
+en el sistema, y viene acompañada del catálogo para que el usuario sepa qué sí
+puede preguntar.
+
+## Por qué el camino KEYWORD existe
+
+No es una optimización: es lo que hace que el sistema **siga respondiendo con la
+IA apagada**. Con `CLINIC_LLM_ENABLED=false`, las preguntas del vocabulario del
+dominio se resuelven igual, con los mismos datos y las mismas fuentes. Lo único
+que se pierde es la tolerancia a sinónimos — y esa diferencia, medida, es
+exactamente lo que aporta el modelo.
+"""
+from __future__ import annotations
+
+import logging
+import time
+from dataclasses import asdict, dataclass
+
+from django.conf import settings
+
+from .tools import CATALOGO, LIMITE_FILAS, POR_NOMBRE, ToolSpec, buscar_por_palabra_clave, catalogo_publicado
+
+logger = logging.getLogger(__name__)
+
+# El modelo solo elige un nombre del catálogo (o NINGUNA). No redacta, no
+# resume, no toca datos: por eso el esquema es mínimo y `strict`.
+SELECCION_JSON_SCHEMA = {
+    'type': 'json_schema',
+    'json_schema': {
+        'name': 'seleccion_herramienta',
+        'strict': True,
+        'schema': {
+            'type': 'object',
+            'properties': {
+                'herramienta': {
+                    'type': 'string',
+                    # DOCUMENTACION no es una herramienta: es la puerta al RAG.
+                    # El modelo elige entre consultar ESTADO (las herramientas),
+                    # consultar DOCUMENTACION (el corpus) o no saber — que es la
+                    # misma disyuntiva «tool o RAG» del bucle agéntico.
+                    'enum': [t.name for t in CATALOGO] + ['DOCUMENTACION', 'NINGUNA'],
+                    'description': ('Nombre exacto de la herramienta; DOCUMENTACION '
+                                    'si la pregunta es sobre reglas, definiciones o '
+                                    'procedimientos; NINGUNA si nada aplica.'),
+                },
+                'motivo': {
+                    'type': 'string',
+                    'description': 'Una frase breve explicando la elección.',
+                },
+            },
+            'required': ['herramienta', 'motivo'],
+            'additionalProperties': False,
+        },
+    },
+}
+
+
+def _prompt_sistema() -> str:
+    lineas = [
+        'Eres un enrutador de consultas de un laboratorio de citogenética.',
+        'Tu ÚNICA tarea es elegir qué herramienta responde la pregunta del usuario.',
+        '',
+        'REGLAS ESTRICTAS:',
+        '1. NO respondas la pregunta. NO inventes datos. Solo eliges una herramienta.',
+        '2. Elige por el SIGNIFICADO de la pregunta, no por coincidencia de palabras.',
+        '3. Devuelve "NINGUNA" salvo que una herramienta responda EXACTAMENTE lo '
+        'que se pregunta. Que la pregunta mencione palabras del laboratorio NO basta.',
+        '',
+        # La abstención necesita ejemplos y no solo una regla: medido sobre 30
+        # preguntas etiquetadas, con la regla suelta el modelo elegía una
+        # herramienta en 4 de 6 preguntas fuera de alcance (acierto 33%).
+        'CUÁNDO DEVOLVER "NINGUNA" — son casos frecuentes, no excepcionales:',
+        '- Estadísticas, totales o históricos: «cuántos X el año pasado», promedios.',
+        '- Personas: quién es el jefe, quién atendió un caso, de quién es una muestra.',
+        '- Documentación o procedimientos: qué dice el manual, cómo se hace algo.',
+        '- Inventario: reactivos, equipos, insumos, fechas de vencimiento.',
+        '- Dinero: precios, costos, presupuestos, facturación.',
+        '- Datos de un paciente concreto.',
+        # Las mas dificiles: usan el vocabulario del propio dominio, asi que el
+        # modelo las mandaba a la herramienta dueña del concepto. Medido: 5 de
+        # los 7 fallos de abstencion del banco de 56 eran de este tipo.
+        '- REGLAS Y METODOLOGÍA sobre los conceptos que el sistema maneja: cómo '
+        'se calcula algo, quién tiene permiso para hacer algo, cuánto tarda un '
+        'proceso, qué umbral conviene usar, qué significa un estado o un color.',
+        '',
+        'REGLA DE FORMA, útil cuando dudes:',
+        '- Si se responde con una LISTA de casos o cromosomas que existen ahora '
+        'en la base → hay herramienta.',
+        '- Si pide una EXPLICACIÓN, una definición, una regla del sistema, un '
+        'permiso o cómo funciona algo → devuelve "DOCUMENTACION": hay un corpus '
+        'con el estándar ISCN, las decisiones de arquitectura y las reglas de '
+        'negocio del laboratorio.',
+        '- Si no es ni una cosa ni la otra (personas, precios, inventario, '
+        'agenda, compras) → devuelve "NINGUNA".',
+        '',
+        'Las herramientas SOLO listan el estado ACTUAL de casos y cromosomas del '
+        'flujo de trabajo. No cuentan, no promedian, no explican, no consultan '
+        'documentos y no saben de personas, de insumos ni de reglas.',
+        '',
+        'Elegir una herramienta equivocada es PEOR que devolver "NINGUNA": el '
+        'usuario recibiría datos reales que no responden a su pregunta.',
+        '',
+        'HERRAMIENTAS DISPONIBLES:',
+    ]
+    lineas += [f'- {t.name}: {t.description}' for t in CATALOGO]
+    return '\n'.join(lineas)
+
+
+@dataclass
+class Respuesta:
+    """Resultado de una consulta. `camino` es la evidencia de cómo se resolvió."""
+
+    camino: str                  # KEYWORD | LLM | SIN_MATCH
+    tool: str | None
+    source: str | None           # tabla real de la que salió el dato
+    filas: list[dict]
+    mensaje: str
+    motivo: str = ''             # por qué el modelo eligió (solo camino LLM)
+    latency_ms: int = 0
+    catalogo: list[dict] | None = None   # se adjunta solo en SIN_MATCH
+    # Paso 6 del RAG: dónde seguir mirando. Solo lo llena el camino RAG; los
+    # caminos de consulta a base leen datos exactos y no hay nada que sugerir.
+    sugerencias: list[dict] | None = None
+
+    def as_dict(self) -> dict:
+        d = asdict(self)
+        if self.catalogo is None:
+            d.pop('catalogo')
+        if self.sugerencias is None:
+            d.pop('sugerencias')
+        return d
+
+
+def _mensaje_resultados(filas: list[dict]) -> str:
+    """Cuenta las filas y **avisa si la consulta pudo truncar**.
+
+    Una lista que dice «estos son los cromosomas que hay que revisar» y muestra
+    50 de 100 sin advertirlo esconde la mitad de la cola de trabajo. Como las
+    consultas cortan en `LIMITE_FILAS`, venir justo en el tope significa que
+    puede haber más: se dice, en vez de presentar la lista como completa.
+    """
+    if not filas:
+        return 'Sin resultados para esa consulta.'
+    if len(filas) >= LIMITE_FILAS:
+        return (f'{len(filas)} resultado(s) — se muestran los primeros '
+                f'{LIMITE_FILAS}, puede haber más.')
+    return f'{len(filas)} resultado(s).'
+
+
+def _ejecutar(tool: ToolSpec, camino: str, inicio: float, motivo: str = '') -> Respuesta:
+    """Corre la herramienta. Acá el dato sale de la base, nunca del modelo."""
+    filas = tool.run()
+    return Respuesta(
+        camino=camino,
+        tool=tool.name,
+        source=tool.source,
+        filas=filas,
+        mensaje=_mensaje_resultados(filas),
+        motivo=motivo,
+        latency_ms=int((time.time() - inicio) * 1000),
+    )
+
+
+def _documental(pregunta: str, inicio: float, motivo: str = '') -> Respuesta:
+    """Camino RAG: responde con el corpus documental, citando la fuente.
+
+    Aquí el dato no sale de una tabla sino de un documento, así que `source`
+    lleva los documentos citados y `filas` el desglose con su similitud. La
+    procedencia sigue siendo obligatoria: una afirmación clínica sin fuente no
+    es verificable.
+
+    Si el corpus no cubre la pregunta se degrada a SIN_MATCH — decir «no sé» es
+    la respuesta correcta, no un fallo (medido: ver `rag_qa`).
+    """
+    from .rag_qa import responder_documental
+    from .rag_sugerencias import texto as texto_sugerencias
+
+    r = responder_documental(pregunta)
+    if not r.responde:
+        # Paso 6: el «no sé» deja de ser un callejón sin salida. Se dice qué
+        # tiene el corpus cerca de la pregunta, para que el usuario pueda
+        # reformular en vez de rendirse.
+        cercano = texto_sugerencias(r.sugerencias)
+        detalle = 'El corpus documental no cubre esa pregunta.'
+        return _sin_match(inicio, f'{detalle}\n{cercano}' if cercano else detalle)
+
+    fuentes = sorted({c.fragmento.fuente for c in r.citas})
+    return Respuesta(
+        camino='RAG',
+        tool='CORPUS_DOCUMENTAL',
+        source=', '.join(fuentes) or 'corpus',
+        filas=[{'documento': c.fragmento.fuente,
+                'seccion': c.fragmento.seccion or '—',
+                'similitud': c.porcentaje} for c in r.citas],
+        sugerencias=[s.as_dict() for s in r.sugerencias],
+        mensaje=r.texto,
+        motivo=motivo,
+        latency_ms=int((time.time() - inicio) * 1000),
+    )
+
+
+def _sin_match(inicio: float, detalle: str) -> Respuesta:
+    """No hay herramienta para eso. No es un error: es la respuesta correcta."""
+    return Respuesta(
+        camino='SIN_MATCH',
+        tool=None,
+        source=None,
+        filas=[],
+        mensaje=f'No puedo responder eso. {detalle}',
+        latency_ms=int((time.time() - inicio) * 1000),
+        catalogo=catalogo_publicado(),
+    )
+
+
+def _elegir_con_modelo(pregunta: str) -> tuple[str, str]:
+    """Pide al modelo el NOMBRE de una herramienta. Devuelve (nombre, motivo).
+
+    Lanza RuntimeError si el servicio no está disponible; el llamador degrada.
+    """
+    from openai import OpenAI
+
+    client = OpenAI(
+        base_url=getattr(settings, 'CLINIC_LLM_URL', 'http://localhost:11434/v1'),
+        api_key='ollama',
+        timeout=float(getattr(settings, 'CLINIC_LLM_TIMEOUT', 240.0)),
+    )
+    resp = client.chat.completions.create(
+        model=getattr(settings, 'CLINIC_LLM_MODEL', 'llama3.2:3b'),
+        messages=[
+            {'role': 'system', 'content': _prompt_sistema()},
+            {'role': 'user', 'content': pregunta},
+        ],
+        response_format=SELECCION_JSON_SCHEMA,
+        temperature=0.0,      # enrutar es determinista, no creativo
+        max_tokens=200,
+    )
+    import json
+    datos = json.loads(resp.choices[0].message.content or '{}')
+    return datos.get('herramienta', 'NINGUNA'), datos.get('motivo', '')
+
+
+def responder(pregunta: str) -> Respuesta:
+    """Resuelve una pregunta contra el catálogo.
+
+    Nunca lanza por culpa del modelo: si el LLM cae, se degrada a SIN_MATCH con
+    el catálogo publicado (el sistema sigue usable, solo pierde los sinónimos).
+    """
+    inicio = time.time()
+    pregunta = (pregunta or '').strip()
+    if not pregunta:
+        return _sin_match(inicio, 'La consulta está vacía.')
+
+    # Camino 1 — vocabulario del dominio. No llama al modelo.
+    tool = buscar_por_palabra_clave(pregunta)
+    if tool is not None:
+        return _ejecutar(tool, 'KEYWORD', inicio)
+
+    # Camino 2 — el modelo elige. Solo si la IA está habilitada.
+    if not getattr(settings, 'CLINIC_LLM_ENABLED', False):
+        return _sin_match(
+            inicio,
+            'La asistencia por IA está desactivada y la consulta no usa el '
+            'vocabulario del catálogo.',
+        )
+
+    try:
+        nombre, motivo = _elegir_con_modelo(pregunta)
+    except Exception as exc:                      # noqa: BLE001 — degradación
+        logger.warning('Enrutador LLM no disponible: %s', exc)
+        return _sin_match(inicio, 'La asistencia por IA no está disponible en este momento.')
+
+    # Camino 3 — el modelo pide documentación: responde el RAG sobre el corpus.
+    if nombre == 'DOCUMENTACION':
+        return _documental(pregunta, inicio, motivo)
+
+    if nombre == 'NINGUNA' or nombre not in POR_NOMBRE:
+        # El modelo puede devolver un nombre inexistente pese al enum: se trata
+        # igual que NINGUNA en vez de confiar en que respetó el esquema.
+        return _sin_match(inicio, 'Ninguna herramienta del catálogo responde esa pregunta.')
+
+    return _ejecutar(POR_NOMBRE[nombre], 'LLM', inicio, motivo)
