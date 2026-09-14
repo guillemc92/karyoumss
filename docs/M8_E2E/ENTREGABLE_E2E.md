@@ -41,7 +41,8 @@ Las 10 rutas de `frontend-clinic/src/routes.tsx` cruzadas con los 7 casos de uso
 ## 2 · Que corra
 
 ```
-npx playwright test --reporter=list
+cd frontend-clinic
+npx playwright test
 ```
 
 ```
@@ -194,7 +195,7 @@ El patrón se repite: lo que no entra en E2E es **lo que depende del modelo o de
 
 *Las capturas van anotadas sobre la propia imagen (flecha o recuadro), no descritas. Lo que no esté capturado se considera no ejecutado.*
 
-**Captura 1 — terminal, suite completa en verde.** Comando `npx playwright test --reporter=list`. Anotar: recuadro sobre la línea `5 passed (…s)` con el tiempo que salga; flecha sobre el nombre de cada uno de los 5 tests.
+**Captura 1 — terminal, suite completa en verde.** Comando `npx playwright test` desde `frontend-clinic/`, sin `--reporter=list`: ese flag reemplaza los reporters de la config y no deja HTML, y la captura 2 debe ser de esta misma corrida. Anotar: recuadro sobre la línea `5 passed (…s)` con el tiempo que salga; flecha sobre el nombre de cada uno de los 5 tests.
 
 **Captura 2 — reporte HTML de Playwright, misma corrida.** `npx playwright show-report`. Anotar: recuadro sobre la lista de los 5 tests con su tick verde y su duración.
 
