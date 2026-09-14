@@ -7,7 +7,7 @@
 | **Agente / IDE** | Claude Code (Opus 5) como IDE; **Planner y Generator como guiones con SDK** sobre `llama3.2:3b` local, para que los tokens sean exactos y no leídos de un panel |
 | **Repositorio** | `github.com/guillemc92/karyoumss`, rama `feature/clinic-django-stack`, commit `38cb0bf` |
 | **Carpetas** | `frontend-clinic/tests/` (auditado, agente, fixtures) · `frontend-clinic/specs/` |
-| **Fecha** | 11 de septiembre de 2026 |
+| **Fecha** | 14 de septiembre de 2026 (código: 11/09) |
 
 **Punto de partida:** el repositorio tenía **cero E2E**. Ni Playwright, ni configuración, ni specs. Las menciones a «E2E» de módulos anteriores eran verificaciones ad-hoc con un navegador, no una suite.
 
@@ -46,15 +46,15 @@ npx playwright test --reporter=list
 
 ```
 Running 5 tests using 1 worker
-  ok 1 [chromium] › tests\auditado\consulta-procedencia.spec.ts:27:1 › una consulta declara por qué camino salió y de qué tabla viene (5.0s)
-  ok 2 [chromium] › tests\auditado\listado-muestras.spec.ts:20:1 › el analista abre el listado y no recibe un aviso de acceso denegado (5.9s)
-  ok 3 [chromium] › tests\auditado\modo-degradado.spec.ts:48:1 › con el pipeline de IA caído la muestra queda registrada y el visor lo dice sin fingir un cariotipo (8.5s)
-  ok 4 [chromium] › tests\auditado\segregacion-analista-ajeno.spec.ts:50:1 › un analista que no es dueño del caso recibe el aviso de segregación, no un error genérico (5.7s)
-  ok 5 [chromium] › tests\auditado\sesion-sin-token.spec.ts:24:1 › sin token en localStorage la aplicación no muestra datos de pacientes (1.8s)
-  5 passed (30.0s)
+  ok 1 [chromium] › tests\auditado\consulta-procedencia.spec.ts:27:1 › una consulta declara por qué camino salió y de qué tabla viene (4.4s)
+  ok 2 [chromium] › tests\auditado\listado-muestras.spec.ts:20:1 › el analista abre el listado y no recibe un aviso de acceso denegado (3.9s)
+  ok 3 [chromium] › tests\auditado\modo-degradado.spec.ts:48:1 › con el pipeline de IA caído la muestra queda registrada y el visor lo dice sin fingir un cariotipo (10.2s)
+  ok 4 [chromium] › tests\auditado\segregacion-analista-ajeno.spec.ts:50:1 › un analista que no es dueño del caso recibe el aviso de segregación, no un error genérico (5.6s)
+  ok 5 [chromium] › tests\auditado\sesion-sin-token.spec.ts:24:1 › sin token en localStorage la aplicación no muestra datos de pacientes (2.1s)
+  5 passed (29.6s)
 ```
 
-**Tiempo total: 30,0 s.** Tres tests superan 3 s, y el motivo es el mismo: **corren contra el stack real**, no contra un mock. `modo-degradado` (8,5 s) registra una muestra por API contra backend-clinic y después abre dos pantallas; `listado` y `segregación` piden un JWT real a backend-admin antes de navegar. Es el precio de que el oráculo sea el sistema y no mi doble de él.
+**Tiempo total: 29,6 s** (corrida del 14/09 con el stack ya caliente; la primera del día tardó 54,7 s porque arrastra el arranque de Vite y la carga del modelo en Ollama — la cifra que vale es la de la captura, no esta). Tres tests superan 3 s, y el motivo es el mismo: **corren contra el stack real**, no contra un mock. `modo-degradado` (10,2 s) registra una muestra por API contra backend-clinic y después abre dos pantallas; `listado` y `segregación` piden un JWT real a backend-admin antes de navegar. Es el precio de que el oráculo sea el sistema y no mi doble de él.
 
 **Rojo controlado — los generados, tal como salieron:**
 
@@ -194,7 +194,7 @@ El patrón se repite: lo que no entra en E2E es **lo que depende del modelo o de
 
 *Las capturas van anotadas sobre la propia imagen (flecha o recuadro), no descritas. Lo que no esté capturado se considera no ejecutado.*
 
-**Captura 1 — terminal, suite completa en verde.** Comando `npx playwright test --reporter=list`. Anotar: recuadro sobre `5 passed (30.0s)`; flecha sobre el nombre de cada uno de los 5 tests.
+**Captura 1 — terminal, suite completa en verde.** Comando `npx playwright test --reporter=list`. Anotar: recuadro sobre la línea `5 passed (…s)` con el tiempo que salga; flecha sobre el nombre de cada uno de los 5 tests.
 
 **Captura 2 — reporte HTML de Playwright, misma corrida.** `npx playwright show-report`. Anotar: recuadro sobre la lista de los 5 tests con su tick verde y su duración.
 

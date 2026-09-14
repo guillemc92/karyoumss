@@ -23,3 +23,6 @@ backend-clinic/agente_memoria.sqlite3
 # Nunca deben entrar al repositorio. Se usan solo como referencia local.
 docs/INFORMES CARIOTIPOS/
 docs/INFORMES CARIOTIPOS - Acceso directo.lnk
+
+# Adjunto de entrega M8: se regenera desde tests/ y specs/, no se versiona
+docs/M8_E2E/E2E_tests_specs.zip
