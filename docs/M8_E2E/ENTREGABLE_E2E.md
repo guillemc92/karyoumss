@@ -9,6 +9,16 @@
 | **Carpetas** | `frontend-clinic/tests/` (auditado, agente, fixtures) · `frontend-clinic/specs/` |
 | **Fecha** | 14 de septiembre de 2026 (código: 11/09) |
 
+> **Actualización 16/09 — Planner por sección.** La consigna dice *«sección por
+> sección, nunca sobre toda la app de una vez»* y la corrida del 11/09 fue sobre
+> toda la app. Se repitió en 4 secciones (15 casos: 0 aceptados sin tocar, 9
+> corregidos, 6 descartados, +4 añadidos por auditoría; 2 771 / 1 512 tokens),
+> se generaron y auditaron 2 tests más (SUP-05, CON-04: ambos reescritos) y la
+> suite pasó de 5 a **7 tests en verde** (10 de 16 flujos). Detalle en
+> `frontend-clinic/specs/PLANNER_POR_SECCION.md` y `docs/M8_E2E/secciones/`.
+> El documento entregado es `ENTREGABLE_E2E_FINAL.docx`, que incorpora todo esto
+> y las tres capturas anotadas; este `.md` conserva la redacción del 11/09.
+
 **Punto de partida:** el repositorio tenía **cero E2E**. Ni Playwright, ni configuración, ni specs. Las menciones a «E2E» de módulos anteriores eran verificaciones ad-hoc con un navegador, no una suite.
 
 ---

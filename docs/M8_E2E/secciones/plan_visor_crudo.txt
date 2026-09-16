@@ -1,0 +1,38 @@
+```
+{
+  "casos": [
+    {
+      "id": "E2E-01",
+      "flujo": "Segmentacion, clasificacion y semaforizacion",
+      "ruta": "/clinic/samples/:id/karyotype",
+      "tipo": "happy",
+      "oraculo": "RN-01 El analista debe validar manualmente los cromosomas naranjas antes de emitir",
+      "criterio": "El informe de cariotipo no contiene cromosomas naranjas"
+    },
+    {
+      "id": "E2E-02",
+      "flujo": "XAI y correccion manual",
+      "ruta": "/clinic/samples/:id/karyotype",
+      "tipo": "error",
+      "oraculo": "RN-02 Confianza < 0,85 pinta naranja y BLOQUEA la emision del informe",
+      "criterio": "El informe de cariotipo contiene cromosomas naranjas con confianza < 0,85"
+    },
+    {
+      "id": "E2E-03",
+      "flujo": "Bloqueo y validacion de Analista",
+      "ruta": "/clinic/samples/:id/karyotype",
+      "tipo": "limite",
+      "oraculo": "RN-04 La nomenclatura ISCN es de solo lectura tras generarse; solo cambia por override justificado y con permiso case.override_iscn",
+      "criterio": "La nomenclatura ISCN no es de solo lectura"
+    },
+    {
+      "id": "E2E-04",
+      "flujo": "Bloqueo y validacion de Analista",
+      "ruta": "/clinic/samples/:id/karyotype",
+      "tipo": "limite",
+      "oraculo": "RN-06 Segregacion de funciones: quien valida como analista no puede firmar como supervisor, y un analista no ve casos que no son suyos (403)",
+      "criterio": "El analista puede firmar como supervisor o ve casos que no son suyos"
+    }
+  ]
+}
+```

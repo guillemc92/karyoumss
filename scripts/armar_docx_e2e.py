@@ -44,18 +44,20 @@ QUE_VE = {
     '12': 'ningún dato de paciente (ningún CHN)',
     '13': 'la muestra con los cambios guardados',
     '14': 'el aviso de que el pipeline no está disponible',
+    '15': '«Esta bandeja es exclusiva del Supervisor» y ningún caso',
+    '16': '«Fuera de alcance» y ninguna fila de datos',
 }
 
 PIES = [
     ('captura1_anotada.png',
-     'Captura 1 — Terminal: `npx playwright test` desde frontend-clinic/. Los 5 tests auditados, '
-     '5 passed y el tiempo total, sin recortar el resumen.'),
+     'Captura 1 — Terminal: `npx playwright test` desde frontend-clinic/. Los 7 tests auditados, '
+     '7 passed y el tiempo total, sin recortar el resumen.'),
     ('captura2_anotada.png',
      'Captura 2 — Reporte HTML de Playwright de esa misma corrida (`npx playwright show-report`): '
-     'los 5 tests con su tick y su duración.'),
+     'los 7 tests con su tick y su duración.'),
     ('captura3_anotada.png',
      'Captura 3 — Rojo controlado: `npx playwright test --config playwright.agente.config.ts`. '
-     'Los 9 generados por el agente, sin tocar; 5 de 9 no cargan porque importan un módulo que no existe.'),
+     'Los 11 generados por el agente, sin tocar; 7 de 11 no llegan a ejecutarse (6 importan un módulo que no existe, 1 tiene un error de sintaxis).'),
 ]
 
 
@@ -105,8 +107,8 @@ def corregir_seccion2(doc, tiempos, total, unidad, commit):
     for p in doc.paragraphs:
         # Resumen ejecutivo: repite el tiempo total.
         for r in p.runs:
-            if '29,6 s' in r.text:
-                r.text = r.text.replace('29,6 s', '%s s' % total); cambios += 1
+            if '29,6 s' in r.text or '33,3 s' in r.text:
+                r.text = r.text.replace('29,6 s', '%s s' % total).replace('33,3 s', '%s s' % total); cambios += 1
         if texto(p._p).strip() == 'npx playwright test --reporter=list':
             for r in p.runs[1:]:
                 r._r.getparent().remove(r._r)
@@ -116,16 +118,19 @@ def corregir_seccion2(doc, tiempos, total, unidad, commit):
             for r in p.runs[1:]:
                 r._r.getparent().remove(r._r)
             p.runs[0].text = (
-                'Tiempo total: %s %s (corrida capturada, 14/09, stack caliente). La primera corrida del día '
-                'tarda ~55 s por el arranque de Vite y la carga del modelo en Ollama. Los tests que superan '
-                '3 s corren contra el stack real, no contra un mock: modo-degradado registra por API y abre '
-                'dos pantallas; listado y segregación piden un JWT real a backend-admin.'
+                'Tiempo total: %s %s (corrida capturada, 16/09). La corrida se hizo con la CPU de la máquina al 100 %% '
+                'por otro programa; en una máquina libre la misma suite tarda ~1 min (33 s los 5 primeros el 14/09). '
+                'Todos corren contra el stack real, no contra un mock: modo-degradado registra por API y abre dos '
+                'pantallas; consulta-fuera-de-alcance pasa por el modelo local; listado y segregación piden un JWT '
+                'real a backend-admin.'
                 % (total, 'min' if unidad == 'm' else 's'))
             cambios += 1
     for t in doc.tables:
         cab = [texto(c._tc).strip() for c in t.rows[0].cells]
         if cab[0] == 'Equipo':
             for fila in t.rows:
+                if texto(fila.cells[0]._tc).strip() == 'Fecha':
+                    poner_texto(fila.cells[1], '16 de septiembre de 2026 (código: 11/09 y 16/09)'); cambios += 1
                 if texto(fila.cells[0]._tc).strip() == 'Repositorio':
                     for r in fila.cells[1].paragraphs[0].runs:
                         if '38cb0bf' in r.text:
@@ -141,6 +146,142 @@ def corregir_seccion2(doc, tiempos, total, unidad, commit):
                     c.paragraphs[0].runs[0].text = tiempos[nombre] + ' s'
                     cambios += 1
     return cambios
+
+
+def poner_texto(celda_o_parrafo, valor):
+    """Deja UN run con el texto, conservando el formato del primero."""
+    p = celda_o_parrafo.paragraphs[0] if hasattr(celda_o_parrafo, 'paragraphs') else celda_o_parrafo
+    if not p.runs:
+        p.add_run(valor)
+        return
+    for r in p.runs[1:]:
+        r._r.getparent().remove(r._r)
+    p.runs[0].text = valor
+
+
+def anadir_fila(tabla, valores):
+    """Copia la ultima fila (formato incluido) y la rellena."""
+    ultima = tabla.rows[-1]._tr
+    nueva = copy.deepcopy(ultima)
+    ultima.addnext(nueva)
+    fila = tabla.rows[-1]
+    for celda, valor in zip(fila.cells, valores):
+        poner_texto(celda, valor)
+    return fila
+
+
+def tabla_con_cabecera(doc, *inicio):
+    for t in doc.tables:
+        cab = [texto(c._tc).strip() for c in t.rows[0].cells]
+        if tuple(cab[:len(inicio)]) == inicio:
+            return t
+    return None
+
+
+def sustituir_parrafo(doc, empieza_por, nuevo):
+    for p in doc.paragraphs:
+        if texto(p._p).strip().startswith(empieza_por):
+            poner_texto(p, nuevo)
+            return True
+    return False
+
+
+def insertar_tabla_despues(doc, parrafo, cabecera, filas):
+    """Tabla nueva justo despues de `parrafo`, con el estilo de la primera tabla del doc."""
+    t = doc.add_table(rows=1, cols=len(cabecera))
+    t.style = doc.tables[0].style
+    for c, v in zip(t.rows[0].cells, cabecera):
+        poner_texto(c, v)
+        c.paragraphs[0].runs[0].bold = True
+    for fila in filas:
+        celdas = t.add_row().cells
+        for c, v in zip(celdas, fila):
+            poner_texto(c, v)
+    parrafo._p.addnext(t._tbl)
+    return t
+
+
+def actualizar_por_seccion(doc, tiempos, total_txt):
+    """Todo lo que cambia porque el Planner se corrio por seccion (16/09)."""
+    n = 0
+    OK = '✅'
+    # Resumen ejecutivo
+    t = tabla_con_cabecera(doc, '5 tests auditados')
+    if t is not None:
+        poner_texto(t.rows[0].cells[0], '7 tests auditados'); poner_texto(t.rows[0].cells[2], '11 generados')
+        poner_texto(t.rows[1].cells[0], '10 / 16 flujos'); n += 1
+    n += sustituir_parrafo(doc, 'Resultado clave:',
+        'Resultado clave: 7 tests pasan contra el stack real (backend-admin + backend-clinic + Vite) en %s. '
+        'El Planner se corrió por sección (4 secciones, 15 casos) como pide la consigna; ningún caso salió '
+        'aceptable sin tocar. Los 11 tests generados por el agente se conservan intactos como evidencia de la '
+        'auditoría: 0 aceptados sin corrección.' % total_txt)
+    # §1 inventario: dos flujos mas
+    t = tabla_con_cabecera(doc, '#', 'Flujo')
+    anadir_fila(t, ['15', 'Segregación: analista en la bandeja del supervisor', '/clinic/supervisor',
+                    'UC-005 / RN-06', 'bandeja-supervisor-analista', OK])
+    anadir_fila(t, ['16', 'Consulta fuera de alcance', '/clinic/consultas',
+                    'tool calling (M6)', 'consulta-fuera-de-alcance', OK])
+    n += sustituir_parrafo(doc, '8 de 14 flujos en verde',
+        '10 de 16 flujos en verde. Los 6 restantes van a evals (motivo en §7).')
+    # §2 tabla de la suite: 7 filas
+    for p in doc.paragraphs:
+        if texto(p._p).strip() == 'Suite auditada — 5 passed':
+            poner_texto(p, 'Suite auditada — 7 passed')
+    t = tabla_con_cabecera(doc, '#', 'Test')
+    anadir_fila(t, ['6', 'bandeja-supervisor-analista.spec.ts — analista en la bandeja del supervisor ve el aviso',
+                    tiempos.get('bandeja-supervisor-analista', '?') + ' s', OK + ' ok'])
+    anadir_fila(t, ['7', 'consulta-fuera-de-alcance.spec.ts — consulta ajena al dominio se declara fuera de alcance',
+                    tiempos.get('consulta-fuera-de-alcance', '?') + ' s', OK + ' ok'])
+    n += sustituir_parrafo(doc, '5 de 9 generados ni cargan',
+        '7 de 11 generados ni cargan: 6 importan fixtures/credenciales (módulo inexistente) y SUP-05 tiene un '
+        'error de sintaxis (usa una API test(...)({...}) que no existe). Playwright los rechaza antes de ejecutar. '
+        'Se corren aparte para no abortar la suite verde. Se conservan intactos como evidencia de la auditoría.')
+    # §3 tabla de auditoria: dos filas mas, y balance
+    t = tabla_con_cabecera(doc, 'Caso del plan')
+    anadir_fila(t, ['SUP-05 Analista en la bandeja (plan por sección)', 'agente/SUP-05 → auditado/bandeja-supervisor-…',
+                    'reescrito', '1, 3, 4',
+                    'API inventada (no carga); locator sin corchetes; afirma el texto de mi plan, no el de la UI; exige a la vez un error de carga'])
+    anadir_fila(t, ['CON-04 Fuera de alcance (plan por sección)', 'agente/CON-04 → auditado/consulta-fuera-de-…',
+                    'reescrito', '1, 2, 3, 4',
+                    'import inexistente; input[name=query] no existe; 4 waitForSelector; anclas de otras 3 pantallas; medido 9/9 SIN_MATCH antes de aceptar'])
+    n += sustituir_parrafo(doc, 'Balance:',
+        'Balance: Planner por sección (16/09, la corrida que vale) → 15 propuestos · 0 aceptados sin tocar · 9 corregidos · '
+        '6 descartados · 4 añadidos por auditoría.  Corrida única del 11/09 (sustituida) → 8 · 1 · 6 · 1 · +3.  '
+        'Generator → 11 generados · 0 aceptados · 1 corregido · 10 descartados (3 de ellos reescritos).')
+    for p in doc.paragraphs:
+        if texto(p._p).startswith('Balance:'):
+            insertar_tabla_despues(doc, p,
+                ['Sección', 'Propuestos', 'Aceptados', 'Corregidos', 'Descartados', 'Añadidos', 'Tokens in/out', 'Motivo dominante'],
+                [['muestras', '4', '0', '3', '1', '2', '705 / 333', 'los 4 en /register; RN-07 ignorada; 2 criterios afirman la violación'],
+                 ['visor', '4', '0', '3', '1', '0', '755 / 472', 'cremallera de nuevo: RN-01, 02, 04, 06 en orden de lista'],
+                 ['supervisor', '4', '0', '1', '3', '1', '676 / 456', '3 criterios circulares; oráculos cruzados; inventa un error de BD'],
+                 ['consultas', '3', '0', '2', '1', '1', '635 / 251', 'lo que no está en el FSD lo rellena con RN-03'],
+                 ['Total', '15', '0', '9', '6', '4', '2 771 / 1 512', 'detalle en specs/PLANNER_POR_SECCION.md']])
+            break
+    n += sustituir_parrafo(doc, 'Hallazgo previo a generar:',
+        'Hallazgo previo a generar: en la corrida única del 11/09, 5 de 8 casos emparejaban UC-N con RN-0N por posición '
+        '(cremallera). Al repetirlo por sección el 16/09 la cremallera VOLVIÓ en la sección visor (RN-01, 02, 04, 06 en el '
+        'orden exacto de la lista): acotar el contexto no la quita, la quita la auditoría. Por eso el Generator lee los '
+        'planes auditados y no los crudos.')
+    # §4 tokens
+    t = tabla_con_cabecera(doc, '', 'Entrada (tokens)')
+    if t is not None:
+        poner_texto(t.rows[1].cells[0], 'Planner, corrida única 11/09 (8 casos)')
+        poner_texto(t.rows[2].cells[0], 'Generator, promedio/test (11)')
+        poner_texto(t.rows[2].cells[1], '699'); poner_texto(t.rows[2].cells[2], '365'); poner_texto(t.rows[2].cells[3], '399 s')
+        poner_texto(t.rows[3].cells[1], '7 691'); poner_texto(t.rows[3].cells[2], '4 023'); poner_texto(t.rows[3].cells[3], '73 min')
+        anadir_fila(t, ['Planner por sección 16/09 (4 secciones, 15 casos)', '2 771', '1 512', '22 min'])
+        anadir_fila(t, ['Planner por sección, promedio por sección', '693', '378', '330 s'])
+        n += 1
+    # §8 repositorio
+    t = tabla_con_cabecera(doc, 'Ruta')
+    if t is not None:
+        poner_texto(t.rows[1].cells[1], 'Los 7 tests aceptados, con las cinco preguntas resueltas por diseño en cada cabecera')
+        poner_texto(t.rows[2].cells[1], 'Los 11 generados, intactos: la evidencia de la auditoría')
+        anadir_fila(t, ['specs/PLANNER_POR_SECCION.md', 'El Planner por sección: 4 planes auditados con totales y motivo'])
+        anadir_fila(t, ['docs/M8_E2E/secciones/', 'plan_<sección>.json (crudo) y plan_<sección>_auditado.json'])
+        n += 1
+    return n
 
 
 def anadir_columna_que_ve(doc):
@@ -178,7 +319,7 @@ def anadir_capturas(doc):
     doc.add_heading('9 · Capturas', level=1)
     intro = doc.add_paragraph(
         'Las tres capturas van anotadas sobre la propia imagen (recuadro, flecha y nota). '
-        'Las capturas 1 y 2 son de la misma corrida, la del 14/09; la fecha y hora del reporte lo muestran. '
+        'Las capturas 1 y 2 son de la misma corrida, la del 16/09; la fecha y hora del reporte lo muestran. '
         'Anotación reproducible con scripts/anotar_capturas_e2e.py.')
     for archivo, pie in PIES:
         ruta = CAPTURAS / archivo
@@ -204,6 +345,8 @@ def main():
     print('corrida:', tiempos, total, unidad)
     print('quitados del final:', quitar_bloque_final(doc))
     print('cambios en §2/resumen/cabecera:', corregir_seccion2(doc, tiempos, total, unidad, commit))
+    total_txt = '%s %s' % (total, 'min' if unidad == 'm' else 's')
+    print('cambios por seccion:', actualizar_por_seccion(doc, tiempos, total_txt))
     print('filas con columna nueva en §1:', anadir_columna_que_ve(doc))
     anadir_capturas(doc)
     doc.save(str(salida))

@@ -1,0 +1,61 @@
+{
+ "origen": "Plan del PLANNER (llama3.2:3b) para la seccion CONSULTAS, corregido por auditoria humana",
+ "seccion": "consultas",
+ "planner": {
+  "modelo": "llama3.2:3b",
+  "tokens_entrada": 635,
+  "tokens_salida": 251,
+  "segundos": 244.4,
+  "casos_propuestos": 3,
+  "casos_aceptados_sin_tocar": 0,
+  "casos_corregidos": 2,
+  "casos_descartados": 1,
+  "casos_anadidos_por_auditoria": 1,
+  "hallazgo": "El Planner no sabe que hace la pantalla de consultas (tool calling: KEYWORD / LLM / SIN_MATCH) porque no esta en el FSD, y llena el hueco con RN-03. El unico criterio con la regla bien (RN-07) describe el estado sin la accion que lo provoca."
+ },
+ "casos": [
+  {
+   "id": "CON-01",
+   "veredicto": "corregido",
+   "flujo": "Consulta en lenguaje natural: procedencia de la respuesta (tool calling, M6)",
+   "ruta": "/clinic/consultas",
+   "tipo": "happy",
+   "oraculo": "Trazabilidad del enrutado: toda respuesta declara por que camino salio (sin IA / el modelo eligio la herramienta / fuera de alcance) y de que tabla viene",
+   "criterio": "Tras enviar una consulta, la persona ve el camino y la fuente; NO se comprueba la redaccion de la respuesta",
+   "correccion": "Decia 'la UI muestra los datos del paciente cifrados': un dato cifrado no se muestra, y la pantalla no muestra pacientes. El oraculo real es la procedencia, que es lo que la interfaz promete (rotulo tool-camino).",
+   "test": "auditado/consulta-procedencia.spec.ts"
+  },
+  {
+   "id": "CON-02",
+   "veredicto": "corregido",
+   "flujo": "Modo degradado (FSD-UC-007)",
+   "ruta": "/clinic/samples/:id -> /clinic/samples/:id/karyotype",
+   "tipo": "error",
+   "oraculo": "RN-07: si la IA cae, la muestra se registra igual y la UI entra en modo manual",
+   "criterio": "Con backend-ml apagado de verdad, la muestra registrada existe y el visor dice que aun no hay cariotipo",
+   "correccion": "El criterio ('la UI entra en modo manual despues de una degradacion') describe el estado sin provocar la causa. Un E2E que abre /clinic/degraded y mira el banner prueba una pagina estatica. Se reescribe con la causa real: backend-ml caido.",
+   "test": "auditado/modo-degradado.spec.ts (compartido con MUE-05: es el mismo comportamiento visto desde dos secciones)"
+  },
+  {
+   "id": "CON-03",
+   "veredicto": "descartado",
+   "flujo": "consultas (limite)",
+   "ruta": "/clinic/consultas",
+   "tipo": "limite",
+   "oraculo": "(propuesto) RN-03",
+   "criterio": "(propuesto) 'La UI muestra un mensaje de error al intentar acceder a datos sensibles'",
+   "motivo": "No existe esa accion en la pantalla: las consultas no acceden a datos de pacientes, van contra el catalogo de muestras y el cariotipo. El Planner inventa un flujo para justificar RN-03."
+  },
+  {
+   "id": "CON-04",
+   "veredicto": "anadido por auditoria",
+   "flujo": "Consulta fuera de alcance (tool calling: SIN_MATCH)",
+   "ruta": "/clinic/consultas",
+   "tipo": "limite",
+   "oraculo": "Enrutado: una pregunta que no corresponde a ninguna herramienta se declara 'Fuera de alcance', no se contesta con una alucinacion",
+   "criterio": "Al consultar algo ajeno al dominio, la persona ve el camino 'Fuera de alcance' y ningun dato de muestra",
+   "motivo": "Es el limite real de la pantalla y el unico caso 'limite' con sentido. Se genera con el Generator para esta entrega.",
+   "test": "generado: ver tabla de auditoria"
+  }
+ ]
+}

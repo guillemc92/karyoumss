@@ -1,7 +1,23 @@
 # -*- coding: utf-8 -*-
 """Agente PLANNER — audita la aplicacion y define el plan de pruebas E2E.
 
-    python scripts/e2e_planner.py [--salida docs/M8_E2E/plan.json]
+    python scripts/e2e_planner.py --seccion muestras
+    python scripts/e2e_planner.py --seccion visor
+    python scripts/e2e_planner.py --seccion supervisor
+    python scripts/e2e_planner.py --seccion consultas
+
+## Por seccion, nunca sobre toda la app de una vez
+
+La primera version (11/09) le daba al modelo las 10 rutas, los 7 casos de uso
+y las 8 reglas en un solo prompt. Resultado: 5 de 8 casos emparejaban el caso
+de uso N con la regla RN-0N **por posicion**, no por significado — dos listas
+largas y un modelo de 3B las cierra con cremallera. La consigna del 11/09 lo
+prohibe expresamente («sección por sección, nunca sobre toda la app de una
+vez») y el sintoma explica por que: con menos contexto por llamada el modelo
+razona sobre lo que ve en vez de alinear listas.
+
+Cada seccion recibe SOLO sus pantallas, sus casos de uso y sus reglas, y un
+tope de 4 casos. El plan de cada seccion se audita por separado.
 
 ## Que hace, y sobre todo que NO hace
 
@@ -82,6 +98,48 @@ def rutas():
     return re.findall(r'path="([^"]+)"', texto)
 
 
+#: Secciones de la aplicacion: pantallas, casos de uso y reglas que le tocan a
+#: cada una. Es la particion que una persona haria mirando el menu.
+SECCIONES = {
+    'muestras': {
+        'nombre': 'Gestion de muestras: listado, registro, detalle y edicion',
+        'rutas': ['/clinic/samples', '/clinic/samples/register',
+                  '/clinic/samples/:id', '/clinic/samples/:id/edit'],
+        'ucs': ['FSD-UC-001', 'FSD-UC-007'],
+        'reglas': ['RN-03', 'RN-06', 'RN-07'],
+    },
+    'visor': {
+        'nombre': 'Visor de cariotipo: semaforizacion, XAI, correccion y validacion',
+        'rutas': ['/clinic/samples/:id/karyotype'],
+        'ucs': ['FSD-UC-002', 'FSD-UC-003', 'FSD-UC-004'],
+        'reglas': ['RN-01', 'RN-02', 'RN-04', 'RN-05', 'RN-06'],
+    },
+    'supervisor': {
+        'nombre': 'Bandeja del supervisor: auditoria del 5 % y firma',
+        'rutas': ['/clinic/supervisor'],
+        'ucs': ['FSD-UC-005', 'FSD-UC-006'],
+        'reglas': ['RN-04', 'RN-06', 'RN-08'],
+    },
+    'consultas': {
+        'nombre': 'Consultas en lenguaje natural, sesion y modo degradado',
+        'rutas': ['/clinic/consultas', '/clinic/degraded', '/'],
+        'ucs': ['FSD-UC-007'],
+        'reglas': ['RN-03', 'RN-07'],
+    },
+}
+
+
+def contexto_de(seccion):
+    """Rutas, casos de uso y reglas acotados a una seccion."""
+    sec = SECCIONES[seccion]
+    reglas = []
+    for bloque in re.split(r'\n(?=RN-)', REGLAS.strip()):
+        if bloque[:5] in sec['reglas']:
+            reglas.append(bloque)
+    casos = [(c, d) for c, d in CASOS_DE_USO if c in sec['ucs']]
+    return sec['rutas'], casos, reglas, sec['nombre']
+
+
 def anclas_existentes():
     """Que pantallas tienen ya `data-testid` y cuantos. El Planner necesita
     saberlo: planificar sobre una pantalla sin anclas obliga a anadirlas, y eso
@@ -104,14 +162,17 @@ APLICACION: plataforma clinica de cariotipado asistido por IA. El analista
 registra una muestra con metafases, la IA segmenta y clasifica los cromosomas,
 el analista corrige lo que la IA marco dudoso, y un supervisor firma el informe.
 
-PANTALLAS REALES (rutas de la aplicacion):
+SECCION QUE TE TOCA: %(seccion)s
+
+PANTALLAS REALES de esta seccion:
 %(rutas)s
 
 CASOS DE USO DEL DOCUMENTO FUNCIONAL:
 %(casos)s
 
-REGLAS DE NEGOCIO — son el ORACULO de cada test. Un test sin una de estas
-detras no prueba nada:
+REGLAS DE NEGOCIO de esta seccion — son el ORACULO de cada test. Un test
+sin una de estas detras no prueba nada. Elige la regla por su SIGNIFICADO,
+no por su posicion en la lista:
 %(reglas)s
 
 TAREA:
@@ -130,7 +191,7 @@ REGLAS PARA TI:
   datos irrelevantes. Un caso por comportamiento distinto.
 - Todo caso debe tener un oraculo de la lista de reglas. Si un flujo no tiene
   regla de negocio detras, dilo en vez de inventarla.
-- Maximo 12 casos en total.
+- Maximo %(tope)s casos en total.
 
 Devuelve SOLO un JSON con esta forma, sin explicaciones:
 {"casos": [{"id": "...", "flujo": "...", "ruta": "...", "tipo": "...",
@@ -140,23 +201,38 @@ Devuelve SOLO un JSON con esta forma, sin explicaciones:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--salida', default=str(RAIZ / 'docs' / 'M8_E2E' / 'plan.json'))
+    ap.add_argument('--seccion', choices=sorted(SECCIONES), default=None,
+                    help='una seccion de la app (recomendado; sin esto va toda la app)')
+    ap.add_argument('--salida', default=None)
     opts = ap.parse_args()
 
     from openai import OpenAI
 
-    lista_rutas = rutas()
+    if opts.seccion:
+        lista_rutas, casos_uc, lista_reglas, nombre = contexto_de(opts.seccion)
+        tope = 4
+        salida = opts.salida or str(RAIZ / 'docs' / 'M8_E2E' / 'secciones'
+                                    / ('plan_%s.json' % opts.seccion))
+    else:
+        lista_rutas, casos_uc, nombre = rutas(), CASOS_DE_USO, 'toda la aplicacion'
+        lista_reglas = [REGLAS.strip()]
+        tope = 12
+        salida = opts.salida or str(RAIZ / 'docs' / 'M8_E2E' / 'plan.json')
     contexto = {
+        'seccion': nombre,
         'rutas': '\n'.join('  %s' % r for r in lista_rutas),
-        'casos': '\n'.join('  %s %s' % (c, d) for c, d in CASOS_DE_USO),
-        'reglas': REGLAS.strip(),
+        'casos': '\n'.join('  %s %s' % (c, d) for c, d in casos_uc),
+        'reglas': '\n'.join(lista_reglas),
+        'tope': tope,
     }
     prompt = PROMPT % contexto
+    opts.salida = salida
 
     print('PLANNER -> modelo=%s via %s' % (MODEL, BASE_URL))
-    print('contexto: %d rutas, %d casos de uso, %d reglas'
-          % (len(lista_rutas), len(CASOS_DE_USO),
-             len([l for l in REGLAS.strip().split('\n') if l.startswith('RN')])))
+    print('seccion : %s' % nombre)
+    print('contexto: %d rutas, %d casos de uso, %d reglas, tope %d casos'
+          % (len(lista_rutas), len(casos_uc),
+             len([l for l in '\n'.join(lista_reglas).split('\n') if l.startswith('RN')]), tope))
     anclas = anclas_existentes()
     print('anclas ya existentes: %d ficheros, %d data-testid'
           % (len(anclas), sum(anclas.values())))

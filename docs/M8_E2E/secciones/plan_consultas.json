@@ -1,0 +1,29 @@
+{
+ "modelo": "llama3.2:3b",
+ "casos": [
+  {
+   "id": "E2E-01",
+   "flujo": "consultas",
+   "ruta": "/clinic/consultas",
+   "tipo": "happy",
+   "oraculo": "RN-03 Cero fuga de PII",
+   "criterio": "La UI muestra los datos del paciente cifrados"
+  },
+  {
+   "id": "E2E-02",
+   "flujo": "consultas",
+   "ruta": "/clinic/degraded",
+   "tipo": "error",
+   "oraculo": "RN-07 Degradacion elegante",
+   "criterio": "La UI entra en modo manual después de una degradación"
+  },
+  {
+   "id": "E2E-03",
+   "flujo": "consultas",
+   "ruta": "/clinic/consultas",
+   "tipo": "limite",
+   "oraculo": "RN-03 Cero fuga de PII",
+   "criterio": "La UI muestra un mensaje de error al intentar acceder a datos sensibles"
+  }
+ ]
+}

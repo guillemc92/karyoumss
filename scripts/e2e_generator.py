@@ -102,8 +102,8 @@ Devuelve SOLO el codigo TypeScript del fichero, sin explicaciones ni markdown.
 """
 
 
-def cargar_casos():
-    d = json.load(io.open(PLAN, encoding='utf-8'))
+def cargar_casos(plan=PLAN):
+    d = json.load(io.open(plan, encoding='utf-8'))
     return [c for c in d['casos'] if c.get('veredicto') != 'descartado']
 
 
@@ -141,11 +141,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--caso', default=None, help='un id concreto, p.ej. E2E-02')
     ap.add_argument('--todos', action='store_true')
+    ap.add_argument('--plan', default=str(PLAN),
+                    help='plan auditado a usar; por seccion: docs/M8_E2E/secciones/plan_<s>_auditado.json')
     opts = ap.parse_args()
 
     from openai import OpenAI
 
-    casos = cargar_casos()
+    casos = cargar_casos(Path(opts.plan))
     if opts.caso:
         casos = [c for c in casos if c['id'] == opts.caso]
         if not casos:

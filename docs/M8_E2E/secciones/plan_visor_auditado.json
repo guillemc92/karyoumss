@@ -1,0 +1,61 @@
+{
+ "origen": "Plan del PLANNER (llama3.2:3b) para la seccion VISOR, corregido por auditoria humana",
+ "seccion": "visor",
+ "planner": {
+  "modelo": "llama3.2:3b",
+  "tokens_entrada": 755,
+  "tokens_salida": 472,
+  "segundos": 369.5,
+  "casos_propuestos": 4,
+  "casos_aceptados_sin_tocar": 0,
+  "casos_corregidos": 3,
+  "casos_descartados": 1,
+  "casos_anadidos_por_auditoria": 0,
+  "hallazgo": "La CREMALLERA vuelve incluso por seccion: caso 1 -> RN-01, caso 2 -> RN-02, caso 3 -> RN-04, caso 4 -> RN-06, exactamente el orden de la lista de reglas (saltando RN-05). Acotar el contexto no la quita; solo la auditoria humana la quita. Dos de los cuatro criterios afirman la violacion de la regla."
+ },
+ "casos": [
+  {
+   "id": "VIS-01",
+   "veredicto": "corregido",
+   "flujo": "Bloqueo de validacion con naranjas pendientes (FSD-UC-004)",
+   "ruta": "/clinic/samples/:id/karyotype",
+   "tipo": "error",
+   "oraculo": "RN-01: el analista valida a mano los naranjas antes de emitir",
+   "criterio": "Con al menos un cromosoma naranja sin resolver, el boton Validar esta deshabilitado y la persona ve el motivo",
+   "correccion": "El Planner lo puso como 'happy' bajo UC-002 y con criterio 'el informe no contiene naranjas', que no es lo que RN-01 dice. RN-01 es un BLOQUEO: el caso es de error.",
+   "test": "sin test E2E: exige un cariotipo real del modelo (backend-ml, ~32 s por metafase). Va a evals; cubierto por test_karyotype_p2.py"
+  },
+  {
+   "id": "VIS-02",
+   "veredicto": "corregido",
+   "flujo": "Semaforizacion por confianza (FSD-UC-002)",
+   "ruta": "/clinic/samples/:id/karyotype",
+   "tipo": "happy",
+   "oraculo": "RN-02: confianza < 0,85 pinta naranja",
+   "criterio": "Un cromosoma con confianza 0,40 se ve naranja y uno con 0,95 verde, en la misma pantalla",
+   "correccion": "Oraculo correcto (RN-02) pero flujo equivocado: lo etiqueto como 'XAI y correccion manual' (UC-003), que es otro caso de uso. Y 'contiene naranjas' no es criterio: hay que decir cual y por que.",
+   "test": "sin test E2E: el color depende del modelo. Va a evals (eval_umbral_semaforo.py, 443 cromosomas)"
+  },
+  {
+   "id": "VIS-03",
+   "veredicto": "descartado",
+   "flujo": "ISCN de solo lectura (RN-04)",
+   "ruta": "/clinic/samples/:id/karyotype",
+   "tipo": "limite",
+   "oraculo": "RN-04",
+   "criterio": "(propuesto) 'La nomenclatura ISCN no es de solo lectura'",
+   "motivo": "Afirma la violacion de RN-04. Y aunque se invierta, la UI no ofrece ningun control de edicion del ISCN: no hay accion de persona que probar. RN-04 se prueba en el contrato (no existe PATCH) y en servicio, no en E2E."
+  },
+  {
+   "id": "VIS-04",
+   "veredicto": "corregido",
+   "flujo": "Segregacion: analista ajeno al caso (RN-06)",
+   "ruta": "/clinic/samples/:id/karyotype",
+   "tipo": "error",
+   "oraculo": "RN-06: un analista no ve casos que no son suyos (403)",
+   "criterio": "Un analista que abre el visor de una muestra de otro analista ve el aviso de segregacion (no es dueno), no un error generico",
+   "correccion": "El criterio decia 'el analista PUEDE firmar como supervisor o ve casos que no son suyos': la violacion escrita como exito. Invertido y acotado a lo que ve la persona. Exigio anadir el ancla karyo-forbidden al producto.",
+   "test": "auditado/segregacion-analista-ajeno.spec.ts"
+  }
+ ]
+}

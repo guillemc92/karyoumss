@@ -1,0 +1,38 @@
+```
+{
+  "casos": [
+    {
+      "id": "E2E-01",
+      "flujo": "ingreso de muestra",
+      "ruta": "/clinic/samples/register",
+      "tipo": "happy",
+      "oraculo": "RN-03 Cero fuga de PII",
+      "criterio": "La muestra se registra correctamente con datos cifrados"
+    },
+    {
+      "id": "E2E-02",
+      "flujo": "ingreso de muestra",
+      "ruta": "/clinic/samples/register",
+      "tipo": "error",
+      "oraculo": "RN-03 Cero fuga de PII",
+      "criterio": "La muestra se registra con datos no cifrados"
+    },
+    {
+      "id": "E2E-03",
+      "flujo": "ingreso de muestra",
+      "ruta": "/clinic/samples/register",
+      "tipo": "limite",
+      "oraculo": "RN-03 Cero fuga de PII",
+      "criterio": "La muestra se registra correctamente con un campo vacio"
+    },
+    {
+      "id": "E2E-04",
+      "flujo": "ingreso de muestra",
+      "ruta": "/clinic/samples/register",
+      "tipo": "happy",
+      "oraculo": "RN-06 Segregacion de funciones",
+      "criterio": "El analista puede ver solo sus propias muestras"
+    }
+  ]
+}
+```

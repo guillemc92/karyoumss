@@ -56,30 +56,34 @@ def recuadro(d, caja, grosor=3):
 # Cada entrada: lista de (tipo, argumentos). Coordenadas en pixeles de la captura.
 ANOTACIONES = {
     'captura1.png': [
-        # captura de cmd 993x519: comando en y~55, los 5 ok en 119..183, resumen en 215.
+        # captura de cmd 1016x583: comando en y~55, los 7 ok en 119..215, resumen en 247.
         ('recuadro', (8, 45, 712, 66)),
         ('nota', ((720, 46), 'comando, desde frontend-clinic/')),
-        ('recuadro', (8, 108, 980, 194)),
-        ('nota', ((420, 203), 'los 5 tests auditados, por nombre (tests/auditado/)')),
-        ('recuadro', (8, 205, 165, 228)),
-        ('flecha', ((300, 300), (170, 218))),
-        ('nota', ((300, 290), '5 passed (33.3s): cantidad y tiempo total, sin recortar')),
+        ('recuadro', (8, 108, 1008, 226)),
+        ('nota', ((420, 236), 'los 7 tests auditados, por nombre (tests/auditado/)')),
+        ('recuadro', (8, 237, 165, 260)),
+        ('flecha', ((300, 330), (170, 250))),
+        ('nota', ((300, 322), '7 passed: cantidad y tiempo total, sin recortar el resumen')),
     ],
     'captura2.png': [
-        # reporte HTML 1150x720: contadores arriba a la derecha, fecha/hora en y~70.
+        # reporte HTML 1150x900: contadores arriba a la derecha, fecha/hora en y~70.
         ('recuadro', (562, 16, 1064, 48)),
-        ('nota', ((120, 30), 'reporte HTML: 5 passed, 0 failed')),
+        ('nota', ((120, 30), 'reporte HTML: 7 passed, 0 failed')),
         ('recuadro', (795, 60, 1062, 82)),
         ('flecha', ((700, 100), (795, 72))),
-        ('nota', ((440, 92), 'MISMA corrida que la terminal: 14/9 4:13, 33.3s')),
-        ('recuadro', (86, 92, 1064, 642)),
-        ('nota', ((120, 655), 'los 5 tests con tick verde y su duración')),
+        ('nota', ((440, 92), 'MISMA corrida que la terminal: 16/9 1:24, 3.0m')),
+        ('recuadro', (86, 92, 1064, 866)),
+        ('nota', ((120, 875), 'los 7 tests con tick verde y su duración')),
     ],
     'captura3.png': [
-        ('recuadro', (615, 44, 1030, 78)),
-        ('flecha', ((350, 132), (148, 196))),
-        ('nota', ((150, 105), 'Rojo controlado: los 9 generados por el agente, sin tocar')),
-        ('nota', ((150, 618), '5 de 9 no cargan: importan fixtures/credenciales, que no existe. Se conservan como evidencia (§3)')),
+        # reporte HTML del rojo controlado 1150x780 (16/09): 6 modulos ausentes + 1 SyntaxError.
+        ('recuadro', (585, 16, 1064, 48)),
+        ('nota', ((120, 30), 'Rojo controlado: los 11 generados por el agente, sin tocar')),
+        ('flecha', ((400, 120), (118, 168))),
+        ('nota', ((400, 108), '6 de 11 importan fixtures/credenciales, que no existe')),
+        ('recuadro', (104, 578, 1048, 770)),
+        ('nota', ((400, 560), 'SUP-05: error de sintaxis, la API test(...)({...}) no existe')),
+        ('nota', ((120, 745), '7 de 11 no llegan a ejecutarse; se conservan como evidencia de la auditoria (§3)')),
     ],
 }
 

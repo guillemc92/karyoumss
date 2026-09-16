@@ -1,13 +1,16 @@
 C:\Users\Qubits\Documents\desarrollo\karyoumss-main\frontend-clinic>npx playwright test
 
-Running 5 tests using 1 worker
+Running 7 tests using 1 worker
 
-  ok 1 tests\auditado\consulta-procedencia.spec.ts:27:1 › una consulta declara por qué camino salió y de qué tabla viene (4.7s)
-  ok 2 tests\auditado\listado-muestras.spec.ts:20:1 › el analista abre el listado y no recibe un aviso de acceso denegado (6.0s)
-  ok 3 tests\auditado\modo-degradado.spec.ts:48:1 › con el pipeline de IA caído la muestra queda registrada y el visor lo dice sin fingir un cariotipo (10.1s)
-  ok 4 tests\auditado\segregacion-analista-ajeno.spec.ts:50:1 › un analista que no es dueño del caso recibe el aviso de segregación, no un error genérico (6.4s)
-  ok 5 tests\auditado\sesion-sin-token.spec.ts:24:1 › sin token en localStorage la aplicación no muestra datos de pacientes (2.7s)
+  ok 1 tests\auditado\bandeja-supervisor-analista.spec.ts:31:1 › un analista que abre la bandeja del supervisor ve el aviso de exclusividad y ningún caso (17.0s)
+  ok 2 tests\auditado\consulta-fuera-de-alcance.spec.ts:37:1 › una consulta ajena al dominio se declara fuera de alcance y no muestra datos de muestras (50.5s)
+  ok 3 tests\auditado\consulta-procedencia.spec.ts:27:1 › una consulta declara por qué camino salió y de qué tabla viene (14.2s)
+  ok 4 tests\auditado\listado-muestras.spec.ts:20:1 › el analista abre el listado y no recibe un aviso de acceso denegado (15.8s)
+  ok 5 tests\auditado\modo-degradado.spec.ts:48:1 › con el pipeline de IA caído la muestra queda registrada y el visor lo dice sin fingir un cariotipo (25.8s)
+  ok 6 tests\auditado\segregacion-analista-ajeno.spec.ts:50:1 › un analista que no es dueño del caso recibe el aviso de segregación, no un error genérico (24.2s)
+  ok 7 tests\auditado\sesion-sin-token.spec.ts:24:1 › sin token en localStorage la aplicación no muestra datos de pacientes (6.2s)
 
-  5 passed (33.3s)
+  7 passed (3.0m)
 
-Reporte HTML de la misma corrida: 14/9/2026, 4:13:38 a. m. · Total time: 33.3s
+Reporte HTML de la misma corrida: 16/9/2026, 1:24:26 a. m. · Total time: 3.0m
+Nota: la corrida se hizo con la CPU al 100 % por otro programa (Illustrator); en una maquina libre la misma suite tarda ~1 min.

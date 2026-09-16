@@ -1,0 +1,83 @@
+{
+ "origen": "Plan del PLANNER (llama3.2:3b) para la seccion MUESTRAS, corregido por auditoria humana",
+ "seccion": "muestras",
+ "planner": {
+  "modelo": "llama3.2:3b",
+  "tokens_entrada": 705,
+  "tokens_salida": 333,
+  "segundos": 355.9,
+  "casos_propuestos": 4,
+  "casos_aceptados_sin_tocar": 0,
+  "casos_corregidos": 3,
+  "casos_descartados": 1,
+  "casos_anadidos_por_auditoria": 2,
+  "hallazgo": "Los 4 casos salen de la MISMA pantalla (/register) aunque la seccion tiene 4 pantallas. RN-07 (degradacion), que estaba en el contexto, no aparece en ningun caso. Dos criterios afirman la violacion de la regla en vez de su cumplimiento."
+ },
+ "casos": [
+  {
+   "id": "MUE-01",
+   "veredicto": "corregido",
+   "flujo": "Registro de muestra con metafases (FSD-UC-001)",
+   "ruta": "/clinic/samples/register",
+   "tipo": "happy",
+   "oraculo": "RN-03: cero fuga de PII en la interfaz",
+   "criterio": "Tras registrar, la persona ve la muestra con su CHN y en ninguna pantalla aparece el nombre del paciente",
+   "correccion": "El criterio decia 'se registra con datos cifrados': el cifrado no lo ve una persona, es un hecho del servidor. Se reescribe a lo que la interfaz promete: CHN visible, PII ausente.",
+   "test": "auditado/modo-degradado.spec.ts cubre el registro (por API, el formulario no es conducible: §5) y el detalle con CHN"
+  },
+  {
+   "id": "MUE-02",
+   "veredicto": "descartado",
+   "flujo": "Registro de muestra (FSD-UC-001)",
+   "ruta": "/clinic/samples/register",
+   "tipo": "error",
+   "oraculo": "RN-03",
+   "criterio": "(propuesto) 'La muestra se registra con datos no cifrados'",
+   "motivo": "Afirma la VIOLACION de la regla como resultado esperado. Un test con este criterio solo puede pasar si el producto esta mal. No es un caso de error, es la regla al reves."
+  },
+  {
+   "id": "MUE-03",
+   "veredicto": "corregido",
+   "flujo": "Registro con campo obligatorio vacio (FSD-UC-001)",
+   "ruta": "/clinic/samples/register",
+   "tipo": "limite",
+   "oraculo": "Validacion del formulario (BR del registro): CHN y al menos una metafase son obligatorios",
+   "criterio": "Con el CHN vacio, el formulario no envia y la persona ve el aviso del campo",
+   "correccion": "Decia 'se registra correctamente con un campo vacio', que es lo contrario de un limite. RN-03 no aplica; el oraculo es la validacion del formulario.",
+   "test": "sin test: el formulario tiene <label> sin htmlFor y no se puede conducir con getByLabel (ancla pendiente, §5). Va a evals."
+  },
+  {
+   "id": "MUE-04",
+   "veredicto": "corregido",
+   "flujo": "Listado: el analista ve solo sus muestras (RN-06)",
+   "ruta": "/clinic/samples",
+   "tipo": "happy",
+   "oraculo": "RN-06: un analista no ve casos que no son suyos",
+   "criterio": "El analista abre el listado y no recibe aviso de acceso denegado; una muestra de otro analista no esta en su tabla",
+   "correccion": "Oraculo correcto, ruta equivocada: el Planner lo situo en /register. El listado es /clinic/samples.",
+   "test": "auditado/listado-muestras.spec.ts"
+  },
+  {
+   "id": "MUE-05",
+   "veredicto": "anadido por auditoria",
+   "flujo": "Registro con el pipeline de IA caido (FSD-UC-007)",
+   "ruta": "/clinic/samples/register -> /clinic/samples/:id",
+   "tipo": "error",
+   "oraculo": "RN-07: si la IA cae, la muestra se registra igual y la UI entra en modo manual",
+   "criterio": "Con backend-ml apagado, la muestra queda registrada (degraded=true, analyzed_count=0) y el visor dice que aun no hay cariotipo, sin fingir uno",
+   "motivo": "RN-07 estaba en el contexto de la seccion y el Planner no lo uso.",
+   "test": "auditado/modo-degradado.spec.ts"
+  },
+  {
+   "id": "MUE-06",
+   "veredicto": "anadido por auditoria",
+   "flujo": "Sesion sin token (transversal, RN-03)",
+   "ruta": "/clinic/samples",
+   "tipo": "error",
+   "oraculo": "RN-03: sin sesion no se muestra ningun dato de paciente",
+   "criterio": "Sin token en localStorage, la pagina no muestra ningun CHN",
+   "motivo": "Es el caso de error mas basico de la seccion y el Planner no lo propuso.",
+   "test": "auditado/sesion-sin-token.spec.ts"
+  }
+ ]
+}

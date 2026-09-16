@@ -26,13 +26,18 @@ Se aplica **test por test**. Un test se acepta solo si responde SÍ a las cinco.
 | E2E-08 Supervisor ve todo | `tests/agente/E2E-08.spec.ts` | **descartado** | 3, 4, 5 | Recorre 3 pantallas. No distingue al supervisor del analista: usa la misma credencial para ambos. |
 | E2E-09 Listado | `tests/agente/E2E-09.spec.ts` | **descartado** | 1, 2, 4, 5 | `input[name="search"]` es CSS y **ese campo no existe** en la pantalla. `expect` no está ni importado. Recorre 4 pantallas. |
 | E2E-10 Sesión expirada | `tests/agente/E2E-10.spec.ts` | **descartado** | 3, 4 | El más instructivo: se titula «**sin** token» y **lo primero que hace es sembrar un token**. Falla la pregunta 3 en su forma más pura — no verifica lo que promete. |
+| SUP-05 Analista en la bandeja del supervisor *(plan por sección, 16/09)* | `tests/agente/SUP-05.spec.ts` → `tests/auditado/bandeja-supervisor-analista.spec.ts` | **descartado y reescrito** | 1, 3, 4 | `test(...)({ name, url, expect })` es una API inventada: no carga. `locator('data-testid="x"')` sin corchetes. Afirma el texto de **mi criterio del plan** («Acceso restringido») y no el que muestra la interfaz («Esta bandeja es exclusiva del Supervisor»). Exige a la vez `inbox-error`: espera el aviso de permiso Y un error de carga. |
+| CON-04 Consulta fuera de alcance *(plan por sección, 16/09)* | `tests/agente/CON-04.spec.ts` → `tests/auditado/consulta-fuera-de-alcance.spec.ts` | **descartado y reescrito** | 1, 2, 3, 4 | Importa `fixtures/credenciales` (no existe). `input[name="query"]` es CSS y el campo no se llama así. Cuatro `waitForSelector`. Tras `tool-camino` exige `karyo-error`, `inbox-forbidden` e `inbox-error` — anclas de **otras tres pantallas** — en la página de consultas. `expect` no está importado. Antes de aceptar la reescritura se midió el camino: 9 de 9 `SIN_MATCH`. |
 
 ### Totales
 
 | | Propuestos | Aceptados | Corregidos | Descartados |
 |---|---:|---:|---:|---:|
-| **Casos del Planner** | 8 | 1 | 6 | 1 |
-| **Tests del Generator** | 9 | 0 | 1 | 8 |
+| **Casos del Planner — corrida única 11/09** | 8 | 1 | 6 | 1 |
+| **Casos del Planner — por sección 16/09** (4 secciones, la que vale) | 15 | 0 | 9 | 6 (+4 añadidos por auditoría) |
+| **Tests del Generator** (9 el 11/09 + 2 el 16/09) | 11 | 0 | 1 | 10 (3 de ellos reescritos) |
+
+El detalle del Planner por sección, con el motivo de cada veredicto, está en `PLANNER_POR_SECCION.md`.
 
 A los 8 casos del Planner la auditoría **añadió 2** (E2E-09 listado y E2E-10 sesión),
 porque el Planner no propuso ninguno para la pantalla de entrada ni para la

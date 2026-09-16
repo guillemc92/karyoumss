@@ -1,5 +1,10 @@
 agente,caso,modelo,tokens_entrada,tokens_salida,segundos,veredicto
 planner,plan completo (8 casos),llama3.2:3b,913,894,732.3,corregido
+planner,seccion muestras (4 casos) 16/09,llama3.2:3b,705,333,355.9,0 ok / 3 corregidos / 1 descartado / +2
+planner,seccion visor (4 casos) 16/09,llama3.2:3b,755,472,369.5,0 ok / 3 corregidos / 1 descartado
+planner,seccion supervisor (4 casos) 16/09,llama3.2:3b,676,456,352.1,0 ok / 1 corregido / 3 descartados / +1
+planner,seccion consultas (3 casos) 16/09,llama3.2:3b,635,251,244.4,0 ok / 2 corregidos / 1 descartado / +1
+TOTAL planner por seccion,4 secciones / 15 casos,llama3.2:3b,2771,1512,1321.9,0 ok / 9 corregidos / 6 descartados / +4
 generator,E2E-01,llama3.2:3b,711,556,1229.5,descartado
 generator,E2E-02,llama3.2:3b,706,390,213.4,descartado
 generator,E2E-03,llama3.2:3b,712,264,292.3,descartado
@@ -9,5 +14,7 @@ generator,E2E-07,llama3.2:3b,697,353,333.0,descartado
 generator,E2E-08,llama3.2:3b,684,400,350.9,descartado
 generator,E2E-09,llama3.2:3b,692,348,343.1,descartado
 generator,E2E-10,llama3.2:3b,684,521,425.6,descartado
-TOTAL generator,9 tests,llama3.2:3b,6284,3415,3783.7,1 corregido / 8 descartados
-PROMEDIO generator,por test,llama3.2:3b,698,379,420.4,-
+generator,SUP-05,llama3.2:3b,697,251,280.3,descartado y reescrito
+generator,CON-04,llama3.2:3b,710,357,328.7,descartado y reescrito
+TOTAL generator,11 tests,llama3.2:3b,7691,4023,4392.7,1 corregido / 10 descartados (3 reescritos)
+PROMEDIO generator,por test,llama3.2:3b,699,365,399.3,-
