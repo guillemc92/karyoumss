@@ -99,6 +99,11 @@ export function MetaphaseCaptureSection({ images, onChange }: MetaphaseCaptureSe
             </button>
             <input
               ref={fileInputRef}
+              // Ancla para E2E: el input esta oculto y se dispara desde el
+              // boton de arriba, asi que no hay rotulo que una persona vea.
+              // `setInputFiles` de Playwright si funciona sobre un input
+              // oculto, pero hace falta poder encontrarlo sin CSS.
+              data-testid="metafase-file-input"
               type="file"
               accept="image/jpeg,image/png,image/tiff"
               multiple

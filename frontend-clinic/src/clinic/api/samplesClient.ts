@@ -19,6 +19,7 @@
  *   503 → ML_DEGRADED (RN-07)
  */
 import { getAccessToken } from './authClient';
+import { textoDeDetalle } from './detalleError';
 import {
   ClinicApiException,
   type ProcessResponse,
@@ -100,7 +101,7 @@ async function request<T>(base: string, path: string, opts: RequestOptions = {})
   if (!res.ok) {
     const detail =
       typeof payload === 'object' && payload !== null && 'detail' in payload
-        ? String((payload as { detail: unknown }).detail)
+        ? textoDeDetalle((payload as { detail: unknown }).detail, `HTTP ${res.status}`)
         : `HTTP ${res.status}`;
     const code =
       typeof payload === 'object' && payload !== null && 'code' in payload

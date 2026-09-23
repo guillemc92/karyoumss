@@ -34,6 +34,13 @@ import { ANALISTA, pedirToken, sembrarSesion } from '../fixtures/sesion';
  *   4  un comportamiento; empieza con page.goto
  *   5  la pregunta es del test y no toca datos de ninguna muestra
  */
+// Este test espera a un modelo de 3B corriendo en la misma maquina, y el
+// presupuesto global de 60 s de playwright.config se le queda corto cuando la
+// suite va cargada: medido 41 s en solitario, 50,5 s dentro de la suite y un
+// timeout a 60 s el 23/09. No es intermitencia tapada, es el coste real de la
+// dependencia; se declara aqui en vez de subir el timeout de TODA la suite.
+test.setTimeout(150_000);
+
 test('una consulta ajena al dominio se declara fuera de alcance y no muestra datos de muestras', async ({
   page,
   request,

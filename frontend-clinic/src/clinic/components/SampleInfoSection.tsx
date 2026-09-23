@@ -12,11 +12,11 @@ export function SampleInfoSection({ sample, sampleCode, onChange }: SampleInfoSe
       <div className="form-section-title"><i className="fas fa-flask"></i> Información de la Muestra</div>
       <div className="form-row three-col">
         <div className="form-group">
-          <label className="form-label">Código de muestra <span className="required">*</span></label>
+          <label className="form-label" htmlFor="sampleCode">Código de muestra <span className="required">*</span></label>
           <input className="form-input" id="sampleCode" value={sampleCode} readOnly style={{ background: 'var(--gray-bg)' }} />
         </div>
         <div className="form-group">
-          <label className="form-label">Tipo de muestra <span className="required">*</span></label>
+          <label className="form-label" htmlFor="sampleType">Tipo de muestra <span className="required">*</span></label>
           <select className="form-input" id="sampleType" value={sample.sample_type} onChange={(e) => onChange({ ...sample, sample_type: e.target.value })}>
             <option value="">Seleccionar...</option>
             <option value="sangre">Sangre periférica</option>
@@ -26,7 +26,7 @@ export function SampleInfoSection({ sample, sampleCode, onChange }: SampleInfoSe
           </select>
         </div>
         <div className="form-group">
-          <label className="form-label">Método de cultivo</label>
+          <label className="form-label" htmlFor="cultureMethod">Método de cultivo</label>
           <select className="form-input" id="cultureMethod" value={sample.culture_method} onChange={(e) => onChange({ ...sample, culture_method: e.target.value })}>
             <option value="">Seleccionar...</option>
             <option value="72h">Sangre periférica — Cultura 72h</option>
@@ -37,21 +37,21 @@ export function SampleInfoSection({ sample, sampleCode, onChange }: SampleInfoSe
       </div>
       <div className="form-row">
         <div className="form-group">
-          <label className="form-label">Fecha de recolección <span className="required">*</span></label>
+          <label className="form-label" htmlFor="collectionDate">Fecha de recolección <span className="required">*</span></label>
           <input className="form-input" type="date" id="collectionDate" value={sample.collection_date} onChange={(e) => onChange({ ...sample, collection_date: e.target.value })} />
         </div>
         <div className="form-group">
-          <label className="form-label">Fecha de recepción en laboratorio</label>
+          <label className="form-label" htmlFor="receptionDate">Fecha de recepción en laboratorio</label>
           <input className="form-input" type="date" id="receptionDate" value={sample.reception_date} onChange={(e) => onChange({ ...sample, reception_date: e.target.value })} />
         </div>
       </div>
       <div className="form-row">
         <div className="form-group">
-          <label className="form-label">Médico solicitante</label>
+          <label className="form-label" htmlFor="requestingDoctor">Médico solicitante</label>
           <input className="form-input" id="requestingDoctor" placeholder="Nombre del médico" value={sample.requesting_doctor} onChange={(e) => onChange({ ...sample, requesting_doctor: e.target.value })} />
         </div>
         <div className="form-group">
-          <label className="form-label">Servicio/Departamento</label>
+          <label className="form-label" htmlFor="department">Servicio/Departamento</label>
           <input className="form-input" id="department" placeholder="Ej: Genética Clínica" value={sample.department} onChange={(e) => onChange({ ...sample, department: e.target.value })} />
         </div>
       </div>

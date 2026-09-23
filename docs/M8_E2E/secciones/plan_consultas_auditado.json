@@ -10,7 +10,7 @@
   "casos_aceptados_sin_tocar": 0,
   "casos_corregidos": 2,
   "casos_descartados": 1,
-  "casos_anadidos_por_auditoria": 1,
+  "casos_anadidos_por_auditoria": 2,
   "hallazgo": "El Planner no sabe que hace la pantalla de consultas (tool calling: KEYWORD / LLM / SIN_MATCH) porque no esta en el FSD, y llena el hueco con RN-03. El unico criterio con la regla bien (RN-07) describe el estado sin la accion que lo provoca."
  },
  "casos": [
@@ -56,6 +56,17 @@
    "criterio": "Al consultar algo ajeno al dominio, la persona ve el camino 'Fuera de alcance' y ningun dato de muestra",
    "motivo": "Es el limite real de la pantalla y el unico caso 'limite' con sentido. Se genera con el Generator para esta entrega.",
    "test": "generado: ver tabla de auditoria"
+  },
+  {
+   "id": "CON-05",
+   "veredicto": "anadido por auditoria",
+   "flujo": "Pagina de modo degradado (FSD-UC-007)",
+   "ruta": "/clinic/degraded",
+   "tipo": "happy",
+   "oraculo": "RN-07: cuando la IA no esta, la aplicacion lo DICE en vez de romperse",
+   "criterio": "La pagina anuncia el modo degradado, explica que si se puede hacer y ofrece volver al listado",
+   "motivo": "Estaba descartada del inventario como «informativa, sin regla detras». Es un error de criterio: es la cara visible de RN-07 y es lo que una persona ve cuando el pipeline cae.",
+   "test": "generado 23/09"
   }
  ]
 }

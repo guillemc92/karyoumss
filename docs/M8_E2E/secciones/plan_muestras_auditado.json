@@ -10,7 +10,7 @@
   "casos_aceptados_sin_tocar": 0,
   "casos_corregidos": 3,
   "casos_descartados": 1,
-  "casos_anadidos_por_auditoria": 2,
+  "casos_anadidos_por_auditoria": 3,
   "hallazgo": "Los 4 casos salen de la MISMA pantalla (/register) aunque la seccion tiene 4 pantallas. RN-07 (degradacion), que estaba en el contexto, no aparece en ningun caso. Dos criterios afirman la violacion de la regla en vez de su cumplimiento."
  },
  "casos": [
@@ -23,7 +23,7 @@
    "oraculo": "RN-03: cero fuga de PII en la interfaz",
    "criterio": "Tras registrar, la persona ve la muestra con su CHN y en ninguna pantalla aparece el nombre del paciente",
    "correccion": "El criterio decia 'se registra con datos cifrados': el cifrado no lo ve una persona, es un hecho del servidor. Se reescribe a lo que la interfaz promete: CHN visible, PII ausente.",
-   "test": "auditado/modo-degradado.spec.ts cubre el registro (por API, el formulario no es conducible: §5) y el detalle con CHN"
+   "test": "DESBLOQUEADO 23/09: con htmlFor en los rotulos el formulario ya se conduce con getByLabel; se genera test de UI"
   },
   {
    "id": "MUE-02",
@@ -44,7 +44,7 @@
    "oraculo": "Validacion del formulario (BR del registro): CHN y al menos una metafase son obligatorios",
    "criterio": "Con el CHN vacio, el formulario no envia y la persona ve el aviso del campo",
    "correccion": "Decia 'se registra correctamente con un campo vacio', que es lo contrario de un limite. RN-03 no aplica; el oraculo es la validacion del formulario.",
-   "test": "sin test: el formulario tiene <label> sin htmlFor y no se puede conducir con getByLabel (ancla pendiente, §5). Va a evals."
+   "test": "DESBLOQUEADO 23/09: mismo motivo; se genera test de validacion"
   },
   {
    "id": "MUE-04",
@@ -78,6 +78,17 @@
    "criterio": "Sin token en localStorage, la pagina no muestra ningun CHN",
    "motivo": "Es el caso de error mas basico de la seccion y el Planner no lo propuso.",
    "test": "auditado/sesion-sin-token.spec.ts"
+  },
+  {
+   "id": "MUE-07",
+   "veredicto": "anadido por auditoria",
+   "flujo": "Edicion de muestra (FSD-UC-001)",
+   "ruta": "/clinic/samples/:id/edit",
+   "tipo": "happy",
+   "oraculo": "UC-001: los cambios guardados se ven en el listado",
+   "criterio": "Al cambiar el paciente de una muestra y guardar, la aplicacion vuelve al listado y el cambio persiste",
+   "motivo": "El Planner no propuso la edicion pese a estar la ruta en la seccion. El formulario de edicion (SampleFormModal) SI tenia htmlFor desde siempre: estaba clasificado como bloqueado por error, arrastrando el diagnostico del formulario de registro.",
+   "test": "generado 23/09"
   }
  ]
 }

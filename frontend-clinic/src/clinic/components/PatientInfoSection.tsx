@@ -17,7 +17,7 @@ export function PatientInfoSection({
       <div className="form-section-title"><i className="fas fa-user"></i> Información del Paciente</div>
       <div className="form-row three-col">
         <div className="form-group">
-          <label className="form-label">CHN (Historia Clínica) <span className="required">*</span></label>
+          <label className="form-label" htmlFor="chn">CHN (Historia Clínica) <span className="required">*</span></label>
           <input
             className="form-input"
             id="chn"
@@ -30,7 +30,7 @@ export function PatientInfoSection({
           </small>
         </div>
         <div className="form-group">
-          <label className="form-label">Nombre completo <span className="required">*</span></label>
+          <label className="form-label" htmlFor="patientName">Nombre completo <span className="required">*</span></label>
           <input
             className="form-input"
             id="patientName"
@@ -40,7 +40,7 @@ export function PatientInfoSection({
           />
         </div>
         <div className="form-group">
-          <label className="form-label">Fecha de nacimiento <span className="required">*</span></label>
+          <label className="form-label" htmlFor="birthDate">Fecha de nacimiento <span className="required">*</span></label>
           <input
             className="form-input"
             type="date"
@@ -52,7 +52,7 @@ export function PatientInfoSection({
       </div>
       <div className="form-row three-col">
         <div className="form-group">
-          <label className="form-label">Género <span className="required">*</span></label>
+          <label className="form-label" htmlFor="gender">Género <span className="required">*</span></label>
           <select className="form-input" id="gender" value={gender} onChange={(e) => onGenderChange(e.target.value as SampleData['gender'])}>
             <option value="">Seleccionar...</option>
             <option value="M">Masculino</option>
@@ -61,7 +61,7 @@ export function PatientInfoSection({
           </select>
         </div>
         <div className="form-group">
-          <label className="form-label">Documento de identidad</label>
+          <label className="form-label" htmlFor="document">Documento de identidad</label>
           <input
             className="form-input"
             id="document"
@@ -71,7 +71,7 @@ export function PatientInfoSection({
           />
         </div>
         <div className="form-group">
-          <label className="form-label">Teléfono de contacto</label>
+          <label className="form-label" htmlFor="phone">Teléfono de contacto</label>
           <input
             className="form-input"
             type="tel"

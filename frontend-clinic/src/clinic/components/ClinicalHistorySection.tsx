@@ -10,7 +10,7 @@ export function ClinicalHistorySection({ value, onChange }: ClinicalHistorySecti
     <div className="form-section">
       <div className="form-section-title"><i className="fas fa-notes-medical"></i> Historial Clínico</div>
       <div className="form-group" style={{ marginBottom: 'var(--space-md)' }}>
-        <label className="form-label">Motivo de la consulta / Indicación</label>
+        <label className="form-label" htmlFor="indication">Motivo de la consulta / Indicación</label>
         <textarea
           className="form-input"
           id="indication"
@@ -20,7 +20,7 @@ export function ClinicalHistorySection({ value, onChange }: ClinicalHistorySecti
         />
       </div>
       <div className="form-group">
-        <label className="form-label">Antecedentes familiares relevantes</label>
+        <label className="form-label" htmlFor="familyHistory">Antecedentes familiares relevantes</label>
         <textarea
           className="form-input"
           id="familyHistory"
