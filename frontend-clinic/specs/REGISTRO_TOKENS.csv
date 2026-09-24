@@ -16,5 +16,9 @@ generator,E2E-09,llama3.2:3b,692,348,343.1,descartado
 generator,E2E-10,llama3.2:3b,684,521,425.6,descartado
 generator,SUP-05,llama3.2:3b,697,251,280.3,descartado y reescrito
 generator,CON-04,llama3.2:3b,710,357,328.7,descartado y reescrito
-TOTAL generator,11 tests,llama3.2:3b,7691,4023,4392.7,1 corregido / 10 descartados (3 reescritos)
-PROMEDIO generator,por test,llama3.2:3b,699,365,399.3,-
+generator,MUE-01,llama3.2:3b,690,439,293.1,descartado y reescrito
+generator,MUE-03,llama3.2:3b,695,208,198.7,descartado y reescrito
+generator,MUE-07,llama3.2:3b,688,262,222.4,descartado y reescrito
+generator,CON-05,llama3.2:3b,694,313,246.8,descartado y reescrito
+TOTAL generator,15 tests,llama3.2:3b,10458,5245,5353.7,1 corregido / 14 descartados (7 reescritos)
+PROMEDIO generator,por test,llama3.2:3b,697,349,356.9,-

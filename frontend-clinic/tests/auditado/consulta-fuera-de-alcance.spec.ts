@@ -34,12 +34,15 @@ import { ANALISTA, pedirToken, sembrarSesion } from '../fixtures/sesion';
  *   4  un comportamiento; empieza con page.goto
  *   5  la pregunta es del test y no toca datos de ninguna muestra
  */
-// Este test espera a un modelo de 3B corriendo en la misma maquina, y el
-// presupuesto global de 60 s de playwright.config se le queda corto cuando la
-// suite va cargada: medido 41 s en solitario, 50,5 s dentro de la suite y un
-// timeout a 60 s el 23/09. No es intermitencia tapada, es el coste real de la
-// dependencia; se declara aqui en vez de subir el timeout de TODA la suite.
-test.setTimeout(150_000);
+// Este test cruza un modelo de 3B corriendo en esta misma maquina, sin GPU y
+// compartiendola con Vite, dos Django y el navegador. Su latencia NO es
+// estable: medido el 23/09 en 25,8 s, 53,2 s y una vez por encima de 150 s,
+// con el backend respondiendo 21,8 s de media por Python en el mismo rato.
+// Por eso lleva presupuesto propio y amplio: el resto de la suite no debe
+// pagar esta varianza, y taparla con un reintento seria fingir que no existe.
+// Es tambien el argumento de por que la semaforizacion y el resto de flujos
+// del modelo van a evals (§7) y no a E2E.
+test.setTimeout(300_000);
 
 test('una consulta ajena al dominio se declara fuera de alcance y no muestra datos de muestras', async ({
   page,
@@ -56,8 +59,11 @@ test('una consulta ajena al dominio se declara fuera de alcance y no muestra dat
   // ORÁCULO: el enrutador declara que no hay herramienta para eso. El camino
   // pasa por el modelo local, por eso el margen es mayor que en el resto de
   // la suite (medido: hasta ~20 s en frío).
+  // El margen del assert acompana al del test. Subir test.setTimeout y dejar
+  // el assert en 45 s fue un error propio que puso roja una corrida de captura
+  // con el test aun teniendo presupuesto de sobra.
   await expect(page.getByTestId('tool-camino')).toHaveText('Fuera de alcance', {
-    timeout: 45_000,
+    timeout: 240_000,
   });
 
   // Y no se pinta ninguna fila de datos: «no sé» no viene con tabla.

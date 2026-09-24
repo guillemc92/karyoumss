@@ -1,16 +1,28 @@
 C:\Users\Qubits\Documents\desarrollo\karyoumss-main\frontend-clinic>npx playwright test
 
-Running 7 tests using 1 worker
+Running 12 tests using 1 worker
 
-  ok 1 tests\auditado\bandeja-supervisor-analista.spec.ts:31:1 › un analista que abre la bandeja del supervisor ve el aviso de exclusividad y ningún caso (17.0s)
-  ok 2 tests\auditado\consulta-fuera-de-alcance.spec.ts:37:1 › una consulta ajena al dominio se declara fuera de alcance y no muestra datos de muestras (50.5s)
-  ok 3 tests\auditado\consulta-procedencia.spec.ts:27:1 › una consulta declara por qué camino salió y de qué tabla viene (14.2s)
-  ok 4 tests\auditado\listado-muestras.spec.ts:20:1 › el analista abre el listado y no recibe un aviso de acceso denegado (15.8s)
-  ok 5 tests\auditado\modo-degradado.spec.ts:48:1 › con el pipeline de IA caído la muestra queda registrada y el visor lo dice sin fingir un cariotipo (25.8s)
-  ok 6 tests\auditado\segregacion-analista-ajeno.spec.ts:50:1 › un analista que no es dueño del caso recibe el aviso de segregación, no un error genérico (24.2s)
-  ok 7 tests\auditado\sesion-sin-token.spec.ts:24:1 › sin token en localStorage la aplicación no muestra datos de pacientes (6.2s)
+  ok  1 tests\auditado\bandeja-supervisor-analista.spec.ts:31:1 (22.4s)
+  ok  2 tests\auditado\bandeja-supervisor.spec.ts:31:1 (4.0s)
+  ok  3 tests\auditado\consulta-fuera-de-alcance.spec.ts:47:1 (3.6m)
+  ok  4 tests\auditado\consulta-procedencia.spec.ts:27:1 (5.5s)
+  ok  5 tests\auditado\edicion-muestra.spec.ts:36:1 (6.7s)
+  ok  6 tests\auditado\listado-muestras.spec.ts:20:1 (5.3s)
+  ok  7 tests\auditado\modo-degradado.spec.ts:48:1 (11.5s)
+  ok  8 tests\auditado\pagina-degradada.spec.ts:28:1 (4.2s)
+  ok  9 tests\auditado\registro-por-interfaz.spec.ts:53:1 (4.4s)
+  ok 10 tests\auditado\registro-validacion.spec.ts:36:1 (3.9s)
+  ok 11 tests\auditado\segregacion-analista-ajeno.spec.ts:50:1 (13.8s)
+  ok 12 tests\auditado\sesion-sin-token.spec.ts:24:1 (3.4s)
 
-  7 passed (3.0m)
+  12 passed (5.1m)
 
-Reporte HTML de la misma corrida: 16/9/2026, 1:24:26 a. m. · Total time: 3.0m
-Nota: la corrida se hizo con la CPU al 100 % por otro programa (Illustrator); en una maquina libre la misma suite tarda ~1 min.
+Reporte HTML de la misma corrida: 24/9/2026, 1:10:29 a. m. - Total time: 5.1m
+
+Nota sobre el tiempo total: 11 de los 12 tests suman menos de 1,5 min. Los 5,1 min
+los explica consulta-fuera-de-alcance, que cruza el modelo local: medido el 23 y
+24/09 en 22,2 s / 25,8 s / 53,2 s / 3,6 min. Esa dispersion esta declarada en la
+cabecera del propio test y es el argumento de por que los flujos que dependen del
+modelo van a evals y no a E2E.
+
+Rojo controlado (config agente): 15 generados, 9 no llegan a ejecutarse.

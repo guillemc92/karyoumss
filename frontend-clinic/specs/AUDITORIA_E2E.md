@@ -28,14 +28,24 @@ Se aplica **test por test**. Un test se acepta solo si responde SÍ a las cinco.
 | E2E-10 Sesión expirada | `tests/agente/E2E-10.spec.ts` | **descartado** | 3, 4 | El más instructivo: se titula «**sin** token» y **lo primero que hace es sembrar un token**. Falla la pregunta 3 en su forma más pura — no verifica lo que promete. |
 | SUP-05 Analista en la bandeja del supervisor *(plan por sección, 16/09)* | `tests/agente/SUP-05.spec.ts` → `tests/auditado/bandeja-supervisor-analista.spec.ts` | **descartado y reescrito** | 1, 3, 4 | `test(...)({ name, url, expect })` es una API inventada: no carga. `locator('data-testid="x"')` sin corchetes. Afirma el texto de **mi criterio del plan** («Acceso restringido») y no el que muestra la interfaz («Esta bandeja es exclusiva del Supervisor»). Exige a la vez `inbox-error`: espera el aviso de permiso Y un error de carga. |
 | CON-04 Consulta fuera de alcance *(plan por sección, 16/09)* | `tests/agente/CON-04.spec.ts` → `tests/auditado/consulta-fuera-de-alcance.spec.ts` | **descartado y reescrito** | 1, 2, 3, 4 | Importa `fixtures/credenciales` (no existe). `input[name="query"]` es CSS y el campo no se llama así. Cuatro `waitForSelector`. Tras `tool-camino` exige `karyo-error`, `inbox-forbidden` e `inbox-error` — anclas de **otras tres pantallas** — en la página de consultas. `expect` no está importado. Antes de aceptar la reescritura se midió el camino: 9 de 9 `SIN_MATCH`. |
+| MUE-01 Registro por interfaz *(23/09)* | `tests/agente/MUE-01.spec.ts` → `tests/auditado/registro-por-interfaz.spec.ts` | **descartado y reescrito** | 1, 2, 3, 4 | `input[name="chn"]` es CSS y ese campo no se llama así. Cuatro `waitForSelector`. `data-testid="x"` sin corchetes y comillas desbalanceadas: **no compila**. **Cinco pantallas** en un test, incluidas la bandeja del supervisor y la de consultas. Inventa la ruta `/clinic/samples/validado`. |
+| MUE-03 Validación del registro *(23/09)* | `tests/agente/MUE-03.spec.ts` → `tests/auditado/registro-validacion.spec.ts` | **descartado y reescrito** | 1, 3 | `expect(respuesta).toHaveText(...)` sobre la respuesta de `goto`, que no es un locator. Afirma «El campo CHN es obligatorio», **un texto que el modelo se inventó**: el producto dice «Complete los campos obligatorios: CHN y Nombre del paciente». |
+| MUE-07 Edición de muestra *(23/09)* | `tests/agente/MUE-07.spec.ts` → `tests/auditado/edicion-muestra.spec.ts` | **descartado y reescrito** | 1, 2, 5 | `chnUnico().id` sobre un string — **el mismo fallo que E2E-03 y E2E-06 el 11/09, repetido seis semanas después**. `input[name="patient"]` es CSS y no existe. `page.waitForChange()` no es una función de Playwright. |
+| CON-05 Página de modo degradado *(23/09)* | `tests/agente/CON-05.spec.ts` → `tests/auditado/pagina-degradada.spec.ts` | **descartado y reescrito** | 1, 2 | Mismo patrón: anclas de otras pantallas y esperas fijas sobre una página estática. |
 
 ### Totales
 
 | | Propuestos | Aceptados | Corregidos | Descartados |
 |---|---:|---:|---:|---:|
 | **Casos del Planner — corrida única 11/09** | 8 | 1 | 6 | 1 |
-| **Casos del Planner — por sección 16/09** (4 secciones, la que vale) | 15 | 0 | 9 | 6 (+4 añadidos por auditoría) |
-| **Tests del Generator** (9 el 11/09 + 2 el 16/09) | 11 | 0 | 1 | 10 (3 de ellos reescritos) |
+| **Casos del Planner — por sección 16/09** (4 secciones, la que vale) | 15 | 0 | 9 | 6 (+6 añadidos por auditoría) |
+| **Tests del Generator** (9 el 11/09 + 2 el 16/09 + 4 el 23/09) | 15 | 0 | 1 | 14 (7 de ellos reescritos) |
+
+**Ninguno de los 15 tests generados salió aceptable sin intervención humana.**
+Los cuatro del 23/09 repiten los mismos tres defectos que los nueve de hace seis
+semanas — incluido `chnUnico().id` sobre un string, idéntico. El modelo no
+aprende entre tandas: lo que evita que eso llegue al repositorio es la auditoría,
+no el prompt.
 
 El detalle del Planner por sección, con el motivo de cada veredicto, está en `PLANNER_POR_SECCION.md`.
 
