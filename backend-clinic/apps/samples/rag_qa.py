@@ -36,13 +36,17 @@ un «no sé».
 from __future__ import annotations
 
 import json
+import logging
 import time
 from dataclasses import dataclass, field
 
 from django.conf import settings
 
+from .fuentes_confiables import filtrar as filtrar_fuentes
 from .rag_index import RagError, Resultado, indice
 from .rag_sugerencias import Sugerencia, sugerir
+
+logger = logging.getLogger(__name__)
 
 # Umbral de RECUPERACIÓN, no de decisión: se quiere que el fragmento correcto
 # entre entre los candidatos aunque venga acompañado de ruido. Quien descarta
@@ -183,6 +187,20 @@ def responder_documental(pregunta: str) -> RespuestaRag:
 
     if not recuperados:
         return cerrar(False, '', motivo='ningún fragmento supera el umbral de recuperación')
+
+    # AI-SEC-007: la procedencia se comprueba ANTES de que nada llegue al
+    # contexto del modelo. Un fragmento de fuente no aprobada se descarta
+    # aunque su similitud sea la más alta: el ataque medido el 24/09 entraba
+    # con 62-66 %, por encima del umbral y sin ser el mejor.
+    recuperados, descartados = filtrar_fuentes(recuperados)
+    if descartados:
+        logger.warning(
+            'RAG: %d fragmento(s) descartado(s) por fuente no aprobada: %s',
+            len(descartados),
+            ', '.join(sorted({r.fragmento.fuente for r in descartados})))
+    if not recuperados:
+        return cerrar(False, '',
+                      motivo='ningún fragmento de fuente aprobada responde la pregunta')
 
     candidatos, vecinos = recuperados[:CANDIDATOS], recuperados[CANDIDATOS:]
 

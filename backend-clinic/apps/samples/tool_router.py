@@ -29,6 +29,7 @@ from dataclasses import asdict, dataclass
 
 from django.conf import settings
 
+from .alcance import NINGUNO, Alcance
 from .tools import CATALOGO, LIMITE_FILAS, POR_NOMBRE, ToolSpec, buscar_por_palabra_clave, catalogo_publicado
 
 logger = logging.getLogger(__name__)
@@ -158,9 +159,15 @@ def _mensaje_resultados(filas: list[dict]) -> str:
     return f'{len(filas)} resultado(s).'
 
 
-def _ejecutar(tool: ToolSpec, camino: str, inicio: float, motivo: str = '') -> Respuesta:
-    """Corre la herramienta. Acá el dato sale de la base, nunca del modelo."""
-    filas = tool.run()
+def _ejecutar(tool: ToolSpec, camino: str, inicio: float, motivo: str = '',
+              alcance: Alcance = NINGUNO) -> Respuesta:
+    """Corre la herramienta. Acá el dato sale de la base, nunca del modelo.
+
+    El `alcance` viene del JWT, no del texto de la pregunta: es lo que impide
+    que un analista lea casos de otro por este canal (AI-SEC-001). Por defecto
+    es NINGUNO —no ve nada—, para que olvidar pasarlo no abra la puerta.
+    """
+    filas = tool.run(alcance)
     return Respuesta(
         camino=camino,
         tool=tool.name,
@@ -250,7 +257,7 @@ def _elegir_con_modelo(pregunta: str) -> tuple[str, str]:
     return datos.get('herramienta', 'NINGUNA'), datos.get('motivo', '')
 
 
-def responder(pregunta: str) -> Respuesta:
+def responder(pregunta: str, alcance: Alcance = NINGUNO) -> Respuesta:
     """Resuelve una pregunta contra el catálogo.
 
     Nunca lanza por culpa del modelo: si el LLM cae, se degrada a SIN_MATCH con
@@ -264,7 +271,7 @@ def responder(pregunta: str) -> Respuesta:
     # Camino 1 — vocabulario del dominio. No llama al modelo.
     tool = buscar_por_palabra_clave(pregunta)
     if tool is not None:
-        return _ejecutar(tool, 'KEYWORD', inicio)
+        return _ejecutar(tool, 'KEYWORD', inicio, alcance=alcance)
 
     # Camino 2 — el modelo elige. Solo si la IA está habilitada.
     if not getattr(settings, 'CLINIC_LLM_ENABLED', False):
@@ -289,4 +296,4 @@ def responder(pregunta: str) -> Respuesta:
         # igual que NINGUNA en vez de confiar en que respetó el esquema.
         return _sin_match(inicio, 'Ninguna herramienta del catálogo responde esa pregunta.')
 
-    return _ejecutar(POR_NOMBRE[nombre], 'LLM', inicio, motivo)
+    return _ejecutar(POR_NOMBRE[nombre], 'LLM', inicio, motivo, alcance=alcance)

@@ -5,6 +5,7 @@ from rest_framework.views import APIView
 
 from .models import AuditReview, Chromosome, Sample, SampleStatus
 from .iscn import IscnError
+from .alcance import Alcance
 from .tool_router import responder
 from .tools import catalogo_publicado
 from .permissions import CanRegisterSample, HasOpcion, IsOwnerOrStaff, tiene_opcion
@@ -742,7 +743,10 @@ class ToolQueryView(APIView):
         return [HasOpcion('sample.list')]
 
     def post(self, request):
-        respuesta = responder(request.data.get('pregunta', ''))
+        # El alcance sale del JWT (ADR-0020), no del texto: declararse
+        # supervisor en la pregunta no cambia lo que la herramienta lee.
+        respuesta = responder(request.data.get('pregunta', ''),
+                              Alcance.de_usuario(request.user))
         return Response(respuesta.as_dict(), status=status.HTTP_200_OK)
 
     def get(self, request):

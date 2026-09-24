@@ -33,6 +33,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Callable
 
+from .alcance import NINGUNO, Alcance
 from .models import CONFIDENCE_THRESHOLD, Chromosome, Sample, SampleStatus
 
 
@@ -49,7 +50,10 @@ class ToolSpec:
     description: str
     source: str                      # tabla real, para la procedencia
     keywords: tuple[str, ...]
-    run: Callable[[], list[dict]] = field(compare=False, repr=False)
+    # Recibe el ALCANCE de quien pregunta. No es un parametro mas: es lo que
+    # impide que una herramienta lea casos de otro analista (AI-SEC-001). El
+    # modelo elige la herramienta; el alcance decide que puede leer.
+    run: Callable[[Alcance], list[dict]] = field(compare=False, repr=False)
 
 
 # ---------------------------------------------------------------------------
@@ -66,9 +70,9 @@ class ToolSpec:
 LIMITE_FILAS = 50
 
 
-def _muestras_por_estado(estado: str) -> list[dict]:
+def _muestras_por_estado(estado: str, alcance: Alcance = NINGUNO) -> list[dict]:
     filas = (
-        Sample.objects.filter(status=estado, is_active=True)
+        alcance.acotar(Sample.objects.filter(status=estado, is_active=True))
         .order_by('-created_at')
         .values('chn_code', 'status', 'sample_type', 'created_at')[:LIMITE_FILAS]
     )
@@ -83,18 +87,18 @@ def _muestras_por_estado(estado: str) -> list[dict]:
     ]
 
 
-def cromosomas_para_revision() -> list[dict]:
+def cromosomas_para_revision(alcance: Alcance = NINGUNO) -> list[dict]:
     """Cromosomas 'naranjas': confianza bajo el umbral, sin resolver (RN-02).
 
     Son los que el analista debe revisar a mano antes de validar el caso — el
     corazón del human-in-the-loop del sistema.
     """
     filas = (
-        Chromosome.objects.filter(
+        alcance.acotar_por_muestra(Chromosome.objects.filter(
             resolution_status='PENDING',
             is_active=True,
             confidence_score__lt=CONFIDENCE_THRESHOLD,
-        )
+        ))
         .select_related('karyotype__sample')
         .order_by('confidence_score')[:LIMITE_FILAS]
     )
@@ -109,15 +113,19 @@ def cromosomas_para_revision() -> list[dict]:
     ]
 
 
-def casos_pendientes_de_firma() -> list[dict]:
+def casos_pendientes_de_firma(alcance: Alcance = NINGUNO) -> list[dict]:
     """Casos validados por el analista, esperando al Supervisor (FSD-UC-005)."""
-    return _muestras_por_estado(SampleStatus.ANALYST_VALIDATED)
+    return _muestras_por_estado(SampleStatus.ANALYST_VALIDATED, alcance)
 
 
-def casos_reportados() -> list[dict]:
-    """Casos cerrados: con nomenclatura ISCN emitida (S3)."""
+def casos_reportados(alcance: Alcance = NINGUNO) -> list[dict]:
+    """Casos cerrados: con nomenclatura ISCN emitida (S3).
+
+    Devuelve `iscn_nomenclature`, que es el DIAGNOSTICO. Acotarlo por analista
+    no es cosmetica: es RN-06 sobre el dato mas sensible que produce el sistema.
+    """
     filas = (
-        Sample.objects.filter(status=SampleStatus.REPORTED, is_active=True)
+        alcance.acotar(Sample.objects.filter(status=SampleStatus.REPORTED, is_active=True))
         .order_by('-iscn_generated_at')
         .values('chn_code', 'iscn_nomenclature', 'iscn_generated_at')[:LIMITE_FILAS]
     )
@@ -131,9 +139,9 @@ def casos_reportados() -> list[dict]:
     ]
 
 
-def casos_en_proceso() -> list[dict]:
+def casos_en_proceso(alcance: Alcance = NINGUNO) -> list[dict]:
     """Muestras que el pipeline de IA todavía no terminó de procesar."""
-    return _muestras_por_estado(SampleStatus.PROCESSING)
+    return _muestras_por_estado(SampleStatus.PROCESSING, alcance)
 
 
 # ---------------------------------------------------------------------------

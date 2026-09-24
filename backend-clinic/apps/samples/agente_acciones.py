@@ -105,12 +105,19 @@ def schemas() -> list[dict]:
     return [_schema_de(t) for t in CATALOGO] + [SCHEMA_RAG, SCHEMA_ESCRITURA]
 
 
-def ejecutar(nombre: str, argumentos: dict) -> dict:
+def ejecutar(nombre: str, argumentos: dict, alcance=None) -> dict:
     """Resuelve una acción. Es el callback que el bucle recibe.
 
     Devuelve siempre un dict — nunca lanza — porque el bucle entrega la
     observación al modelo y un error es información útil para que rectifique.
+
+    El `alcance` acota lo que las consultas pueden leer (AI-SEC-001). Si no se
+    pasa, es NINGUNO: el agente no ve nada en vez de verlo todo. Un control que
+    falla abierto no es un control.
     """
+    from .alcance import NINGUNO
+    if alcance is None:
+        alcance = NINGUNO
     if nombre == NOMBRE_ESCRITURA:
         return ejecutar_escritura(argumentos)
 
@@ -143,7 +150,7 @@ def ejecutar(nombre: str, argumentos: dict) -> dict:
                 'disponibles': [t.name for t in CATALOGO] + [NOMBRE_RAG, NOMBRE_ESCRITURA]}
 
     try:
-        filas = tool.run()
+        filas = tool.run(alcance)
     except Exception as exc:                       # noqa: BLE001
         # Las cuatro consultas son de SOLO LECTURA: si la base falla, decírselo
         # al modelo es preferible a abortar. `agente_grafo.actuar` llama aquí
