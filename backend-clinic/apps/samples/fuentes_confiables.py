@@ -48,6 +48,22 @@ fichero a una carpeta.
 """
 from __future__ import annotations
 
+import logging
+import os
+
+logger = logging.getLogger(__name__)
+
+#: Desactiva el filtro para medir la LINEA BASE del red team, igual que el
+#: laboratorio corre su chatbot en `--modo vulnerable`. Sin esta variable no
+#: hay forma de reproducir el «antes» una vez aplicada la mitigacion, y un
+#: retest sin linea base comparable no demuestra nada.
+#:
+#: Tres cosas lo hacen defendible: el valor por defecto es SEGURO, cada uso
+#: deja un aviso en el log, y `test_ai_sec_007_por_defecto_el_filtro_esta_activo`
+#: falla si alguien invierte el defecto. Aun asi, es una puerta: no debe existir
+#: en un despliegue real, y por eso se nombra sin ambiguedad.
+VARIABLE_SIN_FILTRO = 'CLINIC_RED_TEAM_SIN_FILTRO'
+
 #: Prefijos de fuente aprobados. Se compara por prefijo porque el nombre lleva
 #: el fichero concreto («ADR: 0021-visor-correccion-cariotipo.md») y los ADR se
 #: añaden con frecuencia: aprobar la familia entera es la decisión real, y
@@ -79,6 +95,13 @@ def filtrar(resultados):
     registra. Un bloqueo que no deja rastro no se puede auditar, y saber que
     alguien metió algo en el índice es tan importante como no usarlo.
     """
+    if os.getenv(VARIABLE_SIN_FILTRO):
+        logger.warning(
+            'FILTRO DE PROCEDENCIA DESACTIVADO por %s: el corpus entra sin '
+            'comprobar. Solo para medir la linea base del red team.',
+            VARIABLE_SIN_FILTRO)
+        return list(resultados), []
+
     aprobados, descartados = [], []
     for r in resultados:
         (aprobados if fuente_aprobada(r.fragmento.fuente) else descartados).append(r)

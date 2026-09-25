@@ -825,7 +825,16 @@ class AgenteView(APIView):
                         conexion.ejecutar_tool, INSTRUCCIONES,
                         max_pasos=max_pasos)
             else:
-                resultado = ejecutar_agente(pregunta, schemas(), ejecutar,
+                # El alcance viaja al agente igual que al enrutador: sus
+                # consultas son las MISMAS herramientas. Sin esto el agente
+                # quedaba en NINGUNO —cerrado por defecto— y no veia ni los
+                # casos propios del analista: seguro, pero inservible.
+                def ejecutar_con_alcance(nombre, argumentos):
+                    return ejecutar(nombre, argumentos,
+                                    Alcance.de_usuario(request.user))
+
+                resultado = ejecutar_agente(pregunta, schemas(),
+                                            ejecutar_con_alcance,
                                             INSTRUCCIONES, max_pasos=max_pasos)
         except AgenteError as exc:
             return Response({'code': 'AGENT_UNAVAILABLE', 'detail': str(exc)},

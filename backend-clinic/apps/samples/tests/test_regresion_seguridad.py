@@ -249,3 +249,76 @@ def test_ai_sec_007_lo_desconocido_no_entra(fuente):
     from apps.samples.fuentes_confiables import fuente_aprobada
 
     assert not fuente_aprobada(fuente)
+
+
+def test_ai_sec_007_por_defecto_el_filtro_esta_activo(monkeypatch):
+    """El interruptor de línea base no puede quedarse encendido por descuido.
+
+    `CLINIC_RED_TEAM_SIN_FILTRO` existe para reproducir el «antes» del red team
+    —es el `--modo vulnerable` del laboratorio— y es, por definición, una
+    puerta. Este test fija que la puerta está cerrada salvo que alguien la abra
+    a propósito: sin la variable, el fragmento no aprobado se descarta.
+    """
+    from apps.samples.fuentes_confiables import VARIABLE_SIN_FILTRO, filtrar
+
+    monkeypatch.delenv(VARIABLE_SIN_FILTRO, raising=False)
+    aprobados, descartados = filtrar([_ResultadoFalso('NOTA-RED-TEAM', 0.99)])
+    assert aprobados == []
+    assert len(descartados) == 1
+
+
+def test_ai_sec_007_el_interruptor_de_linea_base_desactiva_el_filtro(monkeypatch):
+    """Y que cuando se abre, se abre de verdad.
+
+    Si el interruptor no funcionara, la «línea base» que se midió no habría
+    sido tal y los 3/3 de AI-SEC-006 y 007 estarían comparando contra el
+    sistema ya defendido. Medir el antes exige poder volver al antes.
+    """
+    from apps.samples.fuentes_confiables import VARIABLE_SIN_FILTRO, filtrar
+
+    monkeypatch.setenv(VARIABLE_SIN_FILTRO, '1')
+    aprobados, descartados = filtrar([_ResultadoFalso('NOTA-RED-TEAM', 0.99)])
+    assert len(aprobados) == 1
+    assert descartados == []
+
+
+# ---------------------------------------------------------------------------
+# AI-SEC-009 — la herramienta de ESCRITURA tampoco lee casos ajenos
+# ---------------------------------------------------------------------------
+
+def test_ai_sec_009_el_plan_de_validacion_no_revela_un_caso_ajeno(
+        analista_b, caso_pendiente_de_a):
+    """Bloquear la escritura no bastaba: el PLAN ya era información.
+
+    `preparar_validacion` devolvía estado y naranjas pendientes de cualquier
+    caso, sin mirar de quién era. Medido 3/3 con `alcance.py` ya puesto en las
+    cuatro consultas de lectura: la mitigación cubría una puerta y dejaba otra.
+
+    Se comprueba que el estado NO viaja en la respuesta, no el texto del aviso.
+    """
+    from apps.samples.alcance import Alcance
+    from apps.samples import agente_acciones, agente_escritura
+
+    r = agente_escritura.ejecutar(
+        {'chn_code': caso_pendiente_de_a.chn_code},
+        Alcance.de_usuario(analista_b))
+    assert 'estado_actual' not in r
+    assert 'naranjas_sin_resolver' not in r
+
+    # Y por el despachador del agente, que es la ruta real.
+    r2 = agente_acciones.ejecutar(
+        agente_escritura.NOMBRE, {'chn_code': caso_pendiente_de_a.chn_code},
+        Alcance.de_usuario(analista_b))
+    assert 'estado_actual' not in r2
+
+
+def test_ai_sec_009_el_dueno_si_obtiene_su_plan(analista_a, caso_pendiente_de_a):
+    """Línea base: el control no puede dejar al analista sin su propio plan."""
+    from apps.samples.alcance import Alcance
+    from apps.samples import agente_escritura
+
+    r = agente_escritura.ejecutar(
+        {'chn_code': caso_pendiente_de_a.chn_code},
+        Alcance.de_usuario(analista_a))
+    assert r.get('plan') is True
+    assert r.get('estado_actual') == caso_pendiente_de_a.status

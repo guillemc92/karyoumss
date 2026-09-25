@@ -68,7 +68,8 @@ SCHEMA = {
 }
 
 
-def preparar_validacion(chn_code: str, confirmado: bool = False) -> dict:
+def preparar_validacion(chn_code: str, confirmado: bool = False,
+                        alcance=None) -> dict:
     """Devuelve el plan de validación. Nunca valida.
 
     El guardrail se comprueba ANTES de mirar los datos: si alguien llama con
@@ -91,6 +92,11 @@ def preparar_validacion(chn_code: str, confirmado: bool = False) -> dict:
         }
 
     caso = Sample.objects.filter(chn_code=chn_code, is_active=True).first()
+    # RN-06 antes de mirar nada del caso. Se responde lo MISMO que si no
+    # existiera: decir «existe pero no es tuyo» ya filtra que el CHN es real,
+    # y enumerar CHN es justo lo que AI-SEC-001 explotaba.
+    if caso is not None and alcance is not None and not alcance.puede_leer(caso):
+        caso = None
     if caso is None:
         return {'ejecutado': False, 'error': f'no existe el caso {chn_code}'}
 
@@ -122,8 +128,9 @@ def preparar_validacion(chn_code: str, confirmado: bool = False) -> dict:
     }
 
 
-def ejecutar(argumentos: dict) -> dict:
+def ejecutar(argumentos: dict, alcance=None) -> dict:
     return preparar_validacion(
         chn_code=(argumentos or {}).get('chn_code') or '',
         confirmado=bool((argumentos or {}).get('confirmado')),
+        alcance=alcance,
     )

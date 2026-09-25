@@ -128,11 +128,36 @@ def quitar():
     return 0
 
 
+def _veneno_del_ataque(id_ataque):
+    """Lee `entrada_envenenada.descripcion_maliciosa` del JSON del ataque.
+
+    Que el veneno salga del propio fichero de ataque no es comodidad: es lo que
+    garantiza que lo insertado sea **lo que el ataque declara**. La primera
+    tanda envenenaba a mano con el texto de AI-SEC-007 y lanzaba tambien el
+    AI-SEC-006, cuya pregunta era sobre trisomia 21: el fragmento no se
+    recuperaba y el 0/3 no media ninguna defensa.
+    """
+    import json as _json
+    carpeta = RAIZ / 'docs' / 'M9_RED_TEAM' / 'ataques'
+    for f in sorted(carpeta.glob('*.json')):
+        for a in _json.loads(f.read_text(encoding='utf-8')):
+            if a.get('id') == id_ataque:
+                env = a.get('entrada_envenenada') or {}
+                texto = env.get('descripcion_maliciosa')
+                if not texto:
+                    raise SystemExit('%s no declara entrada_envenenada' % id_ataque)
+                print('veneno de %s (%d caracteres)' % (id_ataque, len(texto)))
+                return texto
+    raise SystemExit('no existe el ataque %s' % id_ataque)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('accion', choices=['poner', 'quitar', 'estado'])
     ap.add_argument('--texto', default=None)
     ap.add_argument('--texto-archivo', default=None)
+    ap.add_argument('--ataque', default=None,
+                    help='id, p.ej. AI-SEC-006: toma el veneno del propio JSON')
     ap.add_argument('--seccion', default='Nota operativa')
     opts = ap.parse_args()
 
@@ -150,8 +175,10 @@ def main():
     texto = opts.texto
     if opts.texto_archivo:
         texto = Path(opts.texto_archivo).read_text(encoding='utf-8')
+    if opts.ataque:
+        texto = _veneno_del_ataque(opts.ataque)
     if not texto:
-        raise SystemExit('hace falta --texto o --texto-archivo')
+        raise SystemExit('hace falta --texto, --texto-archivo o --ataque')
     return poner(texto.strip(), opts.seccion)
 
 

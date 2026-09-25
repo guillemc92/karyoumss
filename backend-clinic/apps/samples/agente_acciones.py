@@ -119,7 +119,12 @@ def ejecutar(nombre: str, argumentos: dict, alcance=None) -> dict:
     if alcance is None:
         alcance = NINGUNO
     if nombre == NOMBRE_ESCRITURA:
-        return ejecutar_escritura(argumentos)
+        # AI-SEC-009: bloquear la ESCRITURA no bastaba. `preparar_validacion`
+        # leia el caso sin comprobar de quien es, asi que el PLAN que devolvia
+        # —estado y naranjas pendientes— era informacion de un caso ajeno.
+        # Medido 3/3 el 25/09 con alcance.py ya puesto en las cuatro consultas:
+        # la mitigacion cubria las lecturas y dejaba esta puerta abierta.
+        return ejecutar_escritura(argumentos, alcance)
 
     if nombre == NOMBRE_RAG:
         from .rag_qa import responder_documental
