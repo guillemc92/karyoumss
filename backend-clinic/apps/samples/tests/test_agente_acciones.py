@@ -57,6 +57,12 @@ def montar_rag(monkeypatch, respuesta):
 
 # --- el catalogo publicado --------------------------------------------------
 
+# Las herramientas falsas de este modulo reciben `alcance`: el contrato de
+# `ToolSpec.run` cambio con la mitigacion de AI-SEC-001, que hace viajar la
+# identidad de quien pregunta hasta la consulta. Un fixture con la firma vieja
+# no es un test que falla por un detalle: es un fixture que ya no representa al
+# sistema.
+
 def test_los_schemas_se_derivan_del_catalogo():
     """Nada se reescribe: cada herramienta del catalogo sale publicada."""
     publicados = [s['function']['name'] for s in schemas()]
@@ -71,7 +77,7 @@ def test_una_herramienta_nueva_aparece_sin_tocar_este_modulo(monkeypatch):
     """
     nueva = ToolSpec(name='CASOS_RECHAZADOS', description='Los casos rechazados.',
                      source='clinic_samples', keywords=('rechazado',),
-                     run=lambda: [])
+                     run=lambda alcance=None: [])
     monkeypatch.setattr(acciones, 'CATALOGO', tuple(CATALOGO) + (nueva,))
     assert 'CASOS_RECHAZADOS' in [s['function']['name'] for s in schemas()]
 
@@ -100,7 +106,7 @@ def test_el_rag_declara_su_unico_parametro():
 
 def test_una_consulta_devuelve_filas_con_su_procedencia(monkeypatch):
     tool = ToolSpec(name='CASOS_DEMO', description='Demo.', source='clinic_samples',
-                    keywords=(), run=lambda: [{'chn': 'CHN-1'}, {'chn': 'CHN-2'}])
+                    keywords=(), run=lambda alcance=None: [{'chn': 'CHN-1'}, {'chn': 'CHN-2'}])
     monkeypatch.setattr(acciones, 'POR_NOMBRE', {'CASOS_DEMO': tool})
 
     obs = ejecutar('CASOS_DEMO', {})
@@ -115,7 +121,7 @@ def test_se_mandan_veinte_filas_pero_se_declara_el_total(monkeypatch):
     casos» cuando hay 40. El numero y la muestra son cosas distintas.
     """
     tool = ToolSpec(name='MUCHOS', description='.', source='clinic_samples',
-                    keywords=(), run=lambda: [{'i': i} for i in range(40)])
+                    keywords=(), run=lambda alcance=None: [{'i': i} for i in range(40)])
     monkeypatch.setattr(acciones, 'POR_NOMBRE', {'MUCHOS': tool})
 
     obs = ejecutar('MUCHOS', {})
@@ -143,7 +149,7 @@ def test_una_consulta_que_revienta_es_una_observacion_no_una_caida(monkeypatch):
     Ahora la caida llega al modelo como observacion, con el nombre de la
     herramienta y el motivo, y la conversacion sigue.
     """
-    def revienta():
+    def revienta(alcance=None):
         raise RuntimeError('la base no responde')
 
     tool = ToolSpec(name='CASOS_ROTOS', description='.', source='clinic_samples',
@@ -163,7 +169,7 @@ def test_un_fallo_de_escritura_si_sale_disparado(monkeypatch):
     no: tragarse esa excepcion dejaria al modelo diciendo «hecho» sobre algo que
     no se guardo. RN-05 no admite eso.
     """
-    def revienta(argumentos):
+    def revienta(argumentos, alcance=None):
         raise RuntimeError('integridad')
 
     monkeypatch.setattr(acciones, 'ejecutar_escritura', revienta)
@@ -176,7 +182,7 @@ def test_la_escritura_se_delega_entera_al_guardrail(monkeypatch):
     MCP. El despachador no lo replica: lo llama y devuelve lo que diga."""
     visto = {}
 
-    def falso(argumentos):
+    def falso(argumentos, alcance=None):
         visto.update(argumentos)
         return {'preparado': False, 'motivo': 'faltan naranjas por resolver'}
 

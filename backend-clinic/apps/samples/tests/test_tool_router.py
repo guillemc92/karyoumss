@@ -30,6 +30,21 @@ def _ia_encendida(settings):
 
 
 @pytest.fixture
+def alcance_del_dueno(analyst_user):
+    """El alcance del analista al que pertenece el caso de prueba.
+
+    `responder()` sin alcance devuelve CERO filas desde la mitigacion de
+    AI-SEC-001 — es el comportamiento buscado: cerrado por defecto. Estos tests
+    esperan datos reales, asi que tienen que decir QUIEN pregunta, igual que
+    hace la vista con el JWT. Que antes funcionaran sin identidad era
+    exactamente el agujero.
+    """
+    from apps.samples.alcance import Alcance
+
+    return Alcance.de_usuario(analyst_user)
+
+
+@pytest.fixture
 def caso_con_naranjas(analyst_user):
     """Un caso con 3 cromosomas bajo el umbral, sin resolver (RN-02)."""
     sample = Sample.objects.create(
@@ -59,9 +74,10 @@ def _explota_si_llaman(monkeypatch):
 class TestEscenario1Controlado:
     """La pregunta usa el vocabulario del catálogo: se resuelve sin modelo."""
 
-    def test_resuelve_por_palabra_clave(self, monkeypatch, caso_con_naranjas):
+    def test_resuelve_por_palabra_clave(self, monkeypatch, caso_con_naranjas,
+                                        alcance_del_dueno):
         _explota_si_llaman(monkeypatch)
-        r = responder(CONTROLADA)
+        r = responder(CONTROLADA, alcance_del_dueno)
 
         assert r.camino == 'KEYWORD'
         assert r.tool == 'CROMOSOMAS_PARA_REVISION'
@@ -80,9 +96,10 @@ class TestEscenario1Controlado:
         responder(CONTROLADA)
         assert llamadas == []
 
-    def test_devuelve_los_datos_reales_de_la_base(self, monkeypatch, caso_con_naranjas):
+    def test_devuelve_los_datos_reales_de_la_base(self, monkeypatch, caso_con_naranjas,
+                                                  alcance_del_dueno):
         _explota_si_llaman(monkeypatch)
-        clases = {f['clase'] for f in responder(CONTROLADA).filas}
+        clases = {f['clase'] for f in responder(CONTROLADA, alcance_del_dueno).filas}
         assert clases == {'9', '13', '21'}
 
 
@@ -155,10 +172,11 @@ class TestEscenario3FueraDeAlcance:
 class TestEscenario4ModeloApagado:
     """El feature flag apagado: la respuesta la sigue produciendo el código."""
 
-    def test_los_datos_salen_igual(self, monkeypatch, settings, caso_con_naranjas):
+    def test_los_datos_salen_igual(self, monkeypatch, settings, caso_con_naranjas,
+                                   alcance_del_dueno):
         settings.CLINIC_LLM_ENABLED = False
         _explota_si_llaman(monkeypatch)
-        r = responder(CONTROLADA)
+        r = responder(CONTROLADA, alcance_del_dueno)
 
         assert r.camino == 'KEYWORD'
         assert len(r.filas) == 3

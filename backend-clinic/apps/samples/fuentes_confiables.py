@@ -78,6 +78,19 @@ PREFIJOS_APROBADOS: tuple[str, ...] = (
 )
 
 
+def prefijos() -> tuple[str, ...]:
+    """La lista vigente. Sale de `settings` para que se pueda ajustar sin tocar
+    código —y para que los tests que ejercitan el RAG con fragmentos sintéticos
+    puedan declarar los suyos— pero el valor por defecto es el de producción.
+
+    Configurable NO es lo mismo que laxo: si alguien despliega sin definir nada,
+    rige la lista de aquí abajo.
+    """
+    from django.conf import settings
+
+    return tuple(getattr(settings, 'CLINIC_FUENTES_APROBADAS', PREFIJOS_APROBADOS))
+
+
 def fuente_aprobada(fuente: str) -> bool:
     """¿Este fragmento puede entrar al contexto del modelo?
 
@@ -85,7 +98,7 @@ def fuente_aprobada(fuente: str) -> bool:
     """
     if not fuente:
         return False
-    return any(fuente.startswith(p) for p in PREFIJOS_APROBADOS)
+    return any(fuente.startswith(p) for p in prefijos())
 
 
 def filtrar(resultados):

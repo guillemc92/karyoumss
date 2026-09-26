@@ -35,6 +35,17 @@ from apps.samples import rag_index, rag_qa
 from apps.samples.rag_corpus import Fragmento
 from apps.samples.rag_index import Indice
 
+# El filtro de procedencia (AI-SEC-007) solo deja entrar fragmentos de fuentes
+# aprobadas, y los de este modulo son sinteticos: sin esto, `responder_documental`
+# los descarta antes de llegar al juez y 21 tests se ponen rojos.
+#
+# No es un parche para que pasen: es la diferencia entre lo que estos tests
+# prueban —la logica del juez del RAG— y lo que prueba el filtro, que tiene sus
+# propios tests en `test_regresion_seguridad.py`. Mezclarlos haria que un cambio
+# en la lista de fuentes rompiera tests que no hablan de fuentes.
+pytestmark = pytest.mark.usefixtures('fuentes_de_prueba_aprobadas')
+
+
 MODELO = 'nomic-embed-text'
 
 # Corpus minimo pero con la FORMA del real: cinco documentos del mismo dominio.

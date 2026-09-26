@@ -78,3 +78,24 @@ def supervisor_client(supervisor_user):
 @pytest.fixture
 def admin_client(admin_user):
     return auth_client(admin_user)
+
+
+@pytest.fixture
+def fuentes_de_prueba_aprobadas(settings):
+    """Aprueba las fuentes sintéticas que usan los tests del RAG.
+
+    El filtro de procedencia de AI-SEC-007 rechaza todo lo que no venga del
+    ISCN, el BRD, el FSD, AGENTS.md o un ADR — y los fixtures del RAG usan
+    nombres inventados (`DOC_1.md`, `FSD_vFinal.md` sin su prefijo real). Sin
+    esta aprobación explícita, 21 tests que hablan del juez del RAG se rompen
+    por una razón que no es la suya.
+
+    Se aprueba aquí, y no ampliando la lista de producción, porque son dos
+    cosas distintas: qué fuentes son legítimas en el laboratorio, y qué
+    fragmentos usan los tests para ejercitar otra lógica.
+    """
+    from apps.samples.fuentes_confiables import PREFIJOS_APROBADOS
+
+    settings.CLINIC_FUENTES_APROBADAS = PREFIJOS_APROBADOS + (
+        'DOC_', 'F.md', 'FSD_vFinal.md', 'ADR-', 'doc', 'Doc')
+    return settings.CLINIC_FUENTES_APROBADAS
