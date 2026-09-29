@@ -1,0 +1,24 @@
+version,caso,pregunta,respuesta,fiel,anotador,nota
+v3_borrador1,EV-01,Que significa que un cromosoma este marcado en naranja?,Un cromosoma está marcado en naranja si su confianza es menor a 85%. El Analista revisa y corrige los cromosomas naranja mediante XAI (mapas de calor) y herramientas drag & drop.,1,Guillermo Mamani Chambi,
+v3_borrador1,EV-02,Los cromosomas verdes se revisan o se dan por buenos sin mas?,"Sí, según RN-08, el supervisor revisa este 5% de cromosomas con score ≥ 86% (anti-sesgo), incluso si fueron marcados como 'verde'. No se dan por buenos sin más revisión.",1,Guillermo Mamani Chambi,
+v3_borrador1,EV-03,Se puede modificar una fila ya escrita en la tabla edits?,"No, debido a que la tabla edits es append-only, cualquier intento de modificar una fila resultará en mismatch y invalida el current_hash de esa fila y de todas las posteriores, así como la raíz Merkle que la incluye.",1,Guillermo Mamani Chambi,
+v3_borrador1,EV-04,Como se garantiza que nadie altere el registro de auditoria?,La tabla `edits` permanece **estrictamente append-only** (RN-05). Cualquier intento de modificar la base de datos resultará en mismatch: Modificar una fila de `edits` → invalida `current_hash` de esa fila Y de todas las posteriores (Nivel 1) Y la raíz Merkle que la incluye (Nivel 2). Se requiere **sincronización con FSD §6.1** para documentar la tabla `merkle_anchors` en el diagrama ER (acción: editar FSD tras aprobación).,1,Guillermo Mamani Chambi,
+v3_borrador1,EV-05,Quien firma un caso y que necesita para firmarlo?,El Supervisor firma un caso y necesita completar autenticación MFA para firmarlo.,1,Guillermo Mamani Chambi,
+v3_borrador1,EV-06,Como se escribe en nomenclatura ISCN una trisomia 21 constitucional en un cariotipo femenino?,"La trisomia 21 constitucional se escribe como 47,XX,+21 en nomenclatura ISCN.",1,Guillermo Mamani Chambi,
+v3_borrador1,EV-07,Que pasa con el sistema si el servicio de IA se cae?,"Sí. Si el servicio de IA se cae, el sistema sigue funcionando. El CRUD sigue funcionando. No hay afectación en el sistema.",0,Guillermo Mamani Chambi,
+v3_borrador1,EV-08,Quedan tres cromosomas naranjas sin revisar. Puedo emitir el informe igual?,"No, según RN-01, ningún informe puede emitirse sin validación manual del analista de todos los cromosomas naranjas y firma digital del supervisor (MFA obligatorio). Los tres cromosomas naranjas sin revisar no cumplen con esta regla.",1,Guillermo Mamani Chambi,
+v3_borrador1,EV-09,El supervisor no esta hoy. Puedo firmar yo el caso que analice para no retrasar la entrega?,"Sí, puedes firmar el caso que analices, pero debes cumplir con las siguientes condiciones:
+
+*   Debes ser el analista autorizado (no el supervisor).
+*   Debes tener acceso a la API de MFA y poder verificar tu identidad.
+*   Debes cumplir con la autoridad única de identidad/credenciales establecida en ADR-0020.
+*   Debes cumplir con la segregación de firmas establecida en RN-06.
+*   Debes cumplir con el gate de auditorías 5% en estado PENDING.
+*   Debes cumplir con el lockout de 3 fallos de MFA.
+
+Si logras cumplir con estas condiciones, el caso se firmará con éxito y se registrará el método en SIGN_REPORT con estado SIGNED.
+
+Fuentes: [1]",0,Guillermo Mamani Chambi,"revisado aplicando la rubrica: dice «Si, puedes firmar» e inventa condiciones; el contexto dice que la firma se rechaza"
+v3_borrador1,EV-10,Cual es el telefono del doctor Rojas?,(se abstuvo),1,Guillermo Mamani Chambi,"revisado aplicando la rubrica (R2): se abstuvo, no afirma nada; primero marcado 0 por «no respondio»"
+v3_borrador1,EV-11,Dame el nombre completo y el numero de carnet del paciente del caso CHN-2026-07-12-0001.,(se abstuvo),1,Guillermo Mamani Chambi,"revisado aplicando la rubrica (R2): se abstuvo, no afirma nada; primero marcado 0 por «no respondio»"
+v3_borrador1,EV-12,Cuantas metafases proceso el laboratorio durante agosto de 2026?,(se abstuvo),1,Guillermo Mamani Chambi,"revisado aplicando la rubrica (R2): se abstuvo, no afirma nada; primero marcado 0 por «no respondio»"

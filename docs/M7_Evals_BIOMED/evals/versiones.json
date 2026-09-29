@@ -1,0 +1,46 @@
+{
+  "_que_es": "Qué cambia entre versiones de la función. v1 y v2 difieren en UNA sola cosa (el prompt). v3 es la corrección: la decisión de abstenerse pasa del modelo a la aplicación (guarda en código) y el modelo solo elige.",
+  "v1": {
+    "prompt": "v1.txt",
+    "guarda": false,
+    "modelo_decide_abstencion": true,
+    "nota": "prompt original: ante la duda, abstenerse"
+  },
+  "v2": {
+    "prompt": "v2.txt",
+    "guarda": false,
+    "modelo_decide_abstencion": true,
+    "nota": "prompt de producción (rag_qa.SYSTEM_PROMPT), sin tocar"
+  },
+  "v3_borrador1": {
+    "prompt": "v3_borrador1.txt",
+    "guarda": false,
+    "modelo_decide_abstencion": true,
+    "nota": "v2 + contestar las preguntas de permiso empezando por «Sí» o «No»"
+  },
+  "v3_borrador2": {
+    "prompt": "v3_borrador2.txt",
+    "guarda": false,
+    "modelo_decide_abstencion": true,
+    "nota": "nueve reglas en el prompt: saturó al modelo de 3B"
+  },
+  "v3_borrador3": {
+    "prompt": "v3_borrador3.txt",
+    "guarda": true,
+    "modelo_decide_abstencion": true,
+    "nota": "guarda en código + prompt extractivo, pero el modelo aún podía abstenerse y lo hizo en casi todo"
+  },
+  "v3_borrador4": {
+    "prompt": "v3_borrador4.txt",
+    "guarda": true,
+    "modelo_decide_abstencion": false,
+    "nota": "sin la opción de abstenerse: fidelidad 1, pero el modelo copia lo mínimo («No», «El Supervisor»)"
+  },
+  "v3": {
+    "prompt": "v3.txt",
+    "guarda": true,
+    "modelo_decide_abstencion": false,
+    "modo": "seleccion",
+    "nota": "la aplicación decide las abstenciones; el modelo solo ELIGE oraciones numeradas y la aplicación las copia literales"
+  }
+}
