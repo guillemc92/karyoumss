@@ -126,6 +126,11 @@ class RespuestaRag:
     vecinos: list[Resultado] = field(default_factory=list)
     latency_ms: int = 0
     motivo: str = ''
+    # Lo que costó la llamada al juez. Se expone porque una evaluación que no
+    # dice cuánto cuesta una corrida no permite decidir si se puede correr en
+    # cada despliegue o solo cuando se toca el prompt.
+    tokens_entrada: int = 0
+    tokens_salida: int = 0
 
     @property
     def sugerencias(self) -> list[Sugerencia]:
@@ -162,18 +167,28 @@ def _bloque_fragmentos(candidatos: list[Resultado]) -> str:
     return '\n\n'.join(partes)
 
 
-def responder_documental(pregunta: str) -> RespuestaRag:
+def responder_documental(pregunta: str,
+                         system_prompt: str | None = None) -> RespuestaRag:
     """Recupera candidatos y deja que el modelo decida si responden.
 
     Nunca lanza por culpa del modelo: si el LLM no está disponible se degrada a
     «no puedo responder» (RN-07), igual que el resto del sistema.
+
+    `system_prompt` permite evaluar una versión distinta de la instrucción sin
+    tocar este fichero. El valor por defecto —`None`— es siempre el de
+    producción: una versión alternativa hay que pedirla a propósito, nunca se
+    hereda de un ajuste global. Lo usa `scripts/eval_calidad.py` para comparar
+    v1 contra v2 sobre el mismo dataset dorado; fuera de ahí no debería usarse.
     """
+    instruccion = system_prompt or SYSTEM_PROMPT
     inicio = time.time()
 
-    def cerrar(responde, texto, citas=(), candidatos=(), vecinos=(), motivo=''):
+    def cerrar(responde, texto, citas=(), candidatos=(), vecinos=(), motivo='',
+               tokens=(0, 0)):
         return RespuestaRag(responde=responde, texto=texto, citas=list(citas),
                             candidatos=list(candidatos), vecinos=list(vecinos),
                             motivo=motivo,
+                            tokens_entrada=tokens[0], tokens_salida=tokens[1],
                             latency_ms=int((time.time() - inicio) * 1000))
 
     if not (pregunta or '').strip():
@@ -220,7 +235,7 @@ def responder_documental(pregunta: str) -> RespuestaRag:
         r = cliente.chat.completions.create(
             model=getattr(settings, 'CLINIC_LLM_MODEL', 'llama3.2:3b'),
             messages=[
-                {'role': 'system', 'content': SYSTEM_PROMPT},
+                {'role': 'system', 'content': instruccion},
                 {'role': 'user', 'content':
                     f'FRAGMENTOS:\n\n{_bloque_fragmentos(candidatos)}\n\n'
                     f'PREGUNTA: {pregunta}'},
@@ -230,13 +245,16 @@ def responder_documental(pregunta: str) -> RespuestaRag:
             max_tokens=500,
         )
         datos = json.loads(r.choices[0].message.content or '{}')
+        uso = getattr(r, 'usage', None)
+        gasto = ((getattr(uso, 'prompt_tokens', 0) or 0),
+                 (getattr(uso, 'completion_tokens', 0) or 0))
     except Exception as exc:                        # noqa: BLE001 — degradación
         return cerrar(False, '', candidatos=candidatos, vecinos=vecinos,
                       motivo=f'modelo no disponible: {exc}')
 
     if not datos.get('responde'):
         return cerrar(False, '', candidatos=candidatos, vecinos=vecinos,
-                      motivo='el corpus no cubre la pregunta')
+                      motivo='el corpus no cubre la pregunta', tokens=gasto)
 
     # Las citas se resuelven contra los candidatos REALES: si el modelo cita un
     # número que no existe, se ignora en vez de inventar una fuente.
@@ -244,4 +262,4 @@ def responder_documental(pregunta: str) -> RespuestaRag:
              if isinstance(n, int) and 1 <= n <= len(candidatos)]
     return cerrar(True, (datos.get('respuesta') or '').strip(),
                   citas=citas or candidatos[:1], candidatos=candidatos,
-                  vecinos=vecinos)
+                  vecinos=vecinos, tokens=gasto)
