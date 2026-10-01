@@ -2,35 +2,34 @@
 
 Generado desde `docs/BIOMED_defensa_3min.pptx` por `scripts/armar_deck_defensa.js`; no se edita a mano.
 
-Orden pedido por el docente: **hallazgo - modelo - plantilla - resultado - punto**. Hay alarma a los 3 minutos, asi que va cronometrado diapositiva a diapositiva.
+Orden pedido por el docente: **hallazgo - modelo - plantilla - resultado - punto**. Hay alarma a los 3 minutos, asi que va cronometrado lamina a lamina.
 
-## 1. Portada  -  0:00–0:15
+## 1. Portada  -  0:00–0:15  (39 palabras)
 
 Cariotipado asistido por IA para el laboratorio de citogenética de la UMSS. Django, un clasificador propio y un asistente con modelo de lenguaje local. Lo que traigo no es el producto: es cómo lo probamos y cómo lo atacamos.
 
-## 2. Las cuatro capas  -  0:15–0:45
+## 2. Las cuatro capas  -  0:15–0:45  (57 palabras)
 
-Ochocientos noventa y cinco tests en verde. Unitarias sobre las reglas clínicas. Integración sobre el pipeline completo. Contrato sobre la frontera entre el backend clínico y el de administración, que es justo donde se rompía. Y siete end-to-end con Playwright sobre navegador real. Cobertura de producción, 96,33 %. De dieciséis flujos de la aplicación, trece cubiertos: 81 %.
+Ochocientos noventa y cinco tests en verde. Unitarias sobre las reglas clínicas. Integración sobre el pipeline completo. Contrato sobre la frontera entre el backend clínico y el de administración, que es justo donde se rompía. Y end-to-end con Playwright sobre navegador real. Cobertura de producción, 97,56 %. De dieciséis flujos de la aplicación, trece cubiertos: 81 %.
 
-## 3. Red teaming: el hallazgo  -  0:45–1:20
+## 3. Red teaming: el hallazgo  -  0:45–1:20  (71 palabras)
 
 El hallazgo. Un analista preguntaba al asistente por sus cromosomas pendientes y recibía casos de otros analistas, con su código CHN. No era el modelo portándose mal: la consulta nunca supo quién preguntaba.
 Modelo de amenazas de siete filas. Nueve ataques en cinco categorías, tres corridas cada uno, con criterio observable — nunca igualdad de texto. Un ataque tiene éxito cuando falla el sistema, no cuando el modelo dice algo raro.
 
-## 4. Red teaming: el resultado  -  1:20–1:50
+## 4. Red teaming: el resultado  -  1:20–1:50  (44 palabras)
 
-Tres hallazgos confirmados, dos altos. Tres mitigaciones, todas en la aplicación y ninguna en el prompt: el modelo propone, la aplicación decide. Y veinticuatro tests de regresión que no llaman al modelo — prueban que el control impide el daño, no que el modelo se porte bien.
+Tres hallazgos confirmados, dos altos. Tres mitigaciones, todas en la aplicación y ninguna en el prompt: el modelo propone, la aplicación decide. Veinticuatro tests de regresión que no llaman al modelo. Y el retest: el atacante pasó de quince éxitos de quince a cero.
 
-## 5. Evals: la compuerta  -  1:50–2:30
+## 5. Evals: la v3 pasa la compuerta  -  1:50–2:30  (105 palabras)
 
-Evals. Dataset dorado: diecisiete casos, nueve críticos. Tres versiones del prompt. La compuerta bloquea las tres.
-Y el caso que lo explica: «cuántas metafases se procesaron en agosto». La v1 se calló. La v2 contestó «20 a 46». Y ese número existe: el ADR-0016 dice «20 a 46 metafases por muestra». Cogió un rango real, del tema correcto, y lo dio como producción de un mes. No es una invención: es algo peor, porque parece comprobable. Mejorar la completitud empeoró la fidelidad.
+Evals. Doce casos de los cinco tipos, cinco críticos. La v1 y la v2 solo cambian el prompt, y las dos se callaban ante «¿puedo emitir el informe?» y «¿puedo firmar yo?». La v3 salió al quinto intento: cada regla que añadía al prompt arreglaba un caso y rompía otro, y el primer borrador le dijo al analista «sí, puedes firmar tu propio caso». Lo que funcionó fue sacar esa decisión del modelo: la aplicación decide cuándo no responder y el modelo solo elige qué oraciones responden. Cinco de cinco críticos, compuerta en cero, y cada corrida cuesta unos cuatro mil tokens: cero en dinero.
 
-## 6. El punto  -  2:30–3:00
+## 6. El punto  -  2:30–3:00  (66 palabras)
 
-Siete veces en red teaming y dos más en evals, el instrumento falló antes que el sistema. Ataques que nunca llegaron a su objetivo y devolvían cero. Un criterio que contaba como fuga el dato que el propio ataque inyectaba.
+Siete veces en red teaming y cuatro más en evals, el instrumento falló antes que el sistema. Ataques que nunca llegaron a su objetivo y devolvían cero. Una frase prohibida que marcaba como falsa la respuesta correcta, «no se puede firmar», porque no sabía de negaciones.
 Un cero que no has intentado invalidar no es un resultado. Eso es lo que me llevo del módulo. Gracias.
 
 ---
 
-**357 palabras habladas.** A ritmo de exposicion (~140 palabras por minuto) son **2.5 minutos**.
+**382 palabras habladas.** A ~140 palabras por minuto son **2.7 minutos**.
