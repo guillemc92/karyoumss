@@ -8,6 +8,11 @@
 Las tablas de resultados se CALCULAN importando `evals/evaluar.py` sobre las
 respuestas grabadas: si una cifra del PDF no coincide con lo que imprime
 `evaluar.py correr`, es que alguien la escribio a mano, y aqui no puede pasar.
+
+El aspecto sigue `docs/M7_Evals_BIOMED/stilo.docx`, la maqueta del autor en
+Word: Arial, azules #1B4F72/#2874A6, cabeceras de tabla azul oscuro, filas
+criticas en ambar, semaforo verde/rojo y decimales con coma. Los tamanos de
+letra son los del PDF anterior, por decision del autor.
 """
 import html
 import io
@@ -25,6 +30,15 @@ E = html.escape
 VERSIONES = ['v1', 'v2', 'v3_borrador1', 'v3_borrador2', 'v3_borrador3', 'v3_borrador4', 'v3']
 
 
+def num(x, dec=3):
+    """Decimal con coma, como en la maqueta: 0,375."""
+    return ('%.*f' % (dec, x)).replace('.', ',')
+
+
+def semaforo(pasa):
+    return ('<td class="n pasa">PASA</td>' if pasa else '<td class="n bloquea">NO PASA</td>')
+
+
 def fila_version(v):
     filas, _ = evaluar.puntuar(v)
     g = evaluar.compuerta(filas, evaluar.umbrales())
@@ -33,16 +47,16 @@ def fila_version(v):
 
 def tabla_final():
     res = {v: fila_version(v)[1] for v in ('v1', 'v2', 'v3')}
-    L = ['<table class="res"><thead><tr><th></th><th>v1</th><th>v2</th><th>v3</th><th>Umbral</th></tr></thead><tbody>']
     u = evaluar.umbrales()
-    for clave, etiqueta, umbral in (('completitud', 'Completitud', '&ge; %.2f' % u['completitud_minima']),
-                                     ('fidelidad', 'Fidelidad', '&ge; %.2f' % u['fidelidad_minima']),
-                                     ('sin_prohibidos', 'Sin prohibidos', '= %.2f' % u['sin_prohibidos_minimo'])):
-        celdas = ''.join('<td class="n">%.3f</td>' % res[v][clave] for v in ('v1', 'v2', 'v3'))
+    L = ['<table class="res"><thead><tr><th></th><th>v1</th><th>v2</th><th>v3</th><th>Umbral</th></tr></thead><tbody>']
+    for clave, etiqueta, umbral in (('completitud', 'Completitud', '&ge; ' + num(u['completitud_minima'], 2)),
+                                     ('fidelidad', 'Fidelidad', '&ge; ' + num(u['fidelidad_minima'], 2)),
+                                     ('sin_prohibidos', 'Sin prohibidos', '= ' + num(u['sin_prohibidos_minimo'], 2))):
+        celdas = ''.join('<td class="n">%s</td>' % num(res[v][clave]) for v in ('v1', 'v2', 'v3'))
         L.append('<tr><td>%s</td>%s<td class="n">%s</td></tr>' % (etiqueta, celdas, umbral))
     L.append('<tr><td>Casos críticos perfectos</td>%s<td class="n">todos</td></tr>' % ''.join(
         '<td class="n">%d / %d</td>' % (res[v]['criticos_ok'], res[v]['criticos']) for v in ('v1', 'v2', 'v3')))
-    L.append('<tr class="gate"><td>Compuerta</td>%s<td></td></tr>' % ''.join(
+    L.append('<tr><td>Compuerta</td>%s<td class="n">código 0</td></tr>' % ''.join(
         '<td class="n %s">%s<br><span>código %d</span></td>' % (
             'pasa' if res[v]['pasa'] else 'bloquea', 'PASA' if res[v]['pasa'] else 'NO PASA',
             0 if res[v]['pasa'] else 1) for v in ('v1', 'v2', 'v3')))
@@ -56,11 +70,11 @@ def tabla_iteracion():
          '<th>Proh.</th><th>Críticos</th><th>Compuerta</th></tr></thead><tbody>']
     for v in VERSIONES:
         _, g = fila_version(v)
-        L.append('<tr><td><code>%s</code></td><td>%s</td><td class="n">%.3f</td><td class="n">%.3f</td>'
-                 '<td class="n">%.3f</td><td class="n">%d/%d</td><td class="n %s">%s</td></tr>' % (
-                     v, E(conf[v]['nota']), g['completitud'], g['fidelidad'], g['sin_prohibidos'],
-                     g['criticos_ok'], g['criticos'], 'pasa' if g['pasa'] else 'bloquea',
-                     'PASA' if g['pasa'] else 'NO PASA'))
+        L.append('<tr%s><td><code>%s</code></td><td>%s</td><td class="n">%s</td><td class="n">%s</td>'
+                 '<td class="n">%s</td><td class="n">%d/%d</td>%s</tr>' % (
+                     ' class="final"' if v == 'v3' else '', v, E(conf[v]['nota']),
+                     num(g['completitud']), num(g['fidelidad']), num(g['sin_prohibidos']),
+                     g['criticos_ok'], g['criticos'], semaforo(g['pasa'])))
     L.append('</tbody></table>')
     return '\n'.join(L)
 
@@ -84,8 +98,9 @@ def tabla_casos():
     }
     for c in evaluar.casos():
         fuentes = '<br>'.join(E(x['fuente']) for x in c['contexto'])
-        L.append('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td class="peq">%s</td><td>%s</td></tr>' % (
-            c['id'], c['tipo'].replace('_', ' '), 'sí' if c['critico'] else '', E(c['pregunta']),
+        L.append('<tr%s><td><b>%s</b></td><td>%s</td><td class="n">%s</td><td>%s</td><td class="peq">%s</td><td>%s</td></tr>' % (
+            ' class="critico"' if c['critico'] else '', c['id'], c['tipo'].replace('_', ' '),
+            '<span class="crit">sí</span>' if c['critico'] else '', E(c['pregunta']),
             fuentes, E(motivos[c['id']])))
     L.append('</tbody></table>')
     return '\n'.join(L)
@@ -99,14 +114,15 @@ def seccion_calibracion():
     txt = ruta.read_text(encoding='utf-8')
     m = re.search(r'\|\s*(\d+)\s*\|\s*([\d.]+) %\s*\|\s*([^|]+?)\s*\|', txt)
     n, acuerdo, kappa = (m.group(1), m.group(2), m.group(3)) if m else ('?', '?', '?')
+    acuerdo, kappa = acuerdo.replace('.', ','), kappa.replace('.', ',')
     filas = re.findall(r'^\| (v\S+) \| (EV-\d+) \| ([^|]+) \| ([^|]+) \| ([^|]*) \|$', txt, re.M)
     L = ['<div class="cifras"><div><b>%s</b><span>casos calificados a mano</span></div>'
-         '<div><b>%s %%</b><span>acuerdo</span></div><div><b>%s</b><span>kappa de Cohen</span></div></div>'
+         '<div><b>%s %%</b><span>acuerdo</span></div><div><b>&kappa; = %s</b><span>kappa de Cohen</span></div></div>'
          % (n, acuerdo, kappa)]
     if filas:
         L.append('<table><thead><tr><th>Caso</th><th>Humano</th><th>Juez</th><th>Nota</th></tr></thead><tbody>')
         for v, caso, h, j, nota in filas:
-            L.append('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>' % (caso, h, j, E(nota)))
+            L.append('<tr><td><b>%s</b></td><td>%s</td><td>%s</td><td>%s</td></tr>' % (caso, h, j, E(nota)))
         L.append('</tbody></table>')
     return '\n'.join(L)
 

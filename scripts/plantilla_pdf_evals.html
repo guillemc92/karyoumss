@@ -1,41 +1,58 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8">
 <title>M7 Evals — BIOMED UMSS</title>
+<meta name="pdf-formato" content="Letter">
+<meta name="pdf-cabecera" content="BIOMED UMSS &nbsp;·&nbsp; M7 · Día 10 — Evals offline|El lado probabilístico">
+<meta name="pdf-pie" content="M7 Evals · BIOMED UMSS|Pág.">
 <style>
-  @page { size: A4; }
-  :root{ --tinta:#14303A; --texto:#26404A; --tenue:#667F88; --linea:#D4DDE0; --hundido:#EEF2F3;
-         --naranja:#B85A18; --verde:#2A7050; }
+  /* Estilo copiado de docs/M7_Evals_BIOMED/stilo.docx (maqueta del autor):
+     Arial, azules #1B4F72 / #2874A6, texto #1C2833, gris #566573, bordes
+     #BFC9CA, filas alternas #F4F6F7, criticos en ambar, semaforo verde/rojo.
+     Los tamanos de letra son los del PDF anterior, por decision del autor. */
+  :root{ --titulo:#1B4F72; --seccion:#2874A6; --texto:#1C2833; --gris:#566573;
+         --borde:#BFC9CA; --zebra:#F4F6F7; --codigo:#EBF5FB; --cifra:#D4E6F1;
+         --ok-f:#D5F5E3; --ok-t:#196F3D; --mal-f:#FADBD8; --mal-t:#922B21;
+         --crit-f:#FCF3CF; --crit-t:#B9770E; }
   *{ box-sizing:border-box; }
-  body{ font-family: Calibri, "Segoe UI", Arial, sans-serif; color:var(--texto); font-size:10.5pt;
-        line-height:1.5; margin:0; }
-  h1{ font-family: Cambria, Georgia, serif; color:var(--tinta); font-size:22pt; margin:0 0 6px; line-height:1.15; }
-  h2{ font-family: Cambria, Georgia, serif; color:var(--tinta); font-size:14pt; margin:22px 0 8px;
-      padding-top:10px; border-top:1px solid var(--linea); break-after:avoid; }
-  h3{ font-size:11pt; color:var(--tinta); margin:14px 0 5px; break-after:avoid; }
-  p{ margin:0 0 8px; } ul{ margin:0 0 8px; padding-left:18px; } li{ margin-bottom:3px; }
-  code{ font-family: Consolas, "Courier New", monospace; font-size:9pt; background:var(--hundido);
-        padding:0 3px; border-radius:2px; }
-  pre{ font-family: Consolas, "Courier New", monospace; font-size:9pt; background:var(--hundido);
-       padding:9px 11px; border-radius:4px; margin:6px 0 10px; white-space:pre-wrap; break-inside:avoid; }
-  table{ width:100%; border-collapse:collapse; margin:6px 0 12px; font-size:9.3pt; break-inside:auto; }
-  th,td{ border:1px solid var(--linea); padding:4px 6px; text-align:left; vertical-align:top; }
-  th{ background:var(--hundido); color:var(--tinta); font-weight:600; }
+  body{ font-family: Arial, Helvetica, sans-serif; color:var(--texto); font-size:10.5pt;
+        line-height:1.45; margin:0; }
+  h1{ color:var(--titulo); font-size:22pt; font-weight:700; margin:0 0 3pt; line-height:1.15; }
+  h2{ color:var(--seccion); font-size:14pt; font-weight:700; margin:16pt 0 6pt;
+      padding-bottom:4pt; border-bottom:1.5pt solid var(--seccion); break-after:avoid; }
+  h3{ color:var(--seccion); font-size:11pt; font-weight:700; margin:10pt 0 4pt; break-after:avoid; }
+  p{ margin:0 0 6pt; } ul, ol{ margin:0 0 6pt; padding-left:18px; } li{ margin-bottom:3pt; }
+  b, strong{ color:var(--texto); }
+  code{ font-family: Consolas, "Courier New", monospace; font-size:9pt; background:var(--codigo);
+        padding:0 3px; }
+  pre{ font-family: Consolas, "Courier New", monospace; font-size:9pt; background:var(--codigo);
+       padding:8px 11px; margin:5pt 0 8pt; white-space:pre-wrap; break-inside:avoid; }
+  table{ width:100%; border-collapse:collapse; margin:5pt 0 10pt; font-size:9.3pt; break-inside:auto; }
+  th, td{ border:0.5pt solid var(--borde); padding:4px 6px; text-align:left; vertical-align:top; }
+  th{ background:var(--titulo); color:#FFFFFF; font-weight:700; text-align:center; }
+  tbody tr:nth-child(even) td{ background:var(--zebra); }
   tr{ break-inside:avoid; }
   td.n{ text-align:center; white-space:nowrap; font-variant-numeric:tabular-nums; }
-  td.peq{ font-size:8.3pt; color:var(--tenue); }
-  .pasa{ color:var(--verde); font-weight:700; } .bloquea{ color:var(--naranja); font-weight:700; }
+  td.peq{ font-size:8.3pt; color:var(--gris); }
+  td.pasa, tbody tr td.pasa{ background:var(--ok-f); color:var(--ok-t); font-weight:700; }
+  td.bloquea, tbody tr td.bloquea{ background:var(--mal-f); color:var(--mal-t); font-weight:700; }
+  td.pasa span, td.bloquea span{ font-weight:400; font-size:8.5pt; }
+  tbody tr.final td{ background:var(--ok-f); }
+  tbody tr.critico td{ background:var(--crit-f); }
+  .crit{ color:var(--crit-t); font-weight:700; }
+  td:first-child b{ white-space:nowrap; }
   table.res td, table.res th{ font-size:10.5pt; padding:6px 9px; }
-  table.res tr.gate td span{ font-weight:400; font-size:8.5pt; color:var(--tenue); }
-  .ficha td:first-child{ width:26%; font-weight:600; color:var(--tinta); }
-  .linea{ font-family: Cambria, Georgia, serif; font-size:12pt; color:var(--tinta); border-left:3px solid var(--naranja);
-          padding:4px 0 4px 12px; margin:10px 0 14px; }
-  .aviso{ background:#FBEFE5; border:1px solid #E8C4A6; padding:8px 11px; border-radius:4px; }
-  .nota{ color:var(--tenue); font-size:9.3pt; }
-  .cifras{ display:flex; gap:10px; margin:6px 0 12px; }
-  .cifras div{ flex:1; border:1px solid var(--linea); border-radius:4px; padding:8px 10px; }
-  .cifras b{ display:block; font-family: Cambria, Georgia, serif; font-size:17pt; color:var(--tinta); }
-  .cifras span{ font-size:8.8pt; color:var(--tenue); }
-  img.captura{ width:100%; border:1px solid var(--linea); border-radius:4px; }
+  table.ficha td{ border-color:var(--borde); }
+  table.ficha td:first-child{ width:24%; background:var(--zebra); color:var(--gris); font-weight:700; }
+  table.ficha td:last-child{ font-weight:700; background:#FFFFFF; }
+  .linea{ font-size:12pt; color:var(--gris); border-left:2.25pt solid var(--seccion);
+          padding:3pt 0 3pt 8pt; margin:5pt 0 10pt 11pt; }
+  .aviso{ background:var(--crit-f); color:var(--crit-t); padding:8px 11px; }
+  .nota{ color:var(--gris); font-size:9.3pt; }
+  .cifras{ display:flex; gap:10px; margin:5pt 0 10pt; }
+  .cifras div{ flex:1; background:var(--cifra); padding:8px 11px; }
+  .cifras b{ display:block; font-size:17pt; color:var(--titulo); }
+  .cifras span{ font-size:8.8pt; color:var(--gris); }
+  img.captura{ display:block; width:82%; margin:0 auto; border:0.5pt solid var(--borde); }
   .salto{ break-before:page; }
 </style></head><body>
 
@@ -50,15 +67,15 @@
   <tr><td>Entrega</td><td><code>M7_Evals_BIOMED_UMSS.zip</code>: <code>dataset/</code>, <code>respuestas/</code>, <code>evals/</code>, <code>evidencia/</code> y este documento</td></tr>
 </table>
 
-<p><b>Qué debe hacer bien, en una línea:</b></p>
+<p>Qué debe hacer bien, en una línea:</p>
 <p class="linea">Responder consultas sobre las reglas y procedimientos del laboratorio usando solo la documentación entregada, con las cifras exactas, y abstenerse ante datos de pacientes, temas ajenos o datos que no están.</p>
 
-<h2>1. Resultado</h2>
+<h2>1&nbsp;&nbsp;Resultado</h2>
 {{TABLA_FINAL}}
 <p><b>v1 y v2 no pasan; v3 pasa con código 0.</b> v1 y v2 cambian una sola cosa, el prompt, y fallan por lo mismo: el modelo se calla ante preguntas que el contexto sí responde, y en particular ante las dos preguntas de escalado («¿puedo emitir el informe?», «¿puedo firmar yo?»), que son críticas. v3 corrige la función en dos puntos, explicados en la sección 5.</p>
 <p class="nota">EV-03 sigue fallando en v3 (no es crítico) y se deja así: ver sección 8.</p>
 
-<h2>2. Cómo correrlo</h2>
+<h2>2&nbsp;&nbsp;Cómo correrlo</h2>
 <p>Desde la carpeta raíz de la entrega. Puntuar solo usa la biblioteca estándar de Python: sin modelo, sin red, en menos de un segundo.</p>
 <pre>python evals/evaluar.py correr v3        # la compuerta: PASA -> exit 0 / NO PASA -> exit 1
 python evals/evaluar.py correr v1        # y v2: las dos NO PASAN
@@ -66,7 +83,7 @@ python evals/evaluar.py comparar v2 v3   # qué casos cambian de lado
 python evals/evaluar.py calibrar v3_borrador1   # acuerdo y kappa juez vs humano</pre>
 <p>Regenerar respuestas sí necesita el modelo: <code>pip install openai</code>, Ollama con <code>llama3.2:3b</code>, y <code>python evals/evaluar.py generar v3</code> (unos 8 minutos en CPU). Las respuestas grabadas en <code>respuestas/</code> hacen que cualquiera obtenga las mismas cifras sin generar nada.</p>
 
-<h2>3. El dataset dorado: cómo se eligieron los 12 casos</h2>
+<h2>3&nbsp;&nbsp;El dataset dorado: cómo se eligieron los 12 casos</h2>
 <p>Cada caso lleva <b>pregunta, puntos clave, contexto y frases prohibidas</b>. Tres criterios de selección:</p>
 <ul>
   <li><b>Los 5 tipos del laboratorio</b>, con la misma proporción: 7 <i>hecho</i>, 2 <i>escalar</i>, 1 <i>fuera de alcance</i>, 1 <i>seguridad</i> y 1 <i>sin respuesta</i>. Los 5 que no son <i>hecho</i> se marcan <b>críticos</b>: son los que hacen daño si salen mal.</li>
@@ -75,7 +92,7 @@ python evals/evaluar.py calibrar v3_borrador1   # acuerdo y kappa juez vs humano
 </ul>
 {{TABLA_CASOS}}
 
-<h2>4. Métricas, juez y umbrales</h2>
+<h2>4&nbsp;&nbsp;Métricas, juez y umbrales</h2>
 <ul>
   <li><b>Completitud</b> (determinista): fracción de puntos clave presentes. En los casos de abstención, 1 si se abstuvo.</li>
   <li><b>Sin prohibidos</b> (determinista): 0 si aparece una frase prohibida. Admite expresiones regulares (<code>re:</code>) porque las negaciones importan: «puedes firmar» es prohibido y «no puedes firmar» es la respuesta correcta.</li>
@@ -90,7 +107,7 @@ python evals/evaluar.py calibrar v3_borrador1   # acuerdo y kappa juez vs humano
 </table>
 <p class="nota">Los umbrales se fijaron el 29/09 <b>antes de generar ninguna respuesta</b> y no se tocaron después. Un umbral elegido al ver la cifra no es un umbral.</p>
 
-<h2 class="salto">5. Qué se corrigió en la v3</h2>
+<h2 class="salto">5&nbsp;&nbsp;Qué se corrigió en la v3</h2>
 <p>La v3 no salió al primer intento. Salió al quinto, y los cuatro borradores se conservan en <code>respuestas/</code> porque son la explicación de lo que se corrigió:</p>
 {{TABLA_ITERACION}}
 <h3>Lo que enseñaron los borradores</h3>
@@ -107,7 +124,7 @@ python evals/evaluar.py calibrar v3_borrador1   # acuerdo y kappa juez vs humano
 </ol>
 <p><b>Consecuencia que hay que declarar:</b> con copia literal, la fidelidad es 1 por construcción. El riesgo no desaparece, se desplaza a la <b>selección</b>: elegir la oración equivocada o no elegir la necesaria. Eso lo miden la completitud y las frases prohibidas, que es donde hay que mirar la v3.</p>
 
-<h2>6. Calibración del juez</h2>
+<h2>6&nbsp;&nbsp;Calibración del juez</h2>
 <p>Se calificaron a mano los 12 casos de una corrida real (el borrador 1 de v3, que mezcla respuestas fieles y no fieles; con todas fieles la kappa no se puede calcular) y se compararon con el veredicto del juez caso por caso (fiel = todas sus oraciones respaldadas).</p>
 {{CALIBRACION}}
 <h3>La primera calificación dio kappa −0,235, y por qué se corrigió</h3>
@@ -121,7 +138,7 @@ python evals/evaluar.py calibrar v3_borrador1   # acuerdo y kappa juez vs humano
 <p>Van <b>todos en la misma dirección</b>: el humano dice fiel y el juez no fiel. EV-02 y EV-08 añaden una conclusión deducida de la regla, y el juez léxico no reconoce deducciones. En EV-06 el contexto está en inglés, y el juez no compara entre idiomas. Son los límites que declara la rúbrica.</p>
 <p><b>El juez es más estricto que el humano, nunca más permisivo</b>: no aprobó ninguna respuesta que el humano rechazara, y en EV-09 —la respuesta peligrosa— los dos coinciden. Para una compuerta clínica es la dirección de error aceptable: un falso «no fiel» obliga a mirar, y un falso «fiel» dejaría pasar una invención.</p>
 
-<h2>7. Fallos del instrumento, corregidos antes de creer las cifras</h2>
+<h2>7&nbsp;&nbsp;Fallos del instrumento, corregidos antes de creer las cifras</h2>
 <p>Cuatro veces el medidor falló antes que el sistema. Todos se corrigieron en el dataset, se verificaron con frases de prueba y se volvieron a puntuar <b>todas</b> las versiones con la vara corregida:</p>
 <ul>
   <li><b>Punto clave demasiado literal</b> (EV-07): exigía <code>degradad</code> y el modelo escribió «degradación». La respuesta era correcta.</li>
@@ -131,7 +148,7 @@ python evals/evaluar.py calibrar v3_borrador1   # acuerdo y kappa juez vs humano
 </ul>
 <p class="nota">Las dos últimas se encontraron leyendo los fallos del borrador 1 de v3, después de ver resultados. Se corrigieron porque marcaban como prohibidas respuestas correctas, no para que la v3 pasara: el borrador 1 sigue sin pasar con la vara corregida.</p>
 
-<h2>8. Límites</h2>
+<h2>8&nbsp;&nbsp;Límites</h2>
 <ul>
   <li><b>EV-03 falla en v3</b>: a «¿se puede modificar una fila de <code>edits</code>?» eligió la oración «modificar una fila invalida el hash…» y no la de «append-only». Es un error de selección real y no se maquilla: no es crítico y la compuerta lo admite.</li>
   <li><b>Selección de más</b>: en EV-06 añadió una oración sobre trisomía 13 que no hacía falta. Las métricas no lo penalizan; se declara.</li>
@@ -140,7 +157,7 @@ python evals/evaluar.py calibrar v3_borrador1   # acuerdo y kappa juez vs humano
   <li><b>La v3 vive en la evaluación</b>: la guarda y la selección de oraciones están implementadas en <code>evals/</code>. Llevarlas a <code>rag_qa.py</code> de producción es el paso siguiente, con sus tests.</li>
 </ul>
 
-<h2 class="salto">9. Cada archivo, qué contiene y para qué se creó</h2>
+<h2 class="salto">9&nbsp;&nbsp;Cada archivo, qué contiene y para qué se creó</h2>
 <table>
   <tr><th>Archivo</th><th>Qué contiene</th><th>Para qué</th></tr>
   <tr><td><code>dataset/dataset_dorado.jsonl</code></td><td>Los 12 casos: pregunta, puntos clave, contexto literal, frases prohibidas, tipo, crítico.</td><td>La vara fija contra la que se mide cada versión.</td></tr>
@@ -159,7 +176,7 @@ python evals/evaluar.py calibrar v3_borrador1   # acuerdo y kappa juez vs humano
   <tr><td><code>evidencia/calibracion.md</code></td><td>Acuerdo, kappa y desacuerdos.</td><td>Resultado de la calibración.</td></tr>
 </table>
 
-<h2>10. Evidencia: la compuerta con la v3 en código 0</h2>
+<h2 class="salto">10&nbsp;&nbsp;Evidencia: la compuerta con la v3 en código 0</h2>
 <p class="nota">Captura de una consola PowerShell real ejecutando <code>python evals\evaluar.py correr v3</code>, seguida de <code>$LASTEXITCODE</code>.</p>
 <img class="captura" src="evidencia/compuerta_v3.png" alt="Consola con la compuerta de la v3 en PASA y código de salida 0">
 
