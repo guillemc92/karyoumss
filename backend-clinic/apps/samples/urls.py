@@ -19,6 +19,7 @@ from .views import (
     ChromosomeRecropView,
     ChromosomeXaiView,
     KaryotypeView,
+    MetaphaseImageView,
     PipelineHealthView,
     SampleDetailView,
     SampleListCreateView,
@@ -37,6 +38,8 @@ urlpatterns = [
     path('samples/<uuid:pk>/status/', SampleStatusView.as_view(), name='sample-status'),
     # Cariotipo (ADR-0021 P1) — visor read-only con semaforización.
     path('samples/<uuid:pk>/karyotype/', KaryotypeView.as_view(), name='sample-karyotype'),
+    path('samples/<uuid:pk>/karyotype/metaphase/', MetaphaseImageView.as_view(),
+         name='sample-karyotype-metaphase'),
 
     # Cariotipo P2 (ADR-0021 P2, ADR-0022) — XAI + resolución + gating + audit.
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/xai/', ChromosomeXaiView.as_view(), name='chromosome-xai'),

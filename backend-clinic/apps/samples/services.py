@@ -8,6 +8,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone as django_timezone
 
+from .metafase import metafase_segmentada
 from .models import (
     CONFIDENCE_THRESHOLD,
     Chromosome,
@@ -236,7 +237,7 @@ def ingest_segmentation(sample, result: dict) -> Karyotype:
 def reprocess_sample(sample) -> Karyotype:
     """Reprocesa la 1ª imagen almacenada de la muestra con backend-ml e ingesta
     el cariotipo (DD-ML-002). MLDegradedError si backend-ml no responde."""
-    image = sample.images.order_by('order', 'captured_at').first()
+    image = metafase_segmentada(sample)
     if image is None:
         raise MLDegradedError('sin imagen para procesar')
     abs_path = Path(settings.MEDIA_ROOT) / image.image_path
@@ -366,7 +367,7 @@ def _pedir_heatmap(sample, chromosome) -> dict:
         return {'xai_disponible': False,
                 'motivo': 'el cromosoma no tiene bbox (caso anterior a P3)'}
 
-    image = sample.images.order_by('order', 'captured_at').first()
+    image = metafase_segmentada(sample)
     if image is None:
         return {'xai_disponible': False, 'motivo': 'la muestra no tiene imagen'}
 
@@ -984,7 +985,7 @@ def recrop_chromosome(sample, chromosome, bbox: dict, actor, mode='auto') -> Chr
 
     # Reclasificar es lo deseable, pero no puede bloquear la corrección.
     nueva_clase, nueva_confianza, motivo = clase_previa, confianza_previa, ''
-    image = sample.images.order_by('order', 'captured_at').first()
+    image = metafase_segmentada(sample)
     if image is None:
         motivo = 'sin imagen: no se pudo reclasificar'
     else:

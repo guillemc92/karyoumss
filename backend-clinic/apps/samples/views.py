@@ -1,3 +1,4 @@
+from django.http import FileResponse
 from django.utils import timezone
 from rest_framework import generics, status
 from rest_framework.response import Response
@@ -5,6 +6,7 @@ from rest_framework.views import APIView
 
 from .models import AuditReview, Chromosome, Sample, SampleStatus
 from .iscn import IscnError
+from .metafase import metafase_segmentada, ruta_segura, tipo_de_imagen
 from .alcance import Alcance
 from .tool_router import responder
 from .tools import catalogo_publicado
@@ -294,6 +296,52 @@ class KaryotypeView(APIView):
             )
 
         return Response(KaryotypeSerializer(karyotype).data, status=status.HTTP_200_OK)
+
+
+class MetaphaseImageView(APIView):
+    """GET /api/clinic/samples/{id}/karyotype/metaphase/ — la metafase del cariotipo (DD-KARYO-006).
+
+    Devuelve los bytes de la imagen sobre la que se segmentó el cariotipo; el
+    cliente recorta cada cromosoma con su `bbox`, que está en píxeles de esta
+    misma imagen.
+
+    El alcance es EXACTAMENTE el del visor (D3): `sample.view` y
+    `_get_owned_sample_or_none` → 403 NOT_OWNER para un analista que no es el
+    dueño. No hay una regla propia: la fuga de AI-SEC-001 (M9) vino de que la
+    identidad se comprobaba en un sitio y se perdía en otro.
+
+    404 NO_METAPHASE_IMAGE cuando no hay imagen utilizable —no existe, falta el
+    fichero o sus bytes no son una imagen—: el cliente lo trata como
+    degradación y pinta los rectángulos de siempre (D5, RN-07).
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.view')]
+
+    def get(self, request, pk):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        if getattr(sample, 'karyotype', None) is None:
+            return Response(
+                {'code': 'NO_KARYOTYPE', 'detail': 'La muestra aún no tiene cariotipo generado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        imagen = metafase_segmentada(sample)
+        ruta = ruta_segura(imagen.image_path) if imagen else None
+        tipo = tipo_de_imagen(ruta) if ruta else None
+        if tipo is None:
+            return Response(
+                {'code': 'NO_METAPHASE_IMAGE',
+                 'detail': 'El cariotipo no tiene una metafase utilizable para mostrar.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        respuesta = FileResponse(open(ruta, 'rb'), content_type=tipo)
+        respuesta['Cache-Control'] = 'private, max-age=300'
+        respuesta['X-Content-Type-Options'] = 'nosniff'
+        return respuesta
 
 
 def _get_owned_chromosome_or_error(sample, chromosome_id):
