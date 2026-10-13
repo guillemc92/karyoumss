@@ -23,6 +23,7 @@ import { useSession } from '../auth';
 import { useKaryotype } from '../hooks/useKaryotype';
 import { useAuditTrail, useKaryotypeActions } from '../hooks/useKaryotypeActions';
 import { useDegradedMode } from '../hooks/useDegradedMode';
+import { useMetaphaseImage } from '../hooks/useMetaphaseImage';
 import { INITIAL_VIEWPORT, viewportReducer } from '../lib/viewport';
 import type { Punto } from '../lib/medicion';
 import {
@@ -61,6 +62,9 @@ export function KaryotypePage() {
   const { id } = useParams<{ id: string }>();
   const { role } = useSession();
   const { data: karyotype, isLoading, isError, error } = useKaryotype(id);
+  // DD-KARYO-006: la metafase real. Sin ella el lienzo pinta los rectángulos de
+  // siempre; nunca bloquea el trabajo del analista (RN-07).
+  const { imagen: metafase, estado: estadoMetafase } = useMetaphaseImage(id);
   const [selected, setSelected] = useState<Chromosome | null>(null);
   const [xaiOpen, setXaiOpen] = useState(false);
   const [xaiResult, setXaiResult] = useState<XaiResult | null>(null);
@@ -317,7 +321,15 @@ export function KaryotypePage() {
             onMeasureClick={marcarPunto}
             cropMode={Boolean(recortando) && !validated}
             onCropDone={handleCropDone}
+            metafase={metafase}
           />
+          {(estadoMetafase === 'sin-imagen' || estadoMetafase === 'error') && (
+            <p className="karyo-metafase-aviso" data-testid="metafase-aviso" role="status">
+              {estadoMetafase === 'sin-imagen'
+                ? 'Este caso no tiene una metafase para mostrar: los cromosomas se ven como cajas de color.'
+                : 'No se pudo cargar la metafase: los cromosomas se ven como cajas de color.'}
+            </p>
+          )}
         </div>
         <aside className="karyo-workspace__panel">
           <MedicionPanel

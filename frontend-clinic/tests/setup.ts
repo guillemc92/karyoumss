@@ -58,6 +58,15 @@ vi.mock('react-konva', async () => {
       for (const [k, v] of Object.entries(props)) {
         if (k.startsWith('data-') || k === 'aria-label') domProps[k] = v;
       }
+      // DD-KARYO-006: de una Image importa QUÉ región de la metafase se pinta
+      // y a qué tamaño. Se exponen para que el test lo compruebe sin que el
+      // componente lleve atributos solo para tests.
+      if (tag === 'image') {
+        const p = props as { crop?: unknown; x?: number; y?: number; width?: number; height?: number; image?: unknown };
+        domProps['data-crop'] = JSON.stringify(p.crop);
+        domProps['data-caja'] = JSON.stringify({ x: p.x, y: p.y, w: p.width, h: p.height });
+        domProps['data-con-imagen'] = String(Boolean(p.image));
+      }
       if (onClick) domProps.onClick = () => onClick({ cancelBubble: false, target: { getStage: stageFalso } });
       for (const nombre of ['onMouseDown', 'onMouseMove', 'onMouseUp', 'onMouseLeave'] as const) {
         const manejador = props[nombre] as ((e: unknown) => void) | undefined;
@@ -75,6 +84,7 @@ vi.mock('react-konva', async () => {
     Layer: konvaNode('layer'),
     Group: konvaNode('group'),
     Rect: konvaNode('rect'),
+    Image: konvaNode('image'),
     Text: konvaNode('text'),
     Line: konvaNode('line'),
     Label: konvaNode('label'),

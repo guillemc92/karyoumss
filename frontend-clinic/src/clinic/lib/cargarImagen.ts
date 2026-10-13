@@ -14,8 +14,11 @@ export interface ImagenCargada {
 }
 
 export function cargarImagen(blob: Blob): Promise<ImagenCargada> {
-  const url = URL.createObjectURL(blob);
   return new Promise((resolve, reject) => {
+    // Dentro de la promesa: si el entorno no sabe crear la URL (jsdom), es un
+    // rechazo —el visor cae a los rectángulos— y no una excepción que tumbe
+    // la pantalla entera desde el efecto que la llama.
+    const url = URL.createObjectURL(blob);
     const imagen = new Image();
     imagen.onload = () => resolve({ imagen, liberar: () => URL.revokeObjectURL(url) });
     imagen.onerror = () => {

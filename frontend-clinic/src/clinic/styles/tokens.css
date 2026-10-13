@@ -287,6 +287,9 @@ input[type="range"] { width: 100%; height: 4px; border-radius: 2px; background: 
 .karyo-workspace { display: grid; grid-template-columns: 1fr 300px; gap: 1.2rem; align-items: start; }
 .karyo-workspace__viewer { background: var(--dark-workspace); border-radius: var(--radius-lg); padding: 1.2rem; box-shadow: var(--shadow-sm); }
 .karyo-workspace__panel { position: sticky; top: 1rem; }
+/* DD-KARYO-006: aviso discreto bajo el lienzo cuando no hay metafase que mostrar.
+   Es información, no un error: el analista puede seguir trabajando. */
+.karyo-metafase-aviso { margin: 0.6rem 0 0; font-size: 0.78rem; color: #cbd5e1; }
 
 .karyo-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 0.8rem 0.4rem; }
 .karyo-slot { display: flex; flex-direction: column; align-items: center; gap: 4px; }

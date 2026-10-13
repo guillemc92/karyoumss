@@ -246,3 +246,58 @@ describe('KaryotypeCanvas — recorte manual', () => {
     expect(onReclassify).not.toHaveBeenCalled();
   });
 });
+
+// ============================================================================
+// DD-KARYO-006 T3: los cromosomas reales
+// ============================================================================
+describe('KaryotypeCanvas con la metafase (DD-KARYO-006)', () => {
+  /** Doble de una metafase ya decodificada de 1024 × 768. */
+  const metafase = { width: 1024, height: 768, naturalWidth: 1024, naturalHeight: 768 } as HTMLImageElement;
+  const BBOX = { x: 120, y: 340, w: 30, h: 60 };
+
+  function pintar(cs: Chromosome[], props: Partial<Parameters<typeof KaryotypeCanvas>[0]> = {}) {
+    return render(<KaryotypeCanvas chromosomes={cs} selectedId={null} onSelect={() => {}} metafase={metafase} {...props} />);
+  }
+
+  it('recorta de la metafase EXACTAMENTE la región de su bbox', () => {
+    pintar([chromo({ id: 'a', bbox: BBOX })]);
+    const img = screen.getByTestId('chromosome-img-a');
+    expect(img.getAttribute('data-con-imagen')).toBe('true');
+    expect(JSON.parse(img.getAttribute('data-crop')!)).toEqual({ x: 120, y: 340, width: 30, height: 60 });
+  });
+
+  it('lo encaja en su caja sin deformarlo: 30 × 60 cabe como 22 × 44', () => {
+    pintar([chromo({ id: 'a', bbox: BBOX })]);
+    const caja = JSON.parse(screen.getByTestId('chromosome-img-a').getAttribute('data-caja')!);
+    expect(caja.w).toBeCloseTo(22);
+    expect(caja.h).toBeCloseTo(44);
+    expect(caja.w / caja.h).toBeCloseTo(BBOX.w / BBOX.h);
+  });
+
+  it('el semáforo pasa a ser el borde, y el cromosoma sigue siendo seleccionable', () => {
+    const onSelect = vi.fn();
+    const c = chromo({ id: 'a', bbox: BBOX, semaphore: 'orange' });
+    pintar([c], { onSelect });
+    expect(screen.getByTestId('chromosome-frame-a')).toBeInTheDocument();
+    expect(screen.getByTestId('chromosome-a').getAttribute('data-semaphore')).toBe('orange');
+    screen.getByTestId('chromosome-a').click();
+    expect(onSelect).toHaveBeenCalledWith(c);
+  });
+
+  it('sin metafase pinta el rectángulo de siempre (degradación)', () => {
+    render(<KaryotypeCanvas chromosomes={[chromo({ id: 'a', bbox: BBOX })]} selectedId={null} onSelect={() => {}} />);
+    expect(screen.queryByTestId('chromosome-img-a')).toBeNull();
+    expect(screen.queryByTestId('chromosome-frame-a')).toBeNull();
+  });
+
+  it('un cromosoma sin bbox (anterior a P3) se pinta como rectángulo aunque haya metafase', () => {
+    pintar([chromo({ id: 'a', bbox: {} }), chromo({ id: 'b', bbox: BBOX, predicted_class: '2' })]);
+    expect(screen.queryByTestId('chromosome-img-a')).toBeNull();
+    expect(screen.getByTestId('chromosome-img-b')).toBeInTheDocument();
+  });
+
+  it('un bbox que se sale de la metafase no se recorta', () => {
+    pintar([chromo({ id: 'a', bbox: { x: 1010, y: 10, w: 30, h: 60 } })]);
+    expect(screen.queryByTestId('chromosome-img-a')).toBeNull();
+  });
+});

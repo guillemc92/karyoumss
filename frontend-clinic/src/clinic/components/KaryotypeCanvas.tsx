@@ -12,7 +12,7 @@
  * se valida en E2E.
  */
 import { useState } from 'react';
-import { Circle, Group, Layer, Line, Rect, Stage, Text } from 'react-konva';
+import { Circle, Group, Image as KonvaImage, Layer, Line, Rect, Stage, Text } from 'react-konva';
 import type { Chromosome } from '../types/karyotype';
 import { CHROMOSOME_SLOTS } from '../types/karyotype';
 import {
@@ -29,6 +29,7 @@ import type { ViewportState } from '../lib/viewport';
 import { INITIAL_VIEWPORT, cssFilter, stageScale } from '../lib/viewport';
 import type { Punto } from '../lib/medicion';
 import { esRecorteUtil, rectanguloDeRecorte } from '../lib/recorte';
+import { encajarRecorte, recorteValido, type Caja } from '../lib/encajarRecorte';
 
 const SEMAPHORE_FILL: Record<string, string> = {
   green: '#1e8868',
@@ -38,6 +39,14 @@ const SEMAPHORE_FILL: Record<string, string> = {
 
 const CHROMO_BODY_W = 22;
 const CHROMO_BODY_H = 100;
+/** Caja del cuerpo del cromosoma dentro de su grupo: ahí se encaja el recorte. */
+const CUERPO: Caja = { x: 2, y: 10, w: CHROMO_BODY_W, h: CHROMO_BODY_H };
+
+/** Tamaño real de la metafase. `naturalWidth` es el de los píxeles decodificados;
+ * `width` cubre los dobles de los tests, que no decodifican. */
+function tamanoDe(imagen: HTMLImageElement): { w: number; h: number } {
+  return { w: imagen.naturalWidth || imagen.width, h: imagen.naturalHeight || imagen.height };
+}
 
 interface KaryotypeCanvasProps {
   chromosomes: Chromosome[];
@@ -65,6 +74,12 @@ interface KaryotypeCanvasProps {
    */
   cropMode?: boolean;
   onCropDone?: (bbox: { x: number; y: number; w: number; h: number }) => void;
+  /**
+   * Metafase del cariotipo (DD-KARYO-006). Con ella cada cromosoma se pinta
+   * recortado de la imagen real; sin ella —o si su `bbox` no es válido— se
+   * pinta el rectángulo de color de siempre (degradación, RN-07).
+   */
+  metafase?: HTMLImageElement | null;
 }
 
 export function KaryotypeCanvas({
@@ -81,6 +96,7 @@ export function KaryotypeCanvas({
   onMeasureClick,
   cropMode = false,
   onCropDone,
+  metafase = null,
 }: KaryotypeCanvasProps) {
   // Rectángulo en curso. Vive aquí y no en la página porque solo importa
   // mientras se arrastra: al soltar se emite el bbox y se olvida.
@@ -188,6 +204,12 @@ export function KaryotypeCanvas({
             const selected = chromo.id === selectedId;
             const picked = chromo.id === joinPickId;
             const stroke = picked ? '#7b2cbf' : selected ? '#0b7285' : '#1b3a4b';
+            // DD-KARYO-006: el recorte real, si hay metafase y el bbox cabe en ella.
+            const recorte: Caja | null =
+              metafase && recorteValido(chromo.bbox as Partial<Caja>, tamanoDe(metafase))
+                ? (chromo.bbox as Caja)
+                : null;
+            const destino = recorte ? encajarRecorte(recorte, CUERPO) : null;
             return (
               <Group
                 key={chromo.id}
@@ -209,18 +231,63 @@ export function KaryotypeCanvas({
                     : undefined
                 }
               >
-                <Rect
-                  x={2}
-                  y={10}
-                  width={CHROMO_BODY_W}
-                  height={CHROMO_BODY_H}
-                  cornerRadius={7}
-                  fill={SEMAPHORE_FILL[chromo.semaphore]}
-                  stroke={stroke}
-                  strokeWidth={selected || picked ? 3 : 1}
-                  dash={chromo.is_anomaly ? [6, 4] : undefined}
-                  opacity={chromo.resolution_status === 'RESOLVED' ? 0.6 : 1}
-                />
+                {recorte && destino ? (
+                  <>
+                    {/* Fondo claro: el hueco que deja el encaje se ve como
+                        margen, no como parte del cromosoma. */}
+                    <Rect x={CUERPO.x} y={CUERPO.y} width={CUERPO.w} height={CUERPO.h} fill="#f4f6f7" />
+                    <KonvaImage
+                      data-testid={`chromosome-img-${chromo.id}`}
+                      image={metafase as HTMLImageElement}
+                      crop={{ x: recorte.x, y: recorte.y, width: recorte.w, height: recorte.h }}
+                      x={destino.x}
+                      y={destino.y}
+                      width={destino.w}
+                      height={destino.h}
+                    />
+                    {/* Con la imagen a la vista el semáforo ya no puede ser el
+                        relleno: pasa a ser el borde. La selección, otro borde
+                        por fuera, para que las dos señales no se pisen. */}
+                    <Rect
+                      data-testid={`chromosome-frame-${chromo.id}`}
+                      x={CUERPO.x}
+                      y={CUERPO.y}
+                      width={CUERPO.w}
+                      height={CUERPO.h}
+                      cornerRadius={4}
+                      stroke={SEMAPHORE_FILL[chromo.semaphore]}
+                      strokeWidth={2}
+                      dash={chromo.is_anomaly ? [6, 4] : undefined}
+                      opacity={chromo.resolution_status === 'RESOLVED' ? 0.6 : 1}
+                      listening={false}
+                    />
+                    {(selected || picked) && (
+                      <Rect
+                        x={CUERPO.x - 2}
+                        y={CUERPO.y - 2}
+                        width={CUERPO.w + 4}
+                        height={CUERPO.h + 4}
+                        cornerRadius={6}
+                        stroke={stroke}
+                        strokeWidth={3}
+                        listening={false}
+                      />
+                    )}
+                  </>
+                ) : (
+                  <Rect
+                    x={CUERPO.x}
+                    y={CUERPO.y}
+                    width={CUERPO.w}
+                    height={CUERPO.h}
+                    cornerRadius={7}
+                    fill={SEMAPHORE_FILL[chromo.semaphore]}
+                    stroke={stroke}
+                    strokeWidth={selected || picked ? 3 : 1}
+                    dash={chromo.is_anomaly ? [6, 4] : undefined}
+                    opacity={chromo.resolution_status === 'RESOLVED' ? 0.6 : 1}
+                  />
+                )}
                 <Text text={chromo.predicted_class} x={0} y={0} width={CHROMO_BODY_W + 4} align="center" fontSize={11} fill="#1b3a4b" />
               </Group>
             );
