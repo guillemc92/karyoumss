@@ -1,6 +1,8 @@
 from django.http import FileResponse
 from django.utils import timezone
 from rest_framework import generics, status
+from rest_framework.exceptions import NotAcceptable
+from rest_framework.negotiation import DefaultContentNegotiation
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -298,6 +300,26 @@ class KaryotypeView(APIView):
         return Response(KaryotypeSerializer(karyotype).data, status=status.HTTP_200_OK)
 
 
+class _NegociacionImagen(DefaultContentNegotiation):
+    """Negociación para un endpoint que devuelve una imagen o un error JSON.
+
+    DRF negocia el formato ANTES de ejecutar la vista: con `Accept: image/*` y
+    solo renderizadores JSON, responde 406 sin llegar a mirar nada. Pero la
+    imagen sale como `FileResponse`, que no pasa por los renderizadores, así
+    que pedir una imagen es correcto y no puede rechazarse. Si nada casa, se
+    usa el primer renderizador —JSON—, que es el de los errores.
+
+    Lo destapó la primera prueba en un navegador real (13/10): el cliente de
+    pruebas de Django manda `*/*` y MSW no mira la cabecera.
+    """
+
+    def select_renderer(self, request, renderers, format_suffix=None):
+        try:
+            return super().select_renderer(request, renderers, format_suffix)
+        except NotAcceptable:
+            return renderers[0], renderers[0].media_type
+
+
 class MetaphaseImageView(APIView):
     """GET /api/clinic/samples/{id}/karyotype/metaphase/ — la metafase del cariotipo (DD-KARYO-006).
 
@@ -314,6 +336,8 @@ class MetaphaseImageView(APIView):
     fichero o sus bytes no son una imagen—: el cliente lo trata como
     degradación y pinta los rectángulos de siempre (D5, RN-07).
     """
+
+    content_negotiation_class = _NegociacionImagen
 
     def get_permissions(self):
         return [HasOpcion('sample.view')]

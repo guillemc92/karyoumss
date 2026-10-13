@@ -209,6 +209,24 @@ class TestMetaphaseImageView:
                                    source=SampleImageSource.UPLOAD)
         assert analyst_client.get(_url(s)).data['code'] == 'NO_METAPHASE_IMAGE'
 
+    # El cliente real (useMetaphaseImage) pide `Accept: image/*`. El cliente de
+    # pruebas de Django manda `*/*`, así que los tests de arriba no veían que
+    # DRF negociaba el formato ANTES de la vista y respondía 406: lo encontró la
+    # primera prueba en un navegador real (13/10). Estos dos fijan el contrato
+    # con la cabecera que envía de verdad el visor.
+    def test_con_accept_de_imagen_entrega_la_imagen(self, analyst_client, analyst_user, media):
+        s = _caso(analyst_user, 'CHN-2026-10-13-0020', media, bmp())
+        resp = analyst_client.get(_url(s), HTTP_ACCEPT='image/*')
+        assert resp.status_code == 200
+        assert resp['Content-Type'] == 'image/bmp'
+
+    def test_con_accept_de_imagen_los_errores_siguen_en_json(self, analyst_client, analyst_user, media):
+        s = _caso(analyst_user, 'CHN-2026-10-13-0021')
+        resp = analyst_client.get(_url(s), HTTP_ACCEPT='image/*')
+        assert resp.status_code == 404
+        assert resp['Content-Type'].startswith('application/json')
+        assert resp.json()['code'] == 'NO_METAPHASE_IMAGE'
+
     def test_sirve_la_imagen_segmentada_no_otra(self, analyst_client, analyst_user, media):
         """D4: la de orden 0, aunque haya más metafases en el caso."""
         s = _caso(analyst_user, 'CHN-2026-10-13-0019', media, bmp(ancho=4))
