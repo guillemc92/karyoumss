@@ -42,9 +42,14 @@ devuelve coordenadas **del lienzo del cariograma** —la cuadrícula de pares—
 metafase. El servidor reclasifica así una región de la metafase que no tiene
 relación con lo que el analista dibujó.
 
-Confirmado por lectura del código; **no reproducido todavía en la aplicación**
-(el recorte nunca tuvo E2E real, pendiente declarado en su entrega). La
-reproducción es la primera prueba de la tarea T4.
+**Reproducido en la aplicación real el 13/10** (`tests/auditado/recorte-coordenadas.spec.ts`,
+sin escribir nada: la petición se intercepta). El analista dibuja el recorte
+justo encima del cromosoma y el visor envía `{x: 9, y: 18, w: 22, h: 100}` —las
+coordenadas de su hueco en el cariograma—, cuando el cromosoma está en
+`{x: 448, y: 35, w: 175, h: 73}` de la metafase. El recorte nunca tuvo E2E real
+(pendiente declarado en su entrega); la primera versión de esta prueba también
+falló por el instrumento —medía el lienzo antes de que el panel desplazara la
+página— y no se dio por buena hasta corregirlo.
 
 Este defecto no se puede dejar para después: en cuanto el analista vea
 cromosomas reales usará el recorte sobre ellos, y el resultado sería erróneo
@@ -102,6 +107,11 @@ rectángulo se convierte a píxeles de la metafase con una transformación linea
 pura (`lib/recorteMetafase.ts`). Arregla el defecto del §2 y, de paso, permite
 **agrandar** un recorte que se quedó corto, cosa imposible dibujando dentro del
 rectángulo de 22 × 100.
+
+**Consecuencia, decidida al implementar (T4):** sin metafase —o si la caja del
+cromosoma no cae dentro de ella— no hay sobre qué dibujar, así que el botón
+«Recortar y reclasificar» **no aparece** (degradación, RN-07). El lienzo del
+cariograma deja de capturar el arrastre para recortar; ya solo lo hace el panel.
 
 ### D8 · Los cromosomas tumbados se muestran de pie *(enmienda del 13/10, aprobada por el autor)*
 La primera prueba en un navegador real enseñó que, con la imagen a la vista,
@@ -168,6 +178,6 @@ Cada tarea cabe en una sesión de ≤ 3 h y se entrega con sus pruebas.
 | T2 | Frontend: `clinicRequestBlob` + `useMetaphaseImage` y pruebas | 1,5 h |
 | T3 | Lienzo: recortes reales, borde de semáforo, degradación; mock de `Image` | 2,5 h |
 | T3b | D8: poner de pie los tumbados (`colocarRecorte`, giro de 90° solo de presentación) | 1,5 h |
-| T4 | RECROP: reproducir el defecto en E2E, `MetafasePanel` + `recorteMetafase`, prueba de que queda corregido | 3 h |
+| T4 | RECROP: reproducir el defecto en E2E, `MetafasePanel` + `recorteMetafase`, prueba de que queda corregido — **hecho 13/10**: el E2E que reproducía el defecto pasa contra el stack real (bbox enviado = caja del cromosoma ± 2 px); reintroducir el defecto hace fallar 4 pruebas | 3 h |
 | T5 | E2E real completo y capturas | 2 h |
 | T6 | Cierre: estado de este documento, nota de corrección en DD-KARYO-005 §4.1, `TASKS.md` | 0,5 h |

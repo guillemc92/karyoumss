@@ -370,3 +370,11 @@ input[type="range"] { width: 100%; height: 4px; border-radius: 2px; background: 
 .karyo-canvas > div { background: #f4f8fb; border-radius: var(--radius-md); }
 .karyo-reclassify { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.6rem; font-size: 0.82rem; }
 .karyo-reclassify select { flex: 1; padding: 0.35rem 0.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-sm); }
+
+/* DD-KARYO-006 D7: panel donde se dibuja el recorte, sobre la metafase real. */
+.metafase-panel { margin-top: 0.8rem; display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; color: #e2e8f0; }
+.metafase-panel__titulo { font-size: 0.9rem; }
+.metafase-panel__ayuda { margin: 0; font-size: 0.78rem; color: #cbd5e1; max-width: 360px; }
+.metafase-panel canvas, .metafase-panel [data-testid="metafase-stage"] { background: #000; cursor: crosshair; }
+/* Sobre el fondo oscuro del visor el contorno estándar no se lee. */
+.metafase-panel .btn-outline { color: #e2e8f0; border-color: #94a3b8; background: transparent; }

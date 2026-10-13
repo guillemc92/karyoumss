@@ -15,6 +15,7 @@ import { Skeleton } from '../components/Skeleton';
 import { KaryotypeCanvas } from '../components/KaryotypeCanvas';
 import { KaryoImageToolbar } from '../components/KaryoImageToolbar';
 import { MedicionPanel } from '../components/MedicionPanel';
+import { MetafasePanel } from '../components/MetafasePanel';
 import { ChromosomePropertiesPanel } from '../components/ChromosomePropertiesPanel';
 import { SupervisorAuditPanel } from '../components/SupervisorAuditPanel';
 import { SupervisorIscnPanel } from '../components/SupervisorIscnPanel';
@@ -26,6 +27,7 @@ import { useDegradedMode } from '../hooks/useDegradedMode';
 import { useMetaphaseImage } from '../hooks/useMetaphaseImage';
 import { INITIAL_VIEWPORT, viewportReducer } from '../lib/viewport';
 import type { Punto } from '../lib/medicion';
+import { recorteValido, type Caja } from '../lib/encajarRecorte';
 import {
   accionDeTeclado,
   conHistorial,
@@ -84,8 +86,8 @@ export function KaryotypePage() {
   const [midiendo, setMidiendo] = useState(false);
   const [puntos, setPuntos] = useState<Punto[]>([]);
   // Recorte manual: se guarda el id del cromosoma que se está recortando, no un
-  // booleano, porque el rectángulo se dibuja sobre el lienzo entero y hay que
-  // saber a cuál de los 46 se le aplica.
+  // booleano, porque el panel de metafase muestra la zona de ESE cromosoma y
+  // el recorte se le aplica a él aunque luego se seleccione otro.
   const [recortando, setRecortando] = useState<string | null>(null);
 
   // Ctrl+Z / Ctrl+Y sobre la vista. Si hay medicion en curso, deshacer quita
@@ -108,7 +110,8 @@ export function KaryotypePage() {
   const marcarPunto = (p: Punto) =>
     setPuntos((previos) => (previos.length >= 3 ? [p] : [...previos, p]));
   const limpiarMedicion = () => setPuntos([]);
-  // Medir y recortar se excluyen: ambos capturan el arrastre sobre el lienzo.
+  // Medir y recortar se excluyen: son dos herramientas de arrastre y tener
+  // ambas activas confunde sobre qué hace el siguiente gesto.
   const alternarMedicion = () => {
     setMidiendo((v) => !v);
     setPuntos([]);
@@ -172,6 +175,17 @@ export function KaryotypePage() {
     viewXai.isPending || resolve.isPending || markAnomaly.isPending || validate.isPending ||
     reclassify.isPending || split.isPending || join.isPending || resolveCross.isPending ||
     recrop.isPending;
+
+  // DD-KARYO-006 D7: el recorte se dibuja sobre la metafase, así que solo se
+  // ofrece si hay metafase y el cromosoma tiene una caja dentro de ella. Sin
+  // metafase no hay sobre qué recortar: el botón no aparece (degradación, RN-07).
+  const recortable = (c: Chromosome | null): c is Chromosome & { bbox: Caja } =>
+    Boolean(metafase && c && recorteValido(c.bbox as Partial<Caja> | null, {
+      w: metafase.naturalWidth || metafase.width,
+      h: metafase.naturalHeight || metafase.height,
+    }));
+  const candidato = karyotype.chromosomes.find((c) => c.id === recortando) ?? null;
+  const enRecorte = !validated && recortable(candidato) ? candidato : null;
 
   async function handleViewXai(c: Chromosome) {
     setActionError(null);
@@ -319,10 +333,17 @@ export function KaryotypePage() {
             measureMode={midiendo}
             measurePoints={puntos}
             onMeasureClick={marcarPunto}
-            cropMode={Boolean(recortando) && !validated}
-            onCropDone={handleCropDone}
             metafase={metafase}
           />
+          {enRecorte && metafase && (
+            <MetafasePanel
+              key={enRecorte.id}
+              metafase={metafase}
+              bbox={enRecorte.bbox}
+              onCropDone={handleCropDone}
+              onCancelar={() => setRecortando(null)}
+            />
+          )}
           {(estadoMetafase === 'sin-imagen' || estadoMetafase === 'error') && (
             <p className="karyo-metafase-aviso" data-testid="metafase-aviso" role="status">
               {estadoMetafase === 'sin-imagen'
@@ -350,7 +371,7 @@ export function KaryotypePage() {
             onJoinPick={validated ? undefined : handleJoinPick}
             onJoinConfirm={validated ? undefined : handleJoinConfirm}
             joinPick={joinPick}
-            onToggleCrop={validated ? undefined : alternarRecorte}
+            onToggleCrop={validated || !recortable(selected) ? undefined : alternarRecorte}
             cropActivo={recortando === selected?.id}
           />
           <div className="karyo-gating">

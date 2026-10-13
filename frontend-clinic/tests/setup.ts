@@ -70,6 +70,11 @@ vi.mock('react-konva', async () => {
         });
         domProps['data-con-imagen'] = String(Boolean(p.image));
       }
+      // D7: el recuadro del recorte actual tiene que caer donde está el cromosoma.
+      if (tag === 'rect') {
+        const p = props as { x?: number; y?: number; width?: number; height?: number };
+        domProps['data-caja'] = JSON.stringify({ x: p.x, y: p.y, w: p.width, h: p.height });
+      }
       if (onClick) domProps.onClick = () => onClick({ cancelBubble: false, target: { getStage: stageFalso } });
       for (const nombre of ['onMouseDown', 'onMouseMove', 'onMouseUp', 'onMouseLeave'] as const) {
         const manejador = props[nombre] as ((e: unknown) => void) | undefined;

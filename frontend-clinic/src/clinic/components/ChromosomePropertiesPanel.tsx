@@ -26,7 +26,8 @@ interface Actions {
   onJoinConfirm?: (c: Chromosome) => void;
   /** Primer fragmento marcado para unir (lo gestiona la página). */
   joinPick?: { id: string; label: string } | null;
-  /** Recorte manual: activa el dibujo del rectángulo sobre el lienzo. */
+  /** Recorte manual: abre el panel de metafase (DD-KARYO-006 D7). Sin él —no
+   * hay metafase o el cromosoma no tiene caja— el botón no se muestra. */
   onToggleCrop?: (c: Chromosome) => void;
   cropActivo?: boolean;
 }
@@ -194,7 +195,7 @@ export function ChromosomePropertiesPanel({
                 data-testid="action-crop"
                 aria-pressed={cropActivo}
               >
-                {cropActivo ? '⬚ Dibuje el recorte en el visor' : '⬚ Recortar y reclasificar'}
+                {cropActivo ? '⬚ Dibuje el recorte en la metafase' : '⬚ Recortar y reclasificar'}
               </button>
             )}
           </div>
@@ -203,8 +204,9 @@ export function ChromosomePropertiesPanel({
           </p>
           {cropActivo && (
             <p className="karyo-props__hint" data-testid="crop-hint">
-              Arrastre un rectángulo sobre el cromosoma en el visor. Al soltar se
-              reclasifica con el recorte nuevo y vuelve a quedar pendiente de revisión.
+              Arrastre un rectángulo sobre el cromosoma en el panel «Metafase», bajo el
+              visor. Al soltar se reclasifica con el recorte nuevo y vuelve a quedar
+              pendiente de revisión.
             </p>
           )}
         </div>

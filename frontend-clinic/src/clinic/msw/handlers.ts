@@ -76,6 +76,21 @@ function getOrBuildKaryotype(sampleId: string): Karyotype {
   return karyotypes[sampleId];
 }
 
+/**
+ * Para tests: pone una caja a un cromosoma del mock. Los de la semilla no la
+ * tienen, y sin caja no hay recorte sobre la metafase (DD-KARYO-006 D7). Se
+ * limpia con `resetMockData`, como el resto del almacén.
+ */
+export function fijarBboxMock(
+  sampleId: string,
+  chromosomeId: string,
+  bbox: { x: number; y: number; w: number; h: number },
+): void {
+  const chromo = getOrBuildKaryotype(sampleId).chromosomes.find((c) => c.id === chromosomeId);
+  if (!chromo) throw new Error(`no existe el cromosoma ${chromosomeId} en el mock`);
+  chromo.bbox = bbox;
+}
+
 function recomputeSummary(k: Karyotype): void {
   // P3: los fragmentos absorbidos por JOIN (is_active=false) no cuentan.
   const activos = k.chromosomes.filter((c) => c.is_active);
