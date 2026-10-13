@@ -29,7 +29,7 @@ import type { ViewportState } from '../lib/viewport';
 import { INITIAL_VIEWPORT, cssFilter, stageScale } from '../lib/viewport';
 import type { Punto } from '../lib/medicion';
 import { esRecorteUtil, rectanguloDeRecorte } from '../lib/recorte';
-import { encajarRecorte, recorteValido, type Caja } from '../lib/encajarRecorte';
+import { colocarRecorte, recorteValido, type Caja } from '../lib/encajarRecorte';
 
 const SEMAPHORE_FILL: Record<string, string> = {
   green: '#1e8868',
@@ -209,7 +209,8 @@ export function KaryotypeCanvas({
               metafase && recorteValido(chromo.bbox as Partial<Caja>, tamanoDe(metafase))
                 ? (chromo.bbox as Caja)
                 : null;
-            const destino = recorte ? encajarRecorte(recorte, CUERPO) : null;
+            // D8: los tumbados se giran 90° para mostrarlos de pie.
+            const colocacion = recorte ? colocarRecorte(recorte, CUERPO) : null;
             return (
               <Group
                 key={chromo.id}
@@ -231,7 +232,7 @@ export function KaryotypeCanvas({
                     : undefined
                 }
               >
-                {recorte && destino ? (
+                {recorte && colocacion ? (
                   <>
                     {/* Fondo claro: el hueco que deja el encaje se ve como
                         margen, no como parte del cromosoma. */}
@@ -240,10 +241,13 @@ export function KaryotypeCanvas({
                       data-testid={`chromosome-img-${chromo.id}`}
                       image={metafase as HTMLImageElement}
                       crop={{ x: recorte.x, y: recorte.y, width: recorte.w, height: recorte.h }}
-                      x={destino.x}
-                      y={destino.y}
-                      width={destino.w}
-                      height={destino.h}
+                      x={colocacion.cx}
+                      y={colocacion.cy}
+                      width={colocacion.w}
+                      height={colocacion.h}
+                      offsetX={colocacion.w / 2}
+                      offsetY={colocacion.h / 2}
+                      rotation={colocacion.rotacion}
                     />
                     {/* Con la imagen a la vista el semáforo ya no puede ser el
                         relleno: pasa a ser el borde. La selección, otro borde

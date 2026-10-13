@@ -274,6 +274,17 @@ describe('KaryotypeCanvas con la metafase (DD-KARYO-006)', () => {
     expect(caja.w / caja.h).toBeCloseTo(BBOX.w / BBOX.h);
   });
 
+  it('D8: un cromosoma tumbado se muestra de pie, girado 90° alrededor de su centro', () => {
+    pintar([chromo({ id: 'a', bbox: { x: 200, y: 300, w: 70, h: 25 } })]);
+    const img = screen.getByTestId('chromosome-img-a');
+    // El recorte de la metafase es el mismo: el giro es solo de presentación.
+    expect(JSON.parse(img.getAttribute('data-crop')!)).toEqual({ x: 200, y: 300, width: 70, height: 25 });
+    const caja = JSON.parse(img.getAttribute('data-caja')!);
+    expect(caja.rotacion).toBe(90);
+    expect(caja.ox).toBeCloseTo(caja.w / 2);
+    expect(caja.oy).toBeCloseTo(caja.h / 2);
+  });
+
   it('el semáforo pasa a ser el borde, y el cromosoma sigue siendo seleccionable', () => {
     const onSelect = vi.fn();
     const c = chromo({ id: 'a', bbox: BBOX, semaphore: 'orange' });

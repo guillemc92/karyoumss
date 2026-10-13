@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { encajarRecorte, recorteValido } from '../../src/clinic/lib/encajarRecorte';
+import { colocarRecorte, encajarRecorte, recorteValido } from '../../src/clinic/lib/encajarRecorte';
 
 const CUERPO = { x: 2, y: 10, w: 22, h: 100 };
 
@@ -54,5 +54,44 @@ describe('recorteValido', () => {
     expect(recorteValido({ x: 0, y: 0, w: 30 }, IMG)).toBe(false);
     expect(recorteValido({ x: 0, y: 0, w: 0, h: 40 }, IMG)).toBe(false);
     expect(recorteValido({ x: 0, y: 0, w: Infinity, h: 40 }, IMG)).toBe(false);
+  });
+});
+
+describe('colocarRecorte (D8: de pie)', () => {
+  it('un cromosoma de pie no se gira y queda centrado en su caja', () => {
+    const c = colocarRecorte({ w: 11, h: 100 }, CUERPO)!;
+    expect(c).toEqual({ cx: 13, cy: 60, w: 11, h: 100, rotacion: 0 });
+  });
+
+  it('uno tumbado se gira 90°: 70 × 25 se ve de pie como 22 × 61,6', () => {
+    const c = colocarRecorte({ w: 70, h: 25 }, CUERPO)!;
+    expect(c.rotacion).toBe(90);
+    // Antes de girar mide w × h; girado, ocupa h de ancho y w de alto.
+    expect(c.h).toBeCloseTo(22);
+    expect(c.w).toBeCloseTo(61.6);
+    expect(c.cx).toBe(13);
+    expect(c.cy).toBe(60);
+  });
+
+  it('girar gana espacio: el tumbado ocupa casi 8 veces más alto que sin girar', () => {
+    const sinGirar = encajarRecorte({ w: 70, h: 25 }, CUERPO)!;
+    const girado = colocarRecorte({ w: 70, h: 25 }, CUERPO)!;
+    expect(sinGirar.h).toBeCloseTo(7.857, 2);
+    expect(girado.w / sinGirar.h).toBeGreaterThan(7.5);
+  });
+
+  it('conserva la relación de aspecto también al girar', () => {
+    for (const r of [{ w: 90, h: 31 }, { w: 40, h: 39 }, { w: 31, h: 90 }]) {
+      const c = colocarRecorte(r, CUERPO)!;
+      expect(c.w / c.h).toBeCloseTo(r.w / r.h, 10);
+    }
+  });
+
+  it('un cuadrado exacto no se gira', () => {
+    expect(colocarRecorte({ w: 40, h: 40 }, CUERPO)!.rotacion).toBe(0);
+  });
+
+  it('sin área no se coloca', () => {
+    expect(colocarRecorte({ w: 0, h: 10 }, CUERPO)).toBeNull();
   });
 });

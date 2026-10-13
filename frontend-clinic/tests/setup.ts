@@ -62,9 +62,12 @@ vi.mock('react-konva', async () => {
       // y a qué tamaño. Se exponen para que el test lo compruebe sin que el
       // componente lleve atributos solo para tests.
       if (tag === 'image') {
-        const p = props as { crop?: unknown; x?: number; y?: number; width?: number; height?: number; image?: unknown };
+        const p = props as { crop?: unknown; x?: number; y?: number; width?: number; height?: number;
+          image?: unknown; rotation?: number; offsetX?: number; offsetY?: number };
         domProps['data-crop'] = JSON.stringify(p.crop);
-        domProps['data-caja'] = JSON.stringify({ x: p.x, y: p.y, w: p.width, h: p.height });
+        domProps['data-caja'] = JSON.stringify({
+          x: p.x, y: p.y, w: p.width, h: p.height, rotacion: p.rotation ?? 0, ox: p.offsetX ?? 0, oy: p.offsetY ?? 0,
+        });
         domProps['data-con-imagen'] = String(Boolean(p.image));
       }
       if (onClick) domProps.onClick = () => onClick({ cancelBubble: false, target: { getStage: stageFalso } });

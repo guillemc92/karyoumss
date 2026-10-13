@@ -103,6 +103,24 @@ pura (`lib/recorteMetafase.ts`). Arregla el defecto del §2 y, de paso, permite
 **agrandar** un recorte que se quedó corto, cosa imposible dibujando dentro del
 rectángulo de 22 × 100.
 
+### D8 · Los cromosomas tumbados se muestran de pie *(enmienda del 13/10, aprobada por el autor)*
+La primera prueba en un navegador real enseñó que, con la imagen a la vista,
+**no se ven lo bastante como para corregir**. Medido sobre los 565 cromosomas
+con caja de la base local:
+
+| | Valor |
+|---|---|
+| Tumbados (caja más ancha que alta) | **347 (61 %)** |
+| Alto que ocupan en su hueco de 100 px | mediana **18 px** (tumbados 15, de pie 35) |
+
+Encajados sin deformar en un hueco vertical de 22 × 100, los tumbados quedan
+como una franja fina. Se **giran 90° solo para mostrarlos**, de modo que el eje
+largo quede vertical; el `bbox` no cambia y el recorte sigue siendo el mismo.
+
+**Lo que esto NO hace:** decidir qué extremo es el brazo p. Algunos quedarán
+cabeza abajo; orientar según la convención ISCN sigue siendo la próxima
+especificación (§6).
+
 ## 4. Backend
 
 | Pieza | Detalle |
@@ -123,9 +141,9 @@ rectángulo de 22 × 100.
 
 ## 6. Fuera de alcance, declarado
 
-- **Orientar** (girar 180°, poner el brazo p arriba) y **enderezar**: próxima
-  especificación. Con esta, los cromosomas se verán con la inclinación que
-  tienen en la metafase.
+- **Orientar** según ISCN (brazo p arriba, girar 180°) y **enderezar**:
+  próxima especificación. Con esta, los tumbados se ponen de pie (D8), pero sin
+  saber cuál de sus extremos es p.
 - **Máscaras**: el recorte es la caja, así que puede colarse parte de un vecino.
   Las máscaras de ADR-0035 existen solo fuera del producto, en el dataset.
 - **Separar trazando una línea** y **crear detecciones**: especificaciones aparte.
@@ -149,6 +167,7 @@ Cada tarea cabe en una sesión de ≤ 3 h y se entrega con sus pruebas.
 | T1 | Backend: `metafase_segmentada`, `tipo_de_imagen`, endpoint y sus pruebas | 2 h |
 | T2 | Frontend: `clinicRequestBlob` + `useMetaphaseImage` y pruebas | 1,5 h |
 | T3 | Lienzo: recortes reales, borde de semáforo, degradación; mock de `Image` | 2,5 h |
+| T3b | D8: poner de pie los tumbados (`colocarRecorte`, giro de 90° solo de presentación) | 1,5 h |
 | T4 | RECROP: reproducir el defecto en E2E, `MetafasePanel` + `recorteMetafase`, prueba de que queda corregido | 3 h |
 | T5 | E2E real completo y capturas | 2 h |
 | T6 | Cierre: estado de este documento, nota de corrección en DD-KARYO-005 §4.1, `TASKS.md` | 0,5 h |
