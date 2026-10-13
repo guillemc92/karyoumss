@@ -9,7 +9,7 @@
  *   403 → NOT_OWNER (analista no dueño de la muestra)
  *   404 → NOT_FOUND (muestra) / NO_KARYOTYPE (sin cariotipo generado aún)
  */
-import { clinicRequest, CLINIC_DEFAULT_BASE_URL } from './samplesClient';
+import { clinicRequest, clinicRequestBlob, CLINIC_DEFAULT_BASE_URL } from './samplesClient';
 import type {
   AuditEvent, AuditReview, AuditReviewResponse, Chromosome, IscnResult, Karyotype,
   NarrativeResult, PipelineHealth, ValidateResult, XaiResult, BBox } from '../types/karyotype';
@@ -20,6 +20,15 @@ export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL)
     /** GET /api/clinic/samples/{sampleId}/karyotype/ */
     get(sampleId: string): Promise<Karyotype> {
       return clinicRequest<Karyotype>(baseUrl, `/samples/${sampleId}/karyotype/`, { method: 'GET' });
+    },
+
+    /**
+     * GET /karyotype/metaphase/ — la metafase sobre la que se segmentó el
+     * cariotipo (DD-KARYO-006). Los `bbox` de los cromosomas están en píxeles de
+     * esta imagen. 404 NO_METAPHASE_IMAGE si no hay una utilizable.
+     */
+    metaphase(sampleId: string): Promise<Blob> {
+      return clinicRequestBlob(baseUrl, `/samples/${sampleId}/karyotype/metaphase/`);
     },
 
     // --- P2 ---

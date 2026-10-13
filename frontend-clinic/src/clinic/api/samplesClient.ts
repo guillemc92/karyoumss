@@ -67,11 +67,50 @@ function buildUrl(base: string, path: string, query?: Record<string, string | nu
   return s.length > 0 ? `${url}?${s}` : url;
 }
 
-async function request<T>(base: string, path: string, opts: RequestOptions = {}): Promise<T> {
-  const url = buildUrl(base, path, opts.query);
-  const headers: Record<string, string> = { Accept: 'application/json', 'X-Biomed-Mode': clinicMode };
+/** Cabeceras de TODA petición clínica: modo del sistema y token. Compartidas
+ * por `request` y `requestBlob` para que la autenticación no pueda divergir
+ * entre las dos. */
+function cabeceras(accept: string): Record<string, string> {
+  const headers: Record<string, string> = { Accept: accept, 'X-Biomed-Mode': clinicMode };
   const token = getAccessToken();
   if (token) headers['Authorization'] = `Bearer ${token}`;
+  return headers;
+}
+
+async function enviar(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    throw new ClinicApiException(err instanceof Error ? err.message : 'Fallo de red', 0, 'NETWORK_ERROR');
+  }
+}
+
+function parsear(text: string): unknown {
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return { detail: text };
+  }
+}
+
+/** Convierte una respuesta de error del backend en `ClinicApiException` con su
+ * `code` (NOT_OWNER, NO_METAPHASE_IMAGE…), que es lo que deciden las pantallas. */
+function errorDe(res: Response, payload: unknown): ClinicApiException {
+  const detail =
+    typeof payload === 'object' && payload !== null && 'detail' in payload
+      ? textoDeDetalle((payload as { detail: unknown }).detail, `HTTP ${res.status}`)
+      : `HTTP ${res.status}`;
+  const code =
+    typeof payload === 'object' && payload !== null && 'code' in payload
+      ? String((payload as { code: unknown }).code)
+      : undefined;
+  return new ClinicApiException(detail, res.status, code);
+}
+
+async function request<T>(base: string, path: string, opts: RequestOptions = {}): Promise<T> {
+  const url = buildUrl(base, path, opts.query);
+  const headers = cabeceras('application/json');
 
   let body: BodyInit | undefined;
   if (opts.body !== undefined) {
@@ -79,42 +118,33 @@ async function request<T>(base: string, path: string, opts: RequestOptions = {})
     body = JSON.stringify(opts.body);
   }
 
-  let res: Response;
-  try {
-    res = await fetch(url, { method: opts.method ?? 'GET', headers, body });
-  } catch (err) {
-    throw new ClinicApiException(err instanceof Error ? err.message : 'Fallo de red', 0, 'NETWORK_ERROR');
-  }
-
+  const res = await enviar(url, { method: opts.method ?? 'GET', headers, body });
   if (res.status === 204) return undefined as T;
 
-  let payload: unknown = null;
-  const text = await res.text();
-  if (text) {
-    try {
-      payload = JSON.parse(text);
-    } catch {
-      payload = { detail: text };
-    }
-  }
-
-  if (!res.ok) {
-    const detail =
-      typeof payload === 'object' && payload !== null && 'detail' in payload
-        ? textoDeDetalle((payload as { detail: unknown }).detail, `HTTP ${res.status}`)
-        : `HTTP ${res.status}`;
-    const code =
-      typeof payload === 'object' && payload !== null && 'code' in payload
-        ? String((payload as { code: unknown }).code)
-        : undefined;
-    throw new ClinicApiException(detail, res.status, code);
-  }
+  const payload = parsear(await res.text());
+  if (!res.ok) throw errorDe(res, payload);
   return payload as T;
+}
+
+/**
+ * GET de un recurso binario (DD-KARYO-006: la metafase). Existe porque un
+ * `<img src>` no puede enviar el token: la imagen se pide con las mismas
+ * cabeceras que el resto y se entrega como `Blob`. Los errores llegan en JSON,
+ * así que se convierten igual que en `request`.
+ */
+async function requestBlob(base: string, path: string): Promise<Blob> {
+  const res = await enviar(buildUrl(base, path), { method: 'GET', headers: cabeceras('image/*') });
+  if (!res.ok) throw errorDe(res, parsear(await res.text()));
+  return res.blob();
 }
 
 /** Reutilizable por otros clients del bounded context clínico (ej.
  * karyotypeClient) — misma infra de auth JWT + parseo de errores. */
-export { request as clinicRequest, DEFAULT_BASE_URL as CLINIC_DEFAULT_BASE_URL };
+export {
+  request as clinicRequest,
+  requestBlob as clinicRequestBlob,
+  DEFAULT_BASE_URL as CLINIC_DEFAULT_BASE_URL,
+};
 
 export function createSamplesClient(baseUrl: string = DEFAULT_BASE_URL) {
   return {

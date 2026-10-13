@@ -12,6 +12,19 @@ import { CHROMOSOME_SLOTS } from '../types/karyotype';
 
 let samples: SampleRead[] = [...initialSamples];
 let forceDegraded = false;
+// DD-KARYO-006: con `false` el endpoint de la metafase responde 404
+// NO_METAPHASE_IMAGE, el caso de un cariotipo sin imagen utilizable.
+let metaphaseImageAvailable = true;
+
+export function setMetaphaseImageAvailable(value: boolean): void {
+  metaphaseImageAvailable = value;
+}
+
+/** PNG válido de 1x1 píxel: lo mínimo que un navegador decodifica. */
+const PNG_1X1 = Uint8Array.from(
+  atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='),
+  (c) => c.charCodeAt(0),
+);
 
 // Estado mutable del cariotipo por sample (P2): permite que el flujo
 // ver XAI → aceptar → validar persista entre requests en el demo.
@@ -113,6 +126,7 @@ export function resetMockData(): void {
   // filtraría estado entre tests (aislamiento roto).
   samples = initialSamples.map((s) => ({ ...s }));
   forceDegraded = false;
+  metaphaseImageAvailable = true;
   try {
     sessionStorage?.removeItem('biomed.degraded');
     for (let i = sessionStorage.length - 1; i >= 0; i--) {
@@ -382,6 +396,30 @@ export const handlers = [
     const k = getOrBuildKaryotype(String(params.id));
     k.sample_status = sample.status; // gating del panel del supervisor (S1)
     return HttpResponse.json(k);
+  }),
+
+  // Metafase del cariotipo (DD-KARYO-006). Devuelve un PNG de 1x1: los
+  // cromosomas del mock no tienen bbox, así que el lienzo sigue pintando
+  // rectángulos; lo que se ejercita aquí es el contrato del endpoint.
+  http.get(`${API}/samples/:id/karyotype/metaphase/`, ({ params }) => {
+    const sample = samples.find((s) => s.id === params.id);
+    if (!sample) {
+      return HttpResponse.json({ code: 'NOT_FOUND', detail: 'Muestra no encontrada' }, { status: 404 });
+    }
+    const withKaryotype = ['READY', 'VALIDATED', 'ANALYST_VALIDATED', 'SIGNED', 'REPORTED'];
+    if (!withKaryotype.includes(sample.status)) {
+      return HttpResponse.json(
+        { code: 'NO_KARYOTYPE', detail: 'La muestra aún no tiene cariotipo generado.' },
+        { status: 404 },
+      );
+    }
+    if (!metaphaseImageAvailable) {
+      return HttpResponse.json(
+        { code: 'NO_METAPHASE_IMAGE', detail: 'El cariotipo no tiene una metafase utilizable para mostrar.' },
+        { status: 404 },
+      );
+    }
+    return new HttpResponse(PNG_1X1, { headers: { 'Content-Type': 'image/png' } });
   }),
 
   // Cariotipo P2 (ADR-0021 P2, ADR-0022) — XAI, resolver, anomalía, validar, audit.
