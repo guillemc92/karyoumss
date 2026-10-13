@@ -32,12 +32,25 @@ const DEFAULT_BASE_URL = (import.meta.env.VITE_CLINIC_API_BASE as string | undef
  * los tests de componente no lo veían porque sus dobles aceptan cualquier
  * cuerpo.
  */
-function sinFechasVacias(data: SampleRegistrationData): SampleRegistrationData {
-  const muestra = { ...(data.sample as Record<string, unknown>) };
-  for (const campo of ['collection_date', 'reception_date']) {
-    if (muestra[campo] === '') delete muestra[campo];
-  }
-  return { ...data, sample: muestra as SampleRegistrationData['sample'] };
+type FechaOpcional = 'collection_date' | 'reception_date';
+
+/** Lo que viaja por la red: el formulario siempre tiene las dos fechas (como
+ * cadena, quizá vacía), el cuerpo enviado puede no tenerlas. Declararlo como
+ * tipo propio sustituye a dos conversiones forzadas que ocultaban justo esa
+ * diferencia — y que `tsc` nunca señaló porque no llegaba a comprobar tipos
+ * (DD-KARYO-006, hallazgo de T2). */
+type MuestraEnviada = Omit<SampleRegistrationData['sample'], FechaOpcional> &
+  Partial<Pick<SampleRegistrationData['sample'], FechaOpcional>>;
+type RegistroEnviado = Omit<SampleRegistrationData, 'sample'> & { sample: MuestraEnviada };
+
+function sinFechasVacias(data: SampleRegistrationData): RegistroEnviado {
+  const { collection_date, reception_date, ...resto } = data.sample;
+  const sample: MuestraEnviada = {
+    ...resto,
+    ...(collection_date !== '' ? { collection_date } : {}),
+    ...(reception_date !== '' ? { reception_date } : {}),
+  };
+  return { ...data, sample };
 }
 
 export function createRegistrationClient(baseUrl: string = DEFAULT_BASE_URL) {
