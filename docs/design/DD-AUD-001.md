@@ -134,7 +134,7 @@ Además, `backend-clinic` arranca con `DEBUG=True` por defecto
 
 | # | Tarea | Issue | Estimación |
 |---|---|---|---|
-| T1 | F1: endpoints `def`, semáforo, 503 + `Retry-After`, lock del modelo, pruebas | Issue 1 | 2,5 h |
-| T2 | F2: `crear_cliente_llm()`, `max_retries`, semáforo, pruebas | Issue 2 | 2,5 h |
-| T3 | F3: secretos obligatorios, `DEBUG`, `.gitignore`, `.env.example`, pruebas | Issue 3 | 1,5 h |
+| T1 | F1: endpoints `def`, semáforo, 503 + `Retry-After`, lock del modelo, pruebas — **hecho** `89ad46b` | #2 | 2,5 h |
+| T2 | F2: `crear_cliente_llm()`, `max_retries`, semáforo, pruebas — **hecho** `3751877` | #3 | 2,5 h |
+| T3 | F3: secretos obligatorios, `DEBUG`, `.gitignore`, `.env.example`, pruebas — **hecho** `209ff11` | #4 | 1,5 h |
 | T4 | Demostración: dos segmentaciones simultáneas con `/health/` respondiendo; `release/8.1.0` y `8.1.0-aportes.md` | — | 1 h |
