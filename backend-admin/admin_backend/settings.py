@@ -192,7 +192,10 @@ TOTP_VAULT_KEY = env('TOTP_VAULT_KEY', required=True)
 # autenticado por este secreto compartido (NO por JWT de usuario).
 # ============================================================================
 
-INTERNAL_SERVICE_SECRET = env('INTERNAL_SERVICE_SECRET', 'dev-internal-service-secret')
+# Obligatorio (DD-AUD-001 F3, F12-02): con un valor por defecto en el código, un
+# despliegue que olvidara la variable aceptaría un secreto que conoce cualquiera
+# con acceso al repositorio.
+INTERNAL_SERVICE_SECRET = env('INTERNAL_SERVICE_SECRET', required=True)
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=30),

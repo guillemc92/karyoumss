@@ -27,8 +27,11 @@ def env(key: str, default=None, required=False):
 # Core Django
 # ============================================================================
 
-SECRET_KEY = env('DJANGO_SECRET_KEY', 'django-insecure-clinic-dev-only-change-in-prod')
-DEBUG = env('DJANGO_DEBUG', 'True').lower() in ('true', '1', 'yes')
+# DD-AUD-001 F3 (F12-02): sin valor por defecto. Un despliegue que olvidara la
+# variable arrancaría con una clave que conoce cualquiera con acceso al repo.
+SECRET_KEY = env('DJANGO_SECRET_KEY', required=True)
+# Apagado salvo que se pida, como en backend-admin (F12-01).
+DEBUG = env('DJANGO_DEBUG', 'False').lower() in ('true', '1', 'yes')
 ALLOWED_HOSTS = [h.strip() for h in env('DJANGO_ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()]
 
 INSTALLED_APPS = [
@@ -154,7 +157,7 @@ CLINIC_FASTAPI_CIRCUIT_COOLDOWN = int(env('CLINIC_FASTAPI_CIRCUIT_COOLDOWN', '60
 # ============================================================================
 
 ADMIN_INTERNAL_URL = env('ADMIN_INTERNAL_URL', 'http://localhost:8001')
-INTERNAL_SERVICE_SECRET = env('INTERNAL_SERVICE_SECRET', 'dev-internal-service-secret')
+INTERNAL_SERVICE_SECRET = env('INTERNAL_SERVICE_SECRET', required=True)   # DD-AUD-001 F3
 
 # ============================================================================
 # LLM local para la narrativa del informe (ADR-0024 — IA generativa vía SDK)

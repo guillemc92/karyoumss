@@ -22,14 +22,19 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
-# Importamos el settings principal y mutamos solo lo necesario.
-from .settings import *  # noqa: F401, F403
-
 # Valores por defecto para tests si .env no los provee (evita RuntimeError en CI).
+# Van ANTES de importar el settings principal: es ahí donde `env(required=True)`
+# comprueba las obligatorias. Antes iban después y no servían de nada; las
+# pruebas solo pasaban porque el .env local ya traía los valores (DD-AUD-001 F3).
+# `setdefault` no pisa lo que haya cargado el .env.
 os.environ.setdefault('DJANGO_SECRET_KEY', 'test-secret-key-not-for-production-' + 'x' * 40)
 os.environ.setdefault('AUTH_BRIDGE_SECRET', 'test-bridge-secret-' + 'b' * 50)
 os.environ.setdefault('AUTH_ADMIN_JWT_SECRET', 'test-admin-jwt-secret-' + 'c' * 40)
+os.environ.setdefault('INTERNAL_SERVICE_SECRET', 'test-internal-service-secret-' + 'd' * 40)
 os.environ.setdefault('POSTGRES_PASSWORD', 'test')
+
+# Importamos el settings principal y mutamos solo lo necesario.
+from .settings import *  # noqa: F401, F403, E402
 
 # ----------------------------------------------------------------------------
 # Override DB → SQLite en archivo. django-auditlog usa signals que requieren

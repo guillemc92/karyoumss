@@ -1,4 +1,9 @@
 node_modules
+
+# DD-AUD-001 F3 (F12-02): ningún .env real entra al repositorio, en ninguna
+# carpeta. Solo se versionan los .env.example, sin valores reales.
+.env
+!.env.example
 datasets/
 __pycache__/
 *.pyc
