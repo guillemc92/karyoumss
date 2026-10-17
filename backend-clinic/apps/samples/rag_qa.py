@@ -226,24 +226,21 @@ def responder_documental(pregunta: str,
                       motivo='IA desactivada: sin juez no se puede fundamentar')
 
     try:
-        from openai import OpenAI
-        cliente = OpenAI(
-            base_url=getattr(settings, 'CLINIC_LLM_URL', 'http://localhost:11434/v1'),
-            api_key='ollama',
-            timeout=float(getattr(settings, 'CLINIC_LLM_TIMEOUT', 240.0)),
-        )
-        r = cliente.chat.completions.create(
-            model=getattr(settings, 'CLINIC_LLM_MODEL', 'llama3.2:3b'),
-            messages=[
-                {'role': 'system', 'content': instruccion},
-                {'role': 'user', 'content':
-                    f'FRAGMENTOS:\n\n{_bloque_fragmentos(candidatos)}\n\n'
-                    f'PREGUNTA: {pregunta}'},
-            ],
-            response_format=RESPUESTA_SCHEMA,
-            temperature=0.0,
-            max_tokens=500,
-        )
+        from .llm_conexion import crear_cliente_llm, turno_llm   # DD-AUD-001 F2
+        cliente = crear_cliente_llm()
+        with turno_llm():
+            r = cliente.chat.completions.create(
+                model=getattr(settings, 'CLINIC_LLM_MODEL', 'llama3.2:3b'),
+                messages=[
+                    {'role': 'system', 'content': instruccion},
+                    {'role': 'user', 'content':
+                        f'FRAGMENTOS:\n\n{_bloque_fragmentos(candidatos)}\n\n'
+                        f'PREGUNTA: {pregunta}'},
+                ],
+                response_format=RESPUESTA_SCHEMA,
+                temperature=0.0,
+                max_tokens=500,
+            )
         datos = json.loads(r.choices[0].message.content or '{}')
         uso = getattr(r, 'usage', None)
         gasto = ((getattr(uso, 'prompt_tokens', 0) or 0),

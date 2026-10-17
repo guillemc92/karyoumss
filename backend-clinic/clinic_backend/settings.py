@@ -172,6 +172,11 @@ CLINIC_LLM_MODEL = env('CLINIC_LLM_MODEL', 'llama3.2:3b')
 CLINIC_LLM_TIMEOUT = float(env('CLINIC_LLM_TIMEOUT', '240.0'))
 CLINIC_LLM_CIRCUIT_THRESHOLD = int(env('CLINIC_LLM_CIRCUIT_THRESHOLD', '3'))
 CLINIC_LLM_CIRCUIT_COOLDOWN = int(env('CLINIC_LLM_CIRCUIT_COOLDOWN', '120'))
+# DD-AUD-001 F2 (CON-04): reintentos explícitos y límite de concurrencia del LLM.
+# El SDK reintentaba 2 veces por defecto, también tras un timeout de 240 s.
+CLINIC_LLM_MAX_RETRIES = int(env('CLINIC_LLM_MAX_RETRIES', '0'))
+CLINIC_LLM_MAX_CONCURRENTES = int(env('CLINIC_LLM_MAX_CONCURRENTES', '2'))
+CLINIC_LLM_ESPERA_MAX_S = float(env('CLINIC_LLM_ESPERA_MAX_S', '5.0'))
 # Apagado por defecto: sin narrativa el informe se emite igual (RN-07).
 CLINIC_LLM_ENABLED = env('CLINIC_LLM_ENABLED', 'false').lower() in ('1', 'true', 'yes')
 

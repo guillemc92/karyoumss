@@ -235,23 +235,20 @@ def _elegir_con_modelo(pregunta: str) -> tuple[str, str]:
 
     Lanza RuntimeError si el servicio no está disponible; el llamador degrada.
     """
-    from openai import OpenAI
+    from .llm_conexion import crear_cliente_llm, turno_llm   # DD-AUD-001 F2
 
-    client = OpenAI(
-        base_url=getattr(settings, 'CLINIC_LLM_URL', 'http://localhost:11434/v1'),
-        api_key='ollama',
-        timeout=float(getattr(settings, 'CLINIC_LLM_TIMEOUT', 240.0)),
-    )
-    resp = client.chat.completions.create(
-        model=getattr(settings, 'CLINIC_LLM_MODEL', 'llama3.2:3b'),
-        messages=[
-            {'role': 'system', 'content': _prompt_sistema()},
-            {'role': 'user', 'content': pregunta},
-        ],
-        response_format=SELECCION_JSON_SCHEMA,
-        temperature=0.0,      # enrutar es determinista, no creativo
-        max_tokens=200,
-    )
+    client = crear_cliente_llm()
+    with turno_llm():
+        resp = client.chat.completions.create(
+            model=getattr(settings, 'CLINIC_LLM_MODEL', 'llama3.2:3b'),
+            messages=[
+                {'role': 'system', 'content': _prompt_sistema()},
+                {'role': 'user', 'content': pregunta},
+            ],
+            response_format=SELECCION_JSON_SCHEMA,
+            temperature=0.0,      # enrutar es determinista, no creativo
+            max_tokens=200,
+        )
     import json
     datos = json.loads(resp.choices[0].message.content or '{}')
     return datos.get('herramienta', 'NINGUNA'), datos.get('motivo', '')

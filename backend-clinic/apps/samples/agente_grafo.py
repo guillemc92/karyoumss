@@ -132,15 +132,10 @@ _conexion = None
 
 
 def _modelo():
-    from langchain_openai import ChatOpenAI
+    from .llm_conexion import crear_modelo_chat   # DD-AUD-001 F2: max_retries explícito
 
-    return ChatOpenAI(
-        base_url=getattr(settings, 'CLINIC_LLM_URL', 'http://localhost:11434/v1'),
-        api_key='ollama',
-        model=getattr(settings, 'CLINIC_LLM_MODEL', 'llama3.2:3b'),
-        temperature=TEMPERATURA,           # decisiones reproducibles, no creativas
-        timeout=float(getattr(settings, 'CLINIC_LLM_TIMEOUT', 240.0)),
-    ).bind_tools(schemas())
+    # temperatura baja: decisiones reproducibles, no creativas
+    return crear_modelo_chat(temperature=TEMPERATURA).bind_tools(schemas())
 
 
 def construir():
@@ -156,7 +151,9 @@ def construir():
     modelo = _modelo()
 
     def pensar(estado: EstadoAgente) -> dict:
-        return {'messages': [modelo.invoke(estado['messages'])]}
+        from .llm_conexion import turno_llm       # DD-AUD-001 F2
+        with turno_llm():
+            return {'messages': [modelo.invoke(estado['messages'])]}
 
     def actuar(estado: EstadoAgente) -> dict:
         """Ejecuta lo que el modelo pidió. El dato sale del código, no del modelo."""

@@ -24,6 +24,7 @@ from django.conf import settings
 from pydantic import ValidationError
 
 from .corpus import buscar_contexto, formatear_para_prompt, resumen_auditoria
+from .llm_conexion import LlmOcupado, crear_cliente_llm, turno_llm
 from .llm_schemas import NARRATIVA_JSON_SCHEMA, NarrativaCariotipo
 
 logger = logging.getLogger(__name__)
@@ -140,7 +141,7 @@ class LlmClient:
             raise LlmServiceError('circuit_open')
 
         try:
-            from openai import OpenAI          # import perezoso: el SDK es opcional
+            import openai  # noqa: F401 — el SDK es opcional (RN-07)
         except ImportError as exc:
             raise LlmServiceError('sdk_no_instalado') from exc
 
@@ -154,17 +155,17 @@ class LlmClient:
         ultimo_error = None
 
         try:
-            # Ollama no valida la api_key, pero el SDK exige que exista.
-            client = OpenAI(base_url=self.base_url, api_key='ollama', timeout=self.timeout)
+            client = crear_cliente_llm(self.base_url, self.timeout)
 
             for intento in range(1, intentos_max + 1):
-                resp = client.chat.completions.create(
-                    model=self.model,
-                    messages=mensajes,
-                    response_format=NARRATIVA_JSON_SCHEMA,
-                    temperature=0.2,           # baja: registro clínico, no creatividad
-                    max_tokens=700,            # el objeto ocupa más que el párrafo suelto
-                )
+                with turno_llm():              # DD-AUD-001 F2: plazas limitadas
+                    resp = client.chat.completions.create(
+                        model=self.model,
+                        messages=mensajes,
+                        response_format=NARRATIVA_JSON_SCHEMA,
+                        temperature=0.2,       # baja: registro clínico, no creatividad
+                        max_tokens=700,        # el objeto ocupa más que el párrafo suelto
+                    )
                 usage = getattr(resp, 'usage', None)
                 tokens_totales += getattr(usage, 'total_tokens', 0) or 0
                 crudo = resp.choices[0].message.content
@@ -208,6 +209,10 @@ class LlmClient:
             # Alucinación o longitud: el modelo respondió, el servicio está sano.
             # No cuenta como fallo de disponibilidad → no abre el circuito.
             raise
+        except LlmOcupado as exc:
+            # Plazas llenas: el servicio está sano y trabajando. Tampoco abre el
+            # circuito; el informe se emite sin narrativa (ADR-0024 D3).
+            raise LlmServiceError('ocupado') from exc
         except Exception as exc:
             self._record_failure()
             logger.warning('LLM no disponible: %s', exc)

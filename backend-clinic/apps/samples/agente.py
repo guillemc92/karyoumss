@@ -39,6 +39,8 @@ from typing import Callable
 
 from django.conf import settings
 
+from .llm_conexion import turno_llm
+
 logger = logging.getLogger(__name__)
 
 MAX_PASOS = 6
@@ -103,12 +105,8 @@ class ResultadoAgente:
 
 
 def _cliente():
-    from openai import OpenAI
-    return OpenAI(
-        base_url=getattr(settings, 'CLINIC_LLM_URL', 'http://localhost:11434/v1'),
-        api_key='ollama',
-        timeout=float(getattr(settings, 'CLINIC_LLM_TIMEOUT', 240.0)),
-    )
+    from .llm_conexion import crear_cliente_llm   # DD-AUD-001 F2
+    return crear_cliente_llm()
 
 
 def ejecutar_agente(pregunta: str,
@@ -139,12 +137,13 @@ def ejecutar_agente(pregunta: str,
 
     for _ in range(max_pasos):
         try:
-            r = cliente.chat.completions.create(
-                model=getattr(settings, 'CLINIC_LLM_MODEL', 'llama3.2:3b'),
-                messages=mensajes,
-                tools=schemas,
-                temperature=TEMPERATURA,
-            )
+            with turno_llm():                       # DD-AUD-001 F2
+                r = cliente.chat.completions.create(
+                    model=getattr(settings, 'CLINIC_LLM_MODEL', 'llama3.2:3b'),
+                    messages=mensajes,
+                    tools=schemas,
+                    temperature=TEMPERATURA,
+                )
         except Exception as exc:                    # noqa: BLE001
             traza.registrar('error', str(exc)[:200])
             raise AgenteError(str(exc)) from exc
