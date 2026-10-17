@@ -6,6 +6,8 @@ no, cae al placeholder (RN-07: backend-ml sigue corriendo).
 """
 from __future__ import annotations
 
+import threading
+
 import numpy as np
 
 from .classifier import PlaceholderClassifier
@@ -21,17 +23,23 @@ class OpenCVSegmenter(SegmenterPort):
 
 
 _classifier_singleton: ClassifierPort | None = None
+# DD-AUD-001 F1: desde que los endpoints corren en el threadpool, dos peticiones
+# pueden llegar aquí a la vez. Sin el lock cargarían el modelo dos veces (~16 s
+# y ~42 MB cada una). Se comprueba dos veces para no pagar el lock al leer.
+_carga_clasificador = threading.Lock()
 
 
 def get_classifier() -> ClassifierPort:
     """Devuelve el clasificador entrenado si se puede cargar; si no, placeholder."""
     global _classifier_singleton
     if _classifier_singleton is None:
-        try:
-            from .efficientnet import EfficientNetClassifier
-            _classifier_singleton = EfficientNetClassifier()
-        except Exception:  # torch ausente o modelo no cargable → placeholder
-            _classifier_singleton = PlaceholderClassifier()
+        with _carga_clasificador:
+            if _classifier_singleton is None:
+                try:
+                    from .efficientnet import EfficientNetClassifier
+                    _classifier_singleton = EfficientNetClassifier()
+                except Exception:  # torch ausente o modelo no cargable → placeholder
+                    _classifier_singleton = PlaceholderClassifier()
     return _classifier_singleton
 
 
