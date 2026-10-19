@@ -244,8 +244,8 @@
 - [x] Todas las preguntas de la sección 4 están respondidas o marcadas "sin respuesta".  
 - [x] Los hallazgos de severidad alta tienen responsable.  
 - [x] No hay ningún secreto copiado en este archivo.  
-- [ ] No se modificó código del producto (`git diff --stat <commit auditado>..HEAD` solo muestra este archivo y el de aportes). (Se confirma al hacer el commit.)  
-- [ ] Cada integrante aparece como auditor de al menos una comprobación y tiene al menos un commit con su propia identidad. (Se confirma al hacer el commit.)
+- [x] No se modificó código del producto (`git diff --stat <commit auditado>..HEAD` solo muestra este archivo y el de aportes). Verificado: `git diff --stat release/8.0.0 c550d85` → solo `docs/auditoria/12factor.md` y `docs/auditoria/concurrencia.md` (2 files changed, 506 insertions). Las correcciones de los hallazgos van en commits posteriores (`89ad46b`, `3751877`, `209ff11`), no en el de la auditoría.  
+- [x] Cada integrante aparece como auditor de al menos una comprobación y tiene al menos un commit con su propia identidad. Verificado: Guillermo Mamani Chambi audita todas las comprobaciones; el commit `c550d85` está firmado con su cuenta (`gh api .../commits/c550d85` → autor `guillemc92`).
 
 ## 7\. Resumen
 
