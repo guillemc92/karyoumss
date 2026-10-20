@@ -37,6 +37,10 @@ class LimiteInferencias:
         self.maximo = maximo
         self.espera_s = espera_s
         self._semaforo = threading.BoundedSemaphore(maximo)
+        # El semáforo no expone cuántas plazas quedan: la cuenta va aparte,
+        # protegida por su propio lock porque la tocan varios hilos.
+        self._en_curso = 0
+        self._cuenta = threading.Lock()
 
     @classmethod
     def desde_entorno(cls) -> LimiteInferencias:
@@ -52,7 +56,18 @@ class LimiteInferencias:
                 detail='backend-ml ocupado: hay demasiadas inferencias en curso',
                 headers={'Retry-After': str(max(1, math.ceil(self.espera_s)))},
             )
+        with self._cuenta:
+            self._en_curso += 1
         try:
             yield
         finally:
+            with self._cuenta:
+                self._en_curso -= 1
             self._semaforo.release()
+
+    def estado(self) -> dict:
+        """Plazas totales, en uso y libres, y la espera máxima por un turno."""
+        with self._cuenta:
+            en_curso = self._en_curso
+        return {'maximo': self.maximo, 'en_curso': en_curso,
+                'libres': self.maximo - en_curso, 'espera_max_s': self.espera_s}

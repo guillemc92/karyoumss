@@ -14,7 +14,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
 from .concurrencia import LimiteInferencias
 from .pipeline import get_classifier, run_pipeline
-from .schemas import HealthOut, SegmentResult
+from .schemas import EstadoInferenciasOut, HealthOut, SegmentResult
 from .segmentation import load_gray
 
 app = FastAPI(
@@ -39,6 +39,16 @@ def health() -> HealthOut:
         model_version=f'opencv-watershed-v0+{clf.name}',
         trained_model=clf.is_trained,  # True si cargó el EfficientNet-B3 entrenado
     )
+
+
+@app.get('/api/v1/inferencias/', response_model=EstadoInferenciasOut)
+def estado_inferencias() -> EstadoInferenciasOut:
+    """Estado del límite de inferencias (issue #2): plazas, en curso y espera.
+
+    No pasa por `limite.turno()`: consultar el estado no es una inferencia y
+    tiene que responder justo cuando no queda ninguna plaza.
+    """
+    return EstadoInferenciasOut(**limite.estado())
 
 
 @app.post('/api/v1/segment/', response_model=SegmentResult)

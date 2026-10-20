@@ -34,6 +34,13 @@ class SegmentResult(BaseModel):
     chromosomes: list[ChromosomeOut]
 
 
+class EstadoInferenciasOut(BaseModel):
+    maximo: int             # ML_MAX_INFERENCIAS
+    en_curso: int
+    libres: int
+    espera_max_s: float     # ML_ESPERA_MAX_S: después, 503 con Retry-After
+
+
 class HealthOut(BaseModel):
     status: str
     service: str
