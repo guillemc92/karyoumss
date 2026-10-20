@@ -37,6 +37,12 @@ class LimiteInferencias:
         self.maximo = maximo
         self.espera_s = espera_s
         self._semaforo = threading.BoundedSemaphore(maximo)
+        # Contadores para `estado()` (FR1.2, FR1.5, FR3). El semáforo no expone
+        # cuántos huecos ocupa ni cuántos esperan, así que se llevan aparte,
+        # con un lock propio: leerlos nunca pasa por el semáforo (FR2, NFR1).
+        self._contadores = threading.Lock()
+        self._en_curso = 0
+        self._en_espera = 0
 
     @classmethod
     def desde_entorno(cls) -> LimiteInferencias:
@@ -45,14 +51,49 @@ class LimiteInferencias:
 
     @contextmanager
     def turno(self) -> Iterator[None]:
-        """Ocupa un hueco mientras dura la inferencia; 503 si no llega a tiempo."""
-        if not self._semaforo.acquire(timeout=self.espera_s):
+        """Ocupa un hueco mientras dura la inferencia; 503 si no llega a tiempo.
+
+        FR3.2: `en_espera` sube antes de pedir turno y baja en cuanto `acquire`
+        vuelve, lo obtenga o se rinda. FR3.1/FR3.3: `en_curso` sube solo si hay
+        turno y baja en el `finally`, también si la inferencia falla; un 503
+        por espera agotada nunca lo toca.
+        """
+        with self._contadores:
+            self._en_espera += 1
+        try:
+            obtenido = self._semaforo.acquire(timeout=self.espera_s)
+        finally:
+            with self._contadores:
+                self._en_espera -= 1
+        if not obtenido:
             raise HTTPException(
                 status_code=503,
                 detail='backend-ml ocupado: hay demasiadas inferencias en curso',
                 headers={'Retry-After': str(max(1, math.ceil(self.espera_s)))},
             )
+        with self._contadores:
+            self._en_curso += 1
         try:
             yield
         finally:
+            with self._contadores:
+                self._en_curso -= 1
             self._semaforo.release()
+
+    def estado(self) -> dict:
+        """Foto del límite sin ocupar turno (FR1, FR2, NFR1).
+
+        Devuelve `maximo`, `en_curso`, `libres` (= maximo − en_curso),
+        `espera_max_s` y `en_espera`, leídos juntos bajo el lock para que
+        `libres` y `en_curso` sean coherentes entre sí.
+        """
+        with self._contadores:
+            en_curso = self._en_curso
+            en_espera = self._en_espera
+        return {
+            'maximo': self.maximo,
+            'en_curso': en_curso,
+            'libres': self.maximo - en_curso,
+            'espera_max_s': self.espera_s,
+            'en_espera': en_espera,
+        }

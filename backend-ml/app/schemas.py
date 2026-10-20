@@ -39,3 +39,12 @@ class HealthOut(BaseModel):
     service: str
     model_version: str
     trained_model: bool             # False: baseline OpenCV + placeholder
+
+
+class EstadoInferenciasOut(BaseModel):
+    """Estado del límite de inferencias (FR1.1–FR1.5)."""
+    maximo: int                     # ML_MAX_INFERENCIAS
+    en_curso: int                   # inferencias con plaza ahora mismo
+    libres: int                     # maximo - en_curso
+    espera_max_s: float             # ML_ESPERA_MAX_S, antes del 503
+    en_espera: int                  # peticiones esperando turno

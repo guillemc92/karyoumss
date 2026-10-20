@@ -1,0 +1,14 @@
+{
+  "stage": "code-generation",
+  "version": 1,
+  "upstream_ids": ["FR1", "FR2", "FR3", "FR4", "NFR1", "NFR2", "NFR3"],
+  "coverage": [
+    { "id": "FR1", "status": "OK", "target": "backend-ml/app/concurrencia.py" },
+    { "id": "FR2", "status": "OK", "target": "backend-ml/app/main.py" },
+    { "id": "FR3", "status": "OK", "target": "backend-ml/app/concurrencia.py" },
+    { "id": "FR4", "status": "OK", "target": "backend-ml/app/main.py" },
+    { "id": "NFR1", "status": "OK", "target": "backend-ml/app/main.py" },
+    { "id": "NFR2", "status": "OK", "target": "backend-ml/app/main.py" },
+    { "id": "NFR3", "status": "OK", "target": "backend-ml/tests/test_estado_inferencias.py" }
+  ]
+}

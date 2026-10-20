@@ -1,0 +1,1 @@
+"Añadir a backend-ml un endpoint GET /api/v1/inferencias/ que devuelva el estado del límite de inferencias: maximo, en_curso, libres y espera_max_s, sin pasar por el semáforo, con sus pruebas."

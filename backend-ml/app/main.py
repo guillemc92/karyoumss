@@ -7,14 +7,18 @@ adaptadores de los puertos hexagonales (ADR-0007), sin tocar esta API.
 
 Ejecutar:  uvicorn app.main:app --reload --port 8000
 Límites:   ML_MAX_INFERENCIAS (1) y ML_ESPERA_MAX_S (25) — DD-AUD-001 F1.
+Estado:    GET /api/v1/inferencias/ con X-Internal-Secret (INTERNAL_SERVICE_SECRET).
 """
 from __future__ import annotations
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+import hmac
+import os
+
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 
 from .concurrencia import LimiteInferencias
 from .pipeline import get_classifier, run_pipeline
-from .schemas import HealthOut, SegmentResult
+from .schemas import EstadoInferenciasOut, HealthOut, SegmentResult
 from .segmentation import load_gray
 
 app = FastAPI(
@@ -39,6 +43,29 @@ def health() -> HealthOut:
         model_version=f'opencv-watershed-v0+{clf.name}',
         trained_model=clf.is_trained,  # True si cargó el EfficientNet-B3 entrenado
     )
+
+
+@app.get('/api/v1/inferencias/', response_model=EstadoInferenciasOut)
+def estado_inferencias(
+    x_internal_secret: str | None = Header(default=None, alias='X-Internal-Secret'),
+) -> EstadoInferenciasOut:
+    """Estado del límite de inferencias: plazas, ocupadas y en espera (FR1).
+
+    No llama a `limite.turno()`: responde aunque no quede ninguna plaza y no
+    ocupa ninguna (FR2, NFR1). Exige el secreto interno con la convención de
+    backend-admin (FR4): 503 si backend-ml no lo tiene configurado (FR4.3),
+    403 si la cabecera falta o no coincide (FR4.2). La comparación es de tiempo
+    constante y el valor del secreto no sale en ninguna respuesta (NFR2).
+    """
+    # Se lee en cada petición: sin secreto el servicio arranca igual (FR4.3).
+    secreto = os.environ.get('INTERNAL_SERVICE_SECRET', '')
+    if not secreto:
+        raise HTTPException(status_code=503,
+                            detail='Estado de inferencias no configurado')
+    if x_internal_secret is None or not hmac.compare_digest(
+            x_internal_secret.encode(), secreto.encode()):
+        raise HTTPException(status_code=403, detail='Secreto de servicio inválido')
+    return EstadoInferenciasOut(**limite.estado())
 
 
 @app.post('/api/v1/segment/', response_model=SegmentResult)
