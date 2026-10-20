@@ -67,7 +67,9 @@ Sin AI-DLC nadie hizo esas preguntas. La versión directa quedó **pública**, c
 |---|---|---|
 | Código y pruebas | 4 archivos, +125 líneas | 5 archivos, +317 líneas |
 | Documentación del proceso | Ninguna | 28 archivos, +2.161 líneas en `aidlc/` |
-| Configuración del framework | — | 323 archivos en `.claude/`, `aidlc/`, `.aidlc-version` (commit `4fc0de6`) |
+| Configuración del framework | — | 323 archivos en `.claude/` y `aidlc/` (commit `4fc0de6`) |
+
+**Sobre `.aidlc-version`:** la versión 2.11.0 no crea ese archivo. Guarda la versión instalada en `.claude/tools/data/aidlc-stamp.json` (`"frameworkVersion": "2.11.0"`), que está versionado junto con `aidlc-manifest.json`.
 
 Lo que quedó en `aidlc/`:
 
