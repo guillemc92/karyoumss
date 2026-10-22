@@ -118,8 +118,13 @@ test('el recorte dibujado sobre un cromosoma cae sobre ESE cromosoma en la metaf
   await page.mouse.down();
   await page.mouse.move(hasta.x, hasta.y, { steps: 6 });
   // Para la documentación (T5): el panel con el recorte en curso, antes de soltar.
+  // La barra de navegación es `sticky` y, al llevar el panel arriba para la
+  // captura, tapaba su título: solo durante la captura deja de ser fija.
   if (process.env.E2E_CAPTURA) {
-    await page.getByTestId('metafase-panel').screenshot({ path: process.env.E2E_CAPTURA });
+    await page.getByTestId('metafase-panel').screenshot({
+      path: process.env.E2E_CAPTURA,
+      style: '.navbar { position: static !important; }',
+    });
   }
   await page.mouse.up();
 

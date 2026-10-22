@@ -6,8 +6,8 @@
 | **ADR origen** | [ADR-0021](../adr/0021-visor-correccion-cariotipo.md) §D5 (visor y corrección) · [ADR-0016](../adr/0016-registro-muestras-captura-metafases.md) (`SampleImage`, metafases en `MEDIA_ROOT`) |
 | **FSD** | FSD-UC-003 (corrección manual del cariotipo) |
 | **Reglas** | RN-03 (sin PII), RN-06 (alcance del analista), RN-07 (degradación elegante), RN-09 (cobertura ≥ 90 %) |
-| **Estado** | **Aprobado** por el autor el 2026-10-13, tal cual · en implementación |
-| **Fecha** | 2026-10-01 (propuesta) · 2026-10-13 (aprobación) |
+| **Estado** | **Implementado** (T1–T6) · aprobado por el autor el 2026-10-13, tal cual |
+| **Fecha** | 2026-10-01 (propuesta) · 2026-10-13 (aprobación) · 2026-10-21 (cierre) |
 | **Corrige** | [DD-KARYO-005](DD-KARYO-005.md) §4.1 (coordenadas del recorte, ver §2) |
 
 ## 1. Por qué existe
@@ -179,5 +179,40 @@ Cada tarea cabe en una sesión de ≤ 3 h y se entrega con sus pruebas.
 | T3 | Lienzo: recortes reales, borde de semáforo, degradación; mock de `Image` | 2,5 h |
 | T3b | D8: poner de pie los tumbados (`colocarRecorte`, giro de 90° solo de presentación) | 1,5 h |
 | T4 | RECROP: reproducir el defecto en E2E, `MetafasePanel` + `recorteMetafase`, prueba de que queda corregido — **hecho 13/10**: el E2E que reproducía el defecto pasa contra el stack real (bbox enviado = caja del cromosoma ± 2 px); reintroducir el defecto hace fallar 4 pruebas | 3 h |
-| T5 | E2E real completo y capturas | 2 h |
-| T6 | Cierre: estado de este documento, nota de corrección en DD-KARYO-005 §4.1, `TASKS.md` | 0,5 h |
+| T5 | E2E real completo y capturas — **hecho 21/10**, ver §9 | 2 h |
+| T6 | Cierre: estado de este documento y nota de corrección en DD-KARYO-005 §4.1 — **hecho 21/10**. `TASKS.md` no se tocó: es un archivo de SPEC-006 sin versionar y nunca llevó el seguimiento de esta especificación | 0,5 h |
+
+## 9. Verificación final (T5, 2026-10-21)
+
+E2E contra el stack real (backend-admin, backend-clinic y el front; sin
+backend-ml), en `frontend-clinic/tests/auditado/cromosomas-reales.spec.ts`.
+Es de solo lectura: no crea casos ni escribe en la auditoría.
+
+| Prueba | Resultado |
+|---|---|
+| Caso con metafase real: el endpoint responde 200 con `image/bmp`, `image/png` o `image/jpeg`, y el cuerpo de un cromosoma tiene píxeles de imagen | **208** niveles de gris distintos (umbral 40) |
+| Caso del seed sin metafase: 404 `NO_METAPHASE_IMAGE`, aviso visible, sin error, cajas de color | **1** nivel (el relleno liso) |
+| Recorte sobre el panel «Metafase» (`recorte-coordenadas.spec.ts`, T4) | bbox enviado = caja del cromosoma ± 2 px |
+
+**El instrumento se validó antes de creerle:**
+- **Mutación.** Con el endpoint de la metafase forzado a 404, la primera prueba falla con 1 nivel.
+- **Control.** La segunda prueba aplica la misma métrica a una caja de color y exige que quede por debajo del umbral, así que un umbral que no separe se vería.
+- **Capturas.** Confirman que la zona medida cae sobre el cromosoma.
+
+Suite E2E auditada completa: **15 de 15** en verde. En la primera pasada, la
+prueba de segregación recibió un 429 de limitación de frecuencia en el login de
+backend-admin; al repetirla sola pasó. `tsc` limpio.
+
+**Capturas** (`docs/design/capturas/dd-karyo-006/`), generadas con
+`E2E_CAPTURAS=<carpeta>` y `E2E_CAPTURA=<png>`:
+
+| Archivo | Qué muestra |
+|---|---|
+| `cariograma-real.png` | El cariograma con los cromosomas reales y el semáforo como borde |
+| `cariograma-sin-metafase.png` | La degradación: cajas de color, como antes de esta especificación |
+| `recorte-panel-metafase.png` | El recorte en curso sobre la metafase. La barra de navegación deja de ser fija solo durante la captura, porque tapaba el título del panel |
+
+**Lo que las capturas destapan, fuera de alcance:**
+- **La pila de «clase 1»** desborda los pares 2 a 7. Viene de la subsegmentación previa (ADR-0036), no del visor.
+- **Números dentro de algunas metafases**, probablemente rotulados por MetaClass, que aparecen dentro de los recortes.
+- **Cromosomas cabeza abajo.** D8 los pone de pie, pero falta orientarlos (brazo p arriba): es la próxima especificación (§6).

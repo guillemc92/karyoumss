@@ -84,6 +84,16 @@ El bbox se emite en píxeles de la **metafase**, deshaciendo zoom, rotación y
 desplazamiento con `getAbsoluteTransform().copy().invert()`. Sin eso, recortar
 con la vista ampliada guardaría una región distinta de la que el analista ve.
 
+> **Corrección (2026-10-21, [DD-KARYO-006](DD-KARYO-006.md) §2):** lo anterior
+> es **falso**. La transformación inversa devuelve coordenadas **del lienzo del
+> cariograma**, no de la metafase, y el servidor las interpretaba como píxeles
+> de la metafase. Se reprodujo en la aplicación real el 13/10: se enviaba
+> `{x: 9, y: 18, w: 22, h: 100}` para un cromosoma situado en
+> `{x: 448, y: 35, w: 175, h: 73}`. Desde DD-KARYO-006 D7, el recorte se dibuja
+> en el panel «Metafase» y `lib/recorteMetafase.ts` lo convierte a píxeles de la
+> metafase. Lo verifica el E2E `tests/auditado/recorte-coordenadas.spec.ts`.
+> El texto original se conserva para que se vea qué se afirmó.
+
 ### 4.2 Modos excluyentes
 Medir y recortar son ambos un arrastre sobre el mismo lienzo, y el arrastre de
 un cromosoma es la reclasificación por drag & drop. Activar el recorte apaga la
