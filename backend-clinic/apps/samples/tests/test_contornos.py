@@ -171,21 +171,36 @@ class TestInvalidacion:
         c.refresh_from_db()
         assert c.contour is None
 
-    def test_separar_deja_el_contorno_a_none(self, analyst_user, media):
+    def test_separar_pone_a_cada_trozo_su_silueta(self, analyst_user, media, monkeypatch):
+        """Desde T5 la silueta de cada trozo la da el corte, no se invalida."""
         s, k = _caso(analyst_user, 'CHN-2026-10-23-0010', media)
         c = _crom(k, contour=CONTORNO)
-        nuevo = split_chromosome(s, c, analyst_user)
+        trozo_a = [[10, 20], [40, 20], [40, 60], [10, 60]]
+        trozo_b = [[10, 70], [40, 70], [40, 110], [10, 110]]
+        monkeypatch.setattr('apps.samples.services.pipeline_client.split', lambda *a, **kw: [
+            {'contour': trozo_a, 'bbox': {'x': 10, 'y': 20, 'w': 30, 'h': 40}, 'area': 1200},
+            {'contour': trozo_b, 'bbox': {'x': 10, 'y': 70, 'w': 30, 'h': 40}, 'area': 1100},
+        ])
+        monkeypatch.setattr('apps.samples.services.pipeline_client.classify_crop',
+                            lambda *a, **kw: {'predicted_class': '3', 'confidence_score': 0.9})
+        _, nuevo = split_chromosome(s, c, [[0, 65], [50, 65]], analyst_user)
         c.refresh_from_db()
-        assert c.contour is None
-        assert nuevo.contour is None
+        assert c.contour == trozo_a
+        assert nuevo.contour == trozo_b
 
-    def test_unir_deja_el_contorno_a_none(self, analyst_user, media):
+    def test_unir_sin_backend_ml_deja_el_contorno_a_none(self, analyst_user, media, monkeypatch):
+        """Unir no depende de la IA: sin backend-ml se une la caja y la silueta
+        queda por calcular (DD-KARYO-007 D4, RN-07)."""
+        def caido(*a, **kw):
+            raise MLDegradedError('circuit_open')
+        monkeypatch.setattr('apps.samples.services.pipeline_client.join', caido)
         s, k = _caso(analyst_user, 'CHN-2026-10-23-0011', media)
         a = _crom(k, contour=CONTORNO, order=0)
         b = _crom(k, contour=CONTORNO, order=1, bbox={'x': 40, 'y': 20, 'w': 30, 'h': 90})
         join_chromosomes(s, a, b, analyst_user)
         a.refresh_from_db()
         assert a.contour is None
+        assert a.bbox == {'x': 10, 'y': 20, 'w': 60, 'h': 90}
 
 
 # ============================================================================

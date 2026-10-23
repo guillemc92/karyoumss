@@ -16,7 +16,8 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
 from .concurrencia import LimiteInferencias
 from .pipeline import get_classifier, run_pipeline
-from .schemas import ContornosOut, HealthOut, SegmentResult
+from .edicion import CorteInvalidoError, cortar, unir
+from .schemas import ContornosOut, HealthOut, JoinOut, SegmentResult, SplitOut, TrozoOut
 from .segmentation import contorno_en_caja, load_gray
 
 app = FastAPI(
@@ -103,6 +104,81 @@ def contours_endpoint(file: UploadFile = File(...), bboxes: str = Form(...)) -> 
             continue
         contornos.append(contorno_en_caja(gray, caja))
     return ContornosOut(contornos=contornos)
+
+
+def _json_form(valor: str | None, nombre: str):
+    """Un campo de formulario que trae JSON. 400 si no lo es."""
+    if valor is None or valor == '':
+        return None
+    try:
+        return json.loads(valor)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail=f'{nombre} no es JSON válido') from exc
+
+
+def _poligono(valor, nombre: str) -> list[list[int]]:
+    if not isinstance(valor, list) or not all(
+            isinstance(p, list) and len(p) == 2 and all(isinstance(v, (int, float)) for v in p)
+            for p in valor):
+        raise HTTPException(status_code=400, detail=f'{nombre} debe ser una lista de [x, y]')
+    return [[int(round(x)), int(round(y))] for x, y in valor]
+
+
+def _caja(t) -> dict[str, int]:
+    return {'x': int(t[0]), 'y': int(t[1]), 'w': int(t[2]), 'h': int(t[3])}
+
+
+@app.post('/api/v1/split/', response_model=SplitOut)
+def split_endpoint(
+    file: UploadFile = File(...),
+    bbox: str = Form(...),
+    linea: str = Form(...),
+    contour: str | None = Form(None),
+) -> SplitOut:
+    """Separa un objeto por la línea que trazó el analista (DD-KARYO-007 D3).
+
+    `bbox` `{x, y, w, h}` y `contour` `[[x, y], …]` (opcional) son los del
+    objeto; `linea` es la polilínea, todo en píxeles de la metafase. Corte en
+    ráster: ver `edicion.cortar`.
+
+    - 200 los trozos, de mayor a menor
+    - 400 datos mal formados
+    - 422 la línea no separa el objeto (o la imagen no se puede leer)
+
+    No pasa por el límite de inferencias: no usa el modelo.
+    """
+    caja = _json_form(bbox, 'bbox')
+    try:
+        caja_t = tuple(int(caja[k]) for k in ('x', 'y', 'w', 'h'))
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HTTPException(status_code=400, detail='bbox debe ser {x, y, w, h}') from exc
+    trazo = _poligono(_json_form(linea, 'linea'), 'linea')
+    silueta = _json_form(contour, 'contour')
+    silueta = _poligono(silueta, 'contour') if silueta is not None else None
+    data = file.file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail='Archivo vacío')
+    try:
+        gray = load_gray(data)
+        trozos = cortar(gray, caja_t, silueta, trazo)
+    except ValueError as exc:  # imagen ilegible o CorteInvalidoError
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return SplitOut(trozos=[TrozoOut(contour=t.contour, bbox=_caja(t.bbox), area=t.area) for t in trozos])
+
+
+@app.post('/api/v1/join/', response_model=JoinOut)
+def join_endpoint(contornos: str = Form(...)) -> JoinOut:
+    """Silueta de la unión de varias siluetas (DD-KARYO-007 D4). Sin imagen:
+    es geometría sobre los contornos. 400 mal formado, 422 menos de dos."""
+    lista = _json_form(contornos, 'contornos')
+    if not isinstance(lista, list):
+        raise HTTPException(status_code=400, detail='contornos debe ser una lista de polígonos')
+    poligonos = [_poligono(c, 'contornos[]') for c in lista]
+    try:
+        contorno, caja = unir(poligonos)
+    except CorteInvalidoError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return JoinOut(contour=contorno, bbox=_caja(caja))
 
 
 @app.post('/api/v1/xai/')

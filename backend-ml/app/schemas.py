@@ -30,6 +30,24 @@ class ContornosOut(BaseModel):
     contornos: list[list[list[int]] | None]
 
 
+class TrozoOut(BaseModel):
+    """Un trozo tras separar (DD-KARYO-007 D3), en píxeles de la metafase."""
+    contour: list[list[int]]
+    bbox: dict[str, int]
+    area: int
+
+
+class SplitOut(BaseModel):
+    """Los trozos de mayor a menor área: el primero se queda con el objeto original."""
+    trozos: list[TrozoOut]
+
+
+class JoinOut(BaseModel):
+    """Silueta y caja de la unión (DD-KARYO-007 D4)."""
+    contour: list[list[int]]
+    bbox: dict[str, int]
+
+
 class SegmentResult(BaseModel):
     model_version: str
     segmenter: str

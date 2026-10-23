@@ -96,23 +96,9 @@ class TestReclassify:
         assert s.status == 'ANALYST_VALIDATED'
 
 
-class TestSplit:
-    def test_split_creates_second_chromosome(self, own_sample, analyst_user):
-        k, green, _ = _karyo(own_sample)
-        before = k.chromosomes.filter(is_active=True).count()
-        created = split_chromosome(own_sample, green, analyst_user)
-        assert k.chromosomes.filter(is_active=True).count() == before + 1
-        assert created.predicted_class == '1'
-        # bbox partido a la mitad: original izquierda, nuevo derecha.
-        green.refresh_from_db()
-        assert green.bbox['w'] == 20
-        assert created.bbox['x'] == 20 and created.bbox['w'] == 20
-        assert AuditEvent.objects.filter(sample=own_sample, event_type='SPLIT').count() == 1
-
-    def test_split_new_index_is_next(self, own_sample, analyst_user):
-        _, green, _ = _karyo(own_sample)
-        created = split_chromosome(own_sample, green, analyst_user)
-        assert created.position_index == green.position_index + 1
+# TestSplit se retiró el 23/10 (DD-KARYO-007 T5): fijaba el corte POR LA MITAD
+# de la caja, que es justo el defecto que la spec manda eliminar. Separar por
+# línea se prueba en test_corte.py.
 
 
 class TestJoin:
@@ -156,13 +142,13 @@ class TestCaseLock:
         with pytest.raises(CaseLockedError):
             reclassify_chromosome(own_sample, green, '7', analyst_user)
         with pytest.raises(CaseLockedError):
-            split_chromosome(own_sample, green, analyst_user)
+            split_chromosome(own_sample, green, [[0, 0], [40, 96]], analyst_user)
 
     def test_audit_chain_intact_after_p3_ops(self, own_sample, analyst_user):
         _, green, orange = _karyo(own_sample)
         reclassify_chromosome(own_sample, orange, '7', analyst_user)
-        split_chromosome(own_sample, green, analyst_user)
-        resolve_cross(own_sample, orange, analyst_user)
+        join_chromosomes(own_sample, green, orange, analyst_user)   # antes: split por la mitad
+        resolve_cross(own_sample, green, analyst_user)
         assert verify_audit_chain(own_sample) is True
 
 
@@ -189,11 +175,12 @@ class TestP3Endpoints:
         assert resp.status_code == 400
         assert resp.data['code'] == 'SAME_CLASS'
 
-    def test_split_endpoint_201(self, analyst_client, own_sample):
+    def test_split_sin_linea_400(self, analyst_client, own_sample):
+        """Ya no hay corte automático por la mitad (DD-KARYO-007 D3)."""
         _, green, _ = _karyo(own_sample)
         resp = analyst_client.post(_split_url(own_sample, green))
-        assert resp.status_code == 201
-        assert resp.data['predicted_class'] == '1'
+        assert resp.status_code == 400
+        assert resp.data['code'] == 'VALIDATION_ERROR'
 
     def test_join_endpoint(self, analyst_client, own_sample):
         _, green, orange = _karyo(own_sample)
@@ -226,7 +213,7 @@ class TestP3Endpoints:
         _, green, orange = _karyo(own_sample)
         reclassify_chromosome(own_sample, orange, 'X', analyst_user)
         validate_case(own_sample, analyst_user)
-        resp = analyst_client.post(_split_url(own_sample, green))
+        resp = analyst_client.post(_split_url(own_sample, green), {'linea': [[0, 0], [40, 96]]}, format='json')
         assert resp.status_code == 409
         assert resp.data['code'] == 'CASE_LOCKED'
 

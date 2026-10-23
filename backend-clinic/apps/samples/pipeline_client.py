@@ -10,6 +10,10 @@ class MLDegradedError(Exception):
     muestra igual y degradar la UI (DegradedBanner), no bloquear."""
 
 
+class CorteInvalidoError(ValueError):
+    """La línea trazada no separa el objeto (422 de backend-ml)."""
+
+
 class PipelineClient:
     """Cliente al FastAPI clínico con circuit breaker (ADR-0015 #6, SPEC-008 §8.1)."""
 
@@ -155,6 +159,63 @@ class PipelineClient:
             # riesgo de pegar la silueta de un cromosoma en otro.
             raise MLDegradedError('respuesta de contornos que no corresponde a las cajas')
         return contornos
+
+
+    def split(self, image_bytes: bytes, bbox: dict, contour: list | None, linea: list,
+              filename: str = 'metafase.bmp') -> list[dict]:
+        """Separa un objeto por una línea (/api/v1/split/, DD-KARYO-007 D3).
+
+        Devuelve los trozos `[{contour, bbox, area}]` de mayor a menor. Una línea
+        que no separa el objeto es un error del ANALISTA, no de la IA: lanza
+        `CorteInvalidoError` y no cuenta como fallo del circuito.
+        """
+        if self._circuit_open():
+            raise MLDegradedError('circuit_open')
+        datos = {
+            'bbox': json.dumps({k: int(bbox.get(k, 0)) for k in ('x', 'y', 'w', 'h')}),
+            'linea': json.dumps(linea),
+        }
+        if contour:
+            datos['contour'] = json.dumps(contour)
+        try:
+            with httpx.Client(timeout=max(self.timeout, 30.0)) as client:
+                resp = client.post(
+                    f'{self.base_url}/api/v1/split/',
+                    files={'file': (filename, image_bytes, 'application/octet-stream')},
+                    data=datos,
+                )
+            if resp.status_code == 422:
+                self._record_success()   # el servicio respondió: el fallo es del trazo
+                raise CorteInvalidoError(resp.json().get('detail') or 'la línea no separa el objeto')
+            resp.raise_for_status()
+            trozos = resp.json().get('trozos')
+        except (httpx.TimeoutException, httpx.HTTPError, ValueError) as exc:
+            if isinstance(exc, CorteInvalidoError):
+                raise
+            self._record_failure()
+            raise MLDegradedError(str(exc)) from exc
+        if not isinstance(trozos, list) or len(trozos) < 2:
+            raise MLDegradedError('respuesta de corte sin trozos')
+        self._record_success()
+        return trozos
+
+    def join(self, contornos: list[list]) -> dict:
+        """Silueta y caja de la unión (/api/v1/join/, DD-KARYO-007 D4)."""
+        if self._circuit_open():
+            raise MLDegradedError('circuit_open')
+        try:
+            with httpx.Client(timeout=max(self.timeout, 30.0)) as client:
+                resp = client.post(f'{self.base_url}/api/v1/join/',
+                                   data={'contornos': json.dumps(contornos)})
+                resp.raise_for_status()
+                unido = resp.json()
+        except (httpx.TimeoutException, httpx.HTTPError, ValueError) as exc:
+            self._record_failure()
+            raise MLDegradedError(str(exc)) from exc
+        if not isinstance(unido, dict) or not unido.get('contour') or not unido.get('bbox'):
+            raise MLDegradedError('respuesta de unión incompleta')
+        self._record_success()
+        return unido
 
 
 pipeline_client = PipelineClient(

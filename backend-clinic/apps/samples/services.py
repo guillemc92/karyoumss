@@ -20,7 +20,7 @@ from .models import (
 )
 from .imagen import ANCHO_MINIMO, ALTO_MINIMO, dimensiones, es_metafase_plausible
 from .iscn import IscnError, generate_iscn, validate_iscn
-from .pipeline_client import MLDegradedError, pipeline_client
+from .pipeline_client import CorteInvalidoError, MLDegradedError, pipeline_client
 
 
 class ChnDuplicateError(Exception):
@@ -532,44 +532,122 @@ def reclassify_chromosome(sample, chromosome, target_class, actor, mode='auto') 
     return chromosome
 
 
-def split_chromosome(sample, chromosome, actor, mode='auto') -> Chromosome:
-    """Separa un cromosoma segmentado como uno solo (touching) en dos.
+def _linea_valida(linea) -> list[list[float]]:
+    """Polilínea `[[x, y], …]` de al menos dos puntos numéricos, o ValueError."""
+    if not isinstance(linea, list) or len(linea) < 2:
+        raise ValueError('separar necesita una línea de al menos dos puntos')
+    puntos = []
+    for p in linea:
+        if (not isinstance(p, (list, tuple)) or len(p) != 2
+                or not all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in p)):
+            raise ValueError('cada punto de la línea debe ser [x, y]')
+        puntos.append([float(p[0]), float(p[1])])
+    return puntos
 
-    El original conserva la mitad izquierda del bbox; el nuevo cromosoma toma
-    la mitad derecha (misma clase, siguiente position_index). La reclasificación
-    posterior de cada fragmento queda a criterio del analista.
+
+def _reclasificar(datos: bytes, bbox: dict, nombre: str, clase_origen: str):
+    """Clase y confianza de un trozo, o la clase de origen en naranja si la IA
+    no responde (DD-KARYO-007 D3.4, RN-07). Devuelve (clase, confianza, ok)."""
+    try:
+        r = pipeline_client.classify_crop(datos, bbox, filename=nombre)
+    except MLDegradedError:
+        return clase_origen, _Decimal('0'), False
+    clase = str(r.get('predicted_class') or '')
+    if clase not in VALID_CHROMOSOME_CLASSES:
+        return clase_origen, _Decimal('0'), False
+    return clase, _Decimal(str(r.get('confidence_score', 0))), True
+
+
+def _resolucion(confianza) -> str:
+    return 'PENDING' if confianza is not None and confianza < CONFIDENCE_THRESHOLD else 'AUTO'
+
+
+def split_chromosome(sample, chromosome, linea, actor, mode='auto') -> list[Chromosome]:
+    """Separa un objeto por la línea que trazó el analista (DD-KARYO-007 D3).
+
+    Sustituye al corte POR LA MITAD de la caja, que partía igual fuera cual
+    fuera la frontera entre los cromosomas. Ahora:
+
+    1. backend-ml corta en ráster la máscara del objeto por la línea y devuelve
+       los trozos de mayor a menor (`pipeline_client.split`);
+    2. el original se queda con el trozo mayor; cada trozo restante es un
+       cromosoma nuevo;
+    3. cada trozo se reclasifica; si la IA no responde a eso, conserva la clase
+       de origen en naranja y pendiente (RN-07).
+
+    Sin backend-ml no se puede separar (`MLDegradedError` → 503): el corte lo
+    calcula él (§10.1). Una línea que no separa el objeto → `CorteInvalidoError`.
+
+    El evento SPLIT guarda la línea y el estado previo del original (caja,
+    silueta, clase, confianza, resolución): es lo que necesita deshacer (D6).
+    Devuelve [original, *creados].
     """
     _assert_editable(sample)
-    bbox = dict(chromosome.bbox or {})
-    x = bbox.get('x', 0)
-    y = bbox.get('y', 0)
-    w = bbox.get('w', 0)
-    h = bbox.get('h', 0)
-    half = w / 2 if w else 0
+    trazo = _linea_valida(linea)
+    if not chromosome.is_active:
+        raise ObjetoInactivoError('El objeto ya no forma parte del cariotipo.')
+    imagen = metafase_segmentada(sample)
+    ruta = ruta_segura(imagen.image_path) if imagen else None
+    if ruta is None:
+        raise SinMetafaseError('el cariotipo no tiene una metafase sobre la que separar')
+    datos = ruta.read_bytes()
+    trozos = pipeline_client.split(datos, chromosome.bbox or {}, chromosome.contour, trazo,
+                                   filename=ruta.name)
+
+    previo = {
+        'bbox': dict(chromosome.bbox or {}),
+        'contour': chromosome.contour,
+        'predicted_class': chromosome.predicted_class,
+        'confidence_score': str(chromosome.confidence_score)
+        if chromosome.confidence_score is not None else None,
+        'resolution_status': chromosome.resolution_status,
+        'xai_viewed': chromosome.xai_viewed,
+    }
+    clases = [_reclasificar(datos, t['bbox'], ruta.name, chromosome.predicted_class) for t in trozos]
+
+    karyotype = chromosome.karyotype
     with transaction.atomic():
-        chromosome.bbox = {'x': x, 'y': y, 'w': half, 'h': h}
-        chromosome.contour = None  # DD-KARYO-007 D1: la silueta era la del objeto entero
-        chromosome.save(update_fields=['bbox', 'contour'])
-        siblings = chromosome.karyotype.chromosomes.filter(
-            predicted_class=chromosome.predicted_class,
-        )
-        next_index = max((c.position_index for c in siblings), default=chromosome.position_index) + 1
-        next_order = max((c.order for c in chromosome.karyotype.chromosomes.all()), default=chromosome.order) + 1
-        created = Chromosome.objects.create(
-            karyotype=chromosome.karyotype,
-            predicted_class=chromosome.predicted_class,
-            position_index=next_index,
-            confidence_score=chromosome.confidence_score,
-            bbox={'x': x + half, 'y': y, 'w': half, 'h': h},
-            measures=dict(chromosome.measures or {}),
-            resolution_status=chromosome.resolution_status,
-            order=next_order,
-        )
+        mayor, (clase, conf, _) = trozos[0], clases[0]
+        chromosome.bbox = mayor['bbox']
+        chromosome.contour = mayor['contour']
+        chromosome.predicted_class = clase
+        chromosome.confidence_score = conf
+        chromosome.resolution_status = _resolucion(conf)
+        chromosome.xai_viewed = False   # la decisión anterior miraba otro objeto
+        chromosome.save(update_fields=['bbox', 'contour', 'predicted_class', 'confidence_score',
+                                       'resolution_status', 'xai_viewed'])
+        siguiente_orden = max((c.order for c in karyotype.chromosomes.all()), default=-1) + 1
+        creados = []
+        for k, (trozo, (clase_t, conf_t, _)) in enumerate(zip(trozos[1:], clases[1:])):
+            hermanos = karyotype.chromosomes.filter(predicted_class=clase_t)
+            creados.append(Chromosome.objects.create(
+                karyotype=karyotype,
+                predicted_class=clase_t,
+                position_index=max((c.position_index for c in hermanos), default=-1) + 1,
+                confidence_score=conf_t,
+                bbox=trozo['bbox'],
+                contour=trozo['contour'],
+                measures={},
+                resolution_status=_resolucion(conf_t),
+                order=siguiente_orden + k,
+            ))
         emit_audit_event(
             sample, actor, AuditEventType.SPLIT, chromosome=chromosome,
-            payload={'origin': str(chromosome.id), 'created': str(created.id)}, mode=mode,
+            payload={
+                'origin': str(chromosome.id),
+                'created': [str(c.id) for c in creados],
+                'linea': trazo,
+                'previo': previo,
+                'trozos': [
+                    {'id': str(c.id), 'clase': c.predicted_class, 'confianza': str(c.confidence_score),
+                     'bbox': c.bbox}
+                    for c in [chromosome, *creados]
+                ],
+                'reclasificado': all(ok for _, _, ok in clases),
+            },
+            mode=mode,
         )
-    return created
+    return [chromosome, *creados]
 
 
 def join_chromosomes(sample, keep, absorbed, actor, mode='auto') -> Chromosome:
@@ -580,15 +658,28 @@ def join_chromosomes(sample, keep, absorbed, actor, mode='auto') -> Chromosome:
         raise JoinSelfError('No se puede unir un cromosoma consigo mismo.')
     if keep.karyotype_id != absorbed.karyotype_id:
         raise CrossKaryotypeError('Los cromosomas pertenecen a cariotipos distintos.')
+    previo = {'bbox': dict(keep.bbox or {}), 'contour': keep.contour}
+    # DD-KARYO-007 D4: unir es unir máscaras. Sin las dos siluetas, o sin
+    # backend-ml, se une la caja y la silueta queda por calcular
+    # (`completar_contornos`): unir no puede depender de la IA (RN-07).
+    caja, silueta = _bbox_union(keep.bbox, absorbed.bbox), None
+    if keep.contour and absorbed.contour:
+        try:
+            unido = pipeline_client.join([keep.contour, absorbed.contour])
+            caja, silueta = unido['bbox'], unido['contour']
+        except MLDegradedError:
+            pass
     with transaction.atomic():
-        keep.bbox = _bbox_union(keep.bbox, absorbed.bbox)
-        keep.contour = None  # DD-KARYO-007 D1: se recalcula sobre la caja unida (F2 unirá siluetas)
+        keep.bbox = caja
+        keep.contour = silueta
         keep.save(update_fields=['bbox', 'contour'])
         absorbed.is_active = False
         absorbed.save(update_fields=['is_active'])
         emit_audit_event(
             sample, actor, AuditEventType.JOIN, chromosome=keep,
-            payload={'kept': str(keep.id), 'absorbed': str(absorbed.id)}, mode=mode,
+            payload={'kept': str(keep.id), 'absorbed': str(absorbed.id), 'previo': previo,
+                     'por_mascara': silueta is not None},
+            mode=mode,
         )
     return keep
 

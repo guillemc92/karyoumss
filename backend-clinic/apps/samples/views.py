@@ -480,12 +480,26 @@ class ChromosomeReclassifyView(APIView):
 
 
 class ChromosomeSplitView(APIView):
-    """POST /samples/{id}/chromosomes/{cid}/split/ — separar (touching) (P3)."""
+    """POST /samples/{id}/chromosomes/{cid}/split/ — separar por una línea (DD-KARYO-007 D3).
+
+    Body: {"linea": [[x, y], ...]} en píxeles de la metafase. Ya no hay corte
+    automático por la mitad: sin línea, 400.
+
+    - 201 {"origen": cromosoma (el trozo mayor), "creados": [cromosomas]}
+    - 400 VALIDATION_ERROR (sin línea o mal formada)
+    - 404 NO_METAPHASE_IMAGE
+    - 409 CASE_LOCKED / OBJECT_INACTIVE
+    - 422 INVALID_CUT: la línea no separa el objeto (nada cambia)
+    - 503 ML_UNAVAILABLE: el corte lo calcula backend-ml (§10.1); nada cambia
+    """
 
     def get_permissions(self):
         return [HasOpcion('sample.edit')]
 
     def post(self, request, pk, cid):
+        from .pipeline_client import CorteInvalidoError
+        from .services import ObjetoInactivoError, SinMetafaseError
+
         sample, error = _get_owned_sample_or_none(pk, request.user)
         if error:
             return error
@@ -493,10 +507,30 @@ class ChromosomeSplitView(APIView):
         if error:
             return error
         try:
-            created = split_chromosome(sample, chromo, request.user, mode=_request_mode(request))
+            origen, *creados = split_chromosome(sample, chromo, request.data.get('linea'),
+                                                request.user, mode=_request_mode(request))
         except CaseLockedError as e:
             return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
-        return Response(ChromosomeSerializer(created).data, status=status.HTTP_201_CREATED)
+        except ObjetoInactivoError as e:
+            return Response({'code': 'OBJECT_INACTIVE', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except SinMetafaseError as e:
+            return Response({'code': 'NO_METAPHASE_IMAGE', 'detail': str(e)},
+                            status=status.HTTP_404_NOT_FOUND)
+        except CorteInvalidoError as e:
+            return Response({'code': 'INVALID_CUT', 'detail': str(e)},
+                            status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+        except MLDegradedError:
+            return Response(
+                {'code': 'ML_UNAVAILABLE',
+                 'detail': 'El servicio de IA no responde: separar por línea no está disponible.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except ValueError as e:
+            return Response({'code': 'VALIDATION_ERROR', 'detail': str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response({'origen': ChromosomeSerializer(origen).data,
+                         'creados': ChromosomeSerializer(creados, many=True).data},
+                        status=status.HTTP_201_CREATED)
 
 
 class ChromosomeJoinView(APIView):
