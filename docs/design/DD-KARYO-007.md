@@ -202,7 +202,7 @@ mismo alcance que el visor (`HasOpcion('sample.view')` más ser el dueño; 403
 
 | # | Tarea | Fase | Estimación |
 |---|---|---|---|
-| T1 | `contour` + migración + `contorno_inicial` + pruebas | F1 | 2,5 h |
+| T1 | `contour` + migración + `contorno_inicial` + pruebas — **hecho 23/10** (`52361da`): el contorno sale de la región de watershed (46/46 en metafase_207); `/api/v1/contours/` para casos antiguos (45/46); se invalida al recortar, separar o unir | F1 | 2,5 h |
 | T2 | `MetafaseEditor`: metafase, contornos, selección sincronizada con el cariograma | F1 | 3 h |
 | T3 | Descartar y añadir objetos (back + front + eventos) | F1 | 2,5 h |
 | T4 | `geometriaContorno.ts` (cortar y unir) con cobertura total | F2 | 2,5 h |
