@@ -91,6 +91,13 @@ export function fijarBboxMock(
   chromo.bbox = bbox;
 }
 
+/** Fija el contorno de un cromosoma del mock (DD-KARYO-007): el seed no tiene. */
+export function fijarContornoMock(sampleId: string, chromosomeId: string, contour: number[][] | null): void {
+  const chromo = getOrBuildKaryotype(sampleId).chromosomes.find((c) => c.id === chromosomeId);
+  if (!chromo) throw new Error(`no existe el cromosoma ${chromosomeId} en el mock`);
+  chromo.contour = contour;
+}
+
 function recomputeSummary(k: Karyotype): void {
   // P3: los fragmentos absorbidos por JOIN (is_active=false) no cuentan.
   const activos = k.chromosomes.filter((c) => c.is_active);
@@ -437,6 +444,25 @@ export const handlers = [
     return new HttpResponse(PNG_1X1, { headers: { 'Content-Type': 'image/png' } });
   }),
 
+  // Contornos que faltan (DD-KARYO-007 T1). El doble no tiene backend-ml: la
+  // silueta que devuelve es la caja, que basta para que la interfaz vea que el
+  // cromosoma ya tiene contorno y no vuelva a pedirlo.
+  http.post(`${API}/samples/:id/karyotype/contours/`, ({ params }) => {
+    const sid = String(params.id);
+    if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
+    const k = getOrBuildKaryotype(sid);
+    let completados = 0;
+    for (const c of k.chromosomes) {
+      const b = c.bbox as { x?: number; y?: number; w?: number; h?: number };
+      if (!c.is_active || c.contour || !(Number(b.w) > 0) || !(Number(b.h) > 0)) continue;
+      const x = b.x ?? 0;
+      const y = b.y ?? 0;
+      c.contour = [[x, y], [x + (b.w as number), y], [x + (b.w as number), y + (b.h as number)], [x, y + (b.h as number)]];
+      completados += 1;
+    }
+    return HttpResponse.json({ completados });
+  }),
+
   // Cariotipo P2 (ADR-0021 P2, ADR-0022) — XAI, resolver, anomalía, validar, audit.
   http.post(`${API}/samples/:id/chromosomes/:cid/xai/`, ({ params, request }) => {
     const k = getOrBuildKaryotype(String(params.id));
@@ -534,6 +560,7 @@ export const handlers = [
       return HttpResponse.json({ code: 'INVALID_BBOX', detail: 'El bbox necesita ancho y alto positivos' }, { status: 400 });
     }
     chromo.bbox = bbox;
+    chromo.contour = null;          // la silueta era la del recorte anterior (T1)
     // Recortar más pequeño sugiere que antes había un cúmulo: clase mayor.
     const previo = Number(chromo.predicted_class);
     if (Number.isFinite(previo)) {
@@ -557,6 +584,7 @@ export const handlers = [
     const w = chromo.bbox.w ?? 0;
     const x = chromo.bbox.x ?? 0;
     chromo.bbox = { ...chromo.bbox, x, w: w / 2 };
+    chromo.contour = null;
     const nextIndex = Math.max(...k.chromosomes.filter((c) => c.predicted_class === chromo.predicted_class).map((c) => c.position_index)) + 1;
     const created: Chromosome = {
       ...chromo,
@@ -585,6 +613,7 @@ export const handlers = [
     const x0 = Math.min(keep.bbox.x ?? 0, absorbed.bbox.x ?? 0);
     const x1 = Math.max((keep.bbox.x ?? 0) + (keep.bbox.w ?? 0), (absorbed.bbox.x ?? 0) + (absorbed.bbox.w ?? 0));
     keep.bbox = { ...keep.bbox, x: x0, w: x1 - x0 };
+    keep.contour = null;
     recomputeSummary(k);
     pushAudit(sid, 'JOIN', keep.id, modeOf(request));
     return HttpResponse.json(keep);

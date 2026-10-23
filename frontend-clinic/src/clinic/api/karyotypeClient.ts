@@ -31,6 +31,17 @@ export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL)
       return clinicRequestBlob(baseUrl, `/samples/${sampleId}/karyotype/metaphase/`);
     },
 
+    /**
+     * POST /karyotype/contours/ — calcula los contornos que faltan (DD-KARYO-007 T1).
+     *
+     * Para casos segmentados antes de que backend-ml devolviera la silueta. No
+     * emite evento: no cambia ninguna decisión clínica. 503 ML_UNAVAILABLE sin
+     * backend-ml (el editor sigue con las cajas), 409 CASE_LOCKED si está validado.
+     */
+    completeContours(sampleId: string): Promise<{ completados: number }> {
+      return clinicRequest<{ completados: number }>(baseUrl, `/samples/${sampleId}/karyotype/contours/`, { method: 'POST' });
+    },
+
     // --- P2 ---
 
     /** POST /chromosomes/{cid}/xai/ — heatmap Grad-CAM + registra XAI_VIEWED (BR-004). */

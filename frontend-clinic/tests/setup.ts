@@ -75,6 +75,20 @@ vi.mock('react-konva', async () => {
         const p = props as { x?: number; y?: number; width?: number; height?: number };
         domProps['data-caja'] = JSON.stringify({ x: p.x, y: p.y, w: p.width, h: p.height });
       }
+      // DD-KARYO-007: el contorno pintado y la vista del editor (escala y desplazamiento).
+      if (tag === 'line') {
+        domProps['data-puntos'] = JSON.stringify((props as { points?: unknown }).points);
+      }
+      if (tag === 'stage') {
+        const p = props as { scaleX?: number; x?: number; y?: number; draggable?: boolean };
+        domProps['data-vista'] = JSON.stringify({ escala: p.scaleX ?? 1, x: p.x ?? 0, y: p.y ?? 0 });
+        domProps['data-arrastrable'] = String(Boolean(p.draggable));
+      }
+      const onWheel = props.onWheel as ((e: unknown) => void) | undefined;
+      if (onWheel) {
+        domProps.onWheel = (ev: { deltaY: number; preventDefault: () => void }) =>
+          onWheel({ evt: { deltaY: ev.deltaY, preventDefault: () => ev.preventDefault() }, target: { getStage: stageFalso } });
+      }
       if (onClick) domProps.onClick = () => onClick({ cancelBubble: false, target: { getStage: stageFalso } });
       for (const nombre of ['onMouseDown', 'onMouseMove', 'onMouseUp', 'onMouseLeave'] as const) {
         const manejador = props[nombre] as ((e: unknown) => void) | undefined;

@@ -378,3 +378,12 @@ input[type="range"] { width: 100%; height: 4px; border-radius: 2px; background: 
 .metafase-panel canvas, .metafase-panel [data-testid="metafase-stage"] { background: #000; cursor: crosshair; }
 /* Sobre el fondo oscuro del visor el contorno estándar no se lee. */
 .metafase-panel .btn-outline { color: #e2e8f0; border-color: #94a3b8; background: transparent; }
+
+/* DD-KARYO-007 T2: la metafase como lienzo principal, sobre el fondo oscuro del visor. */
+.metafase-editor { margin-bottom: 0.8rem; display: flex; flex-direction: column; gap: 0.5rem; color: #e2e8f0; }
+.metafase-editor__barra { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+.metafase-editor__cuenta { margin-right: auto; color: #cbd5e1; }
+.metafase-editor__barra .btn-outline { color: #e2e8f0; border-color: #94a3b8; background: transparent; padding: 0.15rem 0.6rem; }
+.metafase-editor__barra .btn-outline:disabled { opacity: 0.4; }
+.metafase-editor canvas { background: #fff; cursor: pointer; }
+.metafase-editor__ayuda { margin: 0; font-size: 0.78rem; color: #cbd5e1; }

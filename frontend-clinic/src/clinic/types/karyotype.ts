@@ -42,6 +42,9 @@ export interface Chromosome {
   is_active: boolean; // P3: JOIN desactiva el fragmento absorbido (DD-KARYO-003)
   measures: ChromosomeMeasures;
   bbox: BBox | Record<string, number>;
+  /** Silueta `[[x, y], …]` en píxeles de la metafase (DD-KARYO-007 T1). `null`
+   * en casos segmentados antes, o si recortar, separar o unir la invalidó. */
+  contour?: number[][] | null;
   order: number;
 }
 

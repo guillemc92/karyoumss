@@ -203,7 +203,7 @@ mismo alcance que el visor (`HasOpcion('sample.view')` más ser el dueño; 403
 | # | Tarea | Fase | Estimación |
 |---|---|---|---|
 | T1 | `contour` + migración + `contorno_inicial` + pruebas — **hecho 23/10** (`52361da`): el contorno sale de la región de watershed (46/46 en metafase_207); `/api/v1/contours/` para casos antiguos (45/46); se invalida al recortar, separar o unir | F1 | 2,5 h |
-| T2 | `MetafaseEditor`: metafase, contornos, selección sincronizada con el cariograma | F1 | 3 h |
+| T2 | `MetafaseEditor`: metafase, contornos, selección sincronizada con el cariograma — **hecho 23/10**: la metafase entera encima del cariograma, silueta con el semáforo (la caja si no hay silueta), zoom con rueda y botones, la selección se comparte en los dos sentidos; al abrir un caso antiguo se piden los contornos una vez. E2E en Chromium sobre un caso real: 48 objetos, el clic dentro de la silueta selecciona el cromosoma. Visto en ese caso: varios cromosomas pequeños (21, 22, 19, 20) no tienen objeto, porque la segmentación no los detectó; es lo que resuelve «añadir» en T3 | F1 | 3 h |
 | T3 | Descartar y añadir objetos (back + front + eventos) | F1 | 2,5 h |
 | T4 | `geometriaContorno.ts` (cortar y unir) con cobertura total | F2 | 2,5 h |
 | T5 | SPLIT por línea y JOIN por máscara en el backend; E2E que reproduce el defecto | F2 | 3 h |

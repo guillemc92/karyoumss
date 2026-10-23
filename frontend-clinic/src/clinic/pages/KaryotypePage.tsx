@@ -16,6 +16,7 @@ import { KaryotypeCanvas } from '../components/KaryotypeCanvas';
 import { KaryoImageToolbar } from '../components/KaryoImageToolbar';
 import { MedicionPanel } from '../components/MedicionPanel';
 import { MetafasePanel } from '../components/MetafasePanel';
+import { MetafaseEditor } from '../components/MetafaseEditor';
 import { ChromosomePropertiesPanel } from '../components/ChromosomePropertiesPanel';
 import { SupervisorAuditPanel } from '../components/SupervisorAuditPanel';
 import { SupervisorIscnPanel } from '../components/SupervisorIscnPanel';
@@ -25,6 +26,7 @@ import { useKaryotype } from '../hooks/useKaryotype';
 import { useAuditTrail, useKaryotypeActions } from '../hooks/useKaryotypeActions';
 import { useDegradedMode } from '../hooks/useDegradedMode';
 import { useMetaphaseImage } from '../hooks/useMetaphaseImage';
+import { useCompletarContornos } from '../hooks/useCompletarContornos';
 import { INITIAL_VIEWPORT, viewportReducer } from '../lib/viewport';
 import type { Punto } from '../lib/medicion';
 import { recorteValido, type Caja } from '../lib/encajarRecorte';
@@ -126,6 +128,15 @@ export function KaryotypePage() {
   const { viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross, recrop } =
     useKaryotypeActions(id);
   const audit = useAuditTrail(id, showAudit);
+  // DD-KARYO-007 T2: un caso segmentado antes de T1 solo tiene cajas; al abrirlo
+  // se piden las siluetas una vez. Si no se puede, el editor pinta las cajas.
+  // Los mismos estados que el servidor bloquea (`_assert_editable`): pedirlo en
+  // un caso validado solo daría un 409.
+  useCompletarContornos(
+    id,
+    karyotype,
+    !validated && !['ANALYST_VALIDATED', 'VALIDATED'].includes(karyotype?.sample_status ?? ''),
+  );
 
   // Mantener el cromosoma seleccionado sincronizado tras un refetch.
   useEffect(() => {
@@ -321,6 +332,16 @@ export function KaryotypePage() {
             hayQueDeshacer={puedeDeshacer(histViewport)}
             hayQueRehacer={puedeRehacer(histViewport)}
           />
+          {/* DD-KARYO-007 F1: la metafase es el lienzo donde se corrige la
+              segmentación; el cariograma, debajo, es donde se ordena. */}
+          {metafase && (
+            <MetafaseEditor
+              metafase={metafase}
+              chromosomes={karyotype.chromosomes}
+              selectedId={selected?.id ?? null}
+              onSelect={setSelected}
+            />
+          )}
           <KaryotypeCanvas
             chromosomes={karyotype.chromosomes}
             selectedId={selected?.id ?? null}
