@@ -12,6 +12,8 @@ export function useKaryotypeActions(sampleId: string | undefined) {
     // de nuevo el editor, que perdía el zoom y la herramienta (visto el 23/10).
     qc.invalidateQueries({ queryKey: ['clinic', 'karyotype', sampleId], exact: true });
     qc.invalidateQueries({ queryKey: ['clinic', 'audit', sampleId] });
+    // Lo que «Deshacer» desharía cambia con cada edición (D6).
+    qc.invalidateQueries({ queryKey: ['clinic', 'undo', sampleId] });
   };
 
   const viewXai = useMutation({
@@ -43,7 +45,8 @@ export function useKaryotypeActions(sampleId: string | undefined) {
     onSuccess: invalidate,
   });
   const split = useMutation({
-    mutationFn: (chromosomeId: string) => karyotypeClient.split(sampleId as string, chromosomeId),
+    mutationFn: (v: { chromosomeId: string; linea: number[][] }) =>
+      karyotypeClient.split(sampleId as string, v.chromosomeId, v.linea),
     onSuccess: invalidate,
   });
   const join = useMutation({
@@ -68,10 +71,25 @@ export function useKaryotypeActions(sampleId: string | undefined) {
     onSuccess: invalidate,
   });
 
+  const undo = useMutation({
+    mutationFn: () => karyotypeClient.undo(sampleId as string),
+    onSuccess: invalidate,
+  });
+
   return {
     viewXai, resolve, markAnomaly, validate, reclassify, recrop, split, join, resolveCross,
-    rejectObject, addObject,
+    rejectObject, addObject, undo,
   };
+}
+
+/** Lo que «Deshacer» desharía ahora (DD-KARYO-007 D6). Solo en casos editables. */
+export function useUltimaEdicion(sampleId: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: ['clinic', 'undo', sampleId] as const,
+    queryFn: () => karyotypeClient.lastEdit(sampleId as string),
+    enabled: Boolean(sampleId) && enabled,
+    retry: false,
+  });
 }
 
 export function useAuditTrail(sampleId: string | undefined, enabled = false) {

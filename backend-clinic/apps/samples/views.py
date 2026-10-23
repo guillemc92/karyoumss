@@ -1128,3 +1128,56 @@ class KaryotypeObjectsView(APIView):
             return Response({'code': 'VALIDATION_ERROR', 'detail': str(e)},
                             status=status.HTTP_400_BAD_REQUEST)
         return Response(ChromosomeSerializer(creado).data, status=status.HTTP_201_CREATED)
+
+
+class KaryotypeUndoView(APIView):
+    """GET/POST /samples/{id}/karyotype/undo/ — deshacer la última edición (DD-KARYO-007 D6).
+
+    GET: qué se desharía (`{ultima: {evento, tipo, propia, ...}}` o `{ultima: null}`),
+    para enseñarlo en la barra como hace Ikaros.
+    POST: deshace. 200 el evento UNDO_EDIT · 409 NOTHING_TO_UNDO / UNDO_NOT_OWN /
+    UNDO_UNAVAILABLE / CASE_LOCKED.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def _caso(self, request, pk):
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return None, error
+        if getattr(sample, 'karyotype', None) is None:
+            return None, Response(
+                {'code': 'NO_KARYOTYPE', 'detail': 'La muestra aún no tiene cariotipo generado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return sample, None
+
+    def get(self, request, pk):
+        from .services import ultima_edicion_deshacible
+
+        sample, error = self._caso(request, pk)
+        if error:
+            return error
+        return Response({'ultima': ultima_edicion_deshacible(sample, request.user)})
+
+    def post(self, request, pk):
+        from .services import (
+            DeshacerAjenoError, DeshacerNoDisponibleError, NadaQueDeshacerError, undo_last_edit,
+        )
+
+        sample, error = self._caso(request, pk)
+        if error:
+            return error
+        try:
+            ev = undo_last_edit(sample, request.user, mode=_request_mode(request))
+        except CaseLockedError as e:
+            return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except NadaQueDeshacerError as e:
+            return Response({'code': 'NOTHING_TO_UNDO', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except DeshacerAjenoError as e:
+            return Response({'code': 'UNDO_NOT_OWN', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except DeshacerNoDisponibleError as e:
+            return Response({'code': 'UNDO_UNAVAILABLE', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        return Response({'evento': str(ev.id), 'deshace': ev.payload['deshace'], 'tipo': ev.payload['tipo']},
+                        status=status.HTTP_200_OK)

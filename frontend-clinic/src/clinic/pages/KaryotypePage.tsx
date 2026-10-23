@@ -23,7 +23,7 @@ import { SupervisorIscnPanel } from '../components/SupervisorIscnPanel';
 import { XaiModal } from '../components/XaiModal';
 import { useSession } from '../auth';
 import { useKaryotype } from '../hooks/useKaryotype';
-import { useAuditTrail, useKaryotypeActions } from '../hooks/useKaryotypeActions';
+import { useAuditTrail, useKaryotypeActions, useUltimaEdicion } from '../hooks/useKaryotypeActions';
 import { useDegradedMode } from '../hooks/useDegradedMode';
 import { useMetaphaseImage } from '../hooks/useMetaphaseImage';
 import { useCompletarContornos } from '../hooks/useCompletarContornos';
@@ -127,9 +127,15 @@ export function KaryotypePage() {
 
   const {
     viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross, recrop,
-    rejectObject, addObject,
+    rejectObject, addObject, undo,
   } = useKaryotypeActions(id);
   const audit = useAuditTrail(id, showAudit);
+  // D6: la barra enseña qué desharía «Deshacer». Solo en casos editables: en
+  // uno validado el servidor respondería 409 y no hay nada que enseñar.
+  const ultimaEdicion = useUltimaEdicion(
+    id,
+    !validated && Boolean(karyotype) && !['ANALYST_VALIDATED', 'VALIDATED'].includes(karyotype?.sample_status ?? ''),
+  );
   // DD-KARYO-007 T2: un caso segmentado antes de T1 solo tiene cajas; al abrirlo
   // se piden las siluetas una vez. Si no se puede, el editor pinta las cajas.
   // Los mismos estados que el servidor bloquea (`_assert_editable`): pedirlo en
@@ -187,7 +193,7 @@ export function KaryotypePage() {
   const busy =
     viewXai.isPending || resolve.isPending || markAnomaly.isPending || validate.isPending ||
     reclassify.isPending || split.isPending || join.isPending || resolveCross.isPending ||
-    recrop.isPending || rejectObject.isPending || addObject.isPending;
+    recrop.isPending || rejectObject.isPending || addObject.isPending || undo.isPending;
   // Los mismos estados que bloquea el servidor (`_assert_editable`).
   const editable = !validated && !['ANALYST_VALIDATED', 'VALIDATED'].includes(karyotype.sample_status);
 
@@ -256,9 +262,24 @@ export function KaryotypePage() {
     void runP3('Error al reclasificar', () => reclassify.mutateAsync({ chromosomeId: c.id, targetClass }));
   }
 
-  function handleSplit(c: Chromosome) {
-    void runP3('Error al separar', () => split.mutateAsync(c.id));
+  // DD-KARYO-007 D3: separar es trazar una línea en la metafase. El trozo mayor
+  // se queda con el original, que sigue seleccionado.
+  function handleSplit(c: Chromosome, linea: number[][]) {
+    void runP3('Error al separar', async () => {
+      const { origen } = await split.mutateAsync({ chromosomeId: c.id, linea });
+      setSelected(origen);
+    });
   }
+
+  // D6: deshacer puede devolver al cariotipo un objeto que ya no está, o
+  // quitar el seleccionado: la selección se limpia.
+  function handleDeshacer() {
+    void runP3('Error al deshacer', async () => {
+      await undo.mutateAsync();
+      setSelected(null);
+    });
+  }
+
 
   function handleResolveCross(c: Chromosome) {
     void runP3('Error al resolver cruce', () => resolveCross.mutateAsync(c.id));
@@ -365,6 +386,9 @@ export function KaryotypePage() {
               onSelect={setSelected}
               onAnadir={editable ? handleAnadir : undefined}
               onDescartar={editable ? handleDescartar : undefined}
+              onSeparar={editable ? handleSplit : undefined}
+              ultima={ultimaEdicion.data?.ultima ?? null}
+              onDeshacer={editable ? handleDeshacer : undefined}
               busy={busy}
             />
           )}
@@ -413,7 +437,6 @@ export function KaryotypePage() {
             onMarkAnomaly={validated ? undefined : handleAnomaly}
             busy={busy}
             onReclassify={validated ? undefined : handleReclassify}
-            onSplit={validated ? undefined : handleSplit}
             onResolveCross={validated ? undefined : handleResolveCross}
             onJoinPick={validated ? undefined : handleJoinPick}
             onJoinConfirm={validated ? undefined : handleJoinConfirm}

@@ -51,16 +51,15 @@ describe('KaryotypePage — P3 (corrección manual sobre Konva)', () => {
     await waitFor(() => expect(screen.getByTestId('karyo-review-banner')).toHaveTextContent(/2 cromosoma/));
   });
 
-  it('separar (touching) agrega un cromosoma al visor', async () => {
+  // «Separar (touching)» del panel se retiró el 23/10 (DD-KARYO-007 D3): partía
+  // la caja por la mitad. Separar se traza ahora en la metafase y se prueba en
+  // karyotypeCorte.spec.tsx.
+  it('el panel ya no ofrece separar por la mitad', async () => {
     const user = userEvent.setup();
     renderPage();
-    const viewer = await screen.findByTestId('karyotype-viewer');
-    await waitFor(() => expect(viewer.querySelectorAll('button').length).toBe(46));
-
+    await screen.findByTestId('karyotype-viewer');
     await selectChromosome(user, `${SAMPLE}-chr-1-0`);
-    await user.click(screen.getByTestId('action-split'));
-
-    await waitFor(() => expect(viewer.querySelectorAll('button').length).toBe(47));
+    expect(screen.queryByTestId('action-split')).toBeNull();
   });
 
   it('unir dos fragmentos deja uno inactivo (desaparece del visor)', async () => {

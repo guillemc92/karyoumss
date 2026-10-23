@@ -12,7 +12,8 @@
 import { clinicRequest, clinicRequestBlob, CLINIC_DEFAULT_BASE_URL } from './samplesClient';
 import type {
   AuditEvent, AuditReview, AuditReviewResponse, Chromosome, IscnResult, Karyotype,
-  MotivoDescarte, NarrativeResult, PipelineHealth, ValidateResult, XaiResult, BBox } from '../types/karyotype';
+  MotivoDescarte, NarrativeResult, PipelineHealth, SplitResult, UltimaEdicion, ValidateResult, XaiResult,
+  BBox } from '../types/karyotype';
 
 export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL) {
   return {
@@ -108,9 +109,25 @@ export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL)
       );
     },
 
-    /** POST /chromosomes/{cid}/split/ — separar touching (crea 2º cromosoma). */
-    split(sampleId: string, chromosomeId: string): Promise<Chromosome> {
-      return clinicRequest<Chromosome>(baseUrl, `/samples/${sampleId}/chromosomes/${chromosomeId}/split/`, { method: 'POST' });
+    /**
+     * POST /chromosomes/{cid}/split/ — separar por la línea trazada (DD-KARYO-007 D3).
+     * `linea` en píxeles de la metafase. 422 INVALID_CUT si no separa el objeto;
+     * 503 ML_UNAVAILABLE sin backend-ml (el corte lo calcula él).
+     */
+    split(sampleId: string, chromosomeId: string, linea: number[][]): Promise<SplitResult> {
+      return clinicRequest<SplitResult>(baseUrl, `/samples/${sampleId}/chromosomes/${chromosomeId}/split/`, {
+        method: 'POST',
+        body: { linea },
+      });
+    },
+
+    /** GET /karyotype/undo/ — qué desharía «Deshacer» ahora (D6), o `null`. */
+    lastEdit(sampleId: string): Promise<{ ultima: UltimaEdicion | null }> {
+      return clinicRequest(baseUrl, `/samples/${sampleId}/karyotype/undo/`, { method: 'GET' });
+    },
+    /** POST /karyotype/undo/ — deshace la última edición propia (UNDO_EDIT). */
+    undo(sampleId: string): Promise<{ evento: string; deshace: string; tipo: string }> {
+      return clinicRequest(baseUrl, `/samples/${sampleId}/karyotype/undo/`, { method: 'POST' });
     },
     /** POST /chromosomes/{cid}/join/ — unir `otherId` en `chromosomeId`. */
     join(sampleId: string, chromosomeId: string, otherId: string): Promise<Chromosome> {

@@ -91,6 +91,15 @@ export function fijarBboxMock(
   chromo.bbox = bbox;
 }
 
+/** D6: la última edición que el doble sabe deshacer, por muestra. */
+const ultimaEdicionMock: Record<string, { tipo: AuditEventType; previo: Chromosome; creado: string }> = {};
+
+/** Simula backend-ml caído al separar (DD-KARYO-007 D3). */
+let cortarSinIa = false;
+export function fallarSeparar(valor: boolean): void {
+  cortarSinIa = valor;
+}
+
 /** Simula la IA caída al añadir un objeto sin clase (DD-KARYO-007 D5). */
 let anadirSinIa = false;
 export function fallarAnadirSinClase(valor: boolean): void {
@@ -156,6 +165,8 @@ export function resetMockData(): void {
   forceDegraded = false;
   metaphaseImageAvailable = true;
   anadirSinIa = false;
+  cortarSinIa = false;
+  for (const k of Object.keys(ultimaEdicionMock)) delete ultimaEdicionMock[k];
   try {
     sessionStorage?.removeItem('biomed.degraded');
     for (let i = sessionStorage.length - 1; i >= 0; i--) {
@@ -640,28 +651,69 @@ export const handlers = [
     return HttpResponse.json(chromo);
   }),
 
-  http.post(`${API}/samples/:id/chromosomes/:cid/split/`, ({ params, request }) => {
+  // DD-KARYO-007 D3: separar por línea. El doble no corta de verdad: parte la
+  // caja en dos por la línea horizontal media del trazo, que basta para que la
+  // interfaz vea un trozo nuevo. Sin línea, 400, como el servidor.
+  http.post(`${API}/samples/:id/chromosomes/:cid/split/`, async ({ params, request }) => {
     const sid = String(params.id);
     if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
     const k = getOrBuildKaryotype(sid);
     const chromo = k.chromosomes.find((c) => c.id === params.cid);
     if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
-    const w = chromo.bbox.w ?? 0;
-    const x = chromo.bbox.x ?? 0;
-    chromo.bbox = { ...chromo.bbox, x, w: w / 2 };
-    chromo.contour = null;
-    const nextIndex = Math.max(...k.chromosomes.filter((c) => c.predicted_class === chromo.predicted_class).map((c) => c.position_index)) + 1;
-    const created: Chromosome = {
+    const { linea } = (await request.json().catch(() => ({}))) as { linea?: number[][] };
+    if (!Array.isArray(linea) || linea.length < 2) {
+      return HttpResponse.json({ code: 'VALIDATION_ERROR', detail: 'separar necesita una línea de al menos dos puntos' }, { status: 400 });
+    }
+    if (cortarSinIa) {
+      return HttpResponse.json({ code: 'ML_UNAVAILABLE', detail: 'El servicio de IA no responde: separar por línea no está disponible.' }, { status: 503 });
+    }
+    const b = chromo.bbox as { x: number; y: number; w: number; h: number };
+    const corte = Math.round(linea.reduce((acc, [, y]) => acc + y, 0) / linea.length);
+    if (!(corte > b.y && corte < b.y + b.h)) {
+      return HttpResponse.json({ code: 'INVALID_CUT', detail: 'la línea no separa el objeto: trácela de borde a borde' }, { status: 422 });
+    }
+    const arriba = { x: b.x, y: b.y, w: b.w, h: corte - b.y };
+    const abajo = { x: b.x, y: corte, w: b.w, h: b.y + b.h - corte };
+    const caja = (c: typeof arriba) => [[c.x, c.y], [c.x + c.w, c.y], [c.x + c.w, c.y + c.h], [c.x, c.y + c.h]];
+    const [mayor, menor] = arriba.h >= abajo.h ? [arriba, abajo] : [abajo, arriba];
+    ultimaEdicionMock[sid] = { tipo: 'SPLIT', previo: { ...chromo }, creado: '' };
+    chromo.bbox = mayor;
+    chromo.contour = caja(mayor);
+    const nuevo = {
       ...chromo,
-      id: `${chromo.id}-split-${nextIndex}`,
-      position_index: nextIndex,
-      bbox: { ...chromo.bbox, x: x + w / 2, w: w / 2 },
+      id: `${chromo.id}-split-${k.chromosomes.length}`,
+      position_index: chromo.position_index + 1,
+      bbox: menor,
+      contour: caja(menor),
       order: k.chromosomes.length,
     };
-    k.chromosomes.push(created);
+    k.chromosomes.push(nuevo);
+    ultimaEdicionMock[sid].creado = nuevo.id;
     recomputeSummary(k);
     pushAudit(sid, 'SPLIT', chromo.id, modeOf(request));
-    return HttpResponse.json(created, { status: 201 });
+    return HttpResponse.json({ origen: chromo, creados: [nuevo] }, { status: 201 });
+  }),
+
+  // D6: deshacer. El doble solo sabe deshacer el último SPLIT que hizo.
+  http.get(`${API}/samples/:id/karyotype/undo/`, ({ params }) => {
+    const u = ultimaEdicionMock[String(params.id)];
+    return HttpResponse.json({
+      ultima: u ? { evento: 'ev-mock', tipo: u.tipo, propia: true, actor_name: 'dra_garcia', created_at: '2026-10-23T12:00:00Z' } : null,
+    });
+  }),
+  http.post(`${API}/samples/:id/karyotype/undo/`, ({ params, request }) => {
+    const sid = String(params.id);
+    const u = ultimaEdicionMock[sid];
+    if (!u) return HttpResponse.json({ code: 'NOTHING_TO_UNDO', detail: 'No hay ninguna edición que deshacer.' }, { status: 409 });
+    const k = getOrBuildKaryotype(sid);
+    const i = k.chromosomes.findIndex((c) => c.id === u.previo.id);
+    k.chromosomes[i] = { ...u.previo };
+    const creado = k.chromosomes.find((c) => c.id === u.creado);
+    if (creado) creado.is_active = false;
+    delete ultimaEdicionMock[sid];
+    recomputeSummary(k);
+    pushAudit(sid, 'UNDO_EDIT', u.previo.id, modeOf(request));
+    return HttpResponse.json({ evento: 'ev-undo', deshace: 'ev-mock', tipo: u.tipo });
   }),
 
   http.post(`${API}/samples/:id/chromosomes/:cid/join/`, async ({ params, request }) => {

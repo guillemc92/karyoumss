@@ -205,9 +205,9 @@ mismo alcance que el visor (`HasOpcion('sample.view')` más ser el dueño; 403
 | T1 | `contour` + migración + `contorno_inicial` + pruebas — **hecho 23/10** (`52361da`): el contorno sale de la región de watershed (46/46 en metafase_207); `/api/v1/contours/` para casos antiguos (45/46); se invalida al recortar, separar o unir | F1 | 2,5 h |
 | T2 | `MetafaseEditor`: metafase, contornos, selección sincronizada con el cariograma — **hecho 23/10**: la metafase entera encima del cariograma, silueta con el semáforo (la caja si no hay silueta), zoom con rueda y botones, la selección se comparte en los dos sentidos; al abrir un caso antiguo se piden los contornos una vez. E2E en Chromium sobre un caso real: 48 objetos, el clic dentro de la silueta selecciona el cromosoma. Visto en ese caso: varios cromosomas pequeños (21, 22, 19, 20) no tienen objeto, porque la segmentación no los detectó; es lo que resuelve «añadir» en T3 | F1 | 3 h |
 | T3 | Descartar y añadir objetos (back + front + eventos) — **hecho 23/10**: `REJECT_OBJECT` y `ADD_OBJECT` (migración 0018), `POST …/reject/` y `POST …/karyotype/objects/`; en el editor, «Añadir cromosoma» (dibujar la caja, la herramienta sigue activa) y «Descartar objeto» con motivo (Supr, Esc). E2E en Chromium sobre una muestra propia segmentada por backend-ml: añade, lo clasifica el modelo, lo descarta, con los dos eventos. Ver §11 | F1 | 2,5 h |
-| T4 | `geometriaContorno.ts` (cortar y unir) con cobertura total | F2 | 2,5 h |
-| T5 | SPLIT por línea y JOIN por máscara en el backend; E2E que reproduce el defecto | F2 | 3 h |
-| T6 | Herramienta de corte en el editor + deshacer (D6) | F2 | 3 h |
+| T4 | `geometriaContorno.ts` (cortar y unir) con cobertura total — **hecho 23/10**, con el alcance de §10.1: punto dentro, cruces de la línea con el borde y «¿corta?» para avisar antes de enviar; 100 % de cobertura | F2 | 2,5 h |
+| T5 | SPLIT por línea y JOIN por máscara en el backend; E2E que reproduce el defecto — **hecho 23/10** (`0588f56`): `POST /api/v1/split/` y `/join/` en backend-ml (ráster); la prueba central reproduce el defecto con una frontera diagonal; sin línea, 400 | F2 | 3 h |
+| T6 | Herramienta de corte en el editor + deshacer (D6) — **hecho 23/10**: «Separar» (Alt+S) con la línea en verde cuando ya corta; `UNDO_EDIT` (migración 0019) y `GET/POST …/karyotype/undo/`; E2E en Chromium con muestra propia: separa, deshace y el cromosoma queda idéntico | F2 | 3 h |
 | T7 | Cariograma legible: escala, línea base, girar y voltear (D7) | F3 | 2,5 h |
 | T8 | E2E completo, capturas y cierre | F1–F3 | 2 h |
 | — | F4 (SAM): spec propia cuando ADR-0034 (o el ADR que lo sustituya) esté `accepted` | F4 | — |
@@ -267,4 +267,24 @@ con lo que se proponía. La 1 no tenía propuesta y se decidió con un criterio 
 3. **El lienzo no se mueve al cambiar de herramienta.** El selector de clase ocupa
    siempre su hueco, oculto fuera de «Añadir». Antes aparecía al entrar, la barra
    crecía y la caja llegaba 6 px más arriba de donde se dibujó.
+4. **Unir dos siluetas que no se tocan** (D4 decía «multipolígono»). Se guarda la
+   **envolvente convexa** de las dos: `contour` sigue siendo un polígono y el
+   objeto se puede pulsar como uno. Un multipolígono habría cambiado el formato de
+   `contour` en el servidor, el cliente y los casos ya guardados por un caso raro.
+5. **«Separar (touching)» desaparece del panel de propiedades.** Partía la caja por
+   la mitad; separar se traza ahora en la metafase, que es donde se ve la frontera.
+6. **Deshacer no usa Ctrl+Z.** Ctrl+Z ya deshace la VISTA (zoom, giro, brillo)
+   desde DD-KARYO-004; reutilizarlo para algo que cambia el caso confundiría las
+   dos cosas. Deshacer la edición es un botón con el texto de lo que deshace.
+   Se puede deshacer: separar, unir, recortar, descartar y añadir. Las decisiones
+   clínicas (aceptar, reclasificar, validar) se corrigen con otra decisión.
+7. **Rendimiento: separar tardaba 14 s.** Medido en Chromium contra el stack real.
+   La causa no era el corte (0,3 s) sino el cliente HTTP hacia backend-ml:
+   creaba un `httpx.Client` por llamada (~1 s en Windows) y con `localhost`
+   cada conexión nueva probaba IPv6 primero (~2 s). Ahora hay un cliente
+   reutilizado y el valor por defecto es `127.0.0.1`. En el servidor, separar
+   pasó de 15,4 s a 5,3 s y deshacer de 3 s a 0,1 s; lo que queda son las dos
+   clasificaciones (subir la metafase entera, ~2 s cada una). La configuración
+   local todavía apunta a `localhost`: con el cliente reutilizado solo se paga en
+   la primera conexión.
 

@@ -269,6 +269,9 @@ class AuditEventType(models.TextChoices):
     # borrado suave (is_active=False); añadir crea el cromosoma que faltaba.
     REJECT_OBJECT = 'REJECT_OBJECT', 'Objeto descartado'
     ADD_OBJECT = 'ADD_OBJECT', 'Objeto añadido'
+    # DD-KARYO-007 D6: deshacer es un evento que COMPENSA, nunca un borrado. El
+    # payload dice qué evento deshace; el original se queda en la cadena (RN-05).
+    UNDO_EDIT = 'UNDO_EDIT', 'Edición deshecha'
     ANALYST_VALIDATED = 'ANALYST_VALIDATED', 'Validado por analista'
     AUDIT_DECISION = 'AUDIT_DECISION', 'Decisión de auditoría'  # futuro
     ISCN_OVERRIDE = 'ISCN_OVERRIDE', 'Override ISCN'            # futuro

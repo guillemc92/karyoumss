@@ -67,7 +67,8 @@ export type AuditEventType =
   | 'ANALYST_VALIDATED' | 'AUDIT_DECISION' | 'ISCN_OVERRIDE' | 'SIGN_REPORT'
   | 'NARRATIVE_GENERATED' // ADR-0024: borrador redactado por el LLM
   | 'RECROP' // recorte manual del cromosoma + reclasificación
-  | 'REJECT_OBJECT' | 'ADD_OBJECT'; // DD-KARYO-007 D5: corregir la segmentación
+  | 'REJECT_OBJECT' | 'ADD_OBJECT' // DD-KARYO-007 D5: corregir la segmentación
+  | 'UNDO_EDIT'; // D6: deshacer es un evento que compensa
 
 export type AuditMode = 'auto' | 'degradado';
 
@@ -114,7 +115,25 @@ export const AUDIT_LABELS: Record<AuditEventType, string> = {
   RECROP: 'Recortó y reclasificó',
   REJECT_OBJECT: 'Descartó un objeto',
   ADD_OBJECT: 'Añadió un cromosoma',
+  UNDO_EDIT: 'Deshizo una edición',
 };
+
+/** Respuesta de POST /chromosomes/{cid}/split/ (DD-KARYO-007 D3). */
+export interface SplitResult {
+  /** El original, que se queda con el trozo mayor. */
+  origen: Chromosome;
+  creados: Chromosome[];
+}
+
+/** Lo que deshacer desharía ahora (GET /karyotype/undo/, D6). */
+export interface UltimaEdicion {
+  evento: string;
+  tipo: AuditEventType;
+  /** Solo se deshace lo propio. */
+  propia: boolean;
+  actor_name: string;
+  created_at: string;
+}
 
 /** Por qué se descarta un objeto de la metafase (DD-KARYO-007 D5). */
 export type MotivoDescarte = 'nucleo' | 'suciedad' | 'duplicado' | 'otro';

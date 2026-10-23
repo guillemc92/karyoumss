@@ -11,7 +11,12 @@
  * T3 (D5): **añadir** el cromosoma que la segmentación no vio, dibujando su caja,
  * y **descartar** lo que no es un cromosoma (núcleo, suciedad), con motivo.
  * Supr abre el descarte del seleccionado, como en MetaClass; Esc cancela.
- * F2 añadirá el corte por línea.
+ *
+ * T6 (D3, D6): **separar** trazando una línea a través del objeto seleccionado
+ * (Alt+S, como en MetaClass). Mientras se traza, la línea se pinta en verde si
+ * ya atraviesa el objeto de borde a borde y en rojo si no; al soltar, solo se
+ * envía si corta. **Deshacer** muestra cuál es la última edición y la deshace
+ * si es del propio analista (Ctrl+Z sigue siendo deshacer la VISTA).
  *
  * Coordenadas: el Stage lleva la escala total (ajuste × zoom) y el
  * desplazamiento. Imagen y contornos van en píxeles de la metafase, tal cual
@@ -19,9 +24,10 @@
  */
 import { useEffect, useState } from 'react';
 import { Image as KonvaImage, Layer, Line, Rect, Stage, Text } from 'react-konva';
-import type { BBox, Chromosome, MotivoDescarte } from '../types/karyotype';
-import { CHROMOSOME_SLOTS, MOTIVOS_DESCARTE } from '../types/karyotype';
+import type { BBox, Chromosome, MotivoDescarte, UltimaEdicion } from '../types/karyotype';
+import { AUDIT_LABELS, CHROMOSOME_SLOTS, MOTIVOS_DESCARTE } from '../types/karyotype';
 import type { Punto } from '../lib/medicion';
+import { anadirAlTrazo, cortaElObjeto } from '../lib/geometriaContorno';
 import {
   PASO_ZOOM,
   ZOOM_MAX,
@@ -59,14 +65,19 @@ interface MetafaseEditorProps {
   chromosomes: Chromosome[];
   selectedId: string | null;
   onSelect: (c: Chromosome) => void;
-  /** Sin `onAnadir` ni `onDescartar` el editor es de consulta (caso validado). */
+  /** Sin ninguna de las cuatro acciones el editor es de consulta (caso validado). */
   onAnadir?: (bbox: BBox, clase: string) => void;
   onDescartar?: (c: Chromosome, motivo: MotivoDescarte) => void;
+  /** Separar el objeto por la línea trazada, en píxeles de la metafase (D3). */
+  onSeparar?: (c: Chromosome, linea: number[][]) => void;
+  /** Lo que «Deshacer» desharía (D6); `null` si no hay nada. */
+  ultima?: UltimaEdicion | null;
+  onDeshacer?: () => void;
   /** Hay una corrección en curso en el servidor: no se lanza otra encima. */
   busy?: boolean;
 }
 
-type Herramienta = 'seleccionar' | 'anadir';
+type Herramienta = 'seleccionar' | 'anadir' | 'cortar';
 
 interface EventoPuntero {
   target: { getStage: () => unknown };
@@ -83,7 +94,8 @@ function escribiendo(e: KeyboardEvent): boolean {
 }
 
 export function MetafaseEditor({
-  metafase, chromosomes, selectedId, onSelect, onAnadir, onDescartar, busy = false,
+  metafase, chromosomes, selectedId, onSelect, onAnadir, onDescartar, onSeparar, ultima = null,
+  onDeshacer, busy = false,
 }: MetafaseEditorProps) {
   const imagen = { w: metafase.naturalWidth || metafase.width, h: metafase.naturalHeight || metafase.height };
   const ajuste = escalaAjuste(imagen, LIENZO_MAX);
@@ -102,6 +114,12 @@ export function MetafaseEditor({
   const [confirmando, setConfirmando] = useState(false);
   const [motivo, setMotivo] = useState<MotivoDescarte | ''>('');
   const anadiendo = herramienta === 'anadir' && Boolean(onAnadir);
+  const cortando = herramienta === 'cortar' && Boolean(onSeparar);
+  /** Con cualquiera de las dos, arrastrar dibuja: ni selecciona ni mueve la vista. */
+  const dibujando = anadiendo || cortando;
+  // La línea que se está trazando para separar, en píxeles de la metafase.
+  const [trazo, setTrazo] = useState<Punto[] | null>(null);
+  const [aviso, setAviso] = useState('');
 
   const objetos = chromosomes
     .filter((c) => c.is_active)
@@ -122,6 +140,8 @@ export function MetafaseEditor({
   const cancelar = () => {
     setInicio(null);
     setFin(null);
+    setTrazo(null);
+    setAviso('');
     setConfirmando(false);
     setMotivo('');
   };
@@ -132,6 +152,11 @@ export function MetafaseEditor({
       if (e.key === 'Escape') {
         cancelar();
         setHerramienta('seleccionar');
+      } else if (e.altKey && e.key.toLowerCase() === 's' && onSeparar) {
+        // Alt+S, el atajo de MetaClass para separar.
+        e.preventDefault();
+        cancelar();
+        setHerramienta((h) => (h === 'cortar' ? 'seleccionar' : 'cortar'));
       } else if (e.key === 'Delete' && onDescartar && seleccionado && !busy) {
         e.preventDefault();
         setConfirmando(true);
@@ -168,6 +193,44 @@ export function MetafaseEditor({
     if (caja && onAnadir) onAnadir(caja, clase);
   };
   const enCurso = inicio && fin ? cajaEntre(inicio, fin, imagen) : null;
+
+  // --- Separar (D3): trazar una línea a través del objeto seleccionado ---
+  const empezarTrazo = (e: EventoPuntero) => {
+    if (!cortando || busy) return;
+    if (!seleccionado) {
+      setAviso('Seleccione primero el objeto que quiere separar.');
+      return;
+    }
+    const p = puntero(e);
+    if (!p) return;
+    setAviso('');
+    setTrazo([p]);
+  };
+  const moverTrazo = (e: EventoPuntero) => {
+    if (!trazo) return;
+    const p = puntero(e);
+    if (p) setTrazo(anadirAlTrazo(trazo, p));
+  };
+  // Solo se envía si la línea entra y sale del objeto: si no, el servidor
+  // respondería 422, y es mejor decirle al analista qué falta sin el viaje.
+  // Separar es un acto puntual: la herramienta vuelve a «Seleccionar».
+  const soltarTrazo = () => {
+    if (!trazo) return;
+    const linea = trazo;
+    setTrazo(null);
+    if (!seleccionado || !onSeparar) return;
+    if (!cortaElObjeto(linea, seleccionado.poligono)) {
+      setAviso('La línea tiene que atravesar el objeto de borde a borde.');
+      return;
+    }
+    onSeparar(seleccionado.c, linea.map(({ x, y }) => [Math.round(x), Math.round(y)]));
+    setHerramienta('seleccionar');
+  };
+  const trazoCorta = Boolean(trazo && seleccionado && cortaElObjeto(trazo, seleccionado.poligono));
+
+  const alPulsarLienzo = (e: EventoPuntero) => (cortando ? empezarTrazo(e) : empezarCaja(e));
+  const alMoverLienzo = (e: EventoPuntero) => (cortando ? moverTrazo(e) : moverCaja(e));
+  const alSoltarLienzo = () => (cortando ? soltarTrazo() : soltarCaja());
 
   const confirmarDescarte = () => {
     if (!seleccionado || !motivo || !onDescartar) return;
@@ -236,7 +299,7 @@ export function MetafaseEditor({
           Ajustar
         </button>
       </div>
-      {(onAnadir || onDescartar) && (
+      {(onAnadir || onDescartar || onSeparar || onDeshacer) && (
         <div className="metafase-editor__barra" data-testid="metafase-herramientas">
           <button
             type="button"
@@ -272,6 +335,19 @@ export function MetafaseEditor({
               </select>
             </label>
           )}
+          {onSeparar && (
+            <button
+              type="button"
+              className="btn-outline"
+              data-testid="metafase-herramienta-cortar"
+              aria-pressed={herramienta === 'cortar'}
+              disabled={busy}
+              onClick={() => elegirHerramienta(herramienta === 'cortar' ? 'seleccionar' : 'cortar')}
+              title="Alt+S"
+            >
+              Separar
+            </button>
+          )}
           {onDescartar && (
             <button
               type="button"
@@ -284,7 +360,24 @@ export function MetafaseEditor({
               Descartar objeto
             </button>
           )}
+          {onDeshacer && (
+            <button
+              type="button"
+              className="btn-outline metafase-editor__deshacer"
+              data-testid="metafase-deshacer"
+              disabled={!ultima || !ultima.propia || busy}
+              onClick={onDeshacer}
+              title={ultima && !ultima.propia
+                ? `La última edición es de ${ultima.actor_name}: solo se deshace lo propio`
+                : ''}
+            >
+              {ultima ? `Deshacer: ${AUDIT_LABELS[ultima.tipo] ?? ultima.tipo}` : 'Nada que deshacer'}
+            </button>
+          )}
         </div>
+      )}
+      {aviso && (
+        <p className="metafase-editor__aviso" data-testid="metafase-aviso-corte" role="status">{aviso}</p>
       )}
       {confirmando && seleccionado && (
         <div
@@ -328,16 +421,17 @@ export function MetafaseEditor({
         y={pos.y}
         // Sin zoom no hay nada que desplazar, y arrastrar movería la imagen fuera.
         // Añadiendo, arrastrar dibuja la caja: no puede mover también la vista.
-        draggable={zoom > ZOOM_MIN && !anadiendo}
+        draggable={zoom > ZOOM_MIN && !dibujando}
         dragBoundFunc={(p: Punto) => limitarDesplazamiento(p, lienzo, zoom)}
         onDragEnd={(e: { target: { x: () => number; y: () => number } }) =>
           setPos(limitarDesplazamiento({ x: e.target.x(), y: e.target.y() }, lienzo, zoom))}
         onWheel={alGirarRueda}
-        onMouseDown={empezarCaja}
-        onMouseMove={moverCaja}
-        onMouseUp={soltarCaja}
-        // Soltar fuera del lienzo también cierra la caja: si no, se queda pegada al cursor.
-        onMouseLeave={soltarCaja}
+        onMouseDown={alPulsarLienzo}
+        onMouseMove={alMoverLienzo}
+        onMouseUp={alSoltarLienzo}
+        // Soltar fuera del lienzo también cierra la caja o la línea: si no, se
+        // queda pegada al cursor.
+        onMouseLeave={alSoltarLienzo}
       >
         <Layer>
           <KonvaImage data-testid="metafase-editor-imagen" image={metafase} width={imagen.w} height={imagen.h} listening={false} />
@@ -362,9 +456,9 @@ export function MetafaseEditor({
                 fill={elegido ? RELLENO_SELECCION : (RELLENO[c.semaphore] ?? RELLENO.red)}
                 hitStrokeWidth={6}
                 // Añadiendo, el clic es para la caja nueva, no para seleccionar.
-                listening={!anadiendo}
-                onClick={anadiendo ? undefined : () => onSelect(c)}
-                onTap={anadiendo ? undefined : () => onSelect(c)}
+                listening={!dibujando}
+                onClick={dibujando ? undefined : () => onSelect(c)}
+                onTap={dibujando ? undefined : () => onSelect(c)}
               />
             );
           })}
@@ -389,6 +483,20 @@ export function MetafaseEditor({
               />
             );
           })}
+          {trazo && trazo.length >= 2 && (
+            <Line
+              data-testid="metafase-trazo"
+              data-corta={String(trazoCorta)}
+              points={trazo.flatMap(({ x, y }) => [x, y])}
+              // Verde cuando ya atraviesa el objeto; rojo mientras no.
+              stroke={trazoCorta ? '#22c55e' : '#ef4444'}
+              strokeWidth={2}
+              strokeScaleEnabled={false}
+              lineCap="round"
+              lineJoin="round"
+              listening={false}
+            />
+          )}
           {enCurso && (
             <Rect
               data-testid="metafase-caja-nueva"
@@ -408,7 +516,9 @@ export function MetafaseEditor({
       <p className="metafase-editor__ayuda" data-testid="metafase-ayuda-editor">
         {anadiendo
           ? 'Dibuje una caja alrededor del cromosoma que falta. Si la IA no responde, elija antes la clase. Esc para terminar.'
-          : 'Pulse un cromosoma para seleccionarlo; queda marcado también en el cariograma. Use la rueda o los botones para acercar, y arrastre para moverse.'}
+          : cortando
+            ? 'Trace una línea que atraviese el objeto seleccionado por la frontera entre los cromosomas. Esc para cancelar.'
+            : 'Pulse un cromosoma para seleccionarlo; queda marcado también en el cariograma. Use la rueda o los botones para acercar, y arrastre para moverse.'}
       </p>
     </section>
   );

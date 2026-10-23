@@ -5,6 +5,7 @@ from decimal import Decimal as _Decimal
 from pathlib import Path
 
 from django.conf import settings
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.utils import timezone as django_timezone
 
@@ -1076,6 +1077,10 @@ def recrop_chromosome(sample, chromosome, bbox: dict, actor, mode='auto') -> Chr
     bbox_previo = dict(chromosome.bbox or {})
     clase_previa = chromosome.predicted_class
     confianza_previa = chromosome.confidence_score
+    # DD-KARYO-007 D6: lo que deshacer necesita para dejarlo como estaba.
+    contorno_previo = chromosome.contour
+    resolucion_previa = chromosome.resolution_status
+    xai_previo = chromosome.xai_viewed
 
     # Reclasificar es lo deseable, pero no puede bloquear la corrección.
     nueva_clase, nueva_confianza, motivo = clase_previa, confianza_previa, ''
@@ -1122,6 +1127,9 @@ def recrop_chromosome(sample, chromosome, bbox: dict, actor, mode='auto') -> Chr
                 'confianza_nueva': str(nueva_confianza) if nueva_confianza is not None else None,
                 'reclasificado': not motivo,
                 'motivo': motivo,
+                'contorno_previo': contorno_previo,
+                'resolucion_previa': resolucion_previa,
+                'xai_previo': xai_previo,
             },
             mode=mode,
         )
@@ -1315,3 +1323,139 @@ def add_object(sample, bbox: dict, actor, clase: str = '', mode='auto') -> Chrom
             mode=mode,
         )
     return creado
+
+
+# ============================================================================
+# DD-KARYO-007 D6 — deshacer la última edición (T6)
+# ============================================================================
+
+#: Las ediciones de la segmentación que se pueden deshacer. Las decisiones
+#: clínicas (aceptar, reclasificar, validar) no: se corrigen con otra decisión.
+EDICIONES_DESHACIBLES = (
+    AuditEventType.SPLIT, AuditEventType.JOIN, AuditEventType.RECROP,
+    AuditEventType.REJECT_OBJECT, AuditEventType.ADD_OBJECT,
+)
+
+
+class NadaQueDeshacerError(Exception):
+    """No hay edición pendiente de deshacer (o la última ya se deshizo)."""
+
+
+class DeshacerAjenoError(Exception):
+    """La última edición es de otro analista: no se deshace lo de otro."""
+
+
+class DeshacerNoDisponibleError(Exception):
+    """El evento es anterior a DD-KARYO-007 y no guardó el estado previo."""
+
+
+def _ultima_edicion(sample):
+    """El último evento de edición o de deshacer del caso, o None."""
+    return (AuditEvent.objects
+            .filter(sample=sample, event_type__in=[*EDICIONES_DESHACIBLES, AuditEventType.UNDO_EDIT])
+            .order_by('-created_at').first())
+
+
+def ultima_edicion_deshacible(sample, actor):
+    """Lo que deshacer desharía ahora, para que la interfaz lo enseñe (como Ikaros).
+
+    Devuelve `{evento, tipo, propia}` o None si no hay nada que deshacer.
+    """
+    ev = _ultima_edicion(sample)
+    if ev is None or ev.event_type == AuditEventType.UNDO_EDIT:
+        return None
+    return {'evento': str(ev.id), 'tipo': ev.event_type, 'propia': ev.actor_id == actor.id,
+            'actor_name': getattr(ev.actor, 'username', ''), 'created_at': ev.created_at.isoformat()}
+
+
+def _cromosoma(karyotype, cid):
+    try:
+        return karyotype.chromosomes.get(id=cid)
+    except (Chromosome.DoesNotExist, ValueError, TypeError, DjangoValidationError) as exc:
+        raise DeshacerNoDisponibleError('falta un cromosoma de la edición original') from exc
+
+
+def _decimal_o_none(v):
+    return _Decimal(str(v)) if v is not None else None
+
+
+def undo_last_edit(sample, actor, mode='auto') -> AuditEvent:
+    """Deshace la última edición del caso si es del propio analista (DD-KARYO-007 D6).
+
+    - **Solo un nivel**: si lo último fue deshacer, no hay nada más que deshacer.
+    - **Solo lo propio**: si la última edición es de otro, `DeshacerAjenoError`.
+    - **No borra nada**: restaura el estado que el evento original guardó y emite
+      UNDO_EDIT apuntando a él. El original sigue en la cadena (RN-05).
+    - Un caso validado no se toca (`_assert_editable`).
+    """
+    _assert_editable(sample)
+    ev = _ultima_edicion(sample)
+    if ev is None or ev.event_type == AuditEventType.UNDO_EDIT:
+        raise NadaQueDeshacerError('No hay ninguna edición que deshacer.')
+    if ev.actor_id != actor.id:
+        raise DeshacerAjenoError('La última edición es de otra persona: no se puede deshacer.')
+    karyotype = sample.karyotype
+    p = ev.payload or {}
+    afectados = []
+
+    with transaction.atomic():
+        if ev.event_type == AuditEventType.SPLIT:
+            previo = p.get('previo')
+            if not previo:
+                raise DeshacerNoDisponibleError('Este corte es anterior a poder deshacerse.')
+            origen = _cromosoma(karyotype, p.get('origin'))
+            creados = [_cromosoma(karyotype, cid) for cid in p.get('created') or []]
+            for c in creados:
+                c.is_active = False
+                c.save(update_fields=['is_active'])
+            origen.bbox = previo['bbox']
+            origen.contour = previo.get('contour')
+            origen.predicted_class = previo['predicted_class']
+            origen.confidence_score = _decimal_o_none(previo.get('confidence_score'))
+            origen.resolution_status = previo['resolution_status']
+            origen.xai_viewed = previo.get('xai_viewed', False)
+            origen.save(update_fields=['bbox', 'contour', 'predicted_class', 'confidence_score',
+                                       'resolution_status', 'xai_viewed'])
+            afectados = [origen, *creados]
+        elif ev.event_type == AuditEventType.JOIN:
+            previo = p.get('previo')
+            if not previo:
+                raise DeshacerNoDisponibleError('Esta unión es anterior a poder deshacerse.')
+            keep = _cromosoma(karyotype, p.get('kept'))
+            absorbido = _cromosoma(karyotype, p.get('absorbed'))
+            keep.bbox = previo['bbox']
+            keep.contour = previo.get('contour')
+            keep.save(update_fields=['bbox', 'contour'])
+            absorbido.is_active = True
+            absorbido.save(update_fields=['is_active'])
+            afectados = [keep, absorbido]
+        elif ev.event_type == AuditEventType.RECROP:
+            c = _cromosoma(karyotype, ev.chromosome_id)
+            c.bbox = p['bbox_previo']
+            c.predicted_class = p['clase_previa']
+            c.confidence_score = _decimal_o_none(p.get('confianza_previa'))
+            # Los RECROP anteriores a D6 no guardaron silueta ni resolución: la
+            # silueta se recalcula y el cromosoma vuelve a revisión.
+            c.contour = p.get('contorno_previo')
+            c.resolution_status = p.get('resolucion_previa') or 'PENDING'
+            c.xai_viewed = p.get('xai_previo', False)
+            c.save(update_fields=['bbox', 'predicted_class', 'confidence_score', 'contour',
+                                  'resolution_status', 'xai_viewed'])
+            afectados = [c]
+        elif ev.event_type == AuditEventType.REJECT_OBJECT:
+            c = _cromosoma(karyotype, ev.chromosome_id)
+            c.is_active = True
+            c.save(update_fields=['is_active'])
+            afectados = [c]
+        else:  # ADD_OBJECT
+            c = _cromosoma(karyotype, ev.chromosome_id)
+            c.is_active = False
+            c.save(update_fields=['is_active'])
+            afectados = [c]
+
+        return emit_audit_event(
+            sample, actor, AuditEventType.UNDO_EDIT, chromosome=afectados[0] if afectados else None,
+            payload={'deshace': str(ev.id), 'tipo': ev.event_type,
+                     'afectados': [str(c.id) for c in afectados]},
+            mode=mode,
+        )

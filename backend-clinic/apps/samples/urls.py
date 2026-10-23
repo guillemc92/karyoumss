@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    KaryotypeUndoView,
     ChromosomeRejectView,
     KaryotypeObjectsView,
     AuditDecideView,
@@ -49,6 +50,9 @@ urlpatterns = [
     # DD-KARYO-007 D5: añadir lo que la segmentación no vio y descartar lo que no es cromosoma.
     path('samples/<uuid:pk>/karyotype/objects/', KaryotypeObjectsView.as_view(),
          name='sample-karyotype-objects'),
+    # DD-KARYO-007 D6: deshacer la última edición propia (evento que compensa).
+    path('samples/<uuid:pk>/karyotype/undo/', KaryotypeUndoView.as_view(),
+         name='sample-karyotype-undo'),
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/reject/', ChromosomeRejectView.as_view(),
          name='chromosome-reject'),
 
