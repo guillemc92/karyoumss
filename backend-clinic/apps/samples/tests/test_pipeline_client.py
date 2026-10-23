@@ -279,3 +279,57 @@ def test_un_exito_del_modelo_cierra_el_contador(monkeypatch):
     with pytest.raises(MLDegradedError):
         client.classify_crop(IMAGEN, BBOX)
     assert client._circuit_open() is False
+
+
+# ---------------------------------------------------------------------------
+# Un solo cliente HTTP, reutilizado (medido el 23/10: ~3 s por llamada)
+# ---------------------------------------------------------------------------
+
+class _Compartido:
+    """Hace de cliente compartido: registra el timeout de cada petición."""
+
+    def __init__(self):
+        self.timeouts = []
+
+    def post(self, url, **kw):
+        self.timeouts.append(kw.get('timeout'))
+        return _RespOk()
+
+    def get(self, url, **kw):
+        self.timeouts.append(kw.get('timeout'))
+        return _RespOk()
+
+
+class _RespOk:
+    status_code = 200
+
+    def raise_for_status(self):
+        pass
+
+    def json(self):
+        return {'contornos': [None], 'status': 'ok'}
+
+
+class TestClienteReutilizado:
+    def test_el_cliente_se_crea_una_vez(self):
+        pc = _client()
+        primero = pc._cliente()
+        assert pc._cliente() is primero
+        primero.close()
+
+    def test_cada_llamada_conserva_su_timeout(self):
+        pc = _client(timeout=5)
+        compartido = _Compartido()
+        pc._http = compartido
+        pc.contours(b'img', [{'x': 0, 'y': 0, 'w': 1, 'h': 1}])
+        pc.classify_crop(b'img', {'x': 0, 'y': 0, 'w': 1, 'h': 1})
+        # contours ensancha a 30 s y classify a 60 s, sobre el MISMO cliente.
+        assert compartido.timeouts == [30.0, 60.0]
+
+    def test_el_get_tambien_usa_el_compartido(self):
+        pc = _client(timeout=5)
+        compartido = _Compartido()
+        pc._http = compartido
+        with pc._sesion(7) as cliente:
+            cliente.get('http://ml/health/')
+        assert compartido.timeouts == [7]

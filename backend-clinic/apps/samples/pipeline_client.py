@@ -1,8 +1,14 @@
 import json
+import threading
 import time
+from contextlib import contextmanager
 
 import httpx
 from django.conf import settings
+
+#: La clase de verdad, guardada al importar. Si alguien sustituye `httpx.Client`
+#: (los dobles de las pruebas), `_sesion` usa el sustituto como antes.
+_CLIENTE_REAL = httpx.Client
 
 
 class MLDegradedError(Exception):
@@ -12,6 +18,21 @@ class MLDegradedError(Exception):
 
 class CorteInvalidoError(ValueError):
     """La línea trazada no separa el objeto (422 de backend-ml)."""
+
+
+class _ConTimeout:
+    """El cliente compartido, con el timeout de una llamada concreta."""
+
+    def __init__(self, cliente: httpx.Client, timeout: float):
+        self._cliente, self._timeout = cliente, timeout
+
+    def post(self, *args, **kwargs):
+        kwargs.setdefault('timeout', self._timeout)
+        return self._cliente.post(*args, **kwargs)
+
+    def get(self, *args, **kwargs):
+        kwargs.setdefault('timeout', self._timeout)
+        return self._cliente.get(*args, **kwargs)
 
 
 class PipelineClient:
@@ -24,6 +45,37 @@ class PipelineClient:
         self.cooldown = cooldown
         self._failures = 0
         self._circuit_open_until = 0.0
+        self._http: httpx.Client | None = None
+        self._cerrojo = threading.Lock()
+
+    def _cliente(self) -> httpx.Client:
+        """Un solo cliente HTTP por proceso, reutilizado entre llamadas.
+
+        Antes cada llamada creaba un `httpx.Client` nuevo. Medido el 23/10 en
+        Windows: crearlo cuesta ~1 s (prepara el contexto TLS aunque se hable
+        HTTP plano) y además abre una conexión nueva, que con `localhost` prueba
+        primero IPv6 y pierde ~2 s más. Eran ~3 s por llamada a backend-ml:
+        separar (corte + dos clasificaciones) tardaba 14 s. Con el cliente
+        reutilizado, la misma petición tarda milisegundos.
+        """
+        with self._cerrojo:
+            if self._http is None:
+                self._http = _CLIENTE_REAL(timeout=self.timeout)
+            return self._http
+
+    @contextmanager
+    def _sesion(self, timeout: float):
+        """Lo que antes era `with httpx.Client(timeout=...) as client`.
+
+        Con el `httpx.Client` de verdad, devuelve el cliente compartido con el
+        timeout de ESTA llamada (cada método tiene el suyo). Si la clase se
+        sustituyó, se comporta exactamente como antes.
+        """
+        if httpx.Client is not _CLIENTE_REAL:
+            with httpx.Client(timeout=timeout) as client:
+                yield client
+            return
+        yield _ConTimeout(self._cliente(), timeout)
 
     def _circuit_open(self) -> bool:
         return time.time() < self._circuit_open_until
@@ -40,7 +92,7 @@ class PipelineClient:
         if self._circuit_open():
             raise MLDegradedError('circuit_open')
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with self._sesion(self.timeout) as client:
                 resp = client.post(
                     f'{self.base_url}/api/v1/samples/{sample_id}/process/',
                     json={'force_reprocess': force_reprocess},
@@ -54,7 +106,7 @@ class PipelineClient:
 
     def get_status(self, sample_id: str) -> dict:
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with self._sesion(self.timeout) as client:
                 resp = client.get(f'{self.base_url}/api/v1/samples/{sample_id}/status/')
                 resp.raise_for_status()
                 return resp.json()
@@ -67,7 +119,7 @@ class PipelineClient:
         if self._circuit_open():
             raise MLDegradedError('circuit_open')
         try:
-            with httpx.Client(timeout=max(self.timeout, 30.0)) as client:
+            with self._sesion(max(self.timeout, 30.0)) as client:
                 resp = client.post(
                     f'{self.base_url}/api/v1/segment/',
                     files={'file': (filename, image_bytes, 'application/octet-stream')},
@@ -92,7 +144,7 @@ class PipelineClient:
         if self._circuit_open():
             raise MLDegradedError('circuit_open')
         try:
-            with httpx.Client(timeout=max(self.timeout, 60.0)) as client:
+            with self._sesion(max(self.timeout, 60.0)) as client:
                 resp = client.post(
                     f'{self.base_url}/api/v1/xai/',
                     files={'file': (filename, image_bytes, 'application/octet-stream')},
@@ -116,7 +168,7 @@ class PipelineClient:
         if self._circuit_open():
             raise MLDegradedError('circuit_open')
         try:
-            with httpx.Client(timeout=max(self.timeout, 60.0)) as client:
+            with self._sesion(max(self.timeout, 60.0)) as client:
                 resp = client.post(
                     f'{self.base_url}/api/v1/classify/',
                     files={'file': (filename, image_bytes, 'application/octet-stream')},
@@ -142,7 +194,7 @@ class PipelineClient:
             raise MLDegradedError('circuit_open')
         cajas = [{k: int(b.get(k, 0)) for k in ('x', 'y', 'w', 'h')} for b in bboxes]
         try:
-            with httpx.Client(timeout=max(self.timeout, 30.0)) as client:
+            with self._sesion(max(self.timeout, 30.0)) as client:
                 resp = client.post(
                     f'{self.base_url}/api/v1/contours/',
                     files={'file': (filename, image_bytes, 'application/octet-stream')},
@@ -178,7 +230,7 @@ class PipelineClient:
         if contour:
             datos['contour'] = json.dumps(contour)
         try:
-            with httpx.Client(timeout=max(self.timeout, 30.0)) as client:
+            with self._sesion(max(self.timeout, 30.0)) as client:
                 resp = client.post(
                     f'{self.base_url}/api/v1/split/',
                     files={'file': (filename, image_bytes, 'application/octet-stream')},
@@ -204,7 +256,7 @@ class PipelineClient:
         if self._circuit_open():
             raise MLDegradedError('circuit_open')
         try:
-            with httpx.Client(timeout=max(self.timeout, 30.0)) as client:
+            with self._sesion(max(self.timeout, 30.0)) as client:
                 resp = client.post(f'{self.base_url}/api/v1/join/',
                                    data={'contornos': json.dumps(contornos)})
                 resp.raise_for_status()

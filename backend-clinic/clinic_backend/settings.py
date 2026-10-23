@@ -143,7 +143,9 @@ PATIENT_VAULT_KEY = env('PATIENT_VAULT_KEY', required=True)
 # ============================================================================
 
 # backend-ml (motor de inferencia, ADR-0007/DD-ML-001) — el FastAPI de :8000.
-CLINIC_FASTAPI_URL = env('CLINIC_FASTAPI_URL', 'http://localhost:8000')
+# 127.0.0.1 y no localhost: en Windows, `localhost` prueba primero IPv6 (::1),
+# uvicorn escucha solo en IPv4 y cada conexión nueva perdía ~2 s (medido 23/10).
+CLINIC_FASTAPI_URL = env('CLINIC_FASTAPI_URL', 'http://127.0.0.1:8000')
 
 # Almacenamiento de imágenes de metafase reales (DD-ML-002 §2.1).
 MEDIA_URL = '/media/'
