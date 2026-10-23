@@ -204,7 +204,7 @@ mismo alcance que el visor (`HasOpcion('sample.view')` más ser el dueño; 403
 |---|---|---|---|
 | T1 | `contour` + migración + `contorno_inicial` + pruebas — **hecho 23/10** (`52361da`): el contorno sale de la región de watershed (46/46 en metafase_207); `/api/v1/contours/` para casos antiguos (45/46); se invalida al recortar, separar o unir | F1 | 2,5 h |
 | T2 | `MetafaseEditor`: metafase, contornos, selección sincronizada con el cariograma — **hecho 23/10**: la metafase entera encima del cariograma, silueta con el semáforo (la caja si no hay silueta), zoom con rueda y botones, la selección se comparte en los dos sentidos; al abrir un caso antiguo se piden los contornos una vez. E2E en Chromium sobre un caso real: 48 objetos, el clic dentro de la silueta selecciona el cromosoma. Visto en ese caso: varios cromosomas pequeños (21, 22, 19, 20) no tienen objeto, porque la segmentación no los detectó; es lo que resuelve «añadir» en T3 | F1 | 3 h |
-| T3 | Descartar y añadir objetos (back + front + eventos) | F1 | 2,5 h |
+| T3 | Descartar y añadir objetos (back + front + eventos) — **hecho 23/10**: `REJECT_OBJECT` y `ADD_OBJECT` (migración 0018), `POST …/reject/` y `POST …/karyotype/objects/`; en el editor, «Añadir cromosoma» (dibujar la caja, la herramienta sigue activa) y «Descartar objeto» con motivo (Supr, Esc). E2E en Chromium sobre una muestra propia segmentada por backend-ml: añade, lo clasifica el modelo, lo descarta, con los dos eventos. Ver §11 | F1 | 2,5 h |
 | T4 | `geometriaContorno.ts` (cortar y unir) con cobertura total | F2 | 2,5 h |
 | T5 | SPLIT por línea y JOIN por máscara en el backend; E2E que reproduce el defecto | F2 | 3 h |
 | T6 | Herramienta de corte en el editor + deshacer (D6) | F2 | 3 h |
@@ -246,3 +246,25 @@ con lo que se proponía. La 1 no tenía propuesta y se decidió con un criterio 
 3. **Atajos:** los del manual de MetaClass (Alt+S, Alt+C, Supr), pendientes de
    confirmar con el laboratorio. Son configurables, no definitivos.
 4. **Orden:** F1 → F2 → F3.
+
+## 11. Decisiones tomadas al implementar (T2–T3)
+
+1. **Añadir sin IA.** La spec dice «se calcula el contorno y se clasifica», pero no
+   qué pasa si backend-ml no responde.
+   - **Si el analista elige la clase:** se usa la suya sin preguntar al modelo. Es
+     autoridad, como en `CORRECT_CLASS` (BR-003): el objeto entra **resuelto**, con
+     confianza 0 (no la calculó nadie), y el evento dice `clasificado_por: analista`.
+   - **Si no la elige y la IA no responde:** 503 `CLASS_REQUIRED` y **no se crea
+     nada**. Una clase de relleno pondría el objeto en un par que no es el suyo y
+     contaría en el ISCN.
+   - **Sin silueta** (backend-ml caído solo para el contorno): se crea igual y se ve
+     la caja; `completar_contornos` la calcula después.
+2. **La metafase no se recarga tras una corrección.** Las acciones invalidaban el
+   cariotipo por prefijo, y la clave de la metafase cuelga de él. Cada corrección
+   volvía a descargar la imagen (unos 3 MB) y montaba de nuevo el editor, que perdía
+   el zoom y la herramienta. Lo cazó el E2E de T3; ahora la invalidación es exacta,
+   con una prueba que falla si se vuelve atrás.
+3. **El lienzo no se mueve al cambiar de herramienta.** El selector de clase ocupa
+   siempre su hueco, oculto fuera de «Añadir». Antes aparecía al entrar, la barra
+   crecía y la caja llegaba 6 px más arriba de donde se dibujó.
+

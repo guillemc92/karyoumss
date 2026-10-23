@@ -31,7 +31,7 @@ export function useSignReport(sampleId: string | undefined) {
   return useMutation({
     mutationFn: (mfaCode: string) => karyotypeClient.signReport(sampleId as string, mfaCode),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['clinic', 'karyotype', sampleId] });
+      qc.invalidateQueries({ queryKey: ['clinic', 'karyotype', sampleId], exact: true }); // no la metafase
       qc.invalidateQueries({ queryKey: ['clinic', 'audit', sampleId] });
     },
   });
@@ -49,7 +49,7 @@ export function useGenerateIscn(sampleId: string | undefined) {
     mutationFn: (v: { override?: string; justification?: string } = {}) =>
       karyotypeClient.generateIscn(sampleId as string, v.override ?? '', v.justification ?? ''),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['clinic', 'karyotype', sampleId] });
+      qc.invalidateQueries({ queryKey: ['clinic', 'karyotype', sampleId], exact: true }); // no la metafase
       qc.invalidateQueries({ queryKey: ['clinic', 'audit', sampleId] });
     },
   });

@@ -66,7 +66,8 @@ export type AuditEventType =
   | 'MARK_ANOMALY' | 'SPLIT' | 'JOIN' | 'RESOLVE_CROSS'
   | 'ANALYST_VALIDATED' | 'AUDIT_DECISION' | 'ISCN_OVERRIDE' | 'SIGN_REPORT'
   | 'NARRATIVE_GENERATED' // ADR-0024: borrador redactado por el LLM
-  | 'RECROP'; // recorte manual del cromosoma + reclasificación
+  | 'RECROP' // recorte manual del cromosoma + reclasificación
+  | 'REJECT_OBJECT' | 'ADD_OBJECT'; // DD-KARYO-007 D5: corregir la segmentación
 
 export type AuditMode = 'auto' | 'degradado';
 
@@ -111,7 +112,19 @@ export const AUDIT_LABELS: Record<AuditEventType, string> = {
   SIGN_REPORT: 'Firmó reporte',
   NARRATIVE_GENERATED: 'Generó borrador narrativo (IA)',
   RECROP: 'Recortó y reclasificó',
+  REJECT_OBJECT: 'Descartó un objeto',
+  ADD_OBJECT: 'Añadió un cromosoma',
 };
+
+/** Por qué se descarta un objeto de la metafase (DD-KARYO-007 D5). */
+export type MotivoDescarte = 'nucleo' | 'suciedad' | 'duplicado' | 'otro';
+
+export const MOTIVOS_DESCARTE: { valor: MotivoDescarte; texto: string }[] = [
+  { valor: 'nucleo', texto: 'Núcleo' },
+  { valor: 'suciedad', texto: 'Suciedad' },
+  { valor: 'duplicado', texto: 'Duplicado' },
+  { valor: 'otro', texto: 'Otro' },
+];
 
 export interface KaryotypeSummary {
   total: number;

@@ -1011,3 +1011,86 @@ class ChromosomeRecropView(APIView):
             return Response({'code': 'VALIDATION_ERROR', 'detail': str(e)},
                             status=status.HTTP_400_BAD_REQUEST)
         return Response(ChromosomeSerializer(actualizado).data, status=status.HTTP_200_OK)
+
+
+class ChromosomeRejectView(APIView):
+    """POST /samples/{id}/chromosomes/{cid}/reject/ — descartar un objeto (DD-KARYO-007 D5).
+
+    Body: {"motivo": "nucleo" | "suciedad" | "duplicado" | "otro"}
+
+    Borrado suave con evento REJECT_OBJECT; la fila y su historia se quedan (RN-05).
+    - 200 el cromosoma, ya con `is_active: false`
+    - 400 VALIDATION_ERROR si el motivo no es uno de los cuatro
+    - 409 CASE_LOCKED (caso validado) / OBJECT_INACTIVE (ya descartado o absorbido)
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk, cid):
+        from .services import ObjetoInactivoError, reject_object
+
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        chromo, error = _get_owned_chromosome_or_error(sample, cid)
+        if error:
+            return error
+        try:
+            descartado = reject_object(sample, chromo, request.data.get('motivo'),
+                                       request.user, mode=_request_mode(request))
+        except CaseLockedError as e:
+            return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except ObjetoInactivoError as e:
+            return Response({'code': 'OBJECT_INACTIVE', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except ValueError as e:
+            return Response({'code': 'VALIDATION_ERROR', 'detail': str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response(ChromosomeSerializer(descartado).data, status=status.HTTP_200_OK)
+
+
+class KaryotypeObjectsView(APIView):
+    """POST /samples/{id}/karyotype/objects/ — añadir un objeto (DD-KARYO-007 D5).
+
+    Body: {"bbox": {x, y, w, h}, "clase": "" | "1".."22" | "X" | "Y"}
+
+    Sin `clase`, la decide el modelo; con `clase`, el analista (entra resuelto).
+    - 201 el cromosoma creado, con evento ADD_OBJECT
+    - 400 VALIDATION_ERROR (caja inválida o fuera de la metafase) / INVALID_CLASS
+    - 404 NO_KARYOTYPE / NO_METAPHASE_IMAGE
+    - 409 CASE_LOCKED
+    - 503 CLASS_REQUIRED: la IA no responde y no se eligió clase; no se crea nada
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk):
+        from .services import ClaseRequeridaError, SinMetafaseError, add_object
+
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        if getattr(sample, 'karyotype', None) is None:
+            return Response(
+                {'code': 'NO_KARYOTYPE', 'detail': 'La muestra aún no tiene cariotipo generado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        try:
+            creado = add_object(sample, request.data.get('bbox') or {}, request.user,
+                                clase=request.data.get('clase') or '', mode=_request_mode(request))
+        except CaseLockedError as e:
+            return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except SinMetafaseError as e:
+            return Response({'code': 'NO_METAPHASE_IMAGE', 'detail': str(e)},
+                            status=status.HTTP_404_NOT_FOUND)
+        except ClaseRequeridaError as e:
+            return Response({'code': 'CLASS_REQUIRED', 'detail': str(e)},
+                            status=status.HTTP_503_SERVICE_UNAVAILABLE)
+        except InvalidClassError as e:
+            return Response({'code': 'INVALID_CLASS', 'detail': str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        except ValueError as e:
+            return Response({'code': 'VALIDATION_ERROR', 'detail': str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response(ChromosomeSerializer(creado).data, status=status.HTTP_201_CREATED)

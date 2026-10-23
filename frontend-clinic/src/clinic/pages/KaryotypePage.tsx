@@ -38,7 +38,7 @@ import {
   puedeRehacer,
 } from '../lib/historial';
 import { ClinicApiException } from '../types/sample';
-import type { BBox, Chromosome, XaiResult } from '../types/karyotype';
+import type { BBox, Chromosome, MotivoDescarte, XaiResult } from '../types/karyotype';
 import { AUDIT_LABELS } from '../types/karyotype';
 
 function SemaphoreLegend() {
@@ -125,8 +125,10 @@ export function KaryotypePage() {
   };
   const { degraded, justRestored, dismissRestored } = useDegradedMode();
 
-  const { viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross, recrop } =
-    useKaryotypeActions(id);
+  const {
+    viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross, recrop,
+    rejectObject, addObject,
+  } = useKaryotypeActions(id);
   const audit = useAuditTrail(id, showAudit);
   // DD-KARYO-007 T2: un caso segmentado antes de T1 solo tiene cajas; al abrirlo
   // se piden las siluetas una vez. Si no se puede, el editor pinta las cajas.
@@ -185,7 +187,9 @@ export function KaryotypePage() {
   const busy =
     viewXai.isPending || resolve.isPending || markAnomaly.isPending || validate.isPending ||
     reclassify.isPending || split.isPending || join.isPending || resolveCross.isPending ||
-    recrop.isPending;
+    recrop.isPending || rejectObject.isPending || addObject.isPending;
+  // Los mismos estados que bloquea el servidor (`_assert_editable`).
+  const editable = !validated && !['ANALYST_VALIDATED', 'VALIDATED'].includes(karyotype.sample_status);
 
   // DD-KARYO-006 D7: el recorte se dibuja sobre la metafase, así que solo se
   // ofrece si hay metafase y el cromosoma tiene una caja dentro de ella. Sin
@@ -274,6 +278,25 @@ export function KaryotypePage() {
     await runP3('Error al recortar', () => recrop.mutateAsync({ chromosomeId, bbox }));
   }
 
+  // --- DD-KARYO-007 D5: corregir la segmentación sobre la metafase ---
+
+  // El objeto nuevo queda seleccionado: lo siguiente que el analista quiere es
+  // ver qué clase le dio el modelo, y corregirla si hace falta.
+  function handleAnadir(bbox: BBox, clase: string) {
+    void runP3('Error al añadir el cromosoma', async () => {
+      setSelected(await addObject.mutateAsync({ bbox, clase }));
+    });
+  }
+
+  // Lo descartado sale del cariotipo: dejarlo seleccionado mostraría en el
+  // panel un cromosoma que ya no está.
+  function handleDescartar(c: Chromosome, motivo: MotivoDescarte) {
+    void runP3('Error al descartar', async () => {
+      await rejectObject.mutateAsync({ chromosomeId: c.id, motivo });
+      setSelected(null);
+    });
+  }
+
   async function handleJoinConfirm(c: Chromosome) {
     if (!joinPick) return;
     await runP3('Error al unir', () => join.mutateAsync({ keepId: joinPick.id, otherId: c.id }));
@@ -340,6 +363,9 @@ export function KaryotypePage() {
               chromosomes={karyotype.chromosomes}
               selectedId={selected?.id ?? null}
               onSelect={setSelected}
+              onAnadir={editable ? handleAnadir : undefined}
+              onDescartar={editable ? handleDescartar : undefined}
+              busy={busy}
             />
           )}
           <KaryotypeCanvas

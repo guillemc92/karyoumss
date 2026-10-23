@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  MIN_LADO_OBJETO,
   ZOOM_MAX,
   ZOOM_MIN,
+  aImagen,
+  cajaEntre,
   centrarEn,
   centroDe,
   escalaAjuste,
@@ -115,5 +118,25 @@ describe('zoom y desplazamiento', () => {
 
   it('centrarEn no saca la vista de la imagen cerca del borde', () => {
     expect(centrarEn({ x: 0, y: 0 }, 2, LIENZO, 2)).toEqual({ x: 0, y: 0 });
+  });
+});
+
+describe('aImagen y cajaEntre (T3, añadir objeto)', () => {
+  it('aImagen deshace el desplazamiento y la escala del Stage', () => {
+    expect(aImagen({ x: 150, y: 90 }, { x: -50, y: -10 }, 2)).toEqual({ x: 100, y: 50 });
+  });
+  it('la caja es la misma arrastrando en cualquier dirección', () => {
+    const ida = cajaEntre({ x: 10.4, y: 20.6 }, { x: 40.2, y: 70.1 }, IMAGEN);
+    expect(ida).toEqual({ x: 10, y: 20, w: 31, h: 51 });
+    expect(cajaEntre({ x: 40.2, y: 70.1 }, { x: 10.4, y: 20.6 }, IMAGEN)).toEqual(ida);
+  });
+  it('se recorta a la imagen', () => {
+    expect(cajaEntre({ x: -20, y: -5 }, { x: 30, y: 30 }, IMAGEN)).toEqual({ x: 0, y: 0, w: 30, h: 30 });
+    expect(cajaEntre({ x: 1000, y: 700 }, { x: 1100, y: 900 }, IMAGEN)).toEqual({ x: 1000, y: 700, w: 24, h: 68 });
+  });
+  it('por debajo del lado mínimo no es un objeto', () => {
+    expect(cajaEntre({ x: 0, y: 0 }, { x: MIN_LADO_OBJETO - 1, y: 50 }, IMAGEN)).toBeNull();
+    expect(cajaEntre({ x: 0, y: 0 }, { x: 50, y: MIN_LADO_OBJETO - 1 }, IMAGEN)).toBeNull();
+    expect(cajaEntre({ x: 0, y: 0 }, { x: MIN_LADO_OBJETO, y: MIN_LADO_OBJETO }, IMAGEN)).not.toBeNull();
   });
 });

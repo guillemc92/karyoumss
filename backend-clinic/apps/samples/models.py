@@ -265,6 +265,10 @@ class AuditEventType(models.TextChoices):
     # mas o de menos. Arrastra reclasificacion, asi que la traza guarda la
     # clase de antes y la de despues.
     RECROP = 'RECROP', 'Recorte corregido'
+    # DD-KARYO-007 D5: corregir la segmentación sobre la metafase. Descartar es
+    # borrado suave (is_active=False); añadir crea el cromosoma que faltaba.
+    REJECT_OBJECT = 'REJECT_OBJECT', 'Objeto descartado'
+    ADD_OBJECT = 'ADD_OBJECT', 'Objeto añadido'
     ANALYST_VALIDATED = 'ANALYST_VALIDATED', 'Validado por analista'
     AUDIT_DECISION = 'AUDIT_DECISION', 'Decisión de auditoría'  # futuro
     ISCN_OVERRIDE = 'ISCN_OVERRIDE', 'Override ISCN'            # futuro

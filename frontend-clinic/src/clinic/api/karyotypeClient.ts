@@ -12,7 +12,7 @@
 import { clinicRequest, clinicRequestBlob, CLINIC_DEFAULT_BASE_URL } from './samplesClient';
 import type {
   AuditEvent, AuditReview, AuditReviewResponse, Chromosome, IscnResult, Karyotype,
-  NarrativeResult, PipelineHealth, ValidateResult, XaiResult, BBox } from '../types/karyotype';
+  MotivoDescarte, NarrativeResult, PipelineHealth, ValidateResult, XaiResult, BBox } from '../types/karyotype';
 
 export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL) {
   return {
@@ -40,6 +40,25 @@ export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL)
      */
     completeContours(sampleId: string): Promise<{ completados: number }> {
       return clinicRequest<{ completados: number }>(baseUrl, `/samples/${sampleId}/karyotype/contours/`, { method: 'POST' });
+    },
+
+    /** POST /chromosomes/{cid}/reject/ — descartar un objeto (REJECT_OBJECT, borrado suave). */
+    rejectObject(sampleId: string, chromosomeId: string, motivo: MotivoDescarte): Promise<Chromosome> {
+      return clinicRequest<Chromosome>(baseUrl, `/samples/${sampleId}/chromosomes/${chromosomeId}/reject/`, {
+        method: 'POST',
+        body: { motivo },
+      });
+    },
+    /**
+     * POST /karyotype/objects/ — añadir el cromosoma que la segmentación no vio
+     * (ADD_OBJECT). Sin `clase` la decide el modelo; si la IA no responde, 503
+     * CLASS_REQUIRED y no se crea nada: hay que elegir la clase.
+     */
+    addObject(sampleId: string, bbox: BBox, clase = ''): Promise<Chromosome> {
+      return clinicRequest<Chromosome>(baseUrl, `/samples/${sampleId}/karyotype/objects/`, {
+        method: 'POST',
+        body: clase ? { bbox, clase } : { bbox },
+      });
     },
 
     // --- P2 ---

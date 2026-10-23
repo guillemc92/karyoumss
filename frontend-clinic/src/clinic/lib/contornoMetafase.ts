@@ -123,3 +123,29 @@ export function centrarEn(punto: Punto, escalaTotal: number, lienzo: Dimensiones
     zoom,
   );
 }
+
+// --- T3: añadir un objeto dibujando su caja sobre la metafase ---
+
+/** Lado mínimo, en píxeles de la metafase, de un objeto añadido a mano. Por
+ * debajo es un clic tembloroso, no un cromosoma. */
+export const MIN_LADO_OBJETO = 5;
+
+/** Píxeles del Stage (puntero) → píxeles de la metafase. Es la inversa de lo
+ * que hace el Stage: desplazar `pos` y escalar `escala`. */
+export function aImagen(p: Punto, pos: Punto, escala: number): Punto {
+  return { x: (p.x - pos.x) / escala, y: (p.y - pos.y) / escala };
+}
+
+/**
+ * La caja entre dos esquinas, en enteros y recortada a la imagen; `null` si
+ * queda más pequeña que `MIN_LADO_OBJETO`. Da igual en qué dirección se arrastre.
+ */
+export function cajaEntre(a: Punto, b: Punto, imagen: Dimensiones): { x: number; y: number; w: number; h: number } | null {
+  const x0 = Math.max(0, Math.floor(Math.min(a.x, b.x)));
+  const y0 = Math.max(0, Math.floor(Math.min(a.y, b.y)));
+  const x1 = Math.min(imagen.w, Math.ceil(Math.max(a.x, b.x)));
+  const y1 = Math.min(imagen.h, Math.ceil(Math.max(a.y, b.y)));
+  const w = x1 - x0;
+  const h = y1 - y0;
+  return w >= MIN_LADO_OBJETO && h >= MIN_LADO_OBJETO ? { x: x0, y: y0, w, h } : null;
+}

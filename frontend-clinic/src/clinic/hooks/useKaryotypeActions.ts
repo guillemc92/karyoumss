@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { BBox } from '../types/karyotype';
+import type { BBox, MotivoDescarte } from '../types/karyotype';
 import { karyotypeClient } from '../api/karyotypeClient';
 
 /** Acciones de P2 (XAI, resolver, anomalía, validar) + bitácora de auditoría.
@@ -7,7 +7,10 @@ import { karyotypeClient } from '../api/karyotypeClient';
 export function useKaryotypeActions(sampleId: string | undefined) {
   const qc = useQueryClient();
   const invalidate = () => {
-    qc.invalidateQueries({ queryKey: ['clinic', 'karyotype', sampleId] });
+    // `exact`: la metafase cuelga de la misma clave (['clinic', 'karyotype', id,
+    // 'metaphase']). Sin él, cada corrección volvía a descargar ~3 MB y montaba
+    // de nuevo el editor, que perdía el zoom y la herramienta (visto el 23/10).
+    qc.invalidateQueries({ queryKey: ['clinic', 'karyotype', sampleId], exact: true });
     qc.invalidateQueries({ queryKey: ['clinic', 'audit', sampleId] });
   };
 
@@ -53,7 +56,22 @@ export function useKaryotypeActions(sampleId: string | undefined) {
     onSuccess: invalidate,
   });
 
-  return { viewXai, resolve, markAnomaly, validate, reclassify, recrop, split, join, resolveCross };
+  // --- DD-KARYO-007 D5: corregir la segmentación sobre la metafase ---
+  const rejectObject = useMutation({
+    mutationFn: (v: { chromosomeId: string; motivo: MotivoDescarte }) =>
+      karyotypeClient.rejectObject(sampleId as string, v.chromosomeId, v.motivo),
+    onSuccess: invalidate,
+  });
+  const addObject = useMutation({
+    mutationFn: (v: { bbox: BBox; clase: string }) =>
+      karyotypeClient.addObject(sampleId as string, v.bbox, v.clase),
+    onSuccess: invalidate,
+  });
+
+  return {
+    viewXai, resolve, markAnomaly, validate, reclassify, recrop, split, join, resolveCross,
+    rejectObject, addObject,
+  };
 }
 
 export function useAuditTrail(sampleId: string | undefined, enabled = false) {

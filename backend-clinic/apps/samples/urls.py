@@ -1,6 +1,8 @@
 from django.urls import path
 
 from .views import (
+    ChromosomeRejectView,
+    KaryotypeObjectsView,
     AuditDecideView,
     AuditReviewListView,
     AuditTrailView,
@@ -44,6 +46,11 @@ urlpatterns = [
     # DD-KARYO-007 D1: siluetas de los cromosomas que aún no la tienen.
     path('samples/<uuid:pk>/karyotype/contours/', KaryotypeContoursView.as_view(),
          name='sample-karyotype-contours'),
+    # DD-KARYO-007 D5: añadir lo que la segmentación no vio y descartar lo que no es cromosoma.
+    path('samples/<uuid:pk>/karyotype/objects/', KaryotypeObjectsView.as_view(),
+         name='sample-karyotype-objects'),
+    path('samples/<uuid:pk>/chromosomes/<uuid:cid>/reject/', ChromosomeRejectView.as_view(),
+         name='chromosome-reject'),
 
     # Cariotipo P2 (ADR-0021 P2, ADR-0022) — XAI + resolución + gating + audit.
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/xai/', ChromosomeXaiView.as_view(), name='chromosome-xai'),

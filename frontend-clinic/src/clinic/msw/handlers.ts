@@ -91,6 +91,12 @@ export function fijarBboxMock(
   chromo.bbox = bbox;
 }
 
+/** Simula la IA caída al añadir un objeto sin clase (DD-KARYO-007 D5). */
+let anadirSinIa = false;
+export function fallarAnadirSinClase(valor: boolean): void {
+  anadirSinIa = valor;
+}
+
 /** Fija el contorno de un cromosoma del mock (DD-KARYO-007): el seed no tiene. */
 export function fijarContornoMock(sampleId: string, chromosomeId: string, contour: number[][] | null): void {
   const chromo = getOrBuildKaryotype(sampleId).chromosomes.find((c) => c.id === chromosomeId);
@@ -149,6 +155,7 @@ export function resetMockData(): void {
   samples = initialSamples.map((s) => ({ ...s }));
   forceDegraded = false;
   metaphaseImageAvailable = true;
+  anadirSinIa = false;
   try {
     sessionStorage?.removeItem('biomed.degraded');
     for (let i = sessionStorage.length - 1; i >= 0; i--) {
@@ -461,6 +468,64 @@ export const handlers = [
       completados += 1;
     }
     return HttpResponse.json({ completados });
+  }),
+
+  // DD-KARYO-007 D5 — descartar (borrado suave) y añadir objetos.
+  http.post(`${API}/samples/:id/chromosomes/:cid/reject/`, async ({ params, request }) => {
+    const sid = String(params.id);
+    if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
+    const k = getOrBuildKaryotype(sid);
+    const chromo = k.chromosomes.find((c) => c.id === params.cid);
+    if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
+    const { motivo } = (await request.json()) as { motivo?: string };
+    if (!['nucleo', 'suciedad', 'duplicado', 'otro'].includes(motivo ?? '')) {
+      return HttpResponse.json({ code: 'VALIDATION_ERROR', detail: `motivo inválido: ${motivo}` }, { status: 400 });
+    }
+    if (!chromo.is_active) {
+      return HttpResponse.json({ code: 'OBJECT_INACTIVE', detail: 'El objeto ya no forma parte del cariotipo.' }, { status: 409 });
+    }
+    chromo.is_active = false;
+    recomputeSummary(k);
+    pushAudit(sid, 'REJECT_OBJECT', chromo.id, modeOf(request));
+    return HttpResponse.json(chromo);
+  }),
+
+  // El doble no tiene modelo: sin clase elegida «predice» 21 con 0,91, y con
+  // `fallarAnadirSinClase` simula la IA caída (503 CLASS_REQUIRED, no crea nada).
+  http.post(`${API}/samples/:id/karyotype/objects/`, async ({ params, request }) => {
+    const sid = String(params.id);
+    if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
+    const k = getOrBuildKaryotype(sid);
+    const { bbox, clase } = (await request.json()) as { bbox?: { x: number; y: number; w: number; h: number }; clase?: string };
+    if (!bbox || !(bbox.w > 0) || !(bbox.h > 0)) {
+      return HttpResponse.json({ code: 'VALIDATION_ERROR', detail: 'El bbox necesita ancho y alto positivos' }, { status: 400 });
+    }
+    if (!clase && anadirSinIa) {
+      return HttpResponse.json(
+        { code: 'CLASS_REQUIRED', detail: 'La IA no responde: elija la clase del objeto para añadirlo.' },
+        { status: 503 },
+      );
+    }
+    const predicha = clase || '21';
+    const nuevo: Chromosome = {
+      id: `${sid}-chr-nuevo-${k.chromosomes.length}`,
+      predicted_class: predicha,
+      position_index: k.chromosomes.filter((c) => c.predicted_class === predicha).length,
+      confidence_score: clase ? '0.000' : '0.910',
+      semaphore: clase ? 'orange' : 'green',
+      resolution_status: clase ? 'RESOLVED' : 'AUTO',
+      xai_viewed: false,
+      is_anomaly: false,
+      is_active: true,
+      measures: {},
+      bbox,
+      contour: [[bbox.x, bbox.y], [bbox.x + bbox.w, bbox.y], [bbox.x + bbox.w, bbox.y + bbox.h], [bbox.x, bbox.y + bbox.h]],
+      order: k.chromosomes.length,
+    };
+    k.chromosomes.push(nuevo);
+    recomputeSummary(k);
+    pushAudit(sid, 'ADD_OBJECT', nuevo.id, modeOf(request));
+    return HttpResponse.json(nuevo, { status: 201 });
   }),
 
   // Cariotipo P2 (ADR-0021 P2, ADR-0022) — XAI, resolver, anomalía, validar, audit.

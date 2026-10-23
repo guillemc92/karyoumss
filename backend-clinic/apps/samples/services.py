@@ -1083,3 +1083,144 @@ def completar_contornos(sample) -> int:
                 cromosoma.save(update_fields=['contour'])
                 guardados += 1
     return guardados
+
+
+# ============================================================================
+# DD-KARYO-007 D5 — descartar y añadir objetos sobre la metafase (T3)
+# ============================================================================
+
+MOTIVOS_DESCARTE = frozenset({'nucleo', 'suciedad', 'duplicado', 'otro'})
+
+
+class ObjetoInactivoError(Exception):
+    """El objeto ya no está en el cariotipo (descartado o absorbido por JOIN)."""
+
+
+class ClaseRequeridaError(Exception):
+    """Sin IA no hay clase para el objeto nuevo y el analista no eligió una."""
+
+
+def reject_object(sample, chromosome, motivo, actor, mode='auto') -> Chromosome:
+    """Descarta un objeto que no es un cromosoma (núcleo, suciedad, duplicado).
+
+    Borrado suave, como el fragmento absorbido por `join`: `is_active = False`
+    y la fila se queda, porque los eventos de auditoría la referencian (RN-05).
+    El evento guarda la clase y la caja que tenía, para que el descarte se
+    pueda revisar y deshacer (D6) sin depender del estado actual.
+    """
+    _assert_editable(sample)
+    motivo = str(motivo or '').strip()
+    if motivo not in MOTIVOS_DESCARTE:
+        raise ValueError(f'motivo inválido: {motivo!r}; use uno de {sorted(MOTIVOS_DESCARTE)}')
+    if not chromosome.is_active:
+        raise ObjetoInactivoError('El objeto ya no forma parte del cariotipo.')
+    with transaction.atomic():
+        chromosome.is_active = False
+        chromosome.save(update_fields=['is_active'])
+        emit_audit_event(
+            sample, actor, AuditEventType.REJECT_OBJECT, chromosome=chromosome,
+            payload={
+                'motivo': motivo,
+                'clase': chromosome.predicted_class,
+                'confianza': str(chromosome.confidence_score)
+                if chromosome.confidence_score is not None else None,
+                'bbox': dict(chromosome.bbox or {}),
+            },
+            mode=mode,
+        )
+    return chromosome
+
+
+def add_object(sample, bbox: dict, actor, clase: str = '', mode='auto') -> Chromosome:
+    """Añade un cromosoma que la segmentación no detectó (DD-KARYO-007 D5).
+
+    El analista dibuja la caja sobre la metafase. Se pide a backend-ml la clase
+    (`classify_crop`) y la silueta (`contours`), como al recortar.
+
+    ## Si el analista elige la clase
+
+    Se usa la suya sin preguntar al modelo: es autoridad, igual que en
+    CORRECT_CLASS (BR-003), y el objeto entra RESUELTO. La confianza queda en
+    0, no inventada: no la calculó nadie. El evento dice quién clasificó.
+
+    ## Si no la elige y la IA no responde
+
+    No se crea nada (`ClaseRequeridaError` → 503). Crear el objeto con una
+    clase de relleno lo pondría en un par que no es el suyo y contaría en el
+    ISCN; es peor que pedirle al analista que elija la clase (RN-07: el trabajo
+    manual sigue siendo posible, solo que con un dato más).
+
+    Sin silueta (backend-ml caído) el objeto se crea igual y se ve su caja.
+    """
+    _assert_editable(sample)
+    karyotype = getattr(sample, 'karyotype', None)
+    if karyotype is None:
+        raise ValueError('la muestra no tiene cariotipo')
+
+    requeridos = ('x', 'y', 'w', 'h')
+    if not all(k in (bbox or {}) for k in requeridos):
+        raise ValueError('el bbox necesita x, y, w, h')
+    try:
+        caja = {k: int(bbox[k]) for k in requeridos}
+    except (TypeError, ValueError) as exc:
+        raise ValueError('el bbox debe ser numérico') from exc
+    if caja['w'] <= 0 or caja['h'] <= 0 or caja['x'] < 0 or caja['y'] < 0:
+        raise ValueError('el bbox debe estar dentro de la imagen y tener ancho y alto positivos')
+
+    clase = str(clase or '').strip()
+    if clase and clase not in VALID_CHROMOSOME_CLASSES:
+        raise InvalidClassError(f'Clase inválida: {clase!r}')
+
+    imagen = metafase_segmentada(sample)
+    ruta = ruta_segura(imagen.image_path) if imagen else None
+    if ruta is None:
+        raise SinMetafaseError('el cariotipo no tiene una metafase sobre la que añadir')
+    datos = ruta.read_bytes()
+    # Formato desconocido → no se sabe el tamaño y se deja pasar (como en `imagen.py`).
+    ancho, alto = dimensiones(datos) or (0, 0)
+    if ancho > 0 and alto > 0 and (caja['x'] + caja['w'] > ancho or caja['y'] + caja['h'] > alto):
+        raise ValueError('el bbox se sale de la metafase')
+
+    if clase:
+        predicha, confianza, por = clase, _Decimal('0'), 'analista'
+    else:
+        try:
+            r = pipeline_client.classify_crop(datos, caja, filename=ruta.name)
+        except MLDegradedError as exc:
+            raise ClaseRequeridaError(
+                'La IA no responde: elija la clase del objeto para añadirlo.') from exc
+        predicha = str(r.get('predicted_class') or '')
+        if predicha not in VALID_CHROMOSOME_CLASSES:
+            raise ClaseRequeridaError('El modelo no devolvió una clase válida: elija la clase.')
+        confianza, por = _Decimal(str(r.get('confidence_score', 0))), 'modelo'
+
+    try:
+        contorno = (pipeline_client.contours(datos, [caja], filename=ruta.name) or [None])[0]
+    except MLDegradedError:
+        contorno = None  # se ve la caja; completar_contornos la reintenta
+
+    with transaction.atomic():
+        hermanos = karyotype.chromosomes.filter(predicted_class=predicha)
+        creado = Chromosome.objects.create(
+            karyotype=karyotype,
+            predicted_class=predicha,
+            position_index=max((c.position_index for c in hermanos), default=-1) + 1,
+            confidence_score=confianza,
+            bbox=caja,
+            contour=contorno,
+            resolution_status='RESOLVED' if por == 'analista' else (
+                'PENDING' if confianza < CONFIDENCE_THRESHOLD else 'AUTO'),
+            order=max((c.order for c in karyotype.chromosomes.all()), default=-1) + 1,
+        )
+        emit_audit_event(
+            sample, actor, AuditEventType.ADD_OBJECT, chromosome=creado,
+            payload={
+                'bbox': caja,
+                'clase': predicha,
+                'confianza': str(confianza),
+                'clasificado_por': por,
+                'con_silueta': contorno is not None,
+            },
+            mode=mode,
+        )
+    return creado
