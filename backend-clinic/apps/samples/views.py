@@ -929,6 +929,53 @@ class AgenteView(APIView):
         }, status=status.HTTP_200_OK)
 
 
+class KaryotypeContoursView(APIView):
+    """POST /samples/{id}/karyotype/contours/ — completar las siluetas (DD-KARYO-007 D1).
+
+    Calcula, con backend-ml, el contorno de los cromosomas que aún no lo tienen
+    (casos anteriores a DD-KARYO-007, o recortados o separados después). El
+    cliente lo llama al abrir el caso si ve cromosomas sin `contour`.
+
+    Pide `sample.edit` y no `sample.view`: escribe en el caso, aunque sea dato
+    derivado. El alcance es el de las demás ediciones (403 NOT_OWNER).
+
+    - 200 `{completados: n}` (n puede ser 0: no había nada que completar)
+    - 404 NO_KARYOTYPE / NO_METAPHASE_IMAGE
+    - 409 CASE_LOCKED si el caso ya está validado (RN-04)
+    - 503 ML_UNAVAILABLE si backend-ml no responde (RN-07): no cambia nada
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk):
+        from .services import SinMetafaseError, completar_contornos
+
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        if getattr(sample, 'karyotype', None) is None:
+            return Response(
+                {'code': 'NO_KARYOTYPE', 'detail': 'La muestra aún no tiene cariotipo generado.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        try:
+            completados = completar_contornos(sample)
+        except CaseLockedError as e:
+            return Response({'code': 'CASE_LOCKED', 'detail': str(e)},
+                            status=status.HTTP_409_CONFLICT)
+        except SinMetafaseError as e:
+            return Response({'code': 'NO_METAPHASE_IMAGE', 'detail': str(e)},
+                            status=status.HTTP_404_NOT_FOUND)
+        except MLDegradedError:
+            return Response(
+                {'code': 'ML_UNAVAILABLE',
+                 'detail': 'El servicio de IA no responde; los cromosomas se ven como cajas.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response({'completados': completados}, status=status.HTTP_200_OK)
+
+
 class ChromosomeRecropView(APIView):
     """POST /samples/{id}/chromosomes/{cid}/recrop/ — corregir el recorte.
 

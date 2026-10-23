@@ -213,6 +213,10 @@ class Chromosome(models.Model):
     # null = clasificación fallida → semáforo rojo (intervención manual, ADR-0006)
     confidence_score = models.DecimalField(max_digits=4, decimal_places=3, null=True, blank=True)
     bbox = models.JSONField(default=dict, blank=True)      # {x,y,w,h} crop en la metafase (P3)
+    # DD-KARYO-007 D1: silueta en píxeles de la metafase, [[x, y], ...]. La
+    # calcula backend-ml (el servidor clínico no procesa imágenes). null = aún
+    # sin calcular o sin silueta utilizable → el cliente pinta la caja (RN-07).
+    contour = models.JSONField(null=True, blank=True)
     measures = models.JSONField(default=dict, blank=True)  # {length_um, centromeric_index, band_count, quality}
     resolution_status = models.CharField(
         max_length=10, choices=ChromosomeResolution.choices, default=ChromosomeResolution.AUTO,

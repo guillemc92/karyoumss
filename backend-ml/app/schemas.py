@@ -21,6 +21,13 @@ class ChromosomeOut(BaseModel):
     confidence_score: float         # 0..1 (placeholder: bajo → naranja)
     bbox: BBox
     area: int
+    # DD-KARYO-007 D1: silueta en píxeles de la metafase; None → el cliente pinta la caja.
+    contour: list[list[int]] | None = None
+
+
+class ContornosOut(BaseModel):
+    """Una silueta por caja pedida, en el mismo orden; None donde no se pudo."""
+    contornos: list[list[list[int]] | None]
 
 
 class SegmentResult(BaseModel):

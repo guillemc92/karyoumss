@@ -41,6 +41,9 @@ class Detection:
     bbox: tuple[int, int, int, int]  # x, y, w, h
     area: int
     centroid: tuple[float, float]
+    # DD-KARYO-007 D1: silueta en píxeles de la metafase, [[x, y], ...]. None
+    # cuando no se pudo trazar (región degenerada): el cliente pinta la caja.
+    contour: list[list[int]] | None = None
 
 
 # Umbrales del baseline (px sobre imágenes ~1024x768). Ajustables por config.
@@ -78,6 +81,51 @@ def _sure_foreground(bw: np.ndarray, dist: np.ndarray) -> np.ndarray:
             continue
         fg[y:y + h, x:x + w][sub_mask & (sub_dist >= DIST_FG_FRAC * local_max)] = 255
     return fg
+
+
+# Tolerancia del simplificado de contornos, en px. Con 1 px la silueta no cambia
+# a la vista y pasa de cientos de puntos a unas decenas por cromosoma.
+EPSILON_CONTORNO = 1.0
+
+
+def contorno_de_mascara(mascara: np.ndarray, x0: int = 0, y0: int = 0) -> list[list[int]] | None:
+    """Contorno exterior mayor de una máscara binaria, desplazado a (x0, y0).
+
+    Es la silueta del objeto, no su caja (DD-KARYO-007 D1). Se queda con el
+    contorno de mayor área: si la máscara trae motas sueltas, no son el objeto.
+    None si no hay un polígono de al menos 3 puntos.
+    """
+    contornos, _ = cv2.findContours(mascara.astype(np.uint8), cv2.RETR_EXTERNAL,
+                                    cv2.CHAIN_APPROX_SIMPLE)
+    if not contornos:
+        return None
+    mayor = max(contornos, key=cv2.contourArea)
+    poligono = cv2.approxPolyDP(mayor, EPSILON_CONTORNO, True).reshape(-1, 2)
+    if len(poligono) < 3:
+        return None
+    return [[int(px) + x0, int(py) + y0] for px, py in poligono]
+
+
+def contorno_en_caja(gray: np.ndarray, bbox: tuple[int, int, int, int]) -> list[list[int]] | None:
+    """Silueta del cromosoma dentro de una caja ya conocida (DD-KARYO-007 D1).
+
+    Para los casos que solo tienen `bbox`: Otsu dentro del recorte y el contorno
+    exterior mayor, el mismo método que ADR-0035 midió con un 99,4 % de
+    precisión. None si la caja cae fuera de la imagen o no hay tinta en ella.
+    """
+    if gray.ndim == 3:
+        gray = cv2.cvtColor(gray, cv2.COLOR_BGR2GRAY)
+    x, y, w, h = (int(v) for v in bbox)
+    alto, ancho = gray.shape
+    if w <= 0 or h <= 0 or x < 0 or y < 0 or x + w > ancho or y + h > alto:
+        return None
+    recorte = gray[y:y + h, x:x + w]
+    if recorte.size == 0 or int(recorte.max()) == int(recorte.min()):
+        return None  # recorte plano: no hay nada que separar del fondo
+    mascara = _binary_mask(recorte)
+    if cv2.countNonZero(mascara) < 0.05 * w * h:
+        return None
+    return contorno_de_mascara(mascara, x, y)
 
 
 def _binary_mask(gray: np.ndarray) -> np.ndarray:
@@ -127,10 +175,15 @@ def segment(gray: np.ndarray) -> list[Detection]:
         bw_box, bh_box = x1 - x0 + 1, y1 - y0 + 1
         if bw_box < 6 or bh_box < 6:
             continue
+        # La región que watershed asignó a ESTA detección es su silueta exacta
+        # (DD-KARYO-007 D1): mejor que volver a umbralizar la caja, que puede
+        # colar el trozo de un vecino.
+        region = markers[y0:y1 + 1, x0:x1 + 1] == label
         detections.append(Detection(
             bbox=(x0, y0, bw_box, bh_box),
             area=area,
             centroid=(float(xs.mean()), float(ys.mean())),
+            contour=contorno_de_mascara(region, x0, y0),
         ))
     return detections
 

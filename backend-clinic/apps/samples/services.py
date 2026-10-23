@@ -8,7 +8,7 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone as django_timezone
 
-from .metafase import metafase_segmentada
+from .metafase import metafase_segmentada, ruta_segura
 from .models import (
     CONFIDENCE_THRESHOLD,
     Chromosome,
@@ -228,6 +228,7 @@ def ingest_segmentation(sample, result: dict) -> Karyotype:
                 position_index=pos,
                 confidence_score=conf_dec,
                 bbox=ch.get('bbox', {}) or {},
+                contour=ch.get('contour') or None,  # DD-KARYO-007 D1
                 resolution_status=res_status,
                 order=int(ch.get('order', 0)),
             )
@@ -547,7 +548,8 @@ def split_chromosome(sample, chromosome, actor, mode='auto') -> Chromosome:
     half = w / 2 if w else 0
     with transaction.atomic():
         chromosome.bbox = {'x': x, 'y': y, 'w': half, 'h': h}
-        chromosome.save(update_fields=['bbox'])
+        chromosome.contour = None  # DD-KARYO-007 D1: la silueta era la del objeto entero
+        chromosome.save(update_fields=['bbox', 'contour'])
         siblings = chromosome.karyotype.chromosomes.filter(
             predicted_class=chromosome.predicted_class,
         )
@@ -580,7 +582,8 @@ def join_chromosomes(sample, keep, absorbed, actor, mode='auto') -> Chromosome:
         raise CrossKaryotypeError('Los cromosomas pertenecen a cariotipos distintos.')
     with transaction.atomic():
         keep.bbox = _bbox_union(keep.bbox, absorbed.bbox)
-        keep.save(update_fields=['bbox'])
+        keep.contour = None  # DD-KARYO-007 D1: se recalcula sobre la caja unida (F2 unirá siluetas)
+        keep.save(update_fields=['bbox', 'contour'])
         absorbed.is_active = False
         absorbed.save(update_fields=['is_active'])
         emit_audit_event(
@@ -1010,9 +1013,12 @@ def recrop_chromosome(sample, chromosome, bbox: dict, actor, mode='auto') -> Chr
         # mirando otra cosa.
         chromosome.resolution_status = 'PENDING'
         chromosome.xai_viewed = False
+        # DD-KARYO-007 D1: la silueta era la del recorte anterior. Se invalida
+        # y `completar_contornos` la recalcula sobre el recorte nuevo.
+        chromosome.contour = None
         chromosome.save(update_fields=[
             'bbox', 'predicted_class', 'confidence_score',
-            'resolution_status', 'xai_viewed',
+            'resolution_status', 'xai_viewed', 'contour',
         ])
         emit_audit_event(
             sample, actor, AuditEventType.RECROP, chromosome=chromosome,
@@ -1030,3 +1036,50 @@ def recrop_chromosome(sample, chromosome, bbox: dict, actor, mode='auto') -> Chr
         )
     chromosome.refresh_from_db()
     return chromosome
+
+
+class SinMetafaseError(Exception):
+    """El cariotipo no tiene una metafase utilizable sobre la que trazar."""
+
+
+def completar_contornos(sample) -> int:
+    """Calcula la silueta de los cromosomas que aún no la tienen (DD-KARYO-007 D1).
+
+    Los cariotipos segmentados antes de DD-KARYO-007 solo tienen `bbox`, y
+    recortar o separar deja el contorno a `None` porque ya no corresponde. Esto
+    pide a backend-ml la silueta de esas cajas y la guarda.
+
+    - **No emite evento de auditoría:** no es una decisión del analista; es dato
+      derivado de la imagen, como el semáforo. RN-05 rige las correcciones.
+    - **No toca casos validados** (RN-04): un caso cerrado se ve con lo que tenía.
+    - Si backend-ml no responde, propaga `MLDegradedError` y no cambia nada
+      (RN-07): el cliente sigue pintando las cajas.
+
+    Devuelve cuántos contornos quedaron guardados.
+    """
+    _assert_editable(sample)
+    karyotype = getattr(sample, 'karyotype', None)
+    if karyotype is None:
+        return 0
+    pendientes = [
+        c for c in karyotype.chromosomes.filter(is_active=True, contour__isnull=True)
+        if (c.bbox or {}).get('w', 0) > 0 and (c.bbox or {}).get('h', 0) > 0
+    ]
+    if not pendientes:
+        return 0
+
+    imagen = metafase_segmentada(sample)
+    ruta = ruta_segura(imagen.image_path) if imagen else None
+    if ruta is None:
+        raise SinMetafaseError('el cariotipo no tiene una metafase utilizable')
+
+    contornos = pipeline_client.contours(ruta.read_bytes(), [c.bbox for c in pendientes],
+                                         filename=ruta.name)
+    guardados = 0
+    with transaction.atomic():
+        for cromosoma, contorno in zip(pendientes, contornos):
+            if contorno:
+                cromosoma.contour = contorno
+                cromosoma.save(update_fields=['contour'])
+                guardados += 1
+    return guardados

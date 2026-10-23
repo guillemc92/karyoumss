@@ -18,6 +18,7 @@ from .views import (
     ChromosomeSplitView,
     ChromosomeRecropView,
     ChromosomeXaiView,
+    KaryotypeContoursView,
     KaryotypeView,
     MetaphaseImageView,
     PipelineHealthView,
@@ -40,6 +41,9 @@ urlpatterns = [
     path('samples/<uuid:pk>/karyotype/', KaryotypeView.as_view(), name='sample-karyotype'),
     path('samples/<uuid:pk>/karyotype/metaphase/', MetaphaseImageView.as_view(),
          name='sample-karyotype-metaphase'),
+    # DD-KARYO-007 D1: siluetas de los cromosomas que aún no la tienen.
+    path('samples/<uuid:pk>/karyotype/contours/', KaryotypeContoursView.as_view(),
+         name='sample-karyotype-contours'),
 
     # Cariotipo P2 (ADR-0021 P2, ADR-0022) — XAI + resolución + gating + audit.
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/xai/', ChromosomeXaiView.as_view(), name='chromosome-xai'),

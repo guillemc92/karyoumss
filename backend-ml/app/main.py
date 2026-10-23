@@ -10,12 +10,14 @@ Límites:   ML_MAX_INFERENCIAS (1) y ML_ESPERA_MAX_S (25) — DD-AUD-001 F1.
 """
 from __future__ import annotations
 
+import json
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
 from .concurrencia import LimiteInferencias
 from .pipeline import get_classifier, run_pipeline
-from .schemas import HealthOut, SegmentResult
-from .segmentation import load_gray
+from .schemas import ContornosOut, HealthOut, SegmentResult
+from .segmentation import contorno_en_caja, load_gray
 
 app = FastAPI(
     title='BIOMED UMSS — Motor de Inferencia de Cariotipado',
@@ -55,6 +57,52 @@ def segment_endpoint(file: UploadFile = File(...)) -> SegmentResult:
         raise HTTPException(status_code=422, detail=str(e)) from e
     with limite.turno():
         return run_pipeline(gray)
+
+
+#: Tope de cajas por petición: una metafase trae ~46; el margen cubre los casos
+#: sobresegmentados sin dejar que una petición pida miles de recortes.
+MAX_CAJAS_CONTORNO = 200
+
+
+@app.post('/api/v1/contours/', response_model=ContornosOut)
+def contours_endpoint(file: UploadFile = File(...), bboxes: str = Form(...)) -> ContornosOut:
+    """Silueta de cada caja dada sobre la metafase (DD-KARYO-007 D1).
+
+    Para los casos que se segmentaron antes de que `/segment/` devolviera
+    contornos: solo tienen `bbox`. `bboxes` es una lista JSON de
+    `{x, y, w, h}` en píxeles de la metafase; la respuesta trae un contorno por
+    caja y en el mismo orden, o `null` si la caja no tiene una silueta
+    utilizable (fuera de la imagen, sin tinta).
+
+    No pasa por el límite de inferencias: no toca el modelo y es Otsu sobre
+    recortes, milisegundos por caja.
+    """
+    try:
+        cajas = json.loads(bboxes)
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail='bboxes no es JSON válido') from exc
+    if not isinstance(cajas, list) or not all(isinstance(c, dict) for c in cajas):
+        raise HTTPException(status_code=400, detail='bboxes debe ser una lista de {x, y, w, h}')
+    if len(cajas) > MAX_CAJAS_CONTORNO:
+        raise HTTPException(status_code=400,
+                            detail=f'como mucho {MAX_CAJAS_CONTORNO} cajas por petición')
+    data = file.file.read()
+    if not data:
+        raise HTTPException(status_code=400, detail='Archivo vacío')
+    try:
+        gray = load_gray(data)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    contornos = []
+    for c in cajas:
+        try:
+            caja = tuple(int(c[k]) for k in ('x', 'y', 'w', 'h'))
+        except (KeyError, TypeError, ValueError):
+            contornos.append(None)  # una caja mal formada no tumba las demás
+            continue
+        contornos.append(contorno_en_caja(gray, caja))
+    return ContornosOut(contornos=contornos)
 
 
 @app.post('/api/v1/xai/')

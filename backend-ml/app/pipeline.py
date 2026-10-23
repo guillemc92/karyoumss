@@ -66,6 +66,7 @@ def run_pipeline(
             confidence_score=conf,
             bbox=BBox(x=x, y=y, w=bw, h=bh),
             area=d.area,
+            contour=d.contour,
         ))
 
     seg_name = 'opencv-watershed-v0'

@@ -1,3 +1,4 @@
+import json
 import time
 
 import httpx
@@ -123,6 +124,37 @@ class PipelineClient:
         except (httpx.TimeoutException, httpx.HTTPError) as exc:
             self._record_failure()
             raise MLDegradedError(str(exc)) from exc
+
+
+    def contours(self, image_bytes: bytes, bboxes: list[dict],
+                 filename: str = 'metafase.bmp') -> list:
+        """Silueta de cada caja sobre la metafase (/api/v1/contours/, DD-KARYO-007 D1).
+
+        Para los cariotipos segmentados antes de que backend-ml devolviera
+        contornos. Devuelve una lista paralela a `bboxes`: un polígono
+        `[[x, y], ...]` o None por caja.
+        """
+        if self._circuit_open():
+            raise MLDegradedError('circuit_open')
+        cajas = [{k: int(b.get(k, 0)) for k in ('x', 'y', 'w', 'h')} for b in bboxes]
+        try:
+            with httpx.Client(timeout=max(self.timeout, 30.0)) as client:
+                resp = client.post(
+                    f'{self.base_url}/api/v1/contours/',
+                    files={'file': (filename, image_bytes, 'application/octet-stream')},
+                    data={'bboxes': json.dumps(cajas)},
+                )
+                resp.raise_for_status()
+                self._record_success()
+                contornos = resp.json().get('contornos')
+        except (httpx.TimeoutException, httpx.HTTPError, ValueError) as exc:
+            self._record_failure()
+            raise MLDegradedError(str(exc)) from exc
+        if not isinstance(contornos, list) or len(contornos) != len(cajas):
+            # Una respuesta que no casa caja a caja no se puede asignar sin
+            # riesgo de pegar la silueta de un cromosoma en otro.
+            raise MLDegradedError('respuesta de contornos que no corresponde a las cajas')
+        return contornos
 
 
 pipeline_client = PipelineClient(
