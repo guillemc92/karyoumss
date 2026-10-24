@@ -65,7 +65,7 @@ unía cajas y la metafase solo se veía al recortar.
 El corte y la unión los calcula backend-ml: `POST /api/v1/split/`, `/api/v1/join/` y
 `/api/v1/contours/` en `backend-ml/openapi.json`.
 
-**Evidencia:** commits `52361da`, `3eab8f1`, `548b1aa`, `0588f56`, `0bcd982`, `cc7a0b4` y `518337b`.
+**Evidencia** de la funcionalidad 1: commits `52361da`, `3eab8f1`, `548b1aa`, `0588f56`, `0bcd982`, `cc7a0b4` y `518337b`.
 
 ## Funcionalidad 2 — Contrato OpenAPI generado desde el código y validado en CI
 
@@ -99,4 +99,12 @@ está abajo.
    pintar la metafase.
 3. **Volver atrás**: el CI queda en verde.
 
-Los dos estados del CI quedan enlazados en `8.2.0-aportes.md`, por si la red falla en vivo.
+PR de demostración: [#6](https://github.com/guillemc92/karyoumss/pull/6), en borrador; no se fusiona. Si la red falla en vivo, estos son los tres estados ya ejecutados:
+
+| Estado | Qué detecta el CI | Run |
+|---|---|---|
+| Contrato correcto | Todo en verde | [40055443260](https://github.com/guillemc92/karyoumss/actions/runs/40055443260) |
+| Paso 1 · `contour` quitado sin regenerar | Drift en backend-clinic | [40055492310](https://github.com/guillemc92/karyoumss/actions/runs/40055492310) |
+| Paso 2 · contrato regenerado | oasdiff: 8 endpoints pierden `contour` → cambio incompatible | [40055614994](https://github.com/guillemc92/karyoumss/actions/runs/40055614994) |
+
+**Evidencia** de la funcionalidad 2: commits `b93e51a`, `2d161c6` y `08ce539`.

@@ -6,7 +6,7 @@
 | **Origen** | Módulo 8, Demo 2 (lun 26/10, `release/8.2.0`): consigna de Classroom, sesión 5 (partes B y C) y plan del módulo (actividad 8, «Contrato OpenAPI validado en CI») |
 | **Servicios** | backend-clinic (Django + DRF), backend-ml (FastAPI) |
 | **Reglas** | RN-09 (cobertura ≥ 90 %) · DD-KARYO-007 (sus endpoints tienen que estar en el contrato) |
-| **Estado** | **Aprobado** por el autor el 2026-10-24 |
+| **Estado** | **Implementado** el 2026-10-24 (aprobado ese mismo día) · verificación en §6 |
 | **Fecha** | 2026-10-24 |
 
 ## 1. Por qué
@@ -110,3 +110,19 @@ El mismo guion queda escrito en `docs/demos/demo-2.md` para repetirlo en vivo.
 - Schemathesis contra backend-clinic (D4).
 - Prism (simulación) y Pact (contratos cliente-servidor), que el sílabo menciona pero la
   consigna de la demo no pide.
+
+## 6. Verificación (2026-10-24)
+
+- **CI en GitHub, en verde** con el contrato correcto: [run 40055443260](https://github.com/guillemc92/karyoumss/actions/runs/40055443260).
+- **El CI detecta la ruptura** (PR de demostración #6, D5):
+  - quitar `contour` sin regenerar → **falla el drift** ([run 40055492310](https://github.com/guillemc92/karyoumss/actions/runs/40055492310));
+  - regenerar → el drift pasa y **oasdiff marca 8 endpoints que pierden `contour`** ([run 40055614994](https://github.com/guillemc92/karyoumss/actions/runs/40055614994)).
+- **Dos fallos del propio CI**, cazados antes de la demo y corregidos:
+  - en Linux, drf-spectacular autodetectaba otro prefijo y los `operationId` cambiaban → `SCHEMA_PATH_PREFIX` fijo;
+  - la action de oasdiff corre en un contenedor que no ve `$RUNNER_TEMP` → el contrato base va dentro del espacio de trabajo.
+- **Limitación de Schemathesis**, que queda declarada: casi todos los datos que genera
+  se rechazan con 400, porque `bbox`, `linea` y `contour` viajan como texto JSON dentro
+  de un formulario y el contrato solo puede decir «texto». Comprueba sobre todo que no
+  haya 5xx y que los errores respeten su forma, no los caminos de éxito.
+- **Pruebas:** backend-clinic 1111/1111 (90,80 %), backend-ml 117/117 (90 %).
+
