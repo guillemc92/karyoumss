@@ -70,12 +70,14 @@ jobs:
         working-directory: .
         run: npx --yes @stoplight/spectral-cli@6.14.2 lint backend-clinic/openapi.json --ruleset .spectral.yaml --fail-severity error
 
+      # La action de oasdiff corre en un contenedor que solo monta el espacio de
+      # trabajo: el contrato base tiene que estar ahí, no en $RUNNER_TEMP.
       - name: 3a · Contrato de la rama base
         if: github.event_name == 'pull_request'
         id: base
         working-directory: .
         run: |
-          if git show "origin/${{ github.base_ref }}:backend-clinic/openapi.json" > "$RUNNER_TEMP/base-clinic.json" 2>/dev/null; then
+          if git show "origin/${{ github.base_ref }}:backend-clinic/openapi.json" > "contrato-base-clinic.json" 2>/dev/null; then
             echo "existe=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::La rama base todavía no tiene backend-clinic/openapi.json: no hay contra qué comparar."
@@ -86,7 +88,7 @@ jobs:
         if: github.event_name == 'pull_request' && steps.base.outputs.existe == 'true'
         uses: oasdiff/oasdiff-action/breaking@v0.1.18
         with:
-          base: ${{ runner.temp }}/base-clinic.json
+          base: contrato-base-clinic.json
           revision: backend-clinic/openapi.json
           fail-on: ERR
 
@@ -127,12 +129,14 @@ jobs:
         working-directory: .
         run: npx --yes @stoplight/spectral-cli@6.14.2 lint backend-ml/openapi.json --ruleset .spectral.yaml --fail-severity error
 
+      # La action de oasdiff corre en un contenedor que solo monta el espacio de
+      # trabajo: el contrato base tiene que estar ahí, no en $RUNNER_TEMP.
       - name: 3a · Contrato de la rama base
         if: github.event_name == 'pull_request'
         id: base
         working-directory: .
         run: |
-          if git show "origin/${{ github.base_ref }}:backend-ml/openapi.json" > "$RUNNER_TEMP/base-ml.json" 2>/dev/null; then
+          if git show "origin/${{ github.base_ref }}:backend-ml/openapi.json" > "contrato-base-ml.json" 2>/dev/null; then
             echo "existe=true" >> "$GITHUB_OUTPUT"
           else
             echo "::notice::La rama base todavía no tiene backend-ml/openapi.json: no hay contra qué comparar."
@@ -143,7 +147,7 @@ jobs:
         if: github.event_name == 'pull_request' && steps.base.outputs.existe == 'true'
         uses: oasdiff/oasdiff-action/breaking@v0.1.18
         with:
-          base: ${{ runner.temp }}/base-ml.json
+          base: contrato-base-ml.json
           revision: backend-ml/openapi.json
           fail-on: ERR
 
