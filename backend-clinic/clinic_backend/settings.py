@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'corsheaders',
+    'drf_spectacular',  # DD-API-001: el contrato OpenAPI se genera desde el código
 
     # Local apps (bounded context Muestras clínico)
     'apps.samples',
@@ -119,6 +120,38 @@ REST_FRAMEWORK = {
     'DEFAULT_PARSER_CLASSES': [
         'rest_framework.parsers.JSONParser',
     ],
+    # DD-API-001: drf-spectacular genera el contrato (`manage.py spectacular`).
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+# DD-API-001 — contrato OpenAPI de backend-clinic (`backend-clinic/openapi.json`).
+# Se exporta con `python manage.py spectacular --file openapi.json --validate` y el
+# CI comprueba que el archivo del repositorio es el que genera el código (drift).
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'BIOMED UMSS — API clínica',
+    'DESCRIPTION': (
+        'API del servicio clínico (muestras, cariotipo y su corrección manual, supervisor). '
+        'Contrato generado desde el código; ver docs/design/DD-API-001.md.'
+    ),
+    'VERSION': '8.2.0',
+    'CONTACT': {'name': 'Ing. Guillermo Mamani Chambi', 'url': 'https://github.com/guillemc92/karyoumss'},
+    'SERVERS': [{'url': 'http://localhost:8002', 'description': 'Desarrollo local (detrás de Caddy: http://localhost:3000)'}],
+    # Las etiquetas agrupan las operaciones; Spectral exige que estén declaradas.
+    'TAGS': [
+        {'name': 'Cariotipo', 'description': 'Lectura del cariotipo y de su metafase.'},
+        {'name': 'Corrección manual', 'description': 'Corrección de la segmentación sobre la metafase (DD-KARYO-007, FSD-UC-003).'},
+        {'name': 'Muestras', 'description': 'Alta, consulta y edición de muestras.'},
+        {'name': 'Sin describir', 'description': 'Endpoints que el contrato todavía declara como objeto JSON genérico (DD-API-001 D2).'},
+    ],
+    # El contrato describe la API, no a sí mismo.
+    'SERVE_INCLUDE_SCHEMA': False,
+    # Esquemas distintos para lo que entra y lo que sale (campos read_only).
+    'COMPONENT_SPLIT_REQUEST': True,
+    # Determinista: el drift no puede fallar sin que nadie haya cambiado nada.
+    'SORT_OPERATIONS': True,
+    'SORT_OPERATION_PARAMETERS': True,
+    # Un solo nombre para las 24 clases (1-22, X, Y), las use quien las use.
+    'ENUM_NAME_OVERRIDES': {'ClaseCromosomaEnum': 'apps.samples.models.CHROMOSOME_CLASSES'},
 }
 
 SIMPLE_JWT = {

@@ -1,5 +1,8 @@
 from django.urls import path
 
+# DD-API-001: describe las vistas en el contrato OpenAPI al cargar las rutas.
+from . import contrato  # noqa: F401
+
 from .views import (
     ChromosomeOrientView,
     KaryotypeUndoView,

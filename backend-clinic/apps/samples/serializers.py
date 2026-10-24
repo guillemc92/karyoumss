@@ -1,6 +1,7 @@
 import re
 
 from rest_framework import serializers
+from drf_spectacular.utils import extend_schema_field, inline_serializer
 
 from .models import AuditEvent, AuditReview, Chromosome, Karyotype, Sample, SampleType
 
@@ -197,9 +198,15 @@ class KaryotypeSerializer(serializers.ModelSerializer):
         # deben aparecer en el visor ni contar en el summary (DD-KARYO-003).
         return [c for c in obj.chromosomes.all() if c.is_active]
 
+    @extend_schema_field(ChromosomeSerializer(many=True))
     def get_chromosomes(self, obj) -> list:
         return ChromosomeSerializer(self._active_chromosomes(obj), many=True).data
 
+    @extend_schema_field(inline_serializer('ResumenCariotipo', {
+        'total': serializers.IntegerField(), 'green': serializers.IntegerField(),
+        'orange': serializers.IntegerField(), 'red': serializers.IntegerField(),
+        'unresolved_orange': serializers.IntegerField(), 'is_blocked': serializers.BooleanField(),
+    }))
     def get_summary(self, obj) -> dict:
         green = orange = red = unresolved_orange = 0
         for chromo in self._active_chromosomes(obj):

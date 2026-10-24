@@ -1,0 +1,8 @@
+# DD-API-001 — reglas de Spectral para los contratos de BIOMED UMSS.
+# El CI falla con cualquier ERROR; los avisos se ven en el log.
+extends: ["spectral:oas"]
+
+rules:
+  # Django termina las rutas en «/» (APPEND_SLASH) y el frontend las llama así.
+  # El contrato describe la API real: quitar la barra lo haría mentir.
+  path-keys-no-trailing-slash: off

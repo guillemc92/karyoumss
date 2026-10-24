@@ -22,9 +22,26 @@ from .segmentation import contorno_en_caja, load_gray
 
 app = FastAPI(
     title='BIOMED UMSS — Motor de Inferencia de Cariotipado',
-    version='0.1.0',
-    description='Segmentación + clasificación de cromosomas (ADR-0007). Baseline OpenCV + placeholder.',
+    version='8.2.0',
+    description=('Segmentación + clasificación de cromosomas (ADR-0007) y las operaciones de edición '
+                 'de la metafase (DD-KARYO-007). Contrato exportado con `python -m app.exportar_openapi` '
+                 '(DD-API-001).'),
+    contact={'name': 'Ing. Guillermo Mamani Chambi', 'url': 'https://github.com/guillemc92/karyoumss'},
+    servers=[{'url': 'http://localhost:8000', 'description': 'Desarrollo local'}],
+    openapi_tags=[
+        {'name': 'Salud', 'description': 'Estado del servicio y del modelo cargado.'},
+        {'name': 'Inferencia', 'description': 'Segmentar, clasificar y explicar.'},
+        {'name': 'Edición de la metafase', 'description': 'Contornos, separar y unir (DD-KARYO-007).'},
+    ],
 )
+
+#: Errores propios (HTTPException): `detail` es un texto. Los de validación de
+#: FastAPI traen una lista; el contrato admite las dos formas para el 422.
+_ERROR = {'description': 'Petición inválida.', 'content': {'application/json': {'schema': {
+    'type': 'object', 'properties': {'detail': {'type': 'string'}}}}}}
+_ERROR_422 = {'description': 'La imagen no se puede leer, el corte no separa el objeto o los campos no validan.',
+              'content': {'application/json': {'schema': {'type': 'object', 'properties': {
+                  'detail': {'anyOf': [{'type': 'string'}, {'type': 'array', 'items': {'type': 'object'}}]}}}}}}
 
 # DD-AUD-001 F1 (CON-02): los endpoints de inferencia son `def`, no `async def`.
 # Hacen ~19 s de CPU síncrona; dentro de un `async def` congelaban el único
@@ -33,8 +50,9 @@ app = FastAPI(
 limite = LimiteInferencias.desde_entorno()
 
 
-@app.get('/health/', response_model=HealthOut)
+@app.get('/health/', response_model=HealthOut, tags=['Salud'])
 def health() -> HealthOut:
+    """Estado del servicio y del clasificador cargado (entrenado o de reserva)."""
     clf = get_classifier()
     return HealthOut(
         status='ok',
@@ -44,7 +62,8 @@ def health() -> HealthOut:
     )
 
 
-@app.post('/api/v1/segment/', response_model=SegmentResult)
+@app.post('/api/v1/segment/', response_model=SegmentResult, tags=['Inferencia'],
+          responses={400: _ERROR, 422: _ERROR_422})
 def segment_endpoint(file: UploadFile = File(...)) -> SegmentResult:
     """Recibe una imagen de metafase (BMP/PNG/JPG/TIFF) y devuelve los
     cromosomas detectados (bbox + clase placeholder + confianza). Segmentación
@@ -65,7 +84,8 @@ def segment_endpoint(file: UploadFile = File(...)) -> SegmentResult:
 MAX_CAJAS_CONTORNO = 200
 
 
-@app.post('/api/v1/contours/', response_model=ContornosOut)
+@app.post('/api/v1/contours/', response_model=ContornosOut, tags=['Edición de la metafase'],
+          responses={400: _ERROR, 422: _ERROR_422})
 def contours_endpoint(file: UploadFile = File(...), bboxes: str = Form(...)) -> ContornosOut:
     """Silueta de cada caja dada sobre la metafase (DD-KARYO-007 D1).
 
@@ -128,7 +148,8 @@ def _caja(t) -> dict[str, int]:
     return {'x': int(t[0]), 'y': int(t[1]), 'w': int(t[2]), 'h': int(t[3])}
 
 
-@app.post('/api/v1/split/', response_model=SplitOut)
+@app.post('/api/v1/split/', response_model=SplitOut, tags=['Edición de la metafase'],
+          responses={400: _ERROR, 422: _ERROR_422})
 def split_endpoint(
     file: UploadFile = File(...),
     bbox: str = Form(...),
@@ -166,7 +187,8 @@ def split_endpoint(
     return SplitOut(trozos=[TrozoOut(contour=t.contour, bbox=_caja(t.bbox), area=t.area) for t in trozos])
 
 
-@app.post('/api/v1/join/', response_model=JoinOut)
+@app.post('/api/v1/join/', response_model=JoinOut, tags=['Edición de la metafase'],
+          responses={400: _ERROR, 422: _ERROR_422})
 def join_endpoint(contornos: str = Form(...)) -> JoinOut:
     """Silueta de la unión de varias siluetas (DD-KARYO-007 D4). Sin imagen:
     es geometría sobre los contornos. 400 mal formado, 422 menos de dos."""
@@ -181,7 +203,7 @@ def join_endpoint(contornos: str = Form(...)) -> JoinOut:
     return JoinOut(contour=contorno, bbox=_caja(caja))
 
 
-@app.post('/api/v1/xai/')
+@app.post('/api/v1/xai/', tags=['Inferencia'], responses={400: _ERROR, 422: _ERROR_422})
 def xai_endpoint(
     file: UploadFile = File(...),
     x: int = Form(...), y: int = Form(...),
@@ -235,7 +257,7 @@ def xai_endpoint(
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 
 
-@app.post('/api/v1/classify/')
+@app.post('/api/v1/classify/', tags=['Inferencia'], responses={400: _ERROR, 422: _ERROR_422})
 def classify_endpoint(
     file: UploadFile = File(...),
     x: int = Form(...), y: int = Form(...),
