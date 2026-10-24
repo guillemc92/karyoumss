@@ -694,6 +694,21 @@ export const handlers = [
     return HttpResponse.json({ origen: chromo, creados: [nuevo] }, { status: 201 });
   }),
 
+  // D7: girar 180° / voltear. Presentación: solo cambia measures.orientacion.
+  http.post(`${API}/samples/:id/chromosomes/:cid/orient/`, async ({ params, request }) => {
+    const sid = String(params.id);
+    if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
+    const chromo = getOrBuildKaryotype(sid).chromosomes.find((c) => c.id === params.cid);
+    if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
+    const { giro, volteo } = (await request.json()) as { giro?: number; volteo?: unknown };
+    if ((giro !== 0 && giro !== 180) || typeof volteo !== 'boolean') {
+      return HttpResponse.json({ code: 'VALIDATION_ERROR', detail: 'giro 0|180 y volteo booleano' }, { status: 400 });
+    }
+    chromo.measures = { ...chromo.measures, orientacion: { giro, volteo } };
+    pushAudit(sid, 'ORIENT', chromo.id, modeOf(request));
+    return HttpResponse.json(chromo);
+  }),
+
   // D6: deshacer. El doble solo sabe deshacer el último SPLIT que hizo.
   http.get(`${API}/samples/:id/karyotype/undo/`, ({ params }) => {
     const u = ultimaEdicionMock[String(params.id)];

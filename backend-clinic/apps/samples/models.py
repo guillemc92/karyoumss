@@ -272,6 +272,10 @@ class AuditEventType(models.TextChoices):
     # DD-KARYO-007 D6: deshacer es un evento que COMPENSA, nunca un borrado. El
     # payload dice qué evento deshace; el original se queda en la cadena (RN-05).
     UNDO_EDIT = 'UNDO_EDIT', 'Edición deshecha'
+    # DD-KARYO-007 D7: girar 180° y voltear en el cariograma. Es presentación
+    # (no cambia bbox ni contour), pero queda en la traza: decide qué extremo
+    # se lee como brazo p.
+    ORIENT = 'ORIENT', 'Orientación cambiada'
     ANALYST_VALIDATED = 'ANALYST_VALIDATED', 'Validado por analista'
     AUDIT_DECISION = 'AUDIT_DECISION', 'Decisión de auditoría'  # futuro
     ISCN_OVERRIDE = 'ISCN_OVERRIDE', 'Override ISCN'            # futuro

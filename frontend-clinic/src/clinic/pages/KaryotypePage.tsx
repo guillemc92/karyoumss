@@ -127,7 +127,7 @@ export function KaryotypePage() {
 
   const {
     viewXai, resolve, markAnomaly, validate, reclassify, split, join, resolveCross, recrop,
-    rejectObject, addObject, undo,
+    rejectObject, addObject, undo, orient,
   } = useKaryotypeActions(id);
   const audit = useAuditTrail(id, showAudit);
   // D6: la barra enseña qué desharía «Deshacer». Solo en casos editables: en
@@ -193,7 +193,8 @@ export function KaryotypePage() {
   const busy =
     viewXai.isPending || resolve.isPending || markAnomaly.isPending || validate.isPending ||
     reclassify.isPending || split.isPending || join.isPending || resolveCross.isPending ||
-    recrop.isPending || rejectObject.isPending || addObject.isPending || undo.isPending;
+    recrop.isPending || rejectObject.isPending || addObject.isPending || undo.isPending ||
+    orient.isPending;
   // Los mismos estados que bloquea el servidor (`_assert_editable`).
   const editable = !validated && !['ANALYST_VALIDATED', 'VALIDATED'].includes(karyotype.sample_status);
 
@@ -269,6 +270,11 @@ export function KaryotypePage() {
       const { origen } = await split.mutateAsync({ chromosomeId: c.id, linea });
       setSelected(origen);
     });
+  }
+
+  // D7: girar 180° / voltear en el cariograma.
+  function handleOrient(c: Chromosome, o: { giro: 0 | 180; volteo: boolean }) {
+    void runP3('Error al orientar', () => orient.mutateAsync({ chromosomeId: c.id, ...o }));
   }
 
   // D6: deshacer puede devolver al cariotipo un objeto que ya no está, o
@@ -442,6 +448,7 @@ export function KaryotypePage() {
             onJoinConfirm={validated ? undefined : handleJoinConfirm}
             joinPick={joinPick}
             onToggleCrop={validated || !recortable(selected) ? undefined : alternarRecorte}
+            onOrient={editable && metafase ? handleOrient : undefined}
             cropActivo={recortando === selected?.id}
           />
           <div className="karyo-gating">

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { SUPERVISOR, pedirToken, sembrarSesion } from '../fixtures/sesion';
-import { STAGE_WIDTH, chromosomePosition } from '../../src/clinic/lib/karyoLayout';
+import { STAGE_WIDTH, posicionesCariograma } from '../../src/clinic/lib/karyoLayout';
 import { aPanel, escalaPanel, regionDeRecorte } from '../../src/clinic/lib/recorteMetafase';
 
 /**
@@ -41,8 +41,21 @@ const CLINIC_API = process.env.E2E_CLINIC_API || 'http://localhost:8002';
 
 interface Caja { x: number; y: number; w: number; h: number }
 interface Cromosoma {
-  id: string; predicted_class: string; position_index: number;
+  id: string; predicted_class: string; position_index: number; order: number;
   is_active: boolean; bbox: Partial<Caja>;
+}
+
+/**
+ * Un cromosoma con caja que NO quede tapado en el cariograma: el último de su
+ * par. Si un par tiene más copias de las que caben, se comprimen en su hueco
+ * (DD-KARYO-007 T7) y las primeras quedan solapadas por las siguientes.
+ */
+function visibleEntero(activos: Cromosoma[]): Cromosoma | null {
+  const pos = posicionesCariograma(activos);
+  return activos
+    .filter((c) => (c.bbox?.w ?? 0) > 0)
+    .find((c) => !activos.some((o) => o.predicted_class === c.predicted_class && pos.get(o.id)!.x > pos.get(c.id)!.x))
+    ?? null;
 }
 
 /** Ancho y alto de la metafase, leídos de su cabecera (BMP o PNG). */
@@ -63,8 +76,9 @@ async function casoConMetafase(request: any, access: string) {
       { headers: { ...cab, Accept: 'image/*' } });
     if (!img.ok()) continue;
     const k = await (await request.get(`${CLINIC_API}/api/clinic/samples/${m.id}/karyotype/`, { headers: cab })).json();
-    const crom = (k.chromosomes as Cromosoma[]).find((c) => c.is_active && (c.bbox?.w ?? 0) > 0);
-    if (crom) return { muestra: m.id as string, crom, imagen: dimensiones(await img.body()) };
+    const activos = (k.chromosomes as Cromosoma[]).filter((c) => c.is_active);
+    const crom = visibleEntero(activos);
+    if (crom) return { muestra: m.id as string, crom, activos, imagen: dimensiones(await img.body()) };
   }
   return null;
 }
@@ -74,7 +88,7 @@ test('el recorte dibujado sobre un cromosoma cae sobre ESE cromosoma en la metaf
   const tokens = await pedirToken(request, SUPERVISOR);
   const caso = await casoConMetafase(request, tokens.access);
   test.skip(!caso, 'no hay ningún caso READY con metafase real y cajas en esta base');
-  const { muestra, crom, imagen } = caso!;
+  const { muestra, crom, activos, imagen } = caso!;
   const original = crom.bbox as Caja;
 
   let enviado: Caja | null = null;
@@ -99,7 +113,7 @@ test('el recorte dibujado sobre un cromosoma cae sobre ESE cromosoma en la metaf
   };
 
   // El cuerpo del cromosoma ocupa (2, 10)–(24, 110) dentro de su grupo.
-  const pos = chromosomePosition(crom);
+  const pos = posicionesCariograma(activos).get(crom.id)!;
   const centro = await enPantalla(pos.x + 13, pos.y + 60);
   await page.mouse.click(centro.x, centro.y);
   await page.getByTestId('action-crop').click();

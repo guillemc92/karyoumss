@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .views import (
+    ChromosomeOrientView,
     KaryotypeUndoView,
     ChromosomeRejectView,
     KaryotypeObjectsView,
@@ -55,6 +56,9 @@ urlpatterns = [
          name='sample-karyotype-undo'),
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/reject/', ChromosomeRejectView.as_view(),
          name='chromosome-reject'),
+    # D7: girar 180° y voltear en el cariograma (presentación, auditada).
+    path('samples/<uuid:pk>/chromosomes/<uuid:cid>/orient/', ChromosomeOrientView.as_view(),
+         name='chromosome-orient'),
 
     # Cariotipo P2 (ADR-0021 P2, ADR-0022) — XAI + resolución + gating + audit.
     path('samples/<uuid:pk>/chromosomes/<uuid:cid>/xai/', ChromosomeXaiView.as_view(), name='chromosome-xai'),

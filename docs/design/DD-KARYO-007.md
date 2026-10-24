@@ -7,7 +7,7 @@
 | **Continúa** | [DD-KARYO-006](DD-KARYO-006.md) (cromosomas reales en el cariograma) |
 | **FSD** | FSD-UC-003 (corrección manual del cariotipo) |
 | **Reglas** | RN-01 (validación manual), RN-05 (auditoría solo de inserción), RN-06 (alcance del analista), RN-07 (degradación), RN-09 (cobertura ≥ 90 %) |
-| **Estado** | **Aprobado** por el autor el 2026-10-23 · respuestas a §9 en §10 |
+| **Estado** | **Implementado F1–F3** el 2026-10-23 (verificación en §12) · aprobado por el autor ese mismo día, respuestas a §9 en §10 · F4 (SAM) bloqueada hasta que ADR-0034 o el que lo sustituya esté `accepted` |
 | **Fecha** | 2026-10-23 |
 
 ## 1. Por qué existe
@@ -208,8 +208,8 @@ mismo alcance que el visor (`HasOpcion('sample.view')` más ser el dueño; 403
 | T4 | `geometriaContorno.ts` (cortar y unir) con cobertura total — **hecho 23/10**, con el alcance de §10.1: punto dentro, cruces de la línea con el borde y «¿corta?» para avisar antes de enviar; 100 % de cobertura | F2 | 2,5 h |
 | T5 | SPLIT por línea y JOIN por máscara en el backend; E2E que reproduce el defecto — **hecho 23/10** (`0588f56`): `POST /api/v1/split/` y `/join/` en backend-ml (ráster); la prueba central reproduce el defecto con una frontera diagonal; sin línea, 400 | F2 | 3 h |
 | T6 | Herramienta de corte en el editor + deshacer (D6) — **hecho 23/10**: «Separar» (Alt+S) con la línea en verde cuando ya corta; `UNDO_EDIT` (migración 0019) y `GET/POST …/karyotype/undo/`; E2E en Chromium con muestra propia: separa, deshace y el cromosoma queda idéntico | F2 | 3 h |
-| T7 | Cariograma legible: escala, línea base, girar y voltear (D7) | F3 | 2,5 h |
-| T8 | E2E completo, capturas y cierre | F1–F3 | 2 h |
+| T7 | Cariograma legible: escala, línea base, girar y voltear (D7) — **hecho 23/10**: escala común (percentil 90 del largo), línea base, marco ajustado a la imagen, lienzo al ancho del panel, copias comprimidas dentro de su hueco; `ORIENT` (migración 0020) y botones «Girar 180°» / «Voltear» en el panel | F3 | 2,5 h |
+| T8 | E2E completo, capturas y cierre — **hecho 23/10**: `metafase-flujo-completo.spec.ts` (añadir → descartar → separar → deshacer → girar dos veces, con la auditoría en orden) y §12 | F1–F3 | 2 h |
 | — | F4 (SAM): spec propia cuando ADR-0034 (o el ADR que lo sustituya) esté `accepted` | F4 | — |
 
 Total F1–F3: unas 21 h.
@@ -247,7 +247,7 @@ con lo que se proponía. La 1 no tenía propuesta y se decidió con un criterio 
    confirmar con el laboratorio. Son configurables, no definitivos.
 4. **Orden:** F1 → F2 → F3.
 
-## 11. Decisiones tomadas al implementar (T2–T3)
+## 11. Decisiones tomadas al implementar (T2–T7)
 
 1. **Añadir sin IA.** La spec dice «se calcula el contorno y se clasifica», pero no
    qué pasa si backend-ml no responde.
@@ -287,4 +287,52 @@ con lo que se proponía. La 1 no tenía propuesta y se decidió con un criterio 
    clasificaciones (subir la metafase entera, ~2 s cada una). La configuración
    local todavía apunta a `localhost`: con el cliente reutilizado solo se paga en
    la primera conexión.
+8. **Escala común con el percentil 90, no con el máximo.** Con el máximo, un solo
+   racimo sin separar (dos cromosomas en una caja) encogía a todos los demás. El
+   que no cabe a esa escala se reduce solo él.
+9. **Las copias de más se comprimen dentro de su hueco.** Antes cada copia se
+   desplazaba 30 px, y un par con seis «3» invadía los pares 4 y 5: un clic sobre
+   el 5 seleccionaba un 3. Lo destapó el E2E de recorte al cambiar los datos de la
+   base local. El 1 de ese mismo caso tiene doce copias: el cariograma legible
+   hace visible la sub-segmentación, que sigue siendo el problema de fondo.
+10. **Orientar no es deshacible.** Volver a pulsar «Girar» o «Voltear» la revierte,
+    y que «Deshacer» la salte deja deshacer el último corte. Sin metafase no hay
+    imagen que orientar y los botones no aparecen.
+
+## 12. Verificación (2026-10-23)
+
+| Capa | Resultado |
+|---|---|
+| backend-ml | 110/110; `edicion.py` 99 % (la línea sin cubrir es defensiva) |
+| backend-clinic | 1092/1092; cobertura total **90,72 %** (RN-09) |
+| frontend-clinic | 567/567; 98,03 % de líneas; `geometriaContorno.ts` y `presentacionCariograma.ts` al 100 % |
+| E2E en Chromium, stack real | `metafase-editor`, `metafase-objetos`, `metafase-corte`, `metafase-flujo-completo`, `cromosomas-reales` y `recorte-coordenadas`, verdes |
+
+**Mutaciones:** cada pieza nueva se probó rompiéndola a propósito, y las pruebas lo
+detectaron en todos los casos menos uno, que resultó ser código sin efecto y se quitó:
+
+- el contorno devuelto como caja;
+- cortar con 1 px de grosor;
+- quedarse con el trozo menor;
+- trozos en verde sin IA;
+- deshacer sin reactivar;
+- enviar la línea sin comprobar que corta;
+- ignorar el giro;
+- la invalidación por prefijo.
+
+**Defectos que solo destapó el navegador real** (todos corregidos y con su prueba):
+
+- la metafase se volvía a descargar tras cada corrección;
+- el lienzo saltaba 6 px al cambiar de herramienta;
+- separar tardaba 14 s (el cliente HTTP, §11.7);
+- las copias de más de un par invadían el par vecino (§11.9).
+
+**Lo que queda abierto:**
+
+- **La sub-segmentación.** En el caso real de las pruebas, el 1 tiene doce copias y
+  el 3, seis. El editor permite corregirlo a mano, pero el problema es del
+  segmentador: DD-ML-003 y ADR-0035.
+- **Separar sigue tardando unos 5 s** en el servidor: son dos clasificaciones que
+  suben la metafase entera. Se resolvería clasificando los trozos en una sola llamada.
+- **F4 (SAM):** bloqueada por ADR-0034.
 

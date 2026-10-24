@@ -1181,3 +1181,36 @@ class KaryotypeUndoView(APIView):
             return Response({'code': 'UNDO_UNAVAILABLE', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
         return Response({'evento': str(ev.id), 'deshace': ev.payload['deshace'], 'tipo': ev.payload['tipo']},
                         status=status.HTTP_200_OK)
+
+
+class ChromosomeOrientView(APIView):
+    """POST /samples/{id}/chromosomes/{cid}/orient/ — girar 180° / voltear (DD-KARYO-007 D7).
+
+    Body: {"giro": 0 | 180, "volteo": bool}. 200 el cromosoma · 400 VALIDATION_ERROR ·
+    409 CASE_LOCKED / OBJECT_INACTIVE.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.edit')]
+
+    def post(self, request, pk, cid):
+        from .services import ObjetoInactivoError, orient_chromosome
+
+        sample, error = _get_owned_sample_or_none(pk, request.user)
+        if error:
+            return error
+        chromo, error = _get_owned_chromosome_or_error(sample, cid)
+        if error:
+            return error
+        try:
+            orientado = orient_chromosome(sample, chromo, request.data.get('giro'),
+                                          request.data.get('volteo'), request.user,
+                                          mode=_request_mode(request))
+        except CaseLockedError as e:
+            return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except ObjetoInactivoError as e:
+            return Response({'code': 'OBJECT_INACTIVE', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except ValueError as e:
+            return Response({'code': 'VALIDATION_ERROR', 'detail': str(e)},
+                            status=status.HTTP_400_BAD_REQUEST)
+        return Response(ChromosomeSerializer(orientado).data, status=status.HTTP_200_OK)

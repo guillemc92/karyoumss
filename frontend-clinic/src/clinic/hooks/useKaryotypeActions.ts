@@ -71,6 +71,11 @@ export function useKaryotypeActions(sampleId: string | undefined) {
     onSuccess: invalidate,
   });
 
+  const orient = useMutation({
+    mutationFn: (v: { chromosomeId: string; giro: 0 | 180; volteo: boolean }) =>
+      karyotypeClient.orient(sampleId as string, v.chromosomeId, v.giro, v.volteo),
+    onSuccess: invalidate,
+  });
   const undo = useMutation({
     mutationFn: () => karyotypeClient.undo(sampleId as string),
     onSuccess: invalidate,
@@ -78,7 +83,7 @@ export function useKaryotypeActions(sampleId: string | undefined) {
 
   return {
     viewXai, resolve, markAnomaly, validate, reclassify, recrop, split, join, resolveCross,
-    rejectObject, addObject, undo,
+    rejectObject, addObject, undo, orient,
   };
 }
 

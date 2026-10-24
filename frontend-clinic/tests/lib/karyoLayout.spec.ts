@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CHROMO_W,
+  CUERPO_W,
   PAD,
   SLOT_H,
   SLOT_W,
   chromosomePosition,
+  posicionesCariograma,
   reclassifyTargetFromDrop,
   slotAtPoint,
   slotOrigin,
@@ -56,5 +59,40 @@ describe('karyoLayout — geometría pura del cariograma (DD-KARYO-003)', () => 
 
   it('reclassifyTargetFromDrop retorna null si cae fuera de la grilla', () => {
     expect(reclassifyTargetFromDrop(-100, -100, { predicted_class: '1' })).toBeNull();
+  });
+});
+
+describe('posicionesCariograma (DD-KARYO-007 T7)', () => {
+  const c = (id: string, cls: string, idx: number, order = 0) =>
+    ({ id, predicted_class: cls, position_index: idx, order });
+
+  it('dos copias: separadas CHROMO_W, como siempre', () => {
+    const p = posicionesCariograma([c('a', '1', 0), c('b', '1', 1)]);
+    expect(p.get('b')!.x - p.get('a')!.x).toBe(CHROMO_W);
+  });
+
+  it('muchas copias se comprimen DENTRO de su hueco, sin invadir el siguiente', () => {
+    const seis = Array.from({ length: 6 }, (_, i) => c(`t${i}`, '3', i));
+    const p = posicionesCariograma(seis);
+    const origen = slotOrigin('3')!;
+    const ultima = p.get('t5')!.x;
+    expect(ultima + CUERPO_W).toBeLessThanOrEqual(origen.x + SLOT_W);
+    expect(slotAtPoint(ultima + CUERPO_W - 1, origen.y + 50)).toBe('3');
+  });
+
+  it('el orden es el de position_index aunque haya huecos en la numeración', () => {
+    const p = posicionesCariograma([c('b', '2', 7), c('a', '2', 2)]);
+    expect(p.get('a')!.x).toBeLessThan(p.get('b')!.x);
+    expect(p.get('a')!.x).toBe(slotOrigin('2')!.x);
+  });
+
+  it('a igual position_index desempata el order', () => {
+    const p = posicionesCariograma([c('b', '2', 0, 5), c('a', '2', 0, 1)]);
+    expect(p.get('a')!.x).toBeLessThan(p.get('b')!.x);
+  });
+
+  it('una sola copia, al principio del hueco; una clase inválida, en el pad', () => {
+    expect(posicionesCariograma([c('a', 'X', 0)]).get('a')).toEqual(slotOrigin('X'));
+    expect(posicionesCariograma([c('z', 'ZZ', 0)]).get('z')).toEqual({ x: PAD, y: PAD });
   });
 });

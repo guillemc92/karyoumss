@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { SUPERVISOR, pedirToken, sembrarSesion } from '../fixtures/sesion';
-import { STAGE_WIDTH, chromosomePosition } from '../../src/clinic/lib/karyoLayout';
+import { STAGE_WIDTH, posicionesCariograma } from '../../src/clinic/lib/karyoLayout';
 
 /**
  * DD-KARYO-006 §7 / T5 — El analista ve los cromosomas reales, y sin metafase
@@ -43,7 +43,7 @@ const CAPTURAS = process.env.E2E_CAPTURAS;
 const UMBRAL_NIVELES = 40;
 
 interface Cromosoma {
-  id: string; predicted_class: string; position_index: number;
+  id: string; predicted_class: string; position_index: number; order: number;
   is_active: boolean; bbox: { x?: number; y?: number; w?: number; h?: number } | null;
 }
 
@@ -64,10 +64,11 @@ async function cariotipo(request: any, cab: Cab, id: string): Promise<Cromosoma[
 /** Niveles de gris distintos en el cuerpo del cromosoma, compuestos todos los
  *  canvas del visor (Konva usa uno por capa). El cuerpo ocupa (2, 10)–(24, 110)
  *  dentro de su grupo; se recorta 4 px por lado para no contar el borde. */
-async function nivelesEnCuerpo(page: any, crom: Cromosoma): Promise<number> {
+async function nivelesEnCuerpo(page: any, crom: Cromosoma, activos: Cromosoma[]): Promise<number> {
   const visor = page.getByTestId('karyotype-viewer');
   await visor.scrollIntoViewIfNeeded();
-  const pos = chromosomePosition(crom);
+  // La posición que pinta el producto (DD-KARYO-007 T7: copias comprimidas en su hueco).
+  const pos = posicionesCariograma(activos).get(crom.id)!;
   return page.evaluate(
     ({ x, y, w, h, ancho }: { x: number; y: number; w: number; h: number; ancho: number }) => {
       const lienzos = Array.from(
@@ -97,16 +98,17 @@ test('con metafase real, el cariograma muestra los píxeles de los cromosomas', 
   const tokens = await pedirToken(request, SUPERVISOR);
   const cab = { Authorization: `Bearer ${tokens.access}` };
 
-  let caso: { id: string; crom: Cromosoma; tipo: string } | null = null;
+  let caso: { id: string; crom: Cromosoma; activos: Cromosoma[]; tipo: string } | null = null;
   for (const id of await muestrasReady(request, cab)) {
     const img = await request.get(`${CLINIC_API}/api/clinic/samples/${id}/karyotype/metaphase/`,
       { headers: { ...cab, Accept: 'image/*' } });
     if (!img.ok()) continue;
-    const crom = (await cariotipo(request, cab, id)).find((c) => (c.bbox?.w ?? 0) > 0);
-    if (crom) { caso = { id, crom, tipo: img.headers()['content-type'] }; break; }
+    const activos = await cariotipo(request, cab, id);
+    const crom = activos.find((c) => (c.bbox?.w ?? 0) > 0);
+    if (crom) { caso = { id, crom, activos, tipo: img.headers()['content-type'] }; break; }
   }
   test.skip(!caso, 'no hay ningún caso READY con metafase real y cajas en esta base');
-  const { id, crom, tipo } = caso!;
+  const { id, crom, activos, tipo } = caso!;
   expect(tipo, 'el tipo sale de la firma de los bytes (D2)').toMatch(/^image\/(bmp|png|jpeg)$/);
 
   await sembrarSesion(page, tokens);
@@ -116,7 +118,7 @@ test('con metafase real, el cariograma muestra los píxeles de los cromosomas', 
 
   let medido = 0;
   await expect
-    .poll(async () => (medido = await nivelesEnCuerpo(page, crom)), {
+    .poll(async () => (medido = await nivelesEnCuerpo(page, crom, activos)), {
       message: 'el cuerpo del cromosoma sigue pareciendo una caja de color',
     })
     .toBeGreaterThan(UMBRAL_NIVELES);
@@ -131,17 +133,18 @@ test('sin metafase, el cariograma pinta cajas de color y lo avisa, sin error', a
   const tokens = await pedirToken(request, SUPERVISOR);
   const cab = { Authorization: `Bearer ${tokens.access}` };
 
-  let caso: { id: string; crom: Cromosoma } | null = null;
+  let caso: { id: string; crom: Cromosoma; activos: Cromosoma[] } | null = null;
   for (const id of await muestrasReady(request, cab)) {
     const img = await request.get(`${CLINIC_API}/api/clinic/samples/${id}/karyotype/metaphase/`,
       { headers: { ...cab, Accept: 'image/*' } });
     if (img.status() !== 404) continue;
     if ((await img.json()).code !== 'NO_METAPHASE_IMAGE') continue;
-    const crom = (await cariotipo(request, cab, id))[0];
-    if (crom) { caso = { id, crom }; break; }
+    const activos = await cariotipo(request, cab, id);
+    const crom = activos[0];
+    if (crom) { caso = { id, crom, activos }; break; }
   }
   test.skip(!caso, 'no hay ningún caso READY sin metafase en esta base');
-  const { id, crom } = caso!;
+  const { id, crom, activos } = caso!;
 
   await sembrarSesion(page, tokens);
   await page.goto(`/clinic/samples/${id}/karyotype`);
@@ -150,7 +153,7 @@ test('sin metafase, el cariograma pinta cajas de color y lo avisa, sin error', a
   await expect(page.getByTestId('karyotype-viewer').locator('canvas').first()).toBeVisible();
 
   // La métrica del caso 1, aplicada a una caja: tiene que quedar por debajo.
-  const niveles = await nivelesEnCuerpo(page, crom);
+  const niveles = await nivelesEnCuerpo(page, crom, activos);
   test.info().annotations.push({ type: 'niveles', description: `${niveles} (umbral ${UMBRAL_NIVELES})` });
   expect(niveles, `una caja de color dio ${niveles} niveles: el umbral no separa`).toBeLessThanOrEqual(UMBRAL_NIVELES);
 

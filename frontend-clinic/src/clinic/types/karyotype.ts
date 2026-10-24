@@ -28,6 +28,8 @@ export interface ChromosomeMeasures {
   centromeric_index?: number;
   band_count?: number;
   quality?: string;
+  /** Girar 180° y voltear en el cariograma (DD-KARYO-007 D7); presentación. */
+  orientacion?: { giro: 0 | 180; volteo: boolean };
 }
 
 export interface Chromosome {
@@ -68,7 +70,8 @@ export type AuditEventType =
   | 'NARRATIVE_GENERATED' // ADR-0024: borrador redactado por el LLM
   | 'RECROP' // recorte manual del cromosoma + reclasificación
   | 'REJECT_OBJECT' | 'ADD_OBJECT' // DD-KARYO-007 D5: corregir la segmentación
-  | 'UNDO_EDIT'; // D6: deshacer es un evento que compensa
+  | 'UNDO_EDIT' // D6: deshacer es un evento que compensa
+  | 'ORIENT'; // D7: girar 180° / voltear en el cariograma
 
 export type AuditMode = 'auto' | 'degradado';
 
@@ -116,6 +119,7 @@ export const AUDIT_LABELS: Record<AuditEventType, string> = {
   REJECT_OBJECT: 'Descartó un objeto',
   ADD_OBJECT: 'Añadió un cromosoma',
   UNDO_EDIT: 'Deshizo una edición',
+  ORIENT: 'Giró o volteó un cromosoma',
 };
 
 /** Respuesta de POST /chromosomes/{cid}/split/ (DD-KARYO-007 D3). */

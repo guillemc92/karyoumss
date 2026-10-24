@@ -40,6 +40,41 @@ export function chromosomePosition(chromo: Pick<Chromosome, 'predicted_class' | 
   return { x: origin.x + chromo.position_index * CHROMO_W, y: origin.y };
 }
 
+/** Ancho del cuerpo de un cromosoma en su hueco (ver KaryotypeCanvas). */
+export const CUERPO_W = 26;
+
+/**
+ * Posición de cada cromosoma activo en el cariograma (DD-KARYO-007 T7).
+ *
+ * Las copias de un par se separan `CHROMO_W` mientras quepan en su hueco. Si
+ * hay más copias de las que caben —la segmentación metió varios objetos en la
+ * misma clase—, se comprimen DENTRO del hueco en vez de invadir el de al lado.
+ * Medido el 23/10: con seis «3», las copias de más quedaban encima del par 5 y
+ * un clic sobre el 5 seleccionaba un 3.
+ *
+ * El orden dentro del par es el de `position_index` (y `order` para desempatar),
+ * no su valor: tras separar o descartar puede haber huecos en la numeración.
+ */
+export function posicionesCariograma(
+  chromosomes: Pick<Chromosome, 'id' | 'predicted_class' | 'position_index' | 'order'>[],
+): Map<string, Point> {
+  const porClase = new Map<string, typeof chromosomes>();
+  for (const c of chromosomes) {
+    const lista = porClase.get(c.predicted_class) ?? [];
+    lista.push(c);
+    porClase.set(c.predicted_class, lista);
+  }
+  const posiciones = new Map<string, Point>();
+  for (const [clase, lista] of porClase) {
+    const origen = slotOrigin(clase) ?? { x: PAD, y: PAD };
+    const orden = [...lista].sort((a, b) => a.position_index - b.position_index || a.order - b.order);
+    const sitio = SLOT_W - CUERPO_W;   // lo que puede desplazarse la última copia
+    const paso = orden.length > 1 ? Math.min(CHROMO_W, sitio / (orden.length - 1)) : 0;
+    orden.forEach((c, i) => posiciones.set(c.id, { x: origen.x + i * paso, y: origen.y }));
+  }
+  return posiciones;
+}
+
 /** Slot bajo un punto del stage, o null si cae fuera de la grilla. */
 export function slotAtPoint(x: number, y: number): string | null {
   const col = Math.floor((x - PAD) / SLOT_W);

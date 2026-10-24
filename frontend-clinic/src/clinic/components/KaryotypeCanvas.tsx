@@ -7,10 +7,16 @@
  * Las correcciones morfológicas (separar/unir/cruce) se disparan desde el
  * panel de propiedades (DOM), no desde el canvas — más accesible y robusto.
  *
+ * DD-KARYO-007 T7: todos los recortes a una ESCALA COMÚN y apoyados en la
+ * línea base del hueco, para que el tamaño relativo de los pares se vea; cada
+ * uno con su orientación (girar 180° / voltear, D7); y el lienzo crece hasta el
+ * ancho del panel. La geometría es `lib/presentacionCariograma.ts`.
+ *
  * Conserva los `data-testid` `karyotype-viewer` y `chromosome-{id}` de P1/P2.
  * react-konva se mockea en tests (jsdom no tiene canvas); la interacción real
  * se valida en E2E.
  */
+import { useEffect, useRef, useState } from 'react';
 import { Circle, Group, Image as KonvaImage, Layer, Line, Rect, Stage, Text } from 'react-konva';
 import type { Chromosome } from '../types/karyotype';
 import { CHROMOSOME_SLOTS } from '../types/karyotype';
@@ -20,14 +26,22 @@ import {
   SLOT_W,
   STAGE_HEIGHT,
   STAGE_WIDTH,
-  chromosomePosition,
+  posicionesCariograma,
   reclassifyTargetFromDrop,
   slotOrigin,
 } from '../lib/karyoLayout';
 import type { ViewportState } from '../lib/viewport';
 import { INITIAL_VIEWPORT, cssFilter, stageScale } from '../lib/viewport';
 import type { Punto } from '../lib/medicion';
-import { colocarRecorte, recorteValido, type Caja } from '../lib/encajarRecorte';
+import { recorteValido, type Caja } from '../lib/encajarRecorte';
+import {
+  colocarEnLineaBase,
+  escalaComun,
+  factorAjuste,
+  marcoVisible,
+  orientacionDe,
+  transformacionImagen,
+} from '../lib/presentacionCariograma';
 
 const SEMAPHORE_FILL: Record<string, string> = {
   green: '#1e8868',
@@ -89,6 +103,28 @@ export function KaryotypeCanvas({
   metafase = null,
 }: KaryotypeCanvasProps) {
   const active = chromosomes.filter((c) => c.is_active);
+
+  // T7: el lienzo crece hasta el ancho del panel. Sin ResizeObserver (jsdom) o
+  // sin ancho medido, se queda en su tamaño de siempre.
+  const contenedor = useRef<HTMLDivElement>(null);
+  const [anchoDisponible, setAnchoDisponible] = useState(0);
+  useEffect(() => {
+    const el = contenedor.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const obs = new ResizeObserver(([entrada]) => setAnchoDisponible(entrada.contentRect.width));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+  const ajuste = factorAjuste(anchoDisponible, STAGE_WIDTH);
+
+  // T7: la misma escala para todos los recortes (percentil 90 del largo).
+  const recortesValidos: Caja[] = metafase
+    ? active.map((c) => c.bbox as Partial<Caja>)
+      .filter((b): b is Caja => recorteValido(b, tamanoDe(metafase)))
+    : [];
+  const escala = escalaComun(recortesValidos, CUERPO);
+  // T7: las copias de un par se quedan en su hueco aunque haya muchas.
+  const posiciones = posicionesCariograma(active);
   // En modo "Mover" el lienzo se arrastra y los cromosomas NO (evita el
   // conflicto con el drag de reclasificación).
   // Midiendo, nada se arrastra: un clic marca un punto, no mueve un cromosoma.
@@ -114,12 +150,12 @@ export function KaryotypeCanvas({
   };
 
   return (
-    <div className="karyo-canvas" data-testid="karyotype-viewer" style={{ filter: cssFilter(viewport) }}>
+    <div ref={contenedor} className="karyo-canvas" data-testid="karyotype-viewer" style={{ filter: cssFilter(viewport) }}>
       <Stage
-        width={STAGE_WIDTH}
-        height={STAGE_HEIGHT}
-        scaleX={stageScale(viewport).x}
-        scaleY={stageScale(viewport).y}
+        width={STAGE_WIDTH * ajuste}
+        height={STAGE_HEIGHT * ajuste}
+        scaleX={stageScale(viewport).x * ajuste}
+        scaleY={stageScale(viewport).y * ajuste}
         rotation={viewport.rotation}
         x={viewport.offsetX}
         y={viewport.offsetY}
@@ -148,8 +184,12 @@ export function KaryotypeCanvas({
             );
           })}
 
-          {active.map((chromo) => {
-            const pos = chromosomePosition(chromo);
+          {/* De izquierda a derecha: cada copia queda encima de la anterior y la
+              última de un par comprimido se ve entera. */}
+          {[...active]
+            .sort((a, b) => (posiciones.get(a.id)?.x ?? 0) - (posiciones.get(b.id)?.x ?? 0))
+            .map((chromo) => {
+            const pos = posiciones.get(chromo.id) ?? { x: 0, y: 0 };
             const selected = chromo.id === selectedId;
             const picked = chromo.id === joinPickId;
             const stroke = picked ? '#7b2cbf' : selected ? '#0b7285' : '#1b3a4b';
@@ -158,8 +198,12 @@ export function KaryotypeCanvas({
               metafase && recorteValido(chromo.bbox as Partial<Caja>, tamanoDe(metafase))
                 ? (chromo.bbox as Caja)
                 : null;
-            // D8: los tumbados se giran 90° para mostrarlos de pie.
-            const colocacion = recorte ? colocarRecorte(recorte, CUERPO) : null;
+            // D8: los tumbados se giran 90° para mostrarlos de pie. T7: a la
+            // escala común y sobre la línea base, con su orientación (D7).
+            const colocacion = recorte && escala ? colocarEnLineaBase(recorte, CUERPO, escala) : null;
+            const orientacion = orientacionDe(chromo.measures);
+            const transformacion = colocacion ? transformacionImagen(colocacion, orientacion) : null;
+            const marco = colocacion ? marcoVisible(colocacion, CUERPO) : null;
             return (
               <Group
                 key={chromo.id}
@@ -175,17 +219,19 @@ export function KaryotypeCanvas({
                   chromoDraggable
                     ? (e) => {
                         const target = reclassifyTargetFromDrop(e.target.x(), e.target.y(), chromo);
-                        e.target.position(chromosomePosition(chromo)); // snap-back; el refetch mueve el nodo
+                        e.target.position(pos); // snap-back; el refetch mueve el nodo
                         if (target && onReclassify) onReclassify(chromo, target);
                       }
                     : undefined
                 }
               >
-                {recorte && colocacion ? (
+                {recorte && colocacion && transformacion && marco ? (
                   <>
-                    {/* Fondo claro: el hueco que deja el encaje se ve como
-                        margen, no como parte del cromosoma. */}
-                    <Rect x={CUERPO.x} y={CUERPO.y} width={CUERPO.w} height={CUERPO.h} fill="#f4f6f7" />
+                    {/* El hueco entero sigue siendo donde se pulsa y se arrastra
+                        (transparente), aunque el cromosoma ocupe solo una parte. */}
+                    <Rect x={CUERPO.x} y={CUERPO.y} width={CUERPO.w} height={CUERPO.h} fill="rgba(0,0,0,0)" />
+                    {/* Fondo claro solo detrás de la imagen (T7). */}
+                    <Rect x={marco.x} y={marco.y} width={marco.w} height={marco.h} fill="#f4f6f7" listening={false} />
                     <KonvaImage
                       data-testid={`chromosome-img-${chromo.id}`}
                       image={metafase as HTMLImageElement}
@@ -196,17 +242,20 @@ export function KaryotypeCanvas({
                       height={colocacion.h}
                       offsetX={colocacion.w / 2}
                       offsetY={colocacion.h / 2}
-                      rotation={colocacion.rotacion}
+                      rotation={transformacion.rotation}
+                      scaleX={transformacion.scaleX}
+                      scaleY={transformacion.scaleY}
+                      data-orientacion={`${orientacion.giro}${orientacion.volteo ? '-v' : ''}`}
                     />
                     {/* Con la imagen a la vista el semáforo ya no puede ser el
                         relleno: pasa a ser el borde. La selección, otro borde
                         por fuera, para que las dos señales no se pisen. */}
                     <Rect
                       data-testid={`chromosome-frame-${chromo.id}`}
-                      x={CUERPO.x}
-                      y={CUERPO.y}
-                      width={CUERPO.w}
-                      height={CUERPO.h}
+                      x={marco.x}
+                      y={marco.y}
+                      width={marco.w}
+                      height={marco.h}
                       cornerRadius={4}
                       stroke={SEMAPHORE_FILL[chromo.semaphore]}
                       strokeWidth={2}
@@ -216,10 +265,10 @@ export function KaryotypeCanvas({
                     />
                     {(selected || picked) && (
                       <Rect
-                        x={CUERPO.x - 2}
-                        y={CUERPO.y - 2}
-                        width={CUERPO.w + 4}
-                        height={CUERPO.h + 4}
+                        x={marco.x - 2}
+                        y={marco.y - 2}
+                        width={marco.w + 4}
+                        height={marco.h + 4}
                         cornerRadius={6}
                         stroke={stroke}
                         strokeWidth={3}

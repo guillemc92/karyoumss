@@ -1459,3 +1459,38 @@ def undo_last_edit(sample, actor, mode='auto') -> AuditEvent:
                      'afectados': [str(c.id) for c in afectados]},
             mode=mode,
         )
+
+
+# ============================================================================
+# DD-KARYO-007 D7 — girar 180° y voltear en el cariograma (T7)
+# ============================================================================
+
+def orient_chromosome(sample, chromosome, giro, volteo, actor, mode='auto') -> Chromosome:
+    """Guarda la orientación de presentación de un cromosoma (DD-KARYO-007 D7).
+
+    Girar 180° y voltear es lo que hace MetaClass para poner el brazo p arriba.
+    Va a `measures['orientacion']`; no toca `bbox` ni `contour`, que siguen en
+    píxeles de la metafase. Emite ORIENT con la de antes y la de después.
+
+    No es una edición deshacible (D6): orientar otra vez ya la revierte, y
+    dejar que «Deshacer» se la salte permite seguir deshaciendo el último corte.
+    """
+    _assert_editable(sample)
+    if giro not in (0, 180) or isinstance(giro, bool):
+        raise ValueError('giro debe ser 0 o 180')
+    if not isinstance(volteo, bool):
+        raise ValueError('volteo debe ser true o false')
+    if not chromosome.is_active:
+        raise ObjetoInactivoError('El objeto ya no forma parte del cariotipo.')
+    medidas = dict(chromosome.measures or {})
+    previa = medidas.get('orientacion') or {'giro': 0, 'volteo': False}
+    nueva = {'giro': giro, 'volteo': volteo}
+    with transaction.atomic():
+        medidas['orientacion'] = nueva
+        chromosome.measures = medidas
+        chromosome.save(update_fields=['measures'])
+        emit_audit_event(
+            sample, actor, AuditEventType.ORIENT, chromosome=chromosome,
+            payload={'previa': previa, 'nueva': nueva}, mode=mode,
+        )
+    return chromosome

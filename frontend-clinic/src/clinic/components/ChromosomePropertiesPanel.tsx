@@ -6,6 +6,7 @@
  */
 import type { Chromosome } from '../types/karyotype';
 import { CHROMOSOME_SLOTS, confidencePercent } from '../types/karyotype';
+import { girar, orientacionDe, voltear, type Orientacion } from '../lib/presentacionCariograma';
 
 const SEMAPHORE_LABEL: Record<string, string> = {
   green: 'Verde — alta confianza',
@@ -30,6 +31,8 @@ interface Actions {
    * hay metafase o el cromosoma no tiene caja— el botón no se muestra. */
   onToggleCrop?: (c: Chromosome) => void;
   cropActivo?: boolean;
+  /** Girar 180° / voltear en el cariograma (DD-KARYO-007 D7). */
+  onOrient?: (c: Chromosome, o: Orientacion) => void;
 }
 
 export function ChromosomePropertiesPanel({
@@ -46,6 +49,7 @@ export function ChromosomePropertiesPanel({
   joinPick = null,
   onToggleCrop,
   cropActivo = false,
+  onOrient,
 }: { chromosome: Chromosome | null } & Actions) {
   if (!chromosome) {
     return (
@@ -58,7 +62,7 @@ export function ChromosomePropertiesPanel({
 
   const m = chromosome.measures ?? {};
   const showActions = Boolean(onViewXai || onResolve || onMarkAnomaly);
-  const showP3 = Boolean(onReclassify || onSplit || onResolveCross || onJoinPick || onToggleCrop);
+  const showP3 = Boolean(onReclassify || onSplit || onResolveCross || onJoinPick || onToggleCrop || onOrient);
   const isOrange = chromosome.semaphore === 'orange';
   const isResolved = chromosome.resolution_status === 'RESOLVED';
   const isJoinPicked = joinPick?.id === chromosome.id;
@@ -181,6 +185,32 @@ export function ChromosomePropertiesPanel({
               >
                 {isJoinPicked ? '🔗 Marcado — elija el otro fragmento' : '🔗 Unir: marcar este fragmento'}
               </button>
+            )}
+            {/* D7: lo que hace MetaClass para poner el brazo p arriba. Solo
+                cambia cómo se ve en el cariograma, no la metafase. */}
+            {onOrient && (
+              <>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => onOrient(chromosome, girar(orientacionDe(chromosome.measures)))}
+                  disabled={busy}
+                  data-testid="action-girar"
+                  aria-pressed={orientacionDe(chromosome.measures).giro === 180}
+                >
+                  ↻ Girar 180°
+                </button>
+                <button
+                  type="button"
+                  className="btn-outline"
+                  onClick={() => onOrient(chromosome, voltear(orientacionDe(chromosome.measures)))}
+                  disabled={busy}
+                  data-testid="action-voltear"
+                  aria-pressed={orientacionDe(chromosome.measures).volteo}
+                >
+                  ⇋ Voltear
+                </button>
+              </>
             )}
             {/* Recortar es la corrección de raíz: cuando la segmentación mete
                 dos cromosomas en una detección, la clase se calculó sobre
