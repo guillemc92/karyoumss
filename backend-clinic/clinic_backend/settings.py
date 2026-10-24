@@ -150,6 +150,10 @@ SPECTACULAR_SETTINGS = {
     # Determinista: el drift no puede fallar sin que nadie haya cambiado nada.
     'SORT_OPERATIONS': True,
     'SORT_OPERATION_PARAMETERS': True,
+    # Prefijo fijo, no autodetectado: la autodetección da otro resultado en Linux
+    # (CI) que en Windows, y los operationId cambiaban (cazado por el drift del
+    # primer run del CI, 24/10).
+    'SCHEMA_PATH_PREFIX': r'/api/clinic',
     # Un solo nombre para las 24 clases (1-22, X, Y), las use quien las use.
     'ENUM_NAME_OVERRIDES': {'ClaseCromosomaEnum': 'apps.samples.models.CHROMOSOME_CLASSES'},
 }

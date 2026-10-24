@@ -12,7 +12,7 @@
     "paths": {
         "/api/clinic/agente/": {
             "get": {
-                "operationId": "api_clinic_agente_retrieve",
+                "operationId": "agente_retrieve",
                 "description": "Publica lo que el agente puede hacer.",
                 "tags": [
                     "Sin describir"
@@ -37,7 +37,7 @@
                 }
             },
             "post": {
-                "operationId": "api_clinic_agente_create",
+                "operationId": "agente_create",
                 "description": "POST /agente/ - bucle agentico con traza completa (Modulo 6, nivel 4).\n\nBody: {\"pregunta\": \"...\", \"mcp\": false, \"max_pasos\": 6}\n\nDiferencia con /tools/query/: alli el modelo elige UNA herramienta y se\nacaba. Aqui encadena — puede consultar el estado, despues la documentacion,\ny combinar ambas. El orden lo decide el modelo, no el codigo.\n\nLa respuesta incluye la TRAZA de cada paso (accion, observacion, tokens).\nNo es depuracion: es lo unico que permite auditar por que el agente dijo lo\nque dijo. Un agente sin traza es un oraculo.\n\n`mcp: true` ejecuta las herramientas DESCUBIERTAS por protocolo en vez de\nlas importadas. El bucle es el mismo — ese es el desacople que MCP explota.\n\n`thread_id: \"...\"` (nivel 5, ADR-0032) resuelve el turno sobre un GRAFO con\nmemoria persistente: la conversacion sobrevive al proceso y una repregunta\n-«y de esos cual es el primero?»- llega con su referente. Sin `thread_id` el\ncomportamiento es el de siempre, sin memoria: el contrato no cambia.\n\nSiempre 200 salvo que el modelo no este disponible (503): quedarse sin IA\ndegrada, no rompe (RN-07).",
                 "tags": [
                     "Sin describir"
@@ -74,7 +74,7 @@
         },
         "/api/clinic/pipeline/health/": {
             "get": {
-                "operationId": "api_clinic_pipeline_health_retrieve",
+                "operationId": "pipeline_health_retrieve",
                 "description": "GET /api/clinic/pipeline/health/ — disponibilidad del pipeline de IA (P4).\n\nFSD-UC-007 §8: el visor consulta cada 30s para entrar/salir del modo\ndegradado. Chequeo barato del circuit breaker (sin llamada de red).",
                 "tags": [
                     "Sin describir"
@@ -101,7 +101,7 @@
         },
         "/api/clinic/samples/": {
             "get": {
-                "operationId": "api_clinic_samples_list",
+                "operationId": "samples_list",
                 "description": "GET /api/clinic/samples/  POST /api/clinic/samples/\n\nRN-06: analista ve solo sus propias muestras; staff (supervisor/admin) ve todas.\nFiltros server-side (SPEC-008 UC-S-002): status, chn_query, date_from, date_to.\nShape de respuesta: array plano (el frontend pagina client-side, decisión\n2026-07-16 para no romper SampleListPage/useSamples ya construidos).",
                 "tags": [
                     "Sin describir"
@@ -126,7 +126,7 @@
                 }
             },
             "post": {
-                "operationId": "api_clinic_samples_create",
+                "operationId": "samples_create",
                 "description": "GET /api/clinic/samples/  POST /api/clinic/samples/\n\nRN-06: analista ve solo sus propias muestras; staff (supervisor/admin) ve todas.\nFiltros server-side (SPEC-008 UC-S-002): status, chn_query, date_from, date_to.\nShape de respuesta: array plano (el frontend pagina client-side, decisión\n2026-07-16 para no romper SampleListPage/useSamples ya construidos).",
                 "tags": [
                     "Sin describir"
@@ -163,7 +163,7 @@
         },
         "/api/clinic/samples/{id}/": {
             "get": {
-                "operationId": "api_clinic_samples_retrieve",
+                "operationId": "samples_retrieve",
                 "description": "GET/PATCH/DELETE /api/clinic/samples/{id}/ (ADR-0018, cierre SPEC-008 §6).\n\n- GET/PATCH: los 3 roles clínicos, scoped por objeto (analista solo\n  propias -> 403 NOT_OWNER si no es dueño; supervisor/admin cualquiera).\n- DELETE: solo admin (is_superuser). Soft-delete; rechaza con 409 si la\n  muestra ya está VALIDATED (irreversible por diseño, RN-04/05 spirit).",
                 "parameters": [
                     {
@@ -199,7 +199,7 @@
                 }
             },
             "put": {
-                "operationId": "api_clinic_samples_update",
+                "operationId": "samples_update",
                 "description": "GET/PATCH/DELETE /api/clinic/samples/{id}/ (ADR-0018, cierre SPEC-008 §6).\n\n- GET/PATCH: los 3 roles clínicos, scoped por objeto (analista solo\n  propias -> 403 NOT_OWNER si no es dueño; supervisor/admin cualquiera).\n- DELETE: solo admin (is_superuser). Soft-delete; rechaza con 409 si la\n  muestra ya está VALIDATED (irreversible por diseño, RN-04/05 spirit).",
                 "parameters": [
                     {
@@ -245,7 +245,7 @@
                 }
             },
             "patch": {
-                "operationId": "api_clinic_samples_partial_update",
+                "operationId": "samples_partial_update",
                 "description": "GET/PATCH/DELETE /api/clinic/samples/{id}/ (ADR-0018, cierre SPEC-008 §6).\n\n- GET/PATCH: los 3 roles clínicos, scoped por objeto (analista solo\n  propias -> 403 NOT_OWNER si no es dueño; supervisor/admin cualquiera).\n- DELETE: solo admin (is_superuser). Soft-delete; rechaza con 409 si la\n  muestra ya está VALIDATED (irreversible por diseño, RN-04/05 spirit).",
                 "parameters": [
                     {
@@ -291,7 +291,7 @@
                 }
             },
             "delete": {
-                "operationId": "api_clinic_samples_destroy",
+                "operationId": "samples_destroy",
                 "description": "GET/PATCH/DELETE /api/clinic/samples/{id}/ (ADR-0018, cierre SPEC-008 §6).\n\n- GET/PATCH: los 3 roles clínicos, scoped por objeto (analista solo\n  propias -> 403 NOT_OWNER si no es dueño; supervisor/admin cualquiera).\n- DELETE: solo admin (is_superuser). Soft-delete; rechaza con 409 si la\n  muestra ya está VALIDATED (irreversible por diseño, RN-04/05 spirit).",
                 "parameters": [
                     {
@@ -329,7 +329,7 @@
         },
         "/api/clinic/samples/{id}/audit/": {
             "get": {
-                "operationId": "api_clinic_samples_audit_retrieve",
+                "operationId": "samples_audit_retrieve",
                 "description": "GET /samples/{id}/audit/ — bitácora append-only del caso (ADR-0022).",
                 "parameters": [
                     {
@@ -367,7 +367,7 @@
         },
         "/api/clinic/samples/{id}/audit-review/": {
             "get": {
-                "operationId": "api_clinic_samples_audit_review_retrieve",
+                "operationId": "samples_audit_review_retrieve",
                 "description": "GET /samples/{id}/audit-review/ — selección del 5% del Supervisor (ADR-0023 S1).\n\nCrea la selección determinista al primer acceso (idempotente). Permiso\n`case.audit` (Supervisor/Admin; el Analista NO lo tiene, segregación RN-06).",
                 "parameters": [
                     {
@@ -405,7 +405,7 @@
         },
         "/api/clinic/samples/{id}/audit-review/{cid}/decide/": {
             "post": {
-                "operationId": "api_clinic_samples_audit_review_decide_create",
+                "operationId": "samples_audit_review_decide_create",
                 "description": "POST /samples/{id}/audit-review/{cid}/decide/ — decisión del Supervisor (S1).\n\nBody: {\"decision\": \"CONFIRMED\"|\"REJECTED\", \"comment\": \"...\"}. Emite\nAUDIT_DECISION. 409 NOT_AUDITABLE si el caso no está ANALYST_VALIDATED.",
                 "parameters": [
                     {
@@ -462,7 +462,7 @@
         },
         "/api/clinic/samples/{id}/chromosomes/{cid}/anomaly/": {
             "post": {
-                "operationId": "api_clinic_samples_chromosomes_anomaly_create",
+                "operationId": "samples_chromosomes_anomaly_create",
                 "description": "POST /samples/{id}/chromosomes/{cid}/anomaly/ — marcar anomalía (M) (P2).",
                 "parameters": [
                     {
@@ -519,7 +519,7 @@
         },
         "/api/clinic/samples/{id}/chromosomes/{cid}/cross/": {
             "post": {
-                "operationId": "api_clinic_samples_chromosomes_cross_create",
+                "operationId": "samples_chromosomes_cross_create",
                 "description": "POST /samples/{id}/chromosomes/{cid}/cross/ — resolver cruce (P3).",
                 "parameters": [
                     {
@@ -576,7 +576,7 @@
         },
         "/api/clinic/samples/{id}/chromosomes/{cid}/join/": {
             "post": {
-                "operationId": "api_clinic_samples_chromosomes_join_create",
+                "operationId": "samples_chromosomes_join_create",
                 "description": "Evento JOIN. Une las siluetas (vía backend-ml) o, sin ellas, las cajas; el absorbido queda inactivo.",
                 "summary": "Unir dos fragmentos",
                 "parameters": [
@@ -683,7 +683,7 @@
         },
         "/api/clinic/samples/{id}/chromosomes/{cid}/orient/": {
             "post": {
-                "operationId": "api_clinic_samples_chromosomes_orient_create",
+                "operationId": "samples_chromosomes_orient_create",
                 "description": "Evento ORIENT. Presentación: se guarda en `measures.orientacion`; no toca bbox ni contour (D7).",
                 "summary": "Girar 180° o voltear en el cariograma",
                 "parameters": [
@@ -790,7 +790,7 @@
         },
         "/api/clinic/samples/{id}/chromosomes/{cid}/reclassify/": {
             "post": {
-                "operationId": "api_clinic_samples_chromosomes_reclassify_create",
+                "operationId": "samples_chromosomes_reclassify_create",
                 "description": "POST /samples/{id}/chromosomes/{cid}/reclassify/ — corregir clase (P3).\n\nBody: {\"target_class\": \"7\"}. Override manual del analista (BR-003): marca\nRESOLVED. 400 INVALID_CLASS / 400 SAME_CLASS / 409 CASE_LOCKED.",
                 "parameters": [
                     {
@@ -847,7 +847,7 @@
         },
         "/api/clinic/samples/{id}/chromosomes/{cid}/recrop/": {
             "post": {
-                "operationId": "api_clinic_samples_chromosomes_recrop_create",
+                "operationId": "samples_chromosomes_recrop_create",
                 "description": "Evento RECROP. Mueve el límite de uno y lo reclasifica; vuelve a quedar pendiente.",
                 "summary": "Corregir el recorte de un cromosoma",
                 "parameters": [
@@ -954,7 +954,7 @@
         },
         "/api/clinic/samples/{id}/chromosomes/{cid}/reject/": {
             "post": {
-                "operationId": "api_clinic_samples_chromosomes_reject_create",
+                "operationId": "samples_chromosomes_reject_create",
                 "description": "Evento REJECT_OBJECT. Borrado suave (`is_active = false`): la fila y su historia se quedan (RN-05).",
                 "summary": "Descartar un objeto que no es un cromosoma",
                 "parameters": [
@@ -1061,7 +1061,7 @@
         },
         "/api/clinic/samples/{id}/chromosomes/{cid}/resolve/": {
             "post": {
-                "operationId": "api_clinic_samples_chromosomes_resolve_create",
+                "operationId": "samples_chromosomes_resolve_create",
                 "description": "POST /samples/{id}/chromosomes/{cid}/resolve/ — resolver naranja (P2).\n\nExige XAI previo (BR-004): 409 XAI_REQUIRED si no. 400 NOT_ORANGE si el\ncromosoma no es naranja.",
                 "parameters": [
                     {
@@ -1118,7 +1118,7 @@
         },
         "/api/clinic/samples/{id}/chromosomes/{cid}/split/": {
             "post": {
-                "operationId": "api_clinic_samples_chromosomes_split_create",
+                "operationId": "samples_chromosomes_split_create",
                 "description": "Evento SPLIT. backend-ml corta la máscara del objeto por la línea (en ráster); el original se queda con el trozo mayor y cada trozo se reclasifica. Ya no hay corte por la mitad.",
                 "summary": "Separar un objeto por la línea trazada",
                 "parameters": [
@@ -1245,7 +1245,7 @@
         },
         "/api/clinic/samples/{id}/chromosomes/{cid}/xai/": {
             "post": {
-                "operationId": "api_clinic_samples_chromosomes_xai_create",
+                "operationId": "samples_chromosomes_xai_create",
                 "description": "POST /samples/{id}/chromosomes/{cid}/xai/ — XAI Grad-CAM (ADR-0021 P2).\n\nRegistra XAI_VIEWED (BR-004) y marca el cromosoma como visto. El heatmap\nreal lo produce el microservicio de inferencia (ADR-0007); acá mock.",
                 "parameters": [
                     {
@@ -1302,7 +1302,7 @@
         },
         "/api/clinic/samples/{id}/iscn/": {
             "post": {
-                "operationId": "api_clinic_samples_iscn_create",
+                "operationId": "samples_iscn_create",
                 "description": "POST /samples/{id}/iscn/ — genera la nomenclatura ISCN (ADR-0023 D4, ADR-0025).\n\nBody opcional: {\"override\": \"47,XY,+21\", \"justification\": \"...\"}.\nSin `override`, la calcula la función pura sobre el conteo validado.\n\nRN-04: el campo es read-only tras generarse. NO hay PATCH — para cambiarlo hay\nque pasar un `override` con justificación, y queda auditado (ISCN_OVERRIDE).\n\nErrores: 409 NOT_REPORTABLE (el caso no está firmado) / 409\nISCN_ALREADY_GENERATED / 400 INVALID_ISCN.",
                 "parameters": [
                     {
@@ -1350,7 +1350,7 @@
         },
         "/api/clinic/samples/{id}/karyotype/": {
             "get": {
-                "operationId": "api_clinic_samples_karyotype_retrieve",
+                "operationId": "samples_karyotype_retrieve",
                 "description": "Cromosomas activos con su caja y su silueta en píxeles de la metafase, y el resumen del semáforo.",
                 "summary": "Cariotipo de la muestra",
                 "parameters": [
@@ -1418,7 +1418,7 @@
         },
         "/api/clinic/samples/{id}/karyotype/contours/": {
             "post": {
-                "operationId": "api_clinic_samples_karyotype_contours_create",
+                "operationId": "samples_karyotype_contours_create",
                 "description": "Calcula con backend-ml el contorno de los cromosomas que solo tienen caja (casos anteriores a DD-KARYO-007). No emite evento de auditoría.",
                 "summary": "Completar las siluetas que faltan",
                 "parameters": [
@@ -1506,7 +1506,7 @@
         },
         "/api/clinic/samples/{id}/karyotype/metaphase/": {
             "get": {
-                "operationId": "api_clinic_samples_karyotype_metaphase_retrieve",
+                "operationId": "samples_karyotype_metaphase_retrieve",
                 "description": "La imagen sobre la que se segmentó el cariotipo; las cajas y siluetas están en sus píxeles.",
                 "summary": "Metafase segmentada",
                 "parameters": [
@@ -1575,7 +1575,7 @@
         },
         "/api/clinic/samples/{id}/karyotype/objects/": {
             "post": {
-                "operationId": "api_clinic_samples_karyotype_objects_create",
+                "operationId": "samples_karyotype_objects_create",
                 "description": "Evento ADD_OBJECT. Sin `clase` la decide el modelo; con `clase`, el analista (entra resuelto, BR-003).",
                 "summary": "Añadir un cromosoma que la segmentación no vio",
                 "parameters": [
@@ -1683,7 +1683,7 @@
         },
         "/api/clinic/samples/{id}/karyotype/undo/": {
             "get": {
-                "operationId": "api_clinic_samples_karyotype_undo_retrieve",
+                "operationId": "samples_karyotype_undo_retrieve",
                 "description": "GET/POST /samples/{id}/karyotype/undo/ — deshacer la última edición (DD-KARYO-007 D6).\n\nGET: qué se desharía (`{ultima: {evento, tipo, propia, ...}}` o `{ultima: null}`),\npara enseñarlo en la barra como hace Ikaros.\nPOST: deshace. 200 el evento UNDO_EDIT · 409 NOTHING_TO_UNDO / UNDO_NOT_OWN /\nUNDO_UNAVAILABLE / CASE_LOCKED.",
                 "summary": "Qué desharía «Deshacer»",
                 "parameters": [
@@ -1749,7 +1749,7 @@
                 }
             },
             "post": {
-                "operationId": "api_clinic_samples_karyotype_undo_create",
+                "operationId": "samples_karyotype_undo_create",
                 "description": "Evento UNDO_EDIT que compensa al anterior; no borra nada (RN-05, D6).",
                 "summary": "Deshacer la última edición propia",
                 "parameters": [
@@ -1827,7 +1827,7 @@
         },
         "/api/clinic/samples/{id}/narrative/": {
             "post": {
-                "operationId": "api_clinic_samples_narrative_create",
+                "operationId": "samples_narrative_create",
                 "description": "POST /samples/{id}/narrative/ — genera el borrador narrativo (ADR-0024).\n\nBody opcional: {\"iscn\": \"47,XY,+21\"}. Si no viene, se deriva del conteo de\ncromosomas activos del caso.\n\nEl LLM **solo redacta**: el ISCN es un dato de entrada calculado por la\nfunción determinística (ADR-0023 D4), nunca por el modelo. La respuesta es un\nBORRADOR (`is_draft: true`) que el Supervisor debe revisar antes de que llegue\nal informe firmado.\n\nNunca falla por el LLM: si el servicio no responde o el texto no supera la\nvalidación, devuelve 200 con `generated: false` y el motivo — la narrativa no\npuede bloquear la emisión del informe (RN-07).",
                 "parameters": [
                     {
@@ -1875,7 +1875,7 @@
         },
         "/api/clinic/samples/{id}/process/": {
             "post": {
-                "operationId": "api_clinic_samples_process_create",
+                "operationId": "samples_process_create",
                 "description": "POST /api/clinic/samples/{id}/process/ — encola el pipeline FastAPI (SPEC-008 UC-S-006).\n\nRN-06: analista solo puede procesar sus propias muestras (403 NOT_OWNER).\nRN-07: si el FastAPI clínico está degradado, retorna 503 ML_DEGRADED sin\nromper el flujo (la muestra sigue existiendo, se puede reintentar).",
                 "parameters": [
                     {
@@ -1923,7 +1923,7 @@
         },
         "/api/clinic/samples/{id}/sign/": {
             "post": {
-                "operationId": "api_clinic_samples_sign_create",
+                "operationId": "samples_sign_create",
                 "description": "POST /samples/{id}/sign/ — firma MFA del Supervisor (ADR-0023 S2).\n\nBody: {\"mfa_code\": \"123456\"}. Verificación TOTP delegada a backend-admin.\nErrores: 409 NOT_SIGNABLE / 403 SEGREGATION_VIOLATION / 409 AUDIT_INCOMPLETE /\n423 MFA_LOCKED / 401 MFA_INVALID / 400 MFA_NOT_ENROLLED / 503 MFA_SERVICE.",
                 "parameters": [
                     {
@@ -1971,7 +1971,7 @@
         },
         "/api/clinic/samples/{id}/status/": {
             "get": {
-                "operationId": "api_clinic_samples_status_retrieve",
+                "operationId": "samples_status_retrieve",
                 "description": "GET /api/clinic/samples/{id}/status/ — estado del pipeline (SPEC-008 UC-S-007, polling).\n\nMismo scoping que SampleProcessView (RN-06). Read-only: sin circuit\nbreaker propio, delega en pipeline_client.get_status(). Usa la\nopción 'sample.view' (ver estado es parte de ver la muestra, no\nhay una opción RBAC dedicada para polling — ADR-0019 no la definió\ncomo acción separada).",
                 "parameters": [
                     {
@@ -2009,7 +2009,7 @@
         },
         "/api/clinic/samples/{id}/validate/": {
             "post": {
-                "operationId": "api_clinic_samples_validate_create",
+                "operationId": "samples_validate_create",
                 "description": "POST /samples/{id}/validate/ — transición a ANALYST_VALIDATED (FSD-UC-004).\n\nRechaza 409 CASE_BLOCKED si hay naranjas sin resolver (RN-01).",
                 "parameters": [
                     {
@@ -2057,7 +2057,7 @@
         },
         "/api/clinic/samples/register/": {
             "post": {
-                "operationId": "api_clinic_samples_register_create",
+                "operationId": "samples_register_create",
                 "description": "POST /api/clinic/samples/register/ — Registro de Muestras (ADR-0016, SPEC-009).\n\nEndpoint compuesto: crea Sample + PatientVault + N SampleImage en una\ntransacción atómica. RN-03: PII cifrada en PatientVault. RN-07: si el\npipeline FastAPI está degradado, la muestra se persiste igual.",
                 "tags": [
                     "Sin describir"
@@ -2094,7 +2094,7 @@
         },
         "/api/clinic/tools/query/": {
             "get": {
-                "operationId": "api_clinic_tools_query_retrieve",
+                "operationId": "tools_query_retrieve",
                 "description": "Publica el catalogo: que sabe responder el sistema.",
                 "tags": [
                     "Sin describir"
@@ -2119,7 +2119,7 @@
                 }
             },
             "post": {
-                "operationId": "api_clinic_tools_query_create",
+                "operationId": "tools_query_create",
                 "description": "POST /tools/query/ - consulta en lenguaje natural (Modulo 6, tool calling).\n\nBody: {\"pregunta\": \"...\"}. El modelo ELIGE la herramienta; el codigo produce\nla respuesta contra la base. El LLM nunca ve ni redacta un dato.\n\nSiempre 200: una pregunta fuera de alcance NO es un error del cliente. Se\nresponde `camino: SIN_MATCH` con el catalogo de lo que si se puede consultar.\n\nCada respuesta declara su procedencia (`tool`, `source`, `camino`) para que\nun dato consultado no se confunda con uno inventado.",
                 "tags": [
                     "Sin describir"
