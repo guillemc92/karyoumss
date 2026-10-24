@@ -1,0 +1,37 @@
+{
+ "modelo": "llama3.2:3b",
+ "casos": [
+  {
+   "id": "E2E-01",
+   "flujo": "Auditoria del 5% y firma",
+   "ruta": "/clinic/supervisor",
+   "tipo": "happy",
+   "oraculo": "RN-04 La nomenclatura ISCN es de solo lectura tras generarse; solo cambia por override justificado y con permiso case.override_iscn.",
+   "criterio": "La auditoria del 5% se genera correctamente y se muestra en la pantalla"
+  },
+  {
+   "id": "E2E-02",
+   "flujo": "Generacion de reporte ISCN con override manual",
+   "ruta": "/clinic/supervisor",
+   "tipo": "happy",
+   "oraculo": "RN-06 Segregacion de funciones: quien valida como analista no puede firmar como supervisor, y un analista no ve casos que no son suyos (403).",
+   "criterio": "El reporte ISCN se genera correctamente y se muestra en la pantalla"
+  },
+  {
+   "id": "E2E-03",
+   "flujo": "Auditoria del 5% y firma",
+   "ruta": "/clinic/supervisor",
+   "tipo": "error",
+   "oraculo": "RN-04 La nomenclatura ISCN es de solo lectura tras generarse; solo cambia por override justificado y con permiso case.override_iscn.",
+   "criterio": "La auditoria del 5% no se genera correctamente"
+  },
+  {
+   "id": "E2E-04",
+   "flujo": "Auditoria del 5% y firma",
+   "ruta": "/clinic/supervisor",
+   "tipo": "limite",
+   "oraculo": "RN-08 Auditoria aleatoria del 5% de los cromosomas verdes.",
+   "criterio": "La auditoria del 5% no se genera correctamente debido a un error en la base de datos"
+  }
+ ]
+}

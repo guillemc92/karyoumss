@@ -1,0 +1,33 @@
+# SSO (ADR-0020, DD-SSO-001 §4.1) — reverse proxy dev para que
+# frontend-admin y frontend-clinic compartan el mismo origen lógico y
+# por tanto localStorage (biomed.auth.access). Adelanta trabajo del F8
+# pendiente de ADR-0013 (Caddy/nginx unificado, nunca implementado).
+#
+# Uso: caddy run --config Caddyfile.dev
+# Requiere los 4 procesos ya corriendo:
+#   backend-admin   :8001
+#   backend-clinic  :8002
+#   frontend-admin  :5173
+#   frontend-clinic :5174
+#
+# Con Caddy arriba, entrar por http://localhost:3000/ (admin) y
+# http://localhost:3000/clinic/ (clinic) — NO por :5173/:5174 directo,
+# si no localStorage no se comparte entre orígenes.
+
+:3000 {
+	handle /clinic/* {
+		reverse_proxy localhost:5174
+	}
+	handle /api/clinic/* {
+		reverse_proxy localhost:8002
+	}
+	handle /api/admin/* {
+		reverse_proxy localhost:8001
+	}
+	handle /api/auth/* {
+		reverse_proxy localhost:8001
+	}
+	handle {
+		reverse_proxy localhost:5173
+	}
+}

@@ -1,0 +1,42 @@
+node_modules
+
+# DD-AUD-001 F3 (F12-02): ningún .env real entra al repositorio, en ninguna
+# carpeta. Solo se versionan los .env.example, sin valores reales.
+.env
+!.env.example
+datasets/
+__pycache__/
+*.pyc
+.pytest_cache/
+backend-clinic/media/
+/model/
+
+# Entornos virtuales (se recrean desde requirements.txt)
+.venv/
+*.sqlite3
+
+# Respaldo local del modelo previo: 41 MB que ya viven en el historial de git
+backend-ml/models_v1_backup/
+
+# Archivos temporales de Word (~$NOMBRE.docx)
+~$*
+
+# Memoria conversacional del agente (ADR-0032): local, fuera de git.
+backend-clinic/agente_memoria.sqlite3
+
+# RN-03: informes clinicos REALES con PII (paciente, fechas, facultativos).
+# Nunca deben entrar al repositorio. Se usan solo como referencia local.
+docs/INFORMES CARIOTIPOS/
+docs/INFORMES CARIOTIPOS - Acceso directo.lnk
+
+# Adjunto de entrega M8: se regenera desde tests/ y specs/, no se versiona
+docs/M8_E2E/E2E_tests_specs.zip
+
+# Grabaciones de clase: material docente, nunca al repo
+*.mp4
+
+# Laboratorios del docente: material de clase, no del producto
+docs/clasesejemplo/
+
+# Adjunto de entrega M9: se regenera, no se versiona
+docs/M9_RED_TEAM/M9_red_team.zip

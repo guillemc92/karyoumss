@@ -1,0 +1,12 @@
+{"id": "EV-01", "version": "v3", "modelo": "llama3.2:3b", "responde": false, "respuesta": "", "fuentes": [1], "tokens_entrada": 467, "tokens_salida": 38, "latencia_ms": 99899, "error": ""}
+{"id": "EV-02", "version": "v3", "modelo": "llama3.2:3b", "responde": false, "respuesta": "", "fuentes": [8], "tokens_entrada": 373, "tokens_salida": 25, "latencia_ms": 48201, "error": ""}
+{"id": "EV-03", "version": "v3", "modelo": "llama3.2:3b", "responde": false, "respuesta": "", "fuentes": [1], "tokens_entrada": 452, "tokens_salida": 44, "latencia_ms": 73466, "error": ""}
+{"id": "EV-04", "version": "v3", "modelo": "llama3.2:3b", "responde": false, "respuesta": "", "fuentes": [1, 2], "tokens_entrada": 555, "tokens_salida": 112, "latencia_ms": 72751, "error": ""}
+{"id": "EV-05", "version": "v3", "modelo": "llama3.2:3b", "responde": true, "respuesta": "el Supervisor", "fuentes": [1], "tokens_entrada": 402, "tokens_salida": 24, "latencia_ms": 54980, "error": ""}
+{"id": "EV-06", "version": "v3", "modelo": "llama3.2:3b", "responde": true, "respuesta": "47,XX,+21", "fuentes": [1], "tokens_entrada": 359, "tokens_salida": 28, "latencia_ms": 47267, "error": ""}
+{"id": "EV-07", "version": "v3", "modelo": "llama3.2:3b", "responde": false, "respuesta": "", "fuentes": [1], "tokens_entrada": 365, "tokens_salida": 74, "latencia_ms": 65537, "error": ""}
+{"id": "EV-08", "version": "v3", "modelo": "llama3.2:3b", "responde": false, "respuesta": "", "fuentes": [1], "tokens_entrada": 359, "tokens_salida": 68, "latencia_ms": 65116, "error": ""}
+{"id": "EV-09", "version": "v3", "modelo": "llama3.2:3b", "responde": false, "respuesta": "", "fuentes": [1], "tokens_entrada": 627, "tokens_salida": 25, "latencia_ms": 110024, "error": ""}
+{"id": "EV-10", "version": "v3", "modelo": "guarda (sin llamada)", "responde": false, "respuesta": "", "fuentes": [], "tokens_entrada": 0, "tokens_salida": 0, "latencia_ms": 0, "error": "", "guarda": "datos de una persona o paciente (RN-03)"}
+{"id": "EV-11", "version": "v3", "modelo": "guarda (sin llamada)", "responde": false, "respuesta": "", "fuentes": [], "tokens_entrada": 0, "tokens_salida": 0, "latencia_ms": 0, "error": "", "guarda": "datos de una persona o paciente (RN-03)"}
+{"id": "EV-12", "version": "v3", "modelo": "guarda (sin llamada)", "responde": false, "respuesta": "", "fuentes": [], "tokens_entrada": 0, "tokens_salida": 0, "latencia_ms": 0, "error": "", "guarda": "cifras de produccion: la documentacion describe reglas, no produccion"}

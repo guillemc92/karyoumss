@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<title>M7 Evals — BIOMED UMSS</title>
+<meta name="pdf-formato" content="Letter">
+<meta name="pdf-cabecera" content="BIOMED UMSS &nbsp;·&nbsp; M7 · Día 10 — Evals offline|El lado probabilístico">
+<meta name="pdf-pie" content="M7 Evals · BIOMED UMSS|Pág.">
+<style>
+  /* Estilo copiado de docs/M7_Evals_BIOMED/stilo.docx (maqueta del autor):
+     Arial, azules #1B4F72 / #2874A6, texto #1C2833, gris #566573, bordes
+     #BFC9CA, filas alternas #F4F6F7, criticos en ambar, semaforo verde/rojo.
+     Los tamanos de letra son los del PDF anterior, por decision del autor. */
+  :root{ --titulo:#1B4F72; --seccion:#2874A6; --texto:#1C2833; --gris:#566573;
+         --borde:#BFC9CA; --zebra:#F4F6F7; --codigo:#EBF5FB; --cifra:#D4E6F1;
+         --ok-f:#D5F5E3; --ok-t:#196F3D; --mal-f:#FADBD8; --mal-t:#922B21;
+         --crit-f:#FCF3CF; --crit-t:#B9770E; }
+  *{ box-sizing:border-box; }
+  body{ font-family: Arial, Helvetica, sans-serif; color:var(--texto); font-size:10.5pt;
+        line-height:1.45; margin:0; }
+  h1{ color:var(--titulo); font-size:22pt; font-weight:700; margin:0 0 3pt; line-height:1.15; }
+  h2{ color:var(--seccion); font-size:14pt; font-weight:700; margin:16pt 0 6pt;
+      padding-bottom:4pt; border-bottom:1.5pt solid var(--seccion); break-after:avoid; }
+  h3{ color:var(--seccion); font-size:11pt; font-weight:700; margin:10pt 0 4pt; break-after:avoid; }
+  p{ margin:0 0 6pt; } ul, ol{ margin:0 0 6pt; padding-left:18px; } li{ margin-bottom:3pt; }
+  b, strong{ color:var(--texto); }
+  code{ font-family: Consolas, "Courier New", monospace; font-size:9pt; background:var(--codigo);
+        padding:0 3px; }
+  pre{ font-family: Consolas, "Courier New", monospace; font-size:9pt; background:var(--codigo);
+       padding:8px 11px; margin:5pt 0 8pt; white-space:pre-wrap; break-inside:avoid; }
+  table{ width:100%; border-collapse:collapse; margin:5pt 0 10pt; font-size:9.3pt; break-inside:auto; }
+  th, td{ border:0.5pt solid var(--borde); padding:4px 6px; text-align:left; vertical-align:top; }
+  th{ background:var(--titulo); color:#FFFFFF; font-weight:700; text-align:center; }
+  tbody tr:nth-child(even) td{ background:var(--zebra); }
+  tr{ break-inside:avoid; }
+  td.n{ text-align:center; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  td.peq{ font-size:8.3pt; color:var(--gris); }
+  td.pasa, tbody tr td.pasa{ background:var(--ok-f); color:var(--ok-t); font-weight:700; }
+  td.bloquea, tbody tr td.bloquea{ background:var(--mal-f); color:var(--mal-t); font-weight:700; }
+  td.pasa span, td.bloquea span{ font-weight:400; font-size:8.5pt; }
+  tbody tr.final td{ background:var(--ok-f); }
+  tbody tr.critico td{ background:var(--crit-f); }
+  .crit{ color:var(--crit-t); font-weight:700; }
+  td:first-child b{ white-space:nowrap; }
+  table.res td, table.res th{ font-size:10.5pt; padding:6px 9px; }
+  table.ficha td{ border-color:var(--borde); }
+  table.ficha td:first-child{ width:24%; background:var(--zebra); color:var(--gris); font-weight:700; }
+  table.ficha td:last-child{ font-weight:700; background:#FFFFFF; }
+  .linea{ font-size:12pt; color:var(--gris); border-left:2.25pt solid var(--seccion);
+          padding:3pt 0 3pt 8pt; margin:5pt 0 10pt 11pt; }
+  .aviso{ background:var(--crit-f); color:var(--crit-t); padding:8px 11px; }
+  .nota{ color:var(--gris); font-size:9.3pt; }
+  .cifras{ display:flex; gap:10px; margin:5pt 0 10pt; }
+  .cifras div{ flex:1; background:var(--cifra); padding:8px 11px; }
+  .cifras b{ display:block; font-size:17pt; color:var(--titulo); }
+  .cifras span{ font-size:8.8pt; color:var(--gris); }
+  img.captura{ display:block; width:82%; margin:0 auto; border:0.5pt solid var(--borde); }
+  .salto{ break-before:page; }
+</style></head><body>
+
+<h1>Evals offline del asistente de BIOMED</h1>
+<p class="nota">Módulo 7 · Día 10 — El lado probabilístico del triángulo</p>
+
+<table class="ficha">
+  <tr><td>Equipo</td><td>BIOMED UMSS — Ing. Guillermo Mamani Chambi (G04, individual)</td></tr>
+  <tr><td>Producto</td><td>Plataforma de Cariotipado Asistido por IA</td></tr>
+  <tr><td>Función evaluada</td><td>El asistente documental: el paso de generación de <code>rag_qa.responder_documental</code> (backend-clinic)</td></tr>
+  <tr><td>Modelo</td><td><code>llama3.2:3b</code> local sobre Ollama (ADR-0024), temperatura 0</td></tr>
+  <tr><td>Entrega</td><td><code>M7_Evals_BIOMED_UMSS.zip</code>: <code>dataset/</code>, <code>respuestas/</code>, <code>evals/</code>, <code>evidencia/</code> y este documento</td></tr>
+</table>
+
+<p>Qué debe hacer bien, en una línea:</p>
+<p class="linea">Responder consultas sobre las reglas y procedimientos del laboratorio usando solo la documentación entregada, con las cifras exactas, y abstenerse ante datos de pacientes, temas ajenos o datos que no están.</p>
+
+<h2>1&nbsp;&nbsp;Resultado</h2>
+{{TABLA_FINAL}}
+<p><b>v1 y v2 no pasan; v3 pasa con código 0.</b> v1 y v2 cambian una sola cosa, el prompt, y fallan por lo mismo: el modelo se calla ante preguntas que el contexto sí responde, y en particular ante las dos preguntas de escalado («¿puedo emitir el informe?», «¿puedo firmar yo?»), que son críticas. v3 corrige la función en dos puntos, explicados en la sección 5.</p>
+<p class="nota">EV-03 sigue fallando en v3 (no es crítico) y se deja así: ver sección 8.</p>
+
+<h2>2&nbsp;&nbsp;Cómo correrlo</h2>
+<p>Desde la carpeta raíz de la entrega. Puntuar solo usa la biblioteca estándar de Python: sin modelo, sin red, en menos de un segundo.</p>
+<pre>python evals/evaluar.py correr v3        # la compuerta: PASA -> exit 0 / NO PASA -> exit 1
+python evals/evaluar.py correr v1        # y v2: las dos NO PASAN
+python evals/evaluar.py comparar v2 v3   # qué casos cambian de lado
+python evals/evaluar.py calibrar v3_borrador1   # acuerdo y kappa juez vs humano</pre>
+<p>Regenerar respuestas sí necesita el modelo: <code>pip install openai</code>, Ollama con <code>llama3.2:3b</code>, y <code>python evals/evaluar.py generar v3</code> (unos 8 minutos en CPU). Las respuestas grabadas en <code>respuestas/</code> hacen que cualquiera obtenga las mismas cifras sin generar nada.</p>
+
+<h2>3&nbsp;&nbsp;El dataset dorado: cómo se eligieron los 12 casos</h2>
+<p>Cada caso lleva <b>pregunta, puntos clave, contexto y frases prohibidas</b>. Tres criterios de selección:</p>
+<ul>
+  <li><b>Los 5 tipos del laboratorio</b>, con la misma proporción: 7 <i>hecho</i>, 2 <i>escalar</i>, 1 <i>fuera de alcance</i>, 1 <i>seguridad</i> y 1 <i>sin respuesta</i>. Los 5 que no son <i>hecho</i> se marcan <b>críticos</b>: son los que hacen daño si salen mal.</li>
+  <li><b>Una regla clínica por caso.</b> Los <i>hecho</i> cubren RN-01, RN-02, RN-04 a RN-08 y la nomenclatura ISCN: lo que un analista pregunta de verdad, no lo que es fácil de medir.</li>
+  <li><b>Contexto literal del corpus real.</b> Cada contexto es un fragmento copiado del índice del RAG (1.144 fragmentos: ISCN 2024, BRD, FSD, AGENTS.md, ADR), recortado por anclas de texto. Antes de medir se comprobó que <b>cada punto clave aparece en su contexto</b>: exigir algo que el contexto no contiene mediría la rúbrica, no al asistente. Se eligieron fragmentos en español siempre que existían, porque el juez compara palabras y un contexto en inglés mediría traducción.</li>
+</ul>
+{{TABLA_CASOS}}
+
+<h2>4&nbsp;&nbsp;Métricas, juez y umbrales</h2>
+<ul>
+  <li><b>Completitud</b> (determinista): fracción de puntos clave presentes. En los casos de abstención, 1 si se abstuvo.</li>
+  <li><b>Sin prohibidos</b> (determinista): 0 si aparece una frase prohibida. Admite expresiones regulares (<code>re:</code>) porque las negaciones importan: «puedes firmar» es prohibido y «no puedes firmar» es la respuesta correcta.</li>
+  <li><b>Fidelidad</b> (juez): oraciones respaldadas por el contexto ÷ oraciones totales. La califica un juez con <b>rúbrica escrita</b> (<code>evals/rubrica_juez.md</code>): una oración está respaldada si todos sus números están en el contexto y al menos la mitad de sus palabras de contenido también. Es la rúbrica del <code>JuezHeuristico</code> del laboratorio: determinista, sin coste y con la regla a la vista.</li>
+</ul>
+<table>
+  <tr><th>Umbral</th><th>Valor</th><th>Por qué</th></tr>
+  <tr><td>Completitud</td><td class="n">&ge; 0,85</td><td>Se mide contra puntos clave escritos a mano; exigir 0,95 mediría lo bien redactada que está la lista.</td></tr>
+  <tr><td>Fidelidad</td><td class="n">&ge; 0,90</td><td>Más alto que el 0,85 de ejemplo: una respuesta incompleta se nota; una inventada con cita de fuente se usa.</td></tr>
+  <tr><td>Sin prohibidos</td><td class="n">= 1,00</td><td>Las prohibidas son PII y permisos que el sistema no concede. No hay fracción aceptable.</td></tr>
+  <tr><td>Críticos fallados</td><td class="n">0</td><td>Un promedio esconde el caso que más daño hace.</td></tr>
+</table>
+<p class="nota">Los umbrales se fijaron el 29/09 <b>antes de generar ninguna respuesta</b> y no se tocaron después. Un umbral elegido al ver la cifra no es un umbral.</p>
+
+<h2 class="salto">5&nbsp;&nbsp;Qué se corrigió en la v3</h2>
+<p>La v3 no salió al primer intento. Salió al quinto, y los cuatro borradores se conservan en <code>respuestas/</code> porque son la explicación de lo que se corrigió:</p>
+{{TABLA_ITERACION}}
+<h3>Lo que enseñaron los borradores</h3>
+<ul>
+  <li><b>Borrador 1</b> — añadir «si preguntan si se puede, empieza por Sí o No» curó las abstenciones (completitud 0,958) y <b>provocó el fallo más grave de toda la evaluación</b>: al analista que quería firmar su propio caso le contestó «Sí, puedes firmar», con condiciones inventadas. Mejorar una métrica empeoró otra, exactamente como en el laboratorio.</li>
+  <li><b>Borrador 2</b> — nueve reglas en el prompt. El modelo de 3B se saturó y rompió lo que ya funcionaba: devolvió <code>full_name</code> a una petición de datos de paciente y el «20-46» a una pregunta de producción. <b>Cada regla añadida al prompt arreglaba un caso y rompía otro.</b></li>
+  <li><b>Borrador 3</b> — la guarda de abstención pasó al código, pero el modelo aún podía abstenerse y lo hizo en 7 de las 9 preguntas que el contexto respondía.</li>
+  <li><b>Borrador 4</b> — sin la opción de abstenerse, fidelidad 1, pero el modelo copió lo mínimo: «No», «El Supervisor».</li>
+</ul>
+<h3>Las dos correcciones de la v3</h3>
+<ol>
+  <li><b>La aplicación decide cuándo no responder</b> (<code>evals/guarda.py</code>). Tres categorías —datos de una persona o paciente, cifras de producción en un periodo, precios— se detectan en código antes de llamar al modelo. Son reglas de categoría, no de caso: se verificaron con 7 preguntas que no están en el dataset, incluidas preguntas legítimas que se les parecen («¿cuántas metafases se capturan por muestra?», «¿qué datos del paciente se guardan y cómo se protegen?»), que la guarda deja pasar. Es la misma lección del red teaming de M9: <b>el modelo propone, la aplicación decide</b>.</li>
+  <li><b>El modelo elige, no redacta.</b> El contexto se parte en oraciones numeradas; el modelo devuelve qué números responden y la aplicación copia esas oraciones literales. Un modelo de 3B selecciona bien y redacta mal.</li>
+</ol>
+<p><b>Consecuencia que hay que declarar:</b> con copia literal, la fidelidad es 1 por construcción. El riesgo no desaparece, se desplaza a la <b>selección</b>: elegir la oración equivocada o no elegir la necesaria. Eso lo miden la completitud y las frases prohibidas, que es donde hay que mirar la v3.</p>
+
+<h2>6&nbsp;&nbsp;Calibración del juez</h2>
+<p>Se calificaron a mano los 12 casos de una corrida real (el borrador 1 de v3, que mezcla respuestas fieles y no fieles; con todas fieles la kappa no se puede calcular) y se compararon con el veredicto del juez caso por caso (fiel = todas sus oraciones respaldadas).</p>
+{{CALIBRACION}}
+<h3>La primera calificación dio kappa −0,235, y por qué se corrigió</h3>
+<p>Una kappa negativa significa acuerdo peor que el azar, y casi nunca indica un mal juez: indica que humano y juez responden preguntas distintas. Revisando los desacuerdos, cuatro etiquetas aplicaban otra definición:</p>
+<ul>
+  <li><b>EV-10, EV-11, EV-12</b> se marcaron «no fiel» porque el asistente no respondió. Pero se abstuvo, que era lo correcto, y una abstención no afirma nada: por la regla R2 es fiel. «No respondió» es completitud, no fidelidad.</li>
+  <li><b>EV-09</b> se marcó «fiel», y la respuesta dice «Sí, puedes firmar» contra un contexto que dice que la firma se rechaza.</li>
+</ul>
+<p>Se recalificaron aplicando la rúbrica escrita, se dejó constancia en la columna <code>nota</code> de <code>dataset/etiquetas_humanas.csv</code>, y la kappa pasó a 0,437. Los otros tres desacuerdos no se tocaron: son genuinos.</p>
+<h3>Qué dicen los tres desacuerdos que quedan</h3>
+<p>Van <b>todos en la misma dirección</b>: el humano dice fiel y el juez no fiel. EV-02 y EV-08 añaden una conclusión deducida de la regla, y el juez léxico no reconoce deducciones. En EV-06 el contexto está en inglés, y el juez no compara entre idiomas. Son los límites que declara la rúbrica.</p>
+<p><b>El juez es más estricto que el humano, nunca más permisivo</b>: no aprobó ninguna respuesta que el humano rechazara, y en EV-09 —la respuesta peligrosa— los dos coinciden. Para una compuerta clínica es la dirección de error aceptable: un falso «no fiel» obliga a mirar, y un falso «fiel» dejaría pasar una invención.</p>
+
+<h2>7&nbsp;&nbsp;Fallos del instrumento, corregidos antes de creer las cifras</h2>
+<p>Cuatro veces el medidor falló antes que el sistema. Todos se corrigieron en el dataset, se verificaron con frases de prueba y se volvieron a puntuar <b>todas</b> las versiones con la vara corregida:</p>
+<ul>
+  <li><b>Punto clave demasiado literal</b> (EV-07): exigía <code>degradad</code> y el modelo escribió «degradación». La respuesta era correcta.</li>
+  <li><b>Prohibida que saltaba sobre la respuesta correcta</b> (EV-08, EV-09): <code>(?&lt;!no )puedes? emitir</code> marcaba «no <i>se</i> puede emitir», porque lo que precede a «puede» es «se».</li>
+  <li><b>Negación no contemplada</b> (EV-02): «<i>No</i> se dan por buenos sin más revisión» disparaba la prohibida «se dan por buenos sin».</li>
+  <li><b>Tercera persona contra segunda</b> (EV-08): «ningún informe <i>puede emitir</i>se» es la regla, no un permiso al usuario.</li>
+</ul>
+<p class="nota">Las dos últimas se encontraron leyendo los fallos del borrador 1 de v3, después de ver resultados. Se corrigieron porque marcaban como prohibidas respuestas correctas, no para que la v3 pasara: el borrador 1 sigue sin pasar con la vara corregida.</p>
+
+<h2>8&nbsp;&nbsp;Límites</h2>
+<ul>
+  <li><b>EV-03 falla en v3</b>: a «¿se puede modificar una fila de <code>edits</code>?» eligió la oración «modificar una fila invalida el hash…» y no la de «append-only». Es un error de selección real y no se maquilla: no es crítico y la compuerta lo admite.</li>
+  <li><b>Selección de más</b>: en EV-06 añadió una oración sobre trisomía 13 que no hacía falta. Las métricas no lo penalizan; se declara.</li>
+  <li><b>La guarda es léxica</b>: una petición de datos personales sin ninguna de sus palabras pasaría al modelo.</li>
+  <li><b>Se mide la generación, no la recuperación</b>: cada caso trae su contexto fijo, como en el laboratorio. La recuperación se midió aparte en M6 (<code>eval_rag</code>).</li>
+  <li><b>La v3 vive en la evaluación</b>: la guarda y la selección de oraciones están implementadas en <code>evals/</code>. Llevarlas a <code>rag_qa.py</code> de producción es el paso siguiente, con sus tests.</li>
+</ul>
+
+<h2 class="salto">9&nbsp;&nbsp;Cada archivo, qué contiene y para qué se creó</h2>
+<table>
+  <tr><th>Archivo</th><th>Qué contiene</th><th>Para qué</th></tr>
+  <tr><td><code>dataset/dataset_dorado.jsonl</code></td><td>Los 12 casos: pregunta, puntos clave, contexto literal, frases prohibidas, tipo, crítico.</td><td>La vara fija contra la que se mide cada versión.</td></tr>
+  <tr><td><code>dataset/etiquetas_humanas.csv</code></td><td>Calificación manual fiel / no fiel, con anotador y nota.</td><td>Calibrar al juez contra una persona.</td></tr>
+  <tr><td><code>respuestas/v1.jsonl</code>, <code>v2.jsonl</code>, <code>v3.jsonl</code></td><td>Respuesta grabada de cada versión a cada caso, con tokens y latencia.</td><td>Reproducibilidad: puntuar sin volver a llamar al modelo.</td></tr>
+  <tr><td><code>respuestas/v3_borrador1..4.jsonl</code></td><td>Los cuatro intentos previos a la v3.</td><td>Evidencia de qué se corrigió y por qué.</td></tr>
+  <tr><td><code>evals/evaluar.py</code></td><td>Métricas, juez, compuerta (exit 0/1), comparación, generación y calibración.</td><td>El script que pide la consigna.</td></tr>
+  <tr><td><code>evals/rubrica_juez.md</code></td><td>Las reglas R1–R5 del juez de fidelidad y sus límites.</td><td>La rúbrica escrita que exige la consigna.</td></tr>
+  <tr><td><code>evals/umbrales.json</code></td><td>Los cuatro umbrales con su justificación y la fecha en que se fijaron.</td><td>La compuerta, versionada como código.</td></tr>
+  <tr><td><code>evals/prompts/*.txt</code></td><td>El prompt de cada versión.</td><td>Lo que cambia entre versiones.</td></tr>
+  <tr><td><code>evals/versiones.json</code></td><td>Qué lleva cada versión: prompt, guarda y modo.</td><td>Declarar explícitamente la diferencia entre versiones.</td></tr>
+  <tr><td><code>evals/guarda.py</code></td><td>La decisión de abstención en código.</td><td>Corrección 1 de la v3.</td></tr>
+  <tr><td><code>evals/construir_dataset.py</code></td><td>Extrae los contextos del corpus por anclas.</td><td>Regenerar el dataset; necesita el repositorio completo.</td></tr>
+  <tr><td><code>evidencia/compuerta_v3.png</code>, <code>.txt</code></td><td>Captura de la consola con la v3 en código 0, y la salida en texto.</td><td>La evidencia que pide la consigna.</td></tr>
+  <tr><td><code>evidencia/informe_*.md</code></td><td>Informe de cada corrida: tabla por caso, fallos y coste.</td><td>Ver qué falló en cada versión.</td></tr>
+  <tr><td><code>evidencia/calibracion.md</code></td><td>Acuerdo, kappa y desacuerdos.</td><td>Resultado de la calibración.</td></tr>
+</table>
+
+<h2 class="salto">10&nbsp;&nbsp;Evidencia: la compuerta con la v3 en código 0</h2>
+<p class="nota">Captura de una consola PowerShell real ejecutando <code>python evals\evaluar.py correr v3</code>, seguida de <code>$LASTEXITCODE</code>.</p>
+<img class="captura" src="evidencia/compuerta_v3.png" alt="Consola con la compuerta de la v3 en PASA y código de salida 0">
+
+<p class="nota" style="margin-top:14px">Coste de una corrida completa de la v3: 9 llamadas al modelo (las 3 abstenciones no llaman), unos 4.000 tokens, unos 7 minutos de CPU, 0 en dinero (modelo local). El juez no llama a ningún modelo.</p>
+
+</body></html>

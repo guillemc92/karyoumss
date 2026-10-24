@@ -1,0 +1,70 @@
+{
+ "origen": "Plan del PLANNER (llama3.2:3b) para la seccion SUPERVISOR, corregido por auditoria humana",
+ "seccion": "supervisor",
+ "planner": {
+  "modelo": "llama3.2:3b",
+  "tokens_entrada": 676,
+  "tokens_salida": 456,
+  "segundos": 352.1,
+  "casos_propuestos": 4,
+  "casos_aceptados_sin_tocar": 0,
+  "casos_corregidos": 1,
+  "casos_descartados": 3,
+  "casos_anadidos_por_auditoria": 1,
+  "hallazgo": "Tres de cuatro criterios son circulares ('se genera correctamente', 'no se genera correctamente'): no dicen que ve la persona. Dos oraculos estan cruzados: la auditoria del 5 % lleva RN-04 (ISCN) y el reporte ISCN lleva RN-06 (segregacion). El unico caso con el oraculo bien (RN-08) tiene un criterio que inventa 'un error en la base de datos' que no existe en el producto."
+ },
+ "casos": [
+  {
+   "id": "SUP-01",
+   "veredicto": "corregido",
+   "flujo": "Bandeja del supervisor: sorteo del 5 % (FSD-UC-005)",
+   "ruta": "/clinic/supervisor",
+   "tipo": "happy",
+   "oraculo": "RN-08: auditoria aleatoria del 5 % de los cromosomas verdes; RN-06: solo el supervisor la ve",
+   "criterio": "El supervisor ve en su bandeja el caso validado con el bloque de auditoria y los cromosomas sorteados; el analista no puede abrir esa bandeja",
+   "correccion": "El Planner le puso RN-04 (ISCN), que no tiene nada que ver con el sorteo. 'Se genera correctamente' se sustituye por lo que se ve: el bloque de auditoria con sus cromosomas.",
+   "test": "sin test E2E: exige un caso en ANALYST_VALIDATED con cariotipo real (~15 acciones sobre el modelo). Va a evals; cubierto por test_supervisor_s1.py"
+  },
+  {
+   "id": "SUP-02",
+   "veredicto": "descartado",
+   "flujo": "Reporte ISCN con override (FSD-UC-006)",
+   "ruta": "/clinic/supervisor",
+   "tipo": "happy",
+   "oraculo": "(propuesto) RN-06",
+   "criterio": "(propuesto) 'El reporte ISCN se genera correctamente'",
+   "motivo": "Oraculo cruzado (RN-06 es segregacion, no ISCN) y criterio circular. Ademas la firma del supervisor exige un TOTP real: el test tendria que conocer el secreto, y eso convierte el segundo factor en el primero. Va a tests de servicio (test_supervisor_s2.py) y contrato (423/401/503)."
+  },
+  {
+   "id": "SUP-03",
+   "veredicto": "descartado",
+   "flujo": "Auditoria del 5 % (caso de error)",
+   "ruta": "/clinic/supervisor",
+   "tipo": "error",
+   "oraculo": "(propuesto) RN-04",
+   "criterio": "(propuesto) 'La auditoria del 5 % no se genera correctamente'",
+   "motivo": "Es la negacion del caso 1 sin decir que falla ni que ve la persona. No hay comportamiento distinto que probar."
+  },
+  {
+   "id": "SUP-04",
+   "veredicto": "descartado",
+   "flujo": "Auditoria del 5 % (limite)",
+   "ruta": "/clinic/supervisor",
+   "tipo": "limite",
+   "oraculo": "RN-08",
+   "criterio": "(propuesto) '...debido a un error en la base de datos'",
+   "motivo": "Inventa una condicion ('error en la base de datos') que no existe en el producto ni en las reglas. Un E2E no puede provocarla. El limite real de RN-08 (pool de verdes menor que 20, sorteo de 0 o 1) es un test de servicio, y ya existe."
+  },
+  {
+   "id": "SUP-05",
+   "veredicto": "anadido por auditoria",
+   "flujo": "Segregacion: el analista no entra a la bandeja del supervisor (RN-06)",
+   "ruta": "/clinic/supervisor",
+   "tipo": "error",
+   "oraculo": "RN-06: quien valida como analista no puede actuar como supervisor",
+   "criterio": "Con sesion de analista, /clinic/supervisor muestra el aviso de acceso restringido y ninguna fila de casos",
+   "motivo": "Es el caso de error obvio de la seccion, y el Planner no lo propuso. Se genera con el Generator para esta entrega.",
+   "test": "generado: ver tabla de auditoria"
+  }
+ ]
+}

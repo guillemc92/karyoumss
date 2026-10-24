@@ -1,0 +1,16 @@
+# Testing — backend-admin F6
+# (separado del requirements.txt principal para que producción no las cargue)
+
+# Core testing
+pytest==8.3.2
+pytest-django==4.9.0
+pytest-cov==5.0.0
+
+# Fixtures / datos
+factory-boy==3.3.0
+
+# JWT firmado en tests para auth_bridge
+PyJWT==2.9.0
+
+# Time travel para audit log
+freezegun==1.5.1

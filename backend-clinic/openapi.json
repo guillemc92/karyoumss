@@ -1,0 +1,2625 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "BIOMED UMSS — API clínica",
+        "version": "8.2.0",
+        "description": "API del servicio clínico (muestras, cariotipo y su corrección manual, supervisor). Contrato generado desde el código; ver docs/design/DD-API-001.md.",
+        "contact": {
+            "name": "Ing. Guillermo Mamani Chambi",
+            "url": "https://github.com/guillemc92/karyoumss"
+        }
+    },
+    "paths": {
+        "/api/clinic/agente/": {
+            "get": {
+                "operationId": "agente_retrieve",
+                "description": "Publica lo que el agente puede hacer.",
+                "tags": [
+                    "Sin describir"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            },
+            "post": {
+                "operationId": "agente_create",
+                "description": "POST /agente/ - bucle agentico con traza completa (Modulo 6, nivel 4).\n\nBody: {\"pregunta\": \"...\", \"mcp\": false, \"max_pasos\": 6}\n\nDiferencia con /tools/query/: alli el modelo elige UNA herramienta y se\nacaba. Aqui encadena — puede consultar el estado, despues la documentacion,\ny combinar ambas. El orden lo decide el modelo, no el codigo.\n\nLa respuesta incluye la TRAZA de cada paso (accion, observacion, tokens).\nNo es depuracion: es lo unico que permite auditar por que el agente dijo lo\nque dijo. Un agente sin traza es un oraculo.\n\n`mcp: true` ejecuta las herramientas DESCUBIERTAS por protocolo en vez de\nlas importadas. El bucle es el mismo — ese es el desacople que MCP explota.\n\n`thread_id: \"...\"` (nivel 5, ADR-0032) resuelve el turno sobre un GRAFO con\nmemoria persistente: la conversacion sobrevive al proceso y una repregunta\n-«y de esos cual es el primero?»- llega con su referente. Sin `thread_id` el\ncomportamiento es el de siempre, sin memoria: el contrato no cambia.\n\nSiempre 200 salvo que el modelo no este disponible (503): quedarse sin IA\ndegrada, no rompe (RN-07).",
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/pipeline/health/": {
+            "get": {
+                "operationId": "pipeline_health_retrieve",
+                "description": "GET /api/clinic/pipeline/health/ — disponibilidad del pipeline de IA (P4).\n\nFSD-UC-007 §8: el visor consulta cada 30s para entrar/salir del modo\ndegradado. Chequeo barato del circuit breaker (sin llamada de red).",
+                "tags": [
+                    "Sin describir"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/": {
+            "get": {
+                "operationId": "samples_list",
+                "description": "GET /api/clinic/samples/  POST /api/clinic/samples/\n\nRN-06: analista ve solo sus propias muestras; staff (supervisor/admin) ve todas.\nFiltros server-side (SPEC-008 UC-S-002): status, chn_query, date_from, date_to.\nShape de respuesta: array plano (el frontend pagina client-side, decisión\n2026-07-16 para no romper SampleListPage/useSamples ya construidos).",
+                "tags": [
+                    "Sin describir"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            },
+            "post": {
+                "operationId": "samples_create",
+                "description": "GET /api/clinic/samples/  POST /api/clinic/samples/\n\nRN-06: analista ve solo sus propias muestras; staff (supervisor/admin) ve todas.\nFiltros server-side (SPEC-008 UC-S-002): status, chn_query, date_from, date_to.\nShape de respuesta: array plano (el frontend pagina client-side, decisión\n2026-07-16 para no romper SampleListPage/useSamples ya construidos).",
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/": {
+            "get": {
+                "operationId": "samples_retrieve",
+                "description": "GET/PATCH/DELETE /api/clinic/samples/{id}/ (ADR-0018, cierre SPEC-008 §6).\n\n- GET/PATCH: los 3 roles clínicos, scoped por objeto (analista solo\n  propias -> 403 NOT_OWNER si no es dueño; supervisor/admin cualquiera).\n- DELETE: solo admin (is_superuser). Soft-delete; rechaza con 409 si la\n  muestra ya está VALIDATED (irreversible por diseño, RN-04/05 spirit).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            },
+            "put": {
+                "operationId": "samples_update",
+                "description": "GET/PATCH/DELETE /api/clinic/samples/{id}/ (ADR-0018, cierre SPEC-008 §6).\n\n- GET/PATCH: los 3 roles clínicos, scoped por objeto (analista solo\n  propias -> 403 NOT_OWNER si no es dueño; supervisor/admin cualquiera).\n- DELETE: solo admin (is_superuser). Soft-delete; rechaza con 409 si la\n  muestra ya está VALIDATED (irreversible por diseño, RN-04/05 spirit).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            },
+            "patch": {
+                "operationId": "samples_partial_update",
+                "description": "GET/PATCH/DELETE /api/clinic/samples/{id}/ (ADR-0018, cierre SPEC-008 §6).\n\n- GET/PATCH: los 3 roles clínicos, scoped por objeto (analista solo\n  propias -> 403 NOT_OWNER si no es dueño; supervisor/admin cualquiera).\n- DELETE: solo admin (is_superuser). Soft-delete; rechaza con 409 si la\n  muestra ya está VALIDATED (irreversible por diseño, RN-04/05 spirit).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "samples_destroy",
+                "description": "GET/PATCH/DELETE /api/clinic/samples/{id}/ (ADR-0018, cierre SPEC-008 §6).\n\n- GET/PATCH: los 3 roles clínicos, scoped por objeto (analista solo\n  propias -> 403 NOT_OWNER si no es dueño; supervisor/admin cualquiera).\n- DELETE: solo admin (is_superuser). Soft-delete; rechaza con 409 si la\n  muestra ya está VALIDATED (irreversible por diseño, RN-04/05 spirit).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/audit/": {
+            "get": {
+                "operationId": "samples_audit_retrieve",
+                "description": "GET /samples/{id}/audit/ — bitácora append-only del caso (ADR-0022).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/audit-review/": {
+            "get": {
+                "operationId": "samples_audit_review_retrieve",
+                "description": "GET /samples/{id}/audit-review/ — selección del 5% del Supervisor (ADR-0023 S1).\n\nCrea la selección determinista al primer acceso (idempotente). Permiso\n`case.audit` (Supervisor/Admin; el Analista NO lo tiene, segregación RN-06).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/audit-review/{cid}/decide/": {
+            "post": {
+                "operationId": "samples_audit_review_decide_create",
+                "description": "POST /samples/{id}/audit-review/{cid}/decide/ — decisión del Supervisor (S1).\n\nBody: {\"decision\": \"CONFIRMED\"|\"REJECTED\", \"comment\": \"...\"}. Emite\nAUDIT_DECISION. 409 NOT_AUDITABLE si el caso no está ANALYST_VALIDATED.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cid",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/chromosomes/{cid}/anomaly/": {
+            "post": {
+                "operationId": "samples_chromosomes_anomaly_create",
+                "description": "POST /samples/{id}/chromosomes/{cid}/anomaly/ — marcar anomalía (M) (P2).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cid",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/chromosomes/{cid}/cross/": {
+            "post": {
+                "operationId": "samples_chromosomes_cross_create",
+                "description": "POST /samples/{id}/chromosomes/{cid}/cross/ — resolver cruce (P3).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cid",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/chromosomes/{cid}/join/": {
+            "post": {
+                "operationId": "samples_chromosomes_join_create",
+                "description": "Evento JOIN. Une las siluetas (vía backend-ml) o, sin ellas, las cajas; el absorbido queda inactivo.",
+                "summary": "Unir dos fragmentos",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cid",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Corrección manual"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UnirObjetosRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Chromosome"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.edit."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "JOIN_SELF / CROSS_KARYOTYPE."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CHROMOSOME_NOT_FOUND."
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CASE_LOCKED: el caso ya está validado y no admite correcciones (RN-04)."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/chromosomes/{cid}/orient/": {
+            "post": {
+                "operationId": "samples_chromosomes_orient_create",
+                "description": "Evento ORIENT. Presentación: se guarda en `measures.orientacion`; no toca bbox ni contour (D7).",
+                "summary": "Girar 180° o voltear en el cariograma",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cid",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Corrección manual"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/OrientarRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Chromosome"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.edit."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CHROMOSOME_NOT_FOUND."
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CASE_LOCKED / OBJECT_INACTIVE."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/chromosomes/{cid}/reclassify/": {
+            "post": {
+                "operationId": "samples_chromosomes_reclassify_create",
+                "description": "POST /samples/{id}/chromosomes/{cid}/reclassify/ — corregir clase (P3).\n\nBody: {\"target_class\": \"7\"}. Override manual del analista (BR-003): marca\nRESOLVED. 400 INVALID_CLASS / 400 SAME_CLASS / 409 CASE_LOCKED.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cid",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/chromosomes/{cid}/recrop/": {
+            "post": {
+                "operationId": "samples_chromosomes_recrop_create",
+                "description": "Evento RECROP. Mueve el límite de uno y lo reclasifica; vuelve a quedar pendiente.",
+                "summary": "Corregir el recorte de un cromosoma",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cid",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Corrección manual"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/RecortarRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Chromosome"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.edit."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CHROMOSOME_NOT_FOUND."
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CASE_LOCKED: el caso ya está validado y no admite correcciones (RN-04)."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/chromosomes/{cid}/reject/": {
+            "post": {
+                "operationId": "samples_chromosomes_reject_create",
+                "description": "Evento REJECT_OBJECT. Borrado suave (`is_active = false`): la fila y su historia se quedan (RN-05).",
+                "summary": "Descartar un objeto que no es un cromosoma",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cid",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Corrección manual"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DescartarObjetoRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Chromosome"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.edit."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: motivo fuera de la lista."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CHROMOSOME_NOT_FOUND / NO_KARYOTYPE."
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CASE_LOCKED / OBJECT_INACTIVE (ya descartado o absorbido)."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/chromosomes/{cid}/resolve/": {
+            "post": {
+                "operationId": "samples_chromosomes_resolve_create",
+                "description": "POST /samples/{id}/chromosomes/{cid}/resolve/ — resolver naranja (P2).\n\nExige XAI previo (BR-004): 409 XAI_REQUIRED si no. 400 NOT_ORANGE si el\ncromosoma no es naranja.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cid",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/chromosomes/{cid}/split/": {
+            "post": {
+                "operationId": "samples_chromosomes_split_create",
+                "description": "Evento SPLIT. backend-ml corta la máscara del objeto por la línea (en ráster); el original se queda con el trozo mayor y cada trozo se reclasifica. Ya no hay corte por la mitad.",
+                "summary": "Separar un objeto por la línea trazada",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cid",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Corrección manual"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/SepararObjetoRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Separado"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.edit."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR: sin línea o mal formada."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CHROMOSOME_NOT_FOUND / NO_METAPHASE_IMAGE."
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CASE_LOCKED / OBJECT_INACTIVE."
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "INVALID_CUT: la línea no separa el objeto; nada cambia."
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "ML_UNAVAILABLE: el corte lo calcula backend-ml; nada cambia (RN-07)."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/chromosomes/{cid}/xai/": {
+            "post": {
+                "operationId": "samples_chromosomes_xai_create",
+                "description": "POST /samples/{id}/chromosomes/{cid}/xai/ — XAI Grad-CAM (ADR-0021 P2).\n\nRegistra XAI_VIEWED (BR-004) y marca el cromosoma como visto. El heatmap\nreal lo produce el microservicio de inferencia (ADR-0007); acá mock.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "cid",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    },
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/iscn/": {
+            "post": {
+                "operationId": "samples_iscn_create",
+                "description": "POST /samples/{id}/iscn/ — genera la nomenclatura ISCN (ADR-0023 D4, ADR-0025).\n\nBody opcional: {\"override\": \"47,XY,+21\", \"justification\": \"...\"}.\nSin `override`, la calcula la función pura sobre el conteo validado.\n\nRN-04: el campo es read-only tras generarse. NO hay PATCH — para cambiarlo hay\nque pasar un `override` con justificación, y queda auditado (ISCN_OVERRIDE).\n\nErrores: 409 NOT_REPORTABLE (el caso no está firmado) / 409\nISCN_ALREADY_GENERATED / 400 INVALID_ISCN.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/karyotype/": {
+            "get": {
+                "operationId": "samples_karyotype_retrieve",
+                "description": "Cromosomas activos con su caja y su silueta en píxeles de la metafase, y el resumen del semáforo.",
+                "summary": "Cariotipo de la muestra",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Cariotipo"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Karyotype"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.edit."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_FOUND / NO_KARYOTYPE: la muestra no existe o aún no tiene cariotipo."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/karyotype/contours/": {
+            "post": {
+                "operationId": "samples_karyotype_contours_create",
+                "description": "Calcula con backend-ml el contorno de los cromosomas que solo tienen caja (casos anteriores a DD-KARYO-007). No emite evento de auditoría.",
+                "summary": "Completar las siluetas que faltan",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Corrección manual"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ContornosCompletados"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.edit."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NO_KARYOTYPE / NO_METAPHASE_IMAGE."
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CASE_LOCKED: el caso ya está validado y no admite correcciones (RN-04)."
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "ML_UNAVAILABLE: backend-ml no responde; no cambia nada (RN-07)."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/karyotype/metaphase/": {
+            "get": {
+                "operationId": "samples_karyotype_metaphase_retrieve",
+                "description": "La imagen sobre la que se segmentó el cariotipo; las cajas y siluetas están en sus píxeles.",
+                "summary": "Metafase segmentada",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Cariotipo"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "image/*": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        },
+                        "description": "BMP, PNG o JPEG."
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.edit."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NO_KARYOTYPE / NO_METAPHASE_IMAGE: no hay metafase utilizable (RN-07)."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/karyotype/objects/": {
+            "post": {
+                "operationId": "samples_karyotype_objects_create",
+                "description": "Evento ADD_OBJECT. Sin `clase` la decide el modelo; con `clase`, el analista (entra resuelto, BR-003).",
+                "summary": "Añadir un cromosoma que la segmentación no vio",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Corrección manual"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AnadirObjetoRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Chromosome"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.edit."
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "VALIDATION_ERROR (caja inválida o fuera de la metafase) / INVALID_CLASS."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NO_KARYOTYPE / NO_METAPHASE_IMAGE."
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CASE_LOCKED: el caso ya está validado y no admite correcciones (RN-04)."
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "CLASS_REQUIRED: la IA no responde y no se eligió clase; no se crea nada."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/karyotype/undo/": {
+            "get": {
+                "operationId": "samples_karyotype_undo_retrieve",
+                "description": "GET/POST /samples/{id}/karyotype/undo/ — deshacer la última edición (DD-KARYO-007 D6).\n\nGET: qué se desharía (`{ultima: {evento, tipo, propia, ...}}` o `{ultima: null}`),\npara enseñarlo en la barra como hace Ikaros.\nPOST: deshace. 200 el evento UNDO_EDIT · 409 NOTHING_TO_UNDO / UNDO_NOT_OWN /\nUNDO_UNAVAILABLE / CASE_LOCKED.",
+                "summary": "Qué desharía «Deshacer»",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Corrección manual"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/UltimaEdicionRespuesta"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.edit."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NO_KARYOTYPE."
+                    }
+                }
+            },
+            "post": {
+                "operationId": "samples_karyotype_undo_create",
+                "description": "Evento UNDO_EDIT que compensa al anterior; no borra nada (RN-05, D6).",
+                "summary": "Deshacer la última edición propia",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Corrección manual"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Deshecho"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.edit."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NO_KARYOTYPE."
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOTHING_TO_UNDO / UNDO_NOT_OWN / UNDO_UNAVAILABLE / CASE_LOCKED."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/narrative/": {
+            "post": {
+                "operationId": "samples_narrative_create",
+                "description": "POST /samples/{id}/narrative/ — genera el borrador narrativo (ADR-0024).\n\nBody opcional: {\"iscn\": \"47,XY,+21\"}. Si no viene, se deriva del conteo de\ncromosomas activos del caso.\n\nEl LLM **solo redacta**: el ISCN es un dato de entrada calculado por la\nfunción determinística (ADR-0023 D4), nunca por el modelo. La respuesta es un\nBORRADOR (`is_draft: true`) que el Supervisor debe revisar antes de que llegue\nal informe firmado.\n\nNunca falla por el LLM: si el servicio no responde o el texto no supera la\nvalidación, devuelve 200 con `generated: false` y el motivo — la narrativa no\npuede bloquear la emisión del informe (RN-07).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/process/": {
+            "post": {
+                "operationId": "samples_process_create",
+                "description": "POST /api/clinic/samples/{id}/process/ — encola el pipeline FastAPI (SPEC-008 UC-S-006).\n\nRN-06: analista solo puede procesar sus propias muestras (403 NOT_OWNER).\nRN-07: si el FastAPI clínico está degradado, retorna 503 ML_DEGRADED sin\nromper el flujo (la muestra sigue existiendo, se puede reintentar).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/sign/": {
+            "post": {
+                "operationId": "samples_sign_create",
+                "description": "POST /samples/{id}/sign/ — firma MFA del Supervisor (ADR-0023 S2).\n\nBody: {\"mfa_code\": \"123456\"}. Verificación TOTP delegada a backend-admin.\nErrores: 409 NOT_SIGNABLE / 403 SEGREGATION_VIOLATION / 409 AUDIT_INCOMPLETE /\n423 MFA_LOCKED / 401 MFA_INVALID / 400 MFA_NOT_ENROLLED / 503 MFA_SERVICE.",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/status/": {
+            "get": {
+                "operationId": "samples_status_retrieve",
+                "description": "GET /api/clinic/samples/{id}/status/ — estado del pipeline (SPEC-008 UC-S-007, polling).\n\nMismo scoping que SampleProcessView (RN-06). Read-only: sin circuit\nbreaker propio, delega en pipeline_client.get_status(). Usa la\nopción 'sample.view' (ver estado es parte de ver la muestra, no\nhay una opción RBAC dedicada para polling — ADR-0019 no la definió\ncomo acción separada).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/{id}/validate/": {
+            "post": {
+                "operationId": "samples_validate_create",
+                "description": "POST /samples/{id}/validate/ — transición a ANALYST_VALIDATED (FSD-UC-004).\n\nRechaza 409 CASE_BLOCKED si hay naranjas sin resolver (RN-01).",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "id",
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        },
+                        "required": true
+                    }
+                ],
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/samples/register/": {
+            "post": {
+                "operationId": "samples_register_create",
+                "description": "POST /api/clinic/samples/register/ — Registro de Muestras (ADR-0016, SPEC-009).\n\nEndpoint compuesto: crea Sample + PatientVault + N SampleImage en una\ntransacción atómica. RN-03: PII cifrada en PatientVault. RN-07: si el\npipeline FastAPI está degradado, la muestra se persiste igual.",
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        },
+        "/api/clinic/tools/query/": {
+            "get": {
+                "operationId": "tools_query_retrieve",
+                "description": "Publica el catalogo: que sabe responder el sistema.",
+                "tags": [
+                    "Sin describir"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            },
+            "post": {
+                "operationId": "tools_query_create",
+                "description": "POST /tools/query/ - consulta en lenguaje natural (Modulo 6, tool calling).\n\nBody: {\"pregunta\": \"...\"}. El modelo ELIGE la herramienta; el codigo produce\nla respuesta contra la base. El LLM nunca ve ni redacta un dato.\n\nSiempre 200: una pregunta fuera de alcance NO es un error del cliente. Se\nresponde `camino: SIN_MATCH` con el catalogo de lo que si se puede consultar.\n\nCada respuesta declara su procedencia (`tool`, `source`, `camino`) para que\nun dato consultado no se confunda con uno inventado.",
+                "tags": [
+                    "Sin describir"
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "additionalProperties": {}
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "additionalProperties": {}
+                                }
+                            }
+                        },
+                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "AnadirObjetoRequest": {
+                "type": "object",
+                "properties": {
+                    "bbox": {
+                        "$ref": "#/components/schemas/CajaRequest"
+                    },
+                    "clase": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ClaseCromosomaEnum"
+                            }
+                        ],
+                        "description": "Vacío o ausente: la decide el modelo.\n\n* `1` - 1\n* `2` - 2\n* `3` - 3\n* `4` - 4\n* `5` - 5\n* `6` - 6\n* `7` - 7\n* `8` - 8\n* `9` - 9\n* `10` - 10\n* `11` - 11\n* `12` - 12\n* `13` - 13\n* `14` - 14\n* `15` - 15\n* `16` - 16\n* `17` - 17\n* `18` - 18\n* `19` - 19\n* `20` - 20\n* `21` - 21\n* `22` - 22\n* `X` - X\n* `Y` - Y"
+                    }
+                },
+                "required": [
+                    "bbox"
+                ]
+            },
+            "CajaRequest": {
+                "type": "object",
+                "properties": {
+                    "x": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "y": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "w": {
+                        "type": "integer",
+                        "minimum": 1
+                    },
+                    "h": {
+                        "type": "integer",
+                        "minimum": 1
+                    }
+                },
+                "required": [
+                    "h",
+                    "w",
+                    "x",
+                    "y"
+                ]
+            },
+            "Chromosome": {
+                "type": "object",
+                "description": "Un cromosoma con su semáforo DERIVADO (RN-02, no persistido).",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "predicted_class": {
+                        "$ref": "#/components/schemas/ClaseCromosomaEnum"
+                    },
+                    "position_index": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64"
+                    },
+                    "confidence_score": {
+                        "type": "string",
+                        "format": "decimal",
+                        "pattern": "^-?\\d{0,1}(?:\\.\\d{0,3})?$",
+                        "nullable": true
+                    },
+                    "semaphore": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "resolution_status": {
+                        "$ref": "#/components/schemas/ResolutionStatusEnum"
+                    },
+                    "xai_viewed": {
+                        "type": "boolean"
+                    },
+                    "is_anomaly": {
+                        "type": "boolean"
+                    },
+                    "is_active": {
+                        "type": "boolean"
+                    },
+                    "measures": {},
+                    "bbox": {},
+                    "contour": {
+                        "readOnly": true,
+                        "nullable": true
+                    },
+                    "order": {
+                        "type": "integer",
+                        "maximum": 9223372036854775807,
+                        "minimum": -9223372036854775808,
+                        "format": "int64"
+                    }
+                },
+                "required": [
+                    "contour",
+                    "id",
+                    "predicted_class",
+                    "semaphore"
+                ]
+            },
+            "ClaseCromosomaEnum": {
+                "enum": [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "10",
+                    "11",
+                    "12",
+                    "13",
+                    "14",
+                    "15",
+                    "16",
+                    "17",
+                    "18",
+                    "19",
+                    "20",
+                    "21",
+                    "22",
+                    "X",
+                    "Y"
+                ],
+                "type": "string",
+                "description": "* `1` - 1\n* `2` - 2\n* `3` - 3\n* `4` - 4\n* `5` - 5\n* `6` - 6\n* `7` - 7\n* `8` - 8\n* `9` - 9\n* `10` - 10\n* `11` - 11\n* `12` - 12\n* `13` - 13\n* `14` - 14\n* `15` - 15\n* `16` - 16\n* `17` - 17\n* `18` - 18\n* `19` - 19\n* `20` - 20\n* `21` - 21\n* `22` - 22\n* `X` - X\n* `Y` - Y"
+            },
+            "ContornosCompletados": {
+                "type": "object",
+                "properties": {
+                    "completados": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "completados"
+                ]
+            },
+            "DescartarObjetoRequest": {
+                "type": "object",
+                "properties": {
+                    "motivo": {
+                        "$ref": "#/components/schemas/MotivoEnum"
+                    }
+                },
+                "required": [
+                    "motivo"
+                ]
+            },
+            "Deshecho": {
+                "type": "object",
+                "properties": {
+                    "evento": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "deshace": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "tipo": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "deshace",
+                    "evento",
+                    "tipo"
+                ]
+            },
+            "ErrorApi": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "description": "Código estable del error, p. ej. CASE_LOCKED."
+                    },
+                    "detail": {
+                        "type": "string",
+                        "description": "Motivo legible, para mostrar al analista."
+                    }
+                },
+                "required": [
+                    "code",
+                    "detail"
+                ]
+            },
+            "GiroEnum": {
+                "enum": [
+                    0,
+                    180
+                ],
+                "type": "integer",
+                "description": "* `0` - 0\n* `180` - 180"
+            },
+            "Karyotype": {
+                "type": "object",
+                "description": "Cariotipo completo + `summary` derivado (conteos + is_blocked).\n\n`summary` no persiste: se computa por-request desde los cromosomas.\n`is_blocked` en P1 es informativo (el bloqueo real de emisión es P2).",
+                "properties": {
+                    "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "sample_id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "readOnly": true
+                    },
+                    "sample_status": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "sample_iscn": {
+                        "type": "string",
+                        "readOnly": true
+                    },
+                    "model_version": {
+                        "type": "string",
+                        "maxLength": 80
+                    },
+                    "generated_at": {
+                        "type": "string",
+                        "format": "date-time",
+                        "readOnly": true
+                    },
+                    "summary": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/ResumenCariotipo"
+                            }
+                        ],
+                        "readOnly": true
+                    },
+                    "chromosomes": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Chromosome"
+                        },
+                        "readOnly": true
+                    }
+                },
+                "required": [
+                    "chromosomes",
+                    "generated_at",
+                    "id",
+                    "sample_id",
+                    "sample_iscn",
+                    "sample_status",
+                    "summary"
+                ]
+            },
+            "MotivoEnum": {
+                "enum": [
+                    "duplicado",
+                    "nucleo",
+                    "otro",
+                    "suciedad"
+                ],
+                "type": "string",
+                "description": "* `duplicado` - duplicado\n* `nucleo` - nucleo\n* `otro` - otro\n* `suciedad` - suciedad"
+            },
+            "OrientarRequest": {
+                "type": "object",
+                "properties": {
+                    "giro": {
+                        "$ref": "#/components/schemas/GiroEnum"
+                    },
+                    "volteo": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "giro",
+                    "volteo"
+                ]
+            },
+            "RecortarRequest": {
+                "type": "object",
+                "properties": {
+                    "bbox": {
+                        "$ref": "#/components/schemas/CajaRequest"
+                    }
+                },
+                "required": [
+                    "bbox"
+                ]
+            },
+            "ResolutionStatusEnum": {
+                "enum": [
+                    "AUTO",
+                    "PENDING",
+                    "RESOLVED"
+                ],
+                "type": "string",
+                "description": "* `AUTO` - Automático (verde)\n* `PENDING` - Pendiente (naranja)\n* `RESOLVED` - Resuelto"
+            },
+            "ResumenCariotipo": {
+                "type": "object",
+                "properties": {
+                    "total": {
+                        "type": "integer"
+                    },
+                    "green": {
+                        "type": "integer"
+                    },
+                    "orange": {
+                        "type": "integer"
+                    },
+                    "red": {
+                        "type": "integer"
+                    },
+                    "unresolved_orange": {
+                        "type": "integer"
+                    },
+                    "is_blocked": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "green",
+                    "is_blocked",
+                    "orange",
+                    "red",
+                    "total",
+                    "unresolved_orange"
+                ]
+            },
+            "Separado": {
+                "type": "object",
+                "properties": {
+                    "origen": {
+                        "$ref": "#/components/schemas/Chromosome"
+                    },
+                    "creados": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Chromosome"
+                        }
+                    }
+                },
+                "required": [
+                    "creados",
+                    "origen"
+                ]
+            },
+            "SepararObjetoRequest": {
+                "type": "object",
+                "properties": {
+                    "linea": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {
+                                "type": "number",
+                                "format": "double"
+                            },
+                            "maxItems": 2,
+                            "minItems": 2
+                        },
+                        "description": "Polilínea [[x, y], …] en píxeles de la metafase.",
+                        "minItems": 2
+                    }
+                },
+                "required": [
+                    "linea"
+                ]
+            },
+            "UltimaEdicion": {
+                "type": "object",
+                "properties": {
+                    "evento": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "tipo": {
+                        "type": "string",
+                        "description": "SPLIT, JOIN, RECROP, REJECT_OBJECT o ADD_OBJECT."
+                    },
+                    "propia": {
+                        "type": "boolean",
+                        "description": "Solo se deshace lo propio."
+                    },
+                    "actor_name": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    }
+                },
+                "required": [
+                    "actor_name",
+                    "created_at",
+                    "evento",
+                    "propia",
+                    "tipo"
+                ]
+            },
+            "UltimaEdicionRespuesta": {
+                "type": "object",
+                "properties": {
+                    "ultima": {
+                        "$ref": "#/components/schemas/UltimaEdicion"
+                    }
+                },
+                "required": [
+                    "ultima"
+                ]
+            },
+            "UnirObjetosRequest": {
+                "type": "object",
+                "properties": {
+                    "other_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    }
+                },
+                "required": [
+                    "other_id"
+                ]
+            }
+        },
+        "securitySchemes": {
+            "jwtBackendAdmin": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "JWT"
+            }
+        }
+    },
+    "servers": [
+        {
+            "url": "http://localhost:8002",
+            "description": "Desarrollo local (detrás de Caddy: http://localhost:3000)"
+        }
+    ],
+    "tags": [
+        {
+            "name": "Cariotipo",
+            "description": "Lectura del cariotipo y de su metafase."
+        },
+        {
+            "name": "Corrección manual",
+            "description": "Corrección de la segmentación sobre la metafase (DD-KARYO-007, FSD-UC-003)."
+        },
+        {
+            "name": "Muestras",
+            "description": "Alta, consulta y edición de muestras."
+        },
+        {
+            "name": "Sin describir",
+            "description": "Endpoints que el contrato todavía declara como objeto JSON genérico (DD-API-001 D2)."
+        }
+    ]
+}
