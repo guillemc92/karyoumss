@@ -166,7 +166,7 @@ class ChromosomeSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'predicted_class', 'position_index', 'confidence_score',
             'semaphore', 'resolution_status', 'xai_viewed', 'is_anomaly',
-            'is_active', 'measures', 'bbox', 'contour', 'order',
+            'is_active', 'measures', 'bbox', 'order',
         ]
         # La silueta la calcula backend-ml; nadie la escribe por este serializador.
         read_only_fields = ['contour']

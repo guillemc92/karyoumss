@@ -2245,10 +2245,6 @@
                     },
                     "measures": {},
                     "bbox": {},
-                    "contour": {
-                        "readOnly": true,
-                        "nullable": true
-                    },
                     "order": {
                         "type": "integer",
                         "maximum": 9223372036854775807,
@@ -2257,7 +2253,6 @@
                     }
                 },
                 "required": [
-                    "contour",
                     "id",
                     "predicted_class",
                     "semaphore"
