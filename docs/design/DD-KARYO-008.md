@@ -7,7 +7,7 @@
 | **Continúa** | [DD-KARYO-007](DD-KARYO-007.md). **Sustituye su D7** («girar 180° y voltear»), que no se edita: lo amplía esta. |
 | **FSD** | FSD-UC-003 (corrección manual del cariotipo) |
 | **Reglas** | RN-04 (lo validado no se reescribe), RN-05 (auditoría solo de inserción), RN-06 (alcance del analista), RN-07 (degradación), RN-09 (cobertura ≥ 90 %) |
-| **Estado** | **Aprobado** el 2026-10-28, con las respuestas propuestas en §9 (§10) · T1 a T5 hechas |
+| **Estado** | **Aprobado** el 2026-10-28, con las respuestas propuestas en §9 (§10) · **Implementado** T1–T6 el 2026-10-29 (§12) |
 | **Fecha** | 2026-10-28 |
 
 ## 1. Por qué existe
@@ -249,7 +249,7 @@ tarea 1»), sin cambiar nada de §9. Quedan las respuestas propuestas:
 | T3 | **Hecha 29/10.** `orient_chromosome(…, ajuste=None)`: entero −90..90; sin él se conserva el guardado; 400 y ningún evento con −91, 91, 2,5, 5,0, `true`, `false`, `"5"` o `[5]`. La vista lo pasa desde `request.data`. Contrato: `ajuste` es una propiedad **opcional** de la petición `Orientar` (no entra en `required`), con `openapi.json` regenerado (+6/−1). 22 pruebas nuevas, que fallaban antes de implementar. Suite de backend-clinic: **1134 verdes, cobertura del 90,85 %**. Mutaciones: borrar el ajuste cuando no llega hace fallar 2; aceptar un booleano hace fallar 3. **oasdiff no se pudo ejecutar en local** (Docker Desktop apagado): lo comprueba el CI en el PR. |
 | T4 | **Hecha 29/10.** «↺ −5°», el valor («Ajuste +10°») y «↻ +5°» en una fila del panel, con «Restablecer» debajo. Se apagan en los topes (±90) y «Restablecer» se apaga cuando el ajuste ya es 0. «Girar 180°» y «Voltear» conservan el ajuste. El ajuste guardado se suma al enderezado al pintar. El doble MSW valida como el backend. Pruebas: 5 de geometría, 6 de panel y 1 de página (+5° dos veces → giro final de 330 a 340, girar 180° lo conserva, 3 entradas en la bitácora). Mutaciones, las cuatro detectadas: no sumar el ajuste al pintar (fallan 3), quitar el tope (falla 1), «+5°» con el signo cambiado (fallan 2) y que «Girar» pierda el ajuste (fallan 2). E2E en Chromium sobre la misma muestra propia: con +10° el cromosoma queda a **8,4°** en los píxeles, y la auditoría tiene dos `ORIENT` con el ajuste 0→5 y 5→10. Captura: `capturas/dd-karyo-008/panel-ajuste.png`. Suite E2E completa: **20 de 20**. |
 | T5 | **Hecha 29/10.** ↺ ↻ se llaman «Rotar vista a la izquierda / a la derecha» (`aria-label`), y su `title` dice que giran todo el lienzo. Con un cromosoma seleccionado, la barra muestra «↺ ↻ giran toda la vista; el cromosoma se gira en su panel». El comportamiento no cambia. 2 pruebas de componente; el E2E `cariograma-enderezado` comprueba que el aviso se ve al seleccionar. Captura: `capturas/dd-karyo-008/barra-rotar-vista.png`. Al pasar las pruebas de página falló de forma intermitente `sampleListPage` (filtro VALIDATED); sola pasó dos veces seguidas, así que es la misma inestabilidad con la CPU cargada de §11.3. |
-| T6 | Pendiente. |
+| T6 | **Hecha 29/10.** PR #7 contra `release/8.2.0`, run [40882886172](https://github.com/guillemc92/karyoumss/actions/runs/40882886172). backend-clinic: drift verde, Spectral sin errores y **oasdiff sin ninguna ruptura**. Comparó de verdad el contrato de `release/8.2.0` con el del PR; con el mismo paso, el PR de la Demo 2 listaba 8. backend-ml: verde, sin cambios. Verificación final en §12. |
 
 ### 11.3 Decisiones tomadas al implementar T4
 
@@ -270,3 +270,38 @@ tarea 1»), sin cambiar nada de §9. Quedan las respuestas propuestas:
 
 1. **`ajuste` se guarda siempre, también cuando vale 0.** Así `measures.orientacion` tiene un solo formato, `{giro, volteo, ajuste}`. Una orientación antigua sin él se lee como 0, también en el `previa` del evento. Las pruebas de D7 que esperaban `{giro, volteo}` ahora esperan también `ajuste: 0`. El cliente no se ve afectado: `orientacionDe` ignora las claves que no conoce.
 2. **No se exige que sea múltiplo de 5.** Los botones de T4 van de 5 en 5, pero la API acepta cualquier entero del rango. El paso es cosa de la interfaz.
+
+## 12. Verificación (2026-10-29)
+
+| Capa | Resultado |
+|---|---|
+| frontend-clinic | 633 pruebas; `ejeCromosoma.ts` y `presentacionCariograma.ts` al 100 % de líneas y ramas. Fallos intermitentes con la CPU cargada en pruebas no tocadas (`sampleRegisterPage`, `toolQueryPage`, `sampleListPage`); solas pasan. |
+| backend-clinic | 1134 pruebas, cobertura total del **90,85 %** (RN-09). |
+| E2E en Chromium, stack real | 20 de 20. `cariograma-enderezado.spec.ts`: un 10 inclinado 59° en la metafase queda a 26,5° con el código anterior (**falla**) y a 1,7° con DD-KARYO-008; con +10° de ajuste, a 8,4°; dos `ORIENT` con el ajuste 0→5 y 5→10. |
+| Contrato (CI, PR #7) | Drift verde, Spectral sin errores, **oasdiff sin rupturas**: `ajuste` es opcional. |
+
+**Mutaciones:** 12, todas detectadas. Una sobrevivió a la primera tanda y obligó a escribir una prueba mejor (§11.1.3):
+
+- quitar la corrección de signo;
+- enderezar los casi redondos;
+- recortar por la caja en vez de por la silueta;
+- escala común con las cajas;
+- volteo sin invertir el giro;
+- silueta sin cerrar;
+- borrar el ajuste cuando no llega;
+- aceptar un ajuste booleano;
+- no sumar el ajuste al pintar;
+- quitar el tope de ±90;
+- «+5°» con el signo cambiado;
+- que «Girar» pierda el ajuste.
+
+**Fallos del instrumento** (todos se cazaron antes de creer el resultado):
+
+- la primera medición del eje caía en el eje menor (siluetas horarias, §1.2);
+- el primer E2E contaba como negro el fondo transparente del canvas y daba «de pie» antes y después del cambio (§11.1.4).
+
+**Lo que queda abierto:**
+
+- La sub-segmentación (OpenCV watershed; no hay U-Net) sigue haciendo inservible el cariograma de muchos casos. Esta spec solo cambia cómo se ve cada objeto.
+- Las metafases de MetaClass llevan escrito a mano el número de clase de cada cromosoma (`datasets/metaclass/README.md`). La IA lo ve, y no es lo que entrará en producción.
+- El «Restablecer» de la barra de imagen tiene muy poco contraste; ya estaba así antes.
