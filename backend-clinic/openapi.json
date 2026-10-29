@@ -684,7 +684,7 @@
         "/api/clinic/samples/{id}/chromosomes/{cid}/orient/": {
             "post": {
                 "operationId": "samples_chromosomes_orient_create",
-                "description": "Evento ORIENT. Presentación: se guarda en `measures.orientacion`; no toca bbox ni contour (D7).",
+                "description": "Evento ORIENT. Presentación: se guarda en `measures.orientacion`; no toca bbox ni contour (D7). `ajuste` corrige a mano el enderezado automático del cariograma; sin él se conserva el guardado (DD-KARYO-008 D4).",
                 "summary": "Girar 180° o voltear en el cariograma",
                 "parameters": [
                     {
@@ -2437,6 +2437,11 @@
                     },
                     "volteo": {
                         "type": "boolean"
+                    },
+                    "ajuste": {
+                        "type": "integer",
+                        "maximum": 90,
+                        "minimum": -90
                     }
                 },
                 "required": [

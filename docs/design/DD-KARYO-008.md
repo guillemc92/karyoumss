@@ -7,7 +7,7 @@
 | **Continúa** | [DD-KARYO-007](DD-KARYO-007.md). **Sustituye su D7** («girar 180° y voltear»), que no se edita: lo amplía esta. |
 | **FSD** | FSD-UC-003 (corrección manual del cariotipo) |
 | **Reglas** | RN-04 (lo validado no se reescribe), RN-05 (auditoría solo de inserción), RN-06 (alcance del analista), RN-07 (degradación), RN-09 (cobertura ≥ 90 %) |
-| **Estado** | **Aprobado** el 2026-10-28, con las respuestas propuestas en §9 (§10) · T1 y T2 hechas |
+| **Estado** | **Aprobado** el 2026-10-28, con las respuestas propuestas en §9 (§10) · T1, T2 y T3 hechas |
 | **Fecha** | 2026-10-28 |
 
 ## 1. Por qué existe
@@ -246,7 +246,8 @@ tarea 1»), sin cambiar nada de §9. Quedan las respuestas propuestas:
 |---|---|
 | T1 | **Hecha 28/10.** `lib/ejeCromosoma.ts`, 27 pruebas, **100 %** de líneas y ramas. Cada caso se recorre en los dos sentidos. Mutaciones: sin corregir el signo fallan 7 pruebas; enderezando los casi redondos falla 1. Contrastada con `scripts/medir_ejes_cromosomas.py` sobre las 38 siluetas reales de `metafase_1`: mismas cifras (27 / 21 / 11 inclinadas; largo frente a la caja 1,01 de mediana, 1,23 de máximo). Con el umbral de 1,2, **2 de las 38** quedan como casi redondas y no se enderezan. |
 | T2 | **Hecha 29/10.** Cada cromosoma con silueta se pinta dentro de un `Group` de Konva que recorta por ella (`clipFunc`) y lo gira hasta dejarlo de pie. La colocación sale de la caja de la silueta **ya girada**, así que vale para cualquier ángulo y T4 solo tiene que sumar el ajuste. La escala común usa lo que miden de pie. Sin silueta, el recorte de su caja, como antes (RN-07). Pruebas: 34 de geometría y 18 de componente; `ejeCromosoma.ts` y `presentacionCariograma.ts` al 100 %, y el código nuevo de `KaryotypeCanvas.tsx` cubierto entero (lo que queda sin cubrir es la medición y el arrastre del lienzo, como antes). Suite del frontend: 621 verdes. E2E `cariograma-enderezado.spec.ts` sobre una muestra propia con `metafase_1`: un 10 inclinado 59° en la metafase queda a **26,5°** con el código anterior (el test **falla**) y a **1,7°** con T2 (pasa). Capturas en `capturas/dd-karyo-008/` (`antes.png`, `despues.png`). |
-| T3–T6 | Pendientes. |
+| T3 | **Hecha 29/10.** `orient_chromosome(…, ajuste=None)`: entero −90..90; sin él se conserva el guardado; 400 y ningún evento con −91, 91, 2,5, 5,0, `true`, `false`, `"5"` o `[5]`. La vista lo pasa desde `request.data`. Contrato: `ajuste` es una propiedad **opcional** de la petición `Orientar` (no entra en `required`), con `openapi.json` regenerado (+6/−1). 22 pruebas nuevas, que fallaban antes de implementar. Suite de backend-clinic: **1134 verdes, cobertura del 90,85 %**. Mutaciones: borrar el ajuste cuando no llega hace fallar 2; aceptar un booleano hace fallar 3. **oasdiff no se pudo ejecutar en local** (Docker Desktop apagado): lo comprueba el CI en el PR. |
+| T4–T6 | Pendientes. |
 
 ### 11.1 Decisiones tomadas al implementar T2
 
@@ -255,3 +256,8 @@ tarea 1»), sin cambiar nada de §9. Quedan las respuestas propuestas:
 3. **Una mutación sobrevivió a la primera tanda de pruebas.** «Escala común con las cajas» pasaba, porque la prueba tenía nueve cromosomas verticales y uno solo en diagonal, y el percentil 90 lo marcaban los verticales. Se añadió una prueba con todos en diagonal: con las cajas la escala sería 0,28, y de pie es 1.
 4. **El primer E2E daba «de pie» antes y después del cambio: falló el medidor, no el sistema.** Lo que Konva no pinta es transparente y se lee (0, 0, 0, 0), gris y negro. El medidor contaba el hueco vacío, un rectángulo vertical: 2.496 «píxeles oscuros» para una mancha de unos 10 px. Ahora exige opacidad, y solo entonces el test falla con el código anterior.
 5. **`metafase-corte.spec.ts` fallaba, y no por T2** (fallaba igual con el código anterior). Pulsaba el centro del objeto mayor sin desplazar la página. Con `metafase_1`, que es la que ahora devuelve `metafaseReal` porque las muestras de la demo la usan, ese centro caía en y = 802 con una ventana de 720. Ahora desplaza la página antes de medir dónde está el lienzo (sin la rueda, que hace zoom). Suite E2E completa: 19 de 20; corregido, `metafase-corte` pasa solo.
+
+### 11.2 Decisiones tomadas al implementar T3
+
+1. **`ajuste` se guarda siempre, también cuando vale 0.** Así `measures.orientacion` tiene un solo formato, `{giro, volteo, ajuste}`. Una orientación antigua sin él se lee como 0, también en el `previa` del evento. Las pruebas de D7 que esperaban `{giro, volteo}` ahora esperan también `ajuste: 0`. El cliente no se ve afectado: `orientacionDe` ignora las claves que no conoce.
+2. **No se exige que sea múltiplo de 5.** Los botones de T4 van de 5 en 5, pero la API acepta cualquier entero del rango. El paso es cosa de la interfaz.
