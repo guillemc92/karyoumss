@@ -381,6 +381,7 @@ export function KaryotypePage() {
             onRehacer={() => dispatchViewport({ type: 'rehacer' })}
             hayQueDeshacer={puedeDeshacer(histViewport)}
             hayQueRehacer={puedeRehacer(histViewport)}
+            cromosomaSeleccionado={selected !== null}
           />
           {/* DD-KARYO-007 F1: la metafase es el lienzo donde se corrige la
               segmentación; el cariograma, debajo, es donde se ordena. */}

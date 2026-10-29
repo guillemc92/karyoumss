@@ -362,6 +362,8 @@ input[type="range"] { width: 100%; height: 4px; border-radius: 2px; background: 
 .karyo-imagebar__zoom { min-width: 3.2rem; text-align: center; color: #cbd5e1; font-variant-numeric: tabular-nums; font-size: 0.82rem; }
 .karyo-imagebar__slider { display: flex; align-items: center; gap: 0.3rem; color: #cbd5e1; font-size: 0.9rem; }
 .karyo-imagebar__slider input[type="range"] { width: 84px; }
+/* DD-KARYO-008 D5: el aviso de que ↺ ↻ giran toda la vista, no el cromosoma. */
+.karyo-imagebar__aviso { color: #fcd34d; font-size: 0.75rem; }
 .tool-icon { background: rgba(255,255,255,0.1); border: 1px solid transparent; border-radius: var(--radius-sm); color: #e2e8f0; padding: 0.3rem 0.55rem; cursor: pointer; font-size: 0.9rem; line-height: 1; }
 .tool-icon:hover:not(:disabled) { background: rgba(255,255,255,0.2); }
 .tool-icon:disabled { opacity: 0.4; cursor: not-allowed; }

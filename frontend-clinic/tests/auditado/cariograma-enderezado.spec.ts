@@ -97,6 +97,11 @@ test('un cromosoma en diagonal se ve de pie en el cariograma', async ({ page, re
   const k = caja.width / STAGE_WIDTH;
   await page.mouse.click(caja.x + (pos.x + 13) * k, caja.y + (pos.y + 60) * k);
   await expect(page.getByTestId('ajuste-giro')).toBeVisible();
+  // T5: con un cromosoma seleccionado, la barra avisa de que ↺ ↻ giran toda la vista.
+  await expect(page.getByTestId('viewport-rotate-aviso')).toBeVisible();
+  if (process.env.E2E_CAPTURAS) {
+    await page.getByTestId('karyo-imagebar').screenshot({ path: `${process.env.E2E_CAPTURAS}/barra-rotar-vista.png` });
+  }
   await page.getByTestId('action-ajuste-mas').click();
   await expect(page.getByTestId('ajuste-valor')).toHaveText('Ajuste +5°');
   await page.getByTestId('action-ajuste-mas').click();
