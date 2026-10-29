@@ -100,6 +100,107 @@ describe('ChromosomePropertiesPanel — girar y voltear (D7)', () => {
   });
 });
 
+/** Silueta de un rectángulo w × h girado `grados`, centrado en (cx, cy), con su caja. */
+function conSilueta(id: string, w: number, h: number, grados: number, cx = 600, cy = 400, extra: Partial<Chromosome> = {}) {
+  const a = (grados * Math.PI) / 180;
+  const contour = [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(([x, y]) => [
+    cx + x * Math.cos(a) - y * Math.sin(a),
+    cy + x * Math.sin(a) + y * Math.cos(a),
+  ]);
+  const xs = contour.map(([x]) => x);
+  const ys = contour.map(([, y]) => y);
+  const bbox = {
+    x: Math.floor(Math.min(...xs)), y: Math.floor(Math.min(...ys)),
+    w: Math.ceil(Math.max(...xs)) - Math.floor(Math.min(...xs)),
+    h: Math.ceil(Math.max(...ys)) - Math.floor(Math.min(...ys)),
+  };
+  return cromosoma(id, bbox, { contour, ...extra });
+}
+const transformacion = (id: string) =>
+  JSON.parse(screen.getByTestId(`chromosome-silueta-${id}`).getAttribute('data-transformacion')!);
+
+describe('KaryotypeCanvas — recortado por la silueta y enderezado (DD-KARYO-008 T2)', () => {
+  it('uno en diagonal se pinta dentro de un grupo que lo pone de pie', () => {
+    pintar([...NORMALES, conSilueta('d', 10, 100, 30)]);
+    const grupo = screen.getByTestId('chromosome-silueta-d');
+    expect(grupo).toHaveAttribute('data-enderezado', 'true');
+    // Su eje está a 120°: girarlo −30° lo deja vertical (330 en [0, 360)).
+    expect(grupo).toHaveAttribute('data-giro-final', '330');
+    expect(transformacion('d').rotation).toBeCloseTo(-30, 6);
+  });
+
+  it('se recorta por la silueta, cerrada y relativa a su centro (D1)', () => {
+    const d = conSilueta('d', 10, 100, 30);
+    pintar([...NORMALES, d]);
+    const { puntos, cerrado } = JSON.parse(screen.getByTestId('chromosome-silueta-d').getAttribute('data-silueta')!);
+    expect(cerrado).toBe(true);
+    expect(puntos).toHaveLength(4);
+    (d.contour as number[][]).forEach(([x, y], i) => {
+      expect(puntos[i][0]).toBeCloseTo(x - 600, 6);
+      expect(puntos[i][1]).toBeCloseTo(y - 400, 6);
+    });
+  });
+
+  it('la imagen sigue siendo el recorte de su caja, colocada respecto al centro', () => {
+    const d = conSilueta('d', 10, 100, 30);
+    pintar([...NORMALES, d]);
+    const img = screen.getByTestId('chromosome-img-d');
+    const b = d.bbox as { x: number; y: number; w: number; h: number };
+    expect(JSON.parse(img.getAttribute('data-crop')!)).toEqual({ x: b.x, y: b.y, width: b.w, height: b.h });
+    const c = JSON.parse(img.getAttribute('data-caja')!);
+    expect(c.x).toBeCloseTo(b.x - 600, 6);
+    expect(c.y).toBeCloseTo(b.y - 400, 6);
+    expect(c.rotacion).toBe(0); // gira el grupo, no la imagen
+  });
+
+  it('de pie mide lo mismo que uno de su largo que ya estaba vertical', () => {
+    // A 45° la caja de un 10 × 100 mide ~78 × 78; de pie mide 100, como los normales.
+    pintar([...NORMALES, conSilueta('d', 10, 100, 45)]);
+    expect(transformacion('d').scaleY * 100).toBeCloseTo(borde('n0').alto, 6);
+  });
+
+  it('la escala común sale de lo que miden de pie, no de sus cajas', () => {
+    // Todos en diagonal, así que son ellos los que marcan el percentil 90. Con
+    // sus cajas (~78 × 78, más anchas que el hueco de 22) la escala sería 0,28
+    // y se verían diminutos; de pie (10 × 100) caben a escala 1.
+    pintar(Array.from({ length: 10 }, (_, i) => conSilueta(`d${i}`, 10, 100, 45, 100 + i * 90, 400)));
+    expect(transformacion('d0').scaleY).toBeCloseTo(1, 6);
+  });
+
+  it('la orientación de D7 se suma al enderezado', () => {
+    pintar([...NORMALES, conSilueta('d', 10, 100, 30, 600, 400, { measures: { orientacion: { giro: 180, volteo: true } } })]);
+    expect(screen.getByTestId('chromosome-silueta-d')).toHaveAttribute('data-giro-final', '150');
+    expect(transformacion('d').scaleX).toBeLessThan(0);
+    expect(screen.getByTestId('chromosome-img-d')).toHaveAttribute('data-orientacion', '180-v');
+  });
+
+  it('un casi redondo se recorta por su silueta pero no se endereza', () => {
+    pintar([...NORMALES, conSilueta('r', 50, 55, 30)]);
+    expect(screen.getByTestId('chromosome-silueta-r')).toHaveAttribute('data-enderezado', 'false');
+  });
+
+  it('sin silueta se pinta el recorte de su caja, como siempre (RN-07)', () => {
+    pintar([...NORMALES, UNO]);
+    expect(screen.queryByTestId('chromosome-silueta-uno')).toBeNull();
+    expect(screen.getByTestId('chromosome-img-uno')).toBeInTheDocument();
+  });
+
+  it('se sigue seleccionando con un clic en su hueco', () => {
+    const onSelect = vi.fn();
+    const d = conSilueta('d', 10, 100, 30);
+    render(<KaryotypeCanvas chromosomes={[...NORMALES, d]} selectedId={null} onSelect={onSelect} metafase={METAFASE} />);
+    fireEvent.click(screen.getByTestId('chromosome-d'));
+    expect(onSelect).toHaveBeenCalledWith(d);
+  });
+
+  it('el marco abraza al cromosoma de pie', () => {
+    pintar([...NORMALES, conSilueta('d', 10, 100, 30)]);
+    const marco = JSON.parse(screen.getByTestId('chromosome-frame-d').getAttribute('data-caja')!);
+    expect(marco.y + marco.h).toBeCloseTo(LINEA_BASE + 2, 6);
+    expect(marco.w).toBeLessThan(20); // de pie es estrecho; en diagonal su caja mediría ~60
+  });
+});
+
 describe('KaryotypeCanvas — marco ajustado (T7)', () => {
   it('el marco del semáforo abraza al cromosoma, no al hueco entero', () => {
     pintar([...NORMALES, UNO, VEINTIUNO]);

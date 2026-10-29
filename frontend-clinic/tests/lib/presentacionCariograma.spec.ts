@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   SIN_ORIENTAR,
+  cajaGirada,
   colocarEnLineaBase,
+  colocarSilueta,
+  dimensionesDePie,
+  siluetaDe,
+  trazarSilueta,
+  type ColocacionSilueta,
+  type Silueta,
   escalaComun,
   factorAjuste,
   girar,
@@ -140,5 +147,162 @@ describe('marcoVisible', () => {
     expect(m.x).toBe(CUERPO.x - 2);
     expect(m.y).toBe(CUERPO.y - 2);
     expect(m.w).toBe(CUERPO.w + 4);
+  });
+});
+
+// ============================================================================
+// DD-KARYO-008 T2 — recortar por la silueta y enderezar
+// ============================================================================
+
+/** Rectángulo w × h centrado en (cx, cy) y girado `grados` (y hacia abajo). */
+function rect(w: number, h: number, grados: number, cx = 300, cy = 200): number[][] {
+  const a = (grados * Math.PI) / 180;
+  return [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(([x, y]) => [
+    cx + x * Math.cos(a) - y * Math.sin(a),
+    cy + x * Math.sin(a) + y * Math.cos(a),
+  ]);
+}
+const cajaDe = (p: number[][]) => {
+  const xs = p.map(([x]) => x);
+  const ys = p.map(([, y]) => y);
+  return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+};
+
+/**
+ * Lo que Konva pinta: cada punto de la silueta, relativo a su centro, escalado,
+ * girado y trasladado (T·R·S). Probar esto y no los números sueltos es lo que
+ * caza un volteo con el signo del giro mal.
+ */
+function enPantalla(s: Silueta, c: ColocacionSilueta): number[][] {
+  const a = (c.rotation * Math.PI) / 180;
+  return s.poligono.map(([px, py]) => {
+    const x = (px - s.eje.centro.x) * c.scaleX;
+    const y = (py - s.eje.centro.y) * c.scaleY;
+    return [c.x + x * Math.cos(a) - y * Math.sin(a), c.y + x * Math.sin(a) + y * Math.cos(a)];
+  });
+}
+
+// Un triángulo inclinado: asimétrico, así que un giro o un volteo mal hechos se notan.
+const TRIANGULO = [[300, 200], [330, 210], [310, 320]];
+
+describe('siluetaDe', () => {
+  it('uno en diagonal se endereza por su eje', () => {
+    const s = siluetaDe(rect(10, 100, 30), { w: 60, h: 90 })!;
+    expect(s.enderezado).toBe(true);
+    expect(s.giroAuto).toBeCloseTo(-30, 6);
+  });
+
+  it('uno casi redondo no se endereza: manda la regla de la caja (D8)', () => {
+    const redondo = rect(50, 55, 30);
+    expect(siluetaDe(redondo, { w: 60, h: 40 })).toMatchObject({ enderezado: false, giroAuto: 90 });
+    expect(siluetaDe(redondo, { w: 40, h: 60 })).toMatchObject({ enderezado: false, giroAuto: 0 });
+  });
+
+  it('sin silueta utilizable no hay silueta: se pinta la caja', () => {
+    expect(siluetaDe(null, { w: 10, h: 10 })).toBeNull();
+    expect(siluetaDe(undefined, { w: 10, h: 10 })).toBeNull();
+    expect(siluetaDe([[0, 0], [1, 1]], { w: 10, h: 10 })).toBeNull();
+  });
+});
+
+describe('cajaGirada y dimensionesDePie', () => {
+  it('de pie mide su largo real, no el de la caja', () => {
+    // A 45° la caja de un 10 × 100 mide ~78 × 78.
+    const d = dimensionesDePie(siluetaDe(rect(10, 100, 45), { w: 78, h: 78 })!);
+    expect(d.w).toBeCloseTo(10, 6);
+    expect(d.h).toBeCloseTo(100, 6);
+  });
+
+  it('el espejo refleja la caja sobre el centro', () => {
+    const s = siluetaDe(TRIANGULO, { w: 30, h: 120 })!;
+    const sin = cajaGirada(s, 0, false);
+    const con = cajaGirada(s, 0, true);
+    expect(con.w).toBeCloseTo(sin.w, 6);
+    expect(con.x).toBeCloseTo(-(sin.x + sin.w), 6);
+  });
+});
+
+describe('colocarSilueta', () => {
+  const s = siluetaDe(rect(10, 100, 30), { w: 60, h: 90 })!;
+
+  it.each([
+    ['sin orientar', SIN_ORIENTAR],
+    ['girado 180°', { giro: 180, volteo: false } as const],
+    ['volteado', { giro: 0, volteo: true } as const],
+    ['girado y volteado', { giro: 180, volteo: true } as const],
+  ])('%s: de pie, centrado y apoyado en la línea base', (_, o) => {
+    const vista = cajaDe(enPantalla(s, colocarSilueta(s, o, CUERPO, 0.9)!));
+    // De pie: 10 de ancho y 100 de largo, a escala 0,9.
+    expect(vista.w).toBeCloseTo(9, 6);
+    expect(vista.h).toBeCloseTo(90, 6);
+    expect(vista.y + vista.h).toBeCloseTo(CUERPO.y + CUERPO.h, 6);
+    expect(vista.x + vista.w / 2).toBeCloseTo(CUERPO.x + CUERPO.w / 2, 6);
+  });
+
+  it('voltear es el espejo en pantalla de lo que se ve sin voltear', () => {
+    const t = siluetaDe(TRIANGULO, { w: 30, h: 120 })!;
+    const eje = CUERPO.x + CUERPO.w / 2;
+    for (const giro of [0, 180] as const) {
+      const sinV = enPantalla(t, colocarSilueta(t, { giro, volteo: false }, CUERPO, 0.5)!);
+      const conV = enPantalla(t, colocarSilueta(t, { giro, volteo: true }, CUERPO, 0.5)!);
+      sinV.forEach(([x, y], i) => {
+        expect(conV[i][0]).toBeCloseTo(2 * eje - x, 6);
+        expect(conV[i][1]).toBeCloseTo(y, 6);
+      });
+    }
+  });
+
+  it('girar 180° invierte arriba y abajo', () => {
+    const t = siluetaDe(TRIANGULO, { w: 30, h: 120 })!;
+    const sinG = enPantalla(t, colocarSilueta(t, SIN_ORIENTAR, CUERPO, 0.5)!);
+    const conG = enPantalla(t, colocarSilueta(t, { giro: 180, volteo: false }, CUERPO, 0.5)!);
+    const { y: arriba, h } = cajaDe(sinG);
+    sinG.forEach(([, y], i) => expect(conG[i][1] - arriba).toBeCloseTo(arriba + h - y, 6));
+  });
+
+  it('giroFinal suma lo automático y el de D7, en [0, 360)', () => {
+    expect(colocarSilueta(s, SIN_ORIENTAR, CUERPO, 1)!.giroFinal).toBeCloseTo(330, 6);
+    expect(colocarSilueta(s, { giro: 180, volteo: false }, CUERPO, 1)!.giroFinal).toBeCloseTo(150, 6);
+  });
+
+  it('el que no cabe a la escala común se reduce solo él', () => {
+    const vista = cajaDe(enPantalla(s, colocarSilueta(s, SIN_ORIENTAR, CUERPO, 5)!));
+    expect(vista.h).toBeLessThanOrEqual(CUERPO.h + 1e-9);
+    expect(vista.w).toBeLessThanOrEqual(CUERPO.w + 1e-9);
+  });
+
+  it('el marco abraza lo que se ve, con margen y dentro del hueco', () => {
+    const c = colocarSilueta(s, SIN_ORIENTAR, CUERPO, 0.5)!;
+    const vista = cajaDe(enPantalla(s, c));
+    expect(c.marco.h).toBeCloseTo(vista.h + 4, 6);
+    expect(c.marco.y + c.marco.h).toBeCloseTo(CUERPO.y + CUERPO.h + 2, 6);
+    expect(c.marco.x).toBeCloseTo(vista.x - 2, 6);
+  });
+
+  it('con escala degenerada no se coloca', () => {
+    expect(colocarSilueta(s, SIN_ORIENTAR, CUERPO, 0)).toBeNull();
+    expect(colocarSilueta(s, SIN_ORIENTAR, CUERPO, Number.NaN)).toBeNull();
+  });
+
+  it('una silueta sin extensión no se coloca', () => {
+    const plana: Silueta = {
+      poligono: [[1, 1], [1, 1], [1, 1]], eje: { angulo: 0, largo: 0, ancho: 0, centro: { x: 1, y: 1 } },
+      giroAuto: 0, enderezado: false,
+    };
+    expect(colocarSilueta(plana, SIN_ORIENTAR, CUERPO, 1)).toBeNull();
+  });
+});
+
+describe('trazarSilueta', () => {
+  it('traza el polígono relativo a su centro y lo cierra', () => {
+    const s = siluetaDe(rect(10, 100, 0), { w: 10, h: 100 })!;
+    const llamadas: string[] = [];
+    trazarSilueta({
+      beginPath: () => llamadas.push('begin'),
+      moveTo: (x, y) => llamadas.push(`M${Math.round(x)},${Math.round(y)}`),
+      lineTo: (x, y) => llamadas.push(`L${Math.round(x)},${Math.round(y)}`),
+      closePath: () => llamadas.push('close'),
+    }, s);
+    expect(llamadas).toEqual(['begin', 'M-5,-50', 'L5,-50', 'L5,50', 'L-5,50', 'close']);
   });
 });
