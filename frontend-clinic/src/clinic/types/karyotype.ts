@@ -28,8 +28,11 @@ export interface ChromosomeMeasures {
   centromeric_index?: number;
   band_count?: number;
   quality?: string;
-  /** Girar 180° y voltear en el cariograma (DD-KARYO-007 D7); presentación. */
-  orientacion?: { giro: 0 | 180; volteo: boolean };
+  /**
+   * Girar 180° y voltear en el cariograma (DD-KARYO-007 D7) y ajuste fino del
+   * enderezado (DD-KARYO-008 D3); presentación. Lo guardado antes de D3 no trae `ajuste`.
+   */
+  orientacion?: { giro: 0 | 180; volteo: boolean; ajuste?: number };
 }
 
 export interface Chromosome {

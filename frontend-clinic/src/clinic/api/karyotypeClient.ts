@@ -121,11 +121,15 @@ export function createKaryotypeClient(baseUrl: string = CLINIC_DEFAULT_BASE_URL)
       });
     },
 
-    /** POST /chromosomes/{cid}/orient/ — girar 180° / voltear (D7, evento ORIENT). */
-    orient(sampleId: string, chromosomeId: string, giro: 0 | 180, volteo: boolean): Promise<Chromosome> {
+    /**
+     * POST /chromosomes/{cid}/orient/ — girar 180° / voltear (D7) y ajuste fino
+     * (DD-KARYO-008 D3), evento ORIENT. Se envía siempre la orientación entera:
+     * el panel la conoce, y así nadie depende de que el servidor conserve el ajuste.
+     */
+    orient(sampleId: string, chromosomeId: string, giro: 0 | 180, volteo: boolean, ajuste: number): Promise<Chromosome> {
       return clinicRequest<Chromosome>(baseUrl, `/samples/${sampleId}/chromosomes/${chromosomeId}/orient/`, {
         method: 'POST',
-        body: { giro, volteo },
+        body: { giro, volteo, ajuste },
       });
     },
 

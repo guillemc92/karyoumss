@@ -40,12 +40,19 @@ test('el analista separa un objeto trazando una línea y lo deshace', async ({ p
   await expect(lienzo).toBeVisible();
   await expect(page.getByTestId('metafase-cuenta')).toHaveText(`${antes.length} objeto(s)`);
   const dim = await dimensionesMetafase(page, id);
+  const b = objetivo.bbox;
+  // El objeto puede quedar por debajo de la ventana: el 29/10, con metafase_1,
+  // su centro caía en y = 802 de 720 y el clic no seleccionaba nada. Se lleva
+  // al medio de la ventana ANTES de medir dónde está el lienzo. Con la rueda
+  // no: sobre el lienzo, la rueda hace zoom.
+  const previa = (await lienzo.boundingBox())!;
+  const centroY = previa.y + (b.y + b.h / 2) * (previa.width / dim.w);
+  await page.evaluate((dy: number) => window.scrollBy(0, dy), centroY - page.viewportSize()!.height / 2);
   const caja = (await lienzo.boundingBox())!;
   const k = caja.width / dim.w;
   const aPantalla = (x: number, y: number) => [caja.x + x * k, caja.y + y * k] as const;
 
   // 1. Seleccionarlo pulsando dentro de su silueta (el centro de su caja).
-  const b = objetivo.bbox;
   await page.mouse.click(...aPantalla(b.x + b.w / 2, b.y + b.h / 2));
   await expect(page.getByTestId('chromosome-props')).toBeVisible();
   await expect(page.getByTestId('metafase-deshacer')).toHaveText('Nada que deshacer');

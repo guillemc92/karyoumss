@@ -169,10 +169,13 @@ extend_schema(
 extend_schema(
     tags=['Corrección manual'],
     summary='Girar 180° o voltear en el cariograma',
-    description='Evento ORIENT. Presentación: se guarda en `measures.orientacion`; no toca bbox ni contour (D7).',
+    description='Evento ORIENT. Presentación: se guarda en `measures.orientacion`; no toca bbox ni contour (D7). '
+                '`ajuste` corrige a mano el enderezado automático del cariograma; sin él se conserva el '
+                'guardado (DD-KARYO-008 D4).',
     request=inline_serializer('Orientar', {
         'giro': serializers.ChoiceField(choices=[0, 180]),
         'volteo': serializers.BooleanField(),
+        'ajuste': serializers.IntegerField(min_value=-90, max_value=90, required=False),
     }),
     responses={200: ChromosomeSerializer, 401: SIN_SESION, 403: NO_ES_SUYO,
                400: _error('VALIDATION_ERROR.'), 404: _error('CHROMOSOME_NOT_FOUND.'),

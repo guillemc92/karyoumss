@@ -64,3 +64,22 @@ describe('KaryoImageToolbar (P4)', () => {
     expect(screen.getByTestId('viewport-zoom-out')).toBeDisabled();
   });
 });
+
+describe('KaryoImageToolbar — «Rotar vista» (DD-KARYO-008 T5)', () => {
+  it('↺ ↻ dicen que giran la vista, no el cromosoma', () => {
+    setup();
+    expect(screen.getByTestId('viewport-rotate-left')).toHaveAccessibleName('Rotar vista a la izquierda');
+    expect(screen.getByTestId('viewport-rotate-right')).toHaveAccessibleName('Rotar vista a la derecha');
+    expect(screen.getByTestId('viewport-rotate-left')).toHaveAttribute('title', expect.stringContaining('todo el lienzo'));
+  });
+
+  it('con un cromosoma seleccionado avisa dónde se gira el cromosoma', () => {
+    const { unmount } = render(
+      <KaryoImageToolbar viewport={INITIAL_VIEWPORT} dispatch={vi.fn()} cromosomaSeleccionado />,
+    );
+    expect(screen.getByTestId('viewport-rotate-aviso')).toHaveTextContent('el cromosoma se gira en su panel');
+    unmount();
+    setup();
+    expect(screen.queryByTestId('viewport-rotate-aviso')).toBeNull();
+  });
+});

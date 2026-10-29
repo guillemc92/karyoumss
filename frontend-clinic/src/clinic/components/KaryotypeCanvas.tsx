@@ -33,14 +33,20 @@ import {
 import type { ViewportState } from '../lib/viewport';
 import { INITIAL_VIEWPORT, cssFilter, stageScale } from '../lib/viewport';
 import type { Punto } from '../lib/medicion';
-import { recorteValido, type Caja } from '../lib/encajarRecorte';
+import { recorteValido, type Caja, type Dimensiones } from '../lib/encajarRecorte';
 import {
   colocarEnLineaBase,
+  colocarSilueta,
+  dimensionesDePie,
   escalaComun,
   factorAjuste,
   marcoVisible,
   orientacionDe,
+  siluetaDe,
   transformacionImagen,
+  trazarSilueta,
+  type Silueta,
+  type TrazoCamino,
 } from '../lib/presentacionCariograma';
 
 const SEMAPHORE_FILL: Record<string, string> = {
@@ -117,12 +123,20 @@ export function KaryotypeCanvas({
   }, []);
   const ajuste = factorAjuste(anchoDisponible, STAGE_WIDTH);
 
-  // T7: la misma escala para todos los recortes (percentil 90 del largo).
-  const recortesValidos: Caja[] = metafase
-    ? active.map((c) => c.bbox as Partial<Caja>)
-      .filter((b): b is Caja => recorteValido(b, tamanoDe(metafase)))
-    : [];
-  const escala = escalaComun(recortesValidos, CUERPO);
+  // DD-KARYO-008: el que tiene silueta se recorta por ella y se endereza.
+  const siluetas = new Map<string, Silueta>();
+  // T7: la misma escala para todos los recortes (percentil 90 del largo). Con
+  // silueta cuenta lo que mide de pie: la caja de uno en diagonal es más corta.
+  const medidasDePie: Dimensiones[] = [];
+  if (metafase) {
+    for (const c of active) {
+      if (!recorteValido(c.bbox as Partial<Caja>, tamanoDe(metafase))) continue;
+      const s = siluetaDe(c.contour, c.bbox as Caja);
+      if (s) siluetas.set(c.id, s);
+      medidasDePie.push(s ? dimensionesDePie(s) : (c.bbox as Caja));
+    }
+  }
+  const escala = escalaComun(medidasDePie, CUERPO);
   // T7: las copias de un par se quedan en su hueco aunque haya muchas.
   const posiciones = posicionesCariograma(active);
   // En modo "Mover" el lienzo se arrastra y los cromosomas NO (evita el
@@ -200,10 +214,13 @@ export function KaryotypeCanvas({
                 : null;
             // D8: los tumbados se giran 90° para mostrarlos de pie. T7: a la
             // escala común y sobre la línea base, con su orientación (D7).
-            const colocacion = recorte && escala ? colocarEnLineaBase(recorte, CUERPO, escala) : null;
             const orientacion = orientacionDe(chromo.measures);
+            const silueta = siluetas.get(chromo.id) ?? null;
+            const enSilueta = silueta && escala ? colocarSilueta(silueta, orientacion, CUERPO, escala) : null;
+            const colocacion = recorte && escala && !enSilueta ? colocarEnLineaBase(recorte, CUERPO, escala) : null;
             const transformacion = colocacion ? transformacionImagen(colocacion, orientacion) : null;
-            const marco = colocacion ? marcoVisible(colocacion, CUERPO) : null;
+            const marco = enSilueta ? enSilueta.marco : colocacion ? marcoVisible(colocacion, CUERPO) : null;
+            const dataOrientacion = `${orientacion.giro}${orientacion.volteo ? '-v' : ''}`;
             return (
               <Group
                 key={chromo.id}
@@ -225,28 +242,58 @@ export function KaryotypeCanvas({
                     : undefined
                 }
               >
-                {recorte && colocacion && transformacion && marco ? (
+                {recorte && marco && (enSilueta || (colocacion && transformacion)) ? (
                   <>
                     {/* El hueco entero sigue siendo donde se pulsa y se arrastra
                         (transparente), aunque el cromosoma ocupe solo una parte. */}
                     <Rect x={CUERPO.x} y={CUERPO.y} width={CUERPO.w} height={CUERPO.h} fill="rgba(0,0,0,0)" />
                     {/* Fondo claro solo detrás de la imagen (T7). */}
                     <Rect x={marco.x} y={marco.y} width={marco.w} height={marco.h} fill="#f4f6f7" listening={false} />
-                    <KonvaImage
-                      data-testid={`chromosome-img-${chromo.id}`}
-                      image={metafase as HTMLImageElement}
-                      crop={{ x: recorte.x, y: recorte.y, width: recorte.w, height: recorte.h }}
-                      x={colocacion.cx}
-                      y={colocacion.cy}
-                      width={colocacion.w}
-                      height={colocacion.h}
-                      offsetX={colocacion.w / 2}
-                      offsetY={colocacion.h / 2}
-                      rotation={transformacion.rotation}
-                      scaleX={transformacion.scaleX}
-                      scaleY={transformacion.scaleY}
-                      data-orientacion={`${orientacion.giro}${orientacion.volteo ? '-v' : ''}`}
-                    />
+                    {enSilueta && silueta ? (
+                      // DD-KARYO-008: recortado por la silueta (D1), de pie por su
+                      // eje (D2). El grupo gira alrededor del centro de la silueta.
+                      <Group
+                        data-testid={`chromosome-silueta-${chromo.id}`}
+                        data-giro-final={Math.round(enSilueta.giroFinal)}
+                        data-enderezado={String(silueta.enderezado)}
+                        x={enSilueta.x}
+                        y={enSilueta.y}
+                        rotation={enSilueta.rotation}
+                        scaleX={enSilueta.scaleX}
+                        scaleY={enSilueta.scaleY}
+                        clipFunc={(ctx: TrazoCamino) => trazarSilueta(ctx, silueta)}
+                        listening={false}
+                      >
+                        <KonvaImage
+                          data-testid={`chromosome-img-${chromo.id}`}
+                          image={metafase as HTMLImageElement}
+                          crop={{ x: recorte.x, y: recorte.y, width: recorte.w, height: recorte.h }}
+                          x={recorte.x - silueta.eje.centro.x}
+                          y={recorte.y - silueta.eje.centro.y}
+                          width={recorte.w}
+                          height={recorte.h}
+                          data-orientacion={dataOrientacion}
+                        />
+                      </Group>
+                    ) : (
+                      // Sin silueta: el recorte por la caja de siempre (RN-07).
+                      // La condición de fuera garantiza colocación y transformación.
+                      <KonvaImage
+                        data-testid={`chromosome-img-${chromo.id}`}
+                        image={metafase as HTMLImageElement}
+                        crop={{ x: recorte.x, y: recorte.y, width: recorte.w, height: recorte.h }}
+                        x={colocacion!.cx}
+                        y={colocacion!.cy}
+                        width={colocacion!.w}
+                        height={colocacion!.h}
+                        offsetX={colocacion!.w / 2}
+                        offsetY={colocacion!.h / 2}
+                        rotation={transformacion!.rotation}
+                        scaleX={transformacion!.scaleX}
+                        scaleY={transformacion!.scaleY}
+                        data-orientacion={dataOrientacion}
+                      />
+                    )}
                     {/* Con la imagen a la vista el semáforo ya no puede ser el
                         relleno: pasa a ser el borde. La selección, otro borde
                         por fuera, para que las dos señales no se pisen. */}

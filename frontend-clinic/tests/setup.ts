@@ -70,6 +70,25 @@ vi.mock('react-konva', async () => {
         });
         domProps['data-con-imagen'] = String(Boolean(p.image));
       }
+      // DD-KARYO-008: el grupo que recorta por la silueta. Se expone su
+      // transformación y el camino que traza `clipFunc` (con un contexto que
+      // apunta los puntos), porque eso es lo que decide qué se ve.
+      if (tag === 'group' && typeof props.clipFunc === 'function') {
+        const p = props as { x?: number; y?: number; rotation?: number; scaleX?: number; scaleY?: number;
+          clipFunc: (ctx: unknown) => void };
+        domProps['data-transformacion'] = JSON.stringify({
+          x: p.x ?? 0, y: p.y ?? 0, rotation: p.rotation ?? 0, scaleX: p.scaleX ?? 1, scaleY: p.scaleY ?? 1,
+        });
+        const camino: number[][] = [];
+        let cerrado = false;
+        p.clipFunc({
+          beginPath: () => { camino.length = 0; },
+          moveTo: (x: number, y: number) => camino.push([x, y]),
+          lineTo: (x: number, y: number) => camino.push([x, y]),
+          closePath: () => { cerrado = true; },
+        });
+        domProps['data-silueta'] = JSON.stringify({ puntos: camino, cerrado });
+      }
       // D7: el recuadro del recorte actual tiene que caer donde está el cromosoma.
       if (tag === 'rect') {
         const p = props as { x?: number; y?: number; width?: number; height?: number };

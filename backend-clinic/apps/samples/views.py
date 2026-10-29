@@ -1186,7 +1186,8 @@ class KaryotypeUndoView(APIView):
 class ChromosomeOrientView(APIView):
     """POST /samples/{id}/chromosomes/{cid}/orient/ — girar 180° / voltear (DD-KARYO-007 D7).
 
-    Body: {"giro": 0 | 180, "volteo": bool}. 200 el cromosoma · 400 VALIDATION_ERROR ·
+    Body: {"giro": 0 | 180, "volteo": bool, "ajuste"?: int −90..90 (DD-KARYO-008 D4;
+    sin él se conserva el guardado)}. 200 el cromosoma · 400 VALIDATION_ERROR ·
     409 CASE_LOCKED / OBJECT_INACTIVE.
     """
 
@@ -1205,7 +1206,8 @@ class ChromosomeOrientView(APIView):
         try:
             orientado = orient_chromosome(sample, chromo, request.data.get('giro'),
                                           request.data.get('volteo'), request.user,
-                                          mode=_request_mode(request))
+                                          mode=_request_mode(request),
+                                          ajuste=request.data.get('ajuste'))
         except CaseLockedError as e:
             return Response({'code': 'CASE_LOCKED', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
         except ObjetoInactivoError as e:

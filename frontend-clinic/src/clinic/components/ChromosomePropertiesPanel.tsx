@@ -6,7 +6,16 @@
  */
 import type { Chromosome } from '../types/karyotype';
 import { CHROMOSOME_SLOTS, confidencePercent } from '../types/karyotype';
-import { girar, orientacionDe, voltear, type Orientacion } from '../lib/presentacionCariograma';
+import {
+  AJUSTE_MAX, PASO_AJUSTE, ajustar, girar, orientacionDe, restablecer, tieneSilueta, voltear, type Orientacion,
+} from '../lib/presentacionCariograma';
+
+/** «+10°», «−5°», «0°»: con signo, para que se lea hacia dónde está corregido. */
+function formatearAjuste(grados: number): string {
+  if (grados > 0) return `+${grados}°`;
+  if (grados < 0) return `−${-grados}°`;
+  return '0°';
+}
 
 const SEMAPHORE_LABEL: Record<string, string> = {
   green: 'Verde — alta confianza',
@@ -210,6 +219,45 @@ export function ChromosomePropertiesPanel({
                 >
                   ⇋ Voltear
                 </button>
+                {/* DD-KARYO-008 D3: corregir a mano el enderezado automático.
+                    Solo con silueta: el recorte por la caja no gira 5°. */}
+                {tieneSilueta(chromosome.contour) && (
+                  <div className="karyo-ajuste" role="group" aria-label="Ajuste fino del giro" data-testid="ajuste-giro">
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      onClick={() => onOrient(chromosome, ajustar(orientacionDe(chromosome.measures), -PASO_AJUSTE))}
+                      disabled={busy || orientacionDe(chromosome.measures).ajuste <= -AJUSTE_MAX}
+                      data-testid="action-ajuste-menos"
+                      aria-label={`Girar ${PASO_AJUSTE}° a la izquierda`}
+                    >
+                      ↺ −{PASO_AJUSTE}°
+                    </button>
+                    <span className="karyo-ajuste__valor" data-testid="ajuste-valor" aria-live="polite">
+                      Ajuste {formatearAjuste(orientacionDe(chromosome.measures).ajuste)}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      onClick={() => onOrient(chromosome, ajustar(orientacionDe(chromosome.measures), PASO_AJUSTE))}
+                      disabled={busy || orientacionDe(chromosome.measures).ajuste >= AJUSTE_MAX}
+                      data-testid="action-ajuste-mas"
+                      aria-label={`Girar ${PASO_AJUSTE}° a la derecha`}
+                    >
+                      ↻ +{PASO_AJUSTE}°
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-outline karyo-ajuste__restablecer"
+                      onClick={() => onOrient(chromosome, restablecer(orientacionDe(chromosome.measures)))}
+                      disabled={busy || orientacionDe(chromosome.measures).ajuste === 0}
+                      data-testid="action-ajuste-restablecer"
+                      title="Deja solo el enderezado automático"
+                    >
+                      Restablecer
+                    </button>
+                  </div>
+                )}
               </>
             )}
             {/* Recortar es la corrección de raíz: cuando la segmentación mete
