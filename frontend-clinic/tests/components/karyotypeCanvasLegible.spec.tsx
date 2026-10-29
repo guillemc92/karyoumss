@@ -89,9 +89,9 @@ describe('ChromosomePropertiesPanel — girar y voltear (D7)', () => {
     expect(screen.getByTestId('action-girar')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByTestId('action-voltear')).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(screen.getByTestId('action-girar'));
-    expect(onOrient).toHaveBeenLastCalledWith(c, { giro: 0, volteo: false });
+    expect(onOrient).toHaveBeenLastCalledWith(c, { giro: 0, volteo: false, ajuste: 0 });
     fireEvent.click(screen.getByTestId('action-voltear'));
-    expect(onOrient).toHaveBeenLastCalledWith(c, { giro: 180, volteo: true });
+    expect(onOrient).toHaveBeenLastCalledWith(c, { giro: 180, volteo: true, ajuste: 0 });
   });
 
   it('sin onOrient no hay botones (caso validado o sin metafase)', () => {
@@ -198,6 +198,61 @@ describe('KaryotypeCanvas — recortado por la silueta y enderezado (DD-KARYO-00
     const marco = JSON.parse(screen.getByTestId('chromosome-frame-d').getAttribute('data-caja')!);
     expect(marco.y + marco.h).toBeCloseTo(LINEA_BASE + 2, 6);
     expect(marco.w).toBeLessThan(20); // de pie es estrecho; en diagonal su caja mediría ~60
+  });
+});
+
+describe('ChromosomePropertiesPanel — ajuste fino del giro (DD-KARYO-008 T4)', () => {
+  const conAjuste = (ajuste: number) =>
+    conSilueta('a', 10, 100, 30, 600, 400, { measures: { orientacion: { giro: 180, volteo: true, ajuste } } });
+
+  it('−5° y +5° envían el ajuste movido, sin tocar giro ni volteo', () => {
+    const onOrient = vi.fn();
+    const c = conAjuste(10);
+    render(<ChromosomePropertiesPanel chromosome={c} onOrient={onOrient} />);
+    expect(screen.getByTestId('ajuste-valor')).toHaveTextContent('Ajuste +10°');
+    fireEvent.click(screen.getByTestId('action-ajuste-mas'));
+    expect(onOrient).toHaveBeenLastCalledWith(c, { giro: 180, volteo: true, ajuste: 15 });
+    fireEvent.click(screen.getByTestId('action-ajuste-menos'));
+    expect(onOrient).toHaveBeenLastCalledWith(c, { giro: 180, volteo: true, ajuste: 5 });
+  });
+
+  it('Restablecer envía 0 y está apagado si ya es 0', () => {
+    const onOrient = vi.fn();
+    const { unmount } = render(<ChromosomePropertiesPanel chromosome={conAjuste(-15)} onOrient={onOrient} />);
+    expect(screen.getByTestId('ajuste-valor')).toHaveTextContent('Ajuste −15°');
+    fireEvent.click(screen.getByTestId('action-ajuste-restablecer'));
+    expect(onOrient).toHaveBeenLastCalledWith(expect.anything(), { giro: 180, volteo: true, ajuste: 0 });
+    unmount();
+    render(<ChromosomePropertiesPanel chromosome={conAjuste(0)} onOrient={onOrient} />);
+    expect(screen.getByTestId('ajuste-valor')).toHaveTextContent('Ajuste 0°');
+    expect(screen.getByTestId('action-ajuste-restablecer')).toBeDisabled();
+  });
+
+  it('en los topes, el botón que lo pasaría se apaga', () => {
+    const { unmount } = render(<ChromosomePropertiesPanel chromosome={conAjuste(90)} onOrient={() => {}} />);
+    expect(screen.getByTestId('action-ajuste-mas')).toBeDisabled();
+    expect(screen.getByTestId('action-ajuste-menos')).toBeEnabled();
+    unmount();
+    render(<ChromosomePropertiesPanel chromosome={conAjuste(-90)} onOrient={() => {}} />);
+    expect(screen.getByTestId('action-ajuste-menos')).toBeDisabled();
+    expect(screen.getByTestId('action-ajuste-mas')).toBeEnabled();
+  });
+
+  it('sin silueta no hay ajuste fino; girar y voltear siguen', () => {
+    render(<ChromosomePropertiesPanel chromosome={cromosoma('x', { x: 1, y: 1, w: 10, h: 10 })} onOrient={() => {}} />);
+    expect(screen.queryByTestId('ajuste-giro')).toBeNull();
+    expect(screen.getByTestId('action-girar')).toBeInTheDocument();
+  });
+
+  it('sin onOrient (caso validado o sin metafase) tampoco', () => {
+    render(<ChromosomePropertiesPanel chromosome={conAjuste(5)} onViewXai={() => {}} />);
+    expect(screen.queryByTestId('ajuste-giro')).toBeNull();
+  });
+
+  it('en el cariograma, el ajuste guardado se suma al enderezado', () => {
+    pintar([...NORMALES, conAjuste(20)]);
+    // −30 del enderezado + 20 del ajuste + 180 del giro = 170.
+    expect(screen.getByTestId('chromosome-silueta-a')).toHaveAttribute('data-giro-final', '170');
   });
 });
 

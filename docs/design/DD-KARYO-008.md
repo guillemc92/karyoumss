@@ -7,7 +7,7 @@
 | **Continúa** | [DD-KARYO-007](DD-KARYO-007.md). **Sustituye su D7** («girar 180° y voltear»), que no se edita: lo amplía esta. |
 | **FSD** | FSD-UC-003 (corrección manual del cariotipo) |
 | **Reglas** | RN-04 (lo validado no se reescribe), RN-05 (auditoría solo de inserción), RN-06 (alcance del analista), RN-07 (degradación), RN-09 (cobertura ≥ 90 %) |
-| **Estado** | **Aprobado** el 2026-10-28, con las respuestas propuestas en §9 (§10) · T1, T2 y T3 hechas |
+| **Estado** | **Aprobado** el 2026-10-28, con las respuestas propuestas en §9 (§10) · T1 a T4 hechas |
 | **Fecha** | 2026-10-28 |
 
 ## 1. Por qué existe
@@ -247,7 +247,15 @@ tarea 1»), sin cambiar nada de §9. Quedan las respuestas propuestas:
 | T1 | **Hecha 28/10.** `lib/ejeCromosoma.ts`, 27 pruebas, **100 %** de líneas y ramas. Cada caso se recorre en los dos sentidos. Mutaciones: sin corregir el signo fallan 7 pruebas; enderezando los casi redondos falla 1. Contrastada con `scripts/medir_ejes_cromosomas.py` sobre las 38 siluetas reales de `metafase_1`: mismas cifras (27 / 21 / 11 inclinadas; largo frente a la caja 1,01 de mediana, 1,23 de máximo). Con el umbral de 1,2, **2 de las 38** quedan como casi redondas y no se enderezan. |
 | T2 | **Hecha 29/10.** Cada cromosoma con silueta se pinta dentro de un `Group` de Konva que recorta por ella (`clipFunc`) y lo gira hasta dejarlo de pie. La colocación sale de la caja de la silueta **ya girada**, así que vale para cualquier ángulo y T4 solo tiene que sumar el ajuste. La escala común usa lo que miden de pie. Sin silueta, el recorte de su caja, como antes (RN-07). Pruebas: 34 de geometría y 18 de componente; `ejeCromosoma.ts` y `presentacionCariograma.ts` al 100 %, y el código nuevo de `KaryotypeCanvas.tsx` cubierto entero (lo que queda sin cubrir es la medición y el arrastre del lienzo, como antes). Suite del frontend: 621 verdes. E2E `cariograma-enderezado.spec.ts` sobre una muestra propia con `metafase_1`: un 10 inclinado 59° en la metafase queda a **26,5°** con el código anterior (el test **falla**) y a **1,7°** con T2 (pasa). Capturas en `capturas/dd-karyo-008/` (`antes.png`, `despues.png`). |
 | T3 | **Hecha 29/10.** `orient_chromosome(…, ajuste=None)`: entero −90..90; sin él se conserva el guardado; 400 y ningún evento con −91, 91, 2,5, 5,0, `true`, `false`, `"5"` o `[5]`. La vista lo pasa desde `request.data`. Contrato: `ajuste` es una propiedad **opcional** de la petición `Orientar` (no entra en `required`), con `openapi.json` regenerado (+6/−1). 22 pruebas nuevas, que fallaban antes de implementar. Suite de backend-clinic: **1134 verdes, cobertura del 90,85 %**. Mutaciones: borrar el ajuste cuando no llega hace fallar 2; aceptar un booleano hace fallar 3. **oasdiff no se pudo ejecutar en local** (Docker Desktop apagado): lo comprueba el CI en el PR. |
-| T4–T6 | Pendientes. |
+| T4 | **Hecha 29/10.** «↺ −5°», el valor («Ajuste +10°») y «↻ +5°» en una fila del panel, con «Restablecer» debajo. Se apagan en los topes (±90) y «Restablecer» se apaga cuando el ajuste ya es 0. «Girar 180°» y «Voltear» conservan el ajuste. El ajuste guardado se suma al enderezado al pintar. El doble MSW valida como el backend. Pruebas: 5 de geometría, 6 de panel y 1 de página (+5° dos veces → giro final de 330 a 340, girar 180° lo conserva, 3 entradas en la bitácora). Mutaciones, las cuatro detectadas: no sumar el ajuste al pintar (fallan 3), quitar el tope (falla 1), «+5°» con el signo cambiado (fallan 2) y que «Girar» pierda el ajuste (fallan 2). E2E en Chromium sobre la misma muestra propia: con +10° el cromosoma queda a **8,4°** en los píxeles, y la auditoría tiene dos `ORIENT` con el ajuste 0→5 y 5→10. Captura: `capturas/dd-karyo-008/panel-ajuste.png`. Suite E2E completa: **20 de 20**. |
+| T5–T6 | Pendientes. |
+
+### 11.3 Decisiones tomadas al implementar T4
+
+1. **El ajuste fino solo aparece si el cromosoma tiene silueta.** Sin ella se pinta el recorte de su caja, que solo sabe girar 0°, 90° o 180°: un ajuste de 5° no se vería o se saldría del hueco. «Girar 180°» y «Voltear» siguen apareciendo siempre.
+2. **El cliente envía siempre `ajuste`.** El backend admite omitirlo (D4, para clientes antiguos), pero el panel conoce la orientación entera. Enviarla completa evita depender de que el servidor la conserve, y la rama «sin ajuste» del cliente habría sido código muerto.
+3. **La suite del frontend falló una vez con 632 de 633 y en la siguiente pasaron las 633.** No se sabe qué prueba fue, porque la salida estaba filtrada. Coincide con los fallos intermitentes que ya dieron `sampleRegisterPage` y `toolQueryPage` con la CPU cargada. Queda como inestabilidad conocida, no como resuelta.
+4. **Apagar el stack con `TaskStop` deja vivos los procesos `node` de Vite** y los puertos 5173 y 5174 ocupados. Al relanzarlos con `--strictPort` fallan. Para apagarlo del todo hay que cerrar esos procesos por su PID.
 
 ### 11.1 Decisiones tomadas al implementar T2
 

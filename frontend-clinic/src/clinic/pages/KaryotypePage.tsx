@@ -273,7 +273,7 @@ export function KaryotypePage() {
   }
 
   // D7: girar 180° / voltear en el cariograma.
-  function handleOrient(c: Chromosome, o: { giro: 0 | 180; volteo: boolean }) {
+  function handleOrient(c: Chromosome, o: { giro: 0 | 180; volteo: boolean; ajuste: number }) {
     void runP3('Error al orientar', () => orient.mutateAsync({ chromosomeId: c.id, ...o }));
   }
 

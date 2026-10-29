@@ -29,9 +29,15 @@ export const PERCENTIL_ESCALA = 0.9;
 export interface Orientacion {
   giro: 0 | 180;
   volteo: boolean;
+  /** DD-KARYO-008 D3: corrección manual del enderezado, en grados enteros (−90..90). */
+  ajuste: number;
 }
 
-export const SIN_ORIENTAR: Orientacion = { giro: 0, volteo: false };
+export const SIN_ORIENTAR: Orientacion = { giro: 0, volteo: false, ajuste: 0 };
+
+/** DD-KARYO-008: cada pulsación de «−5°» / «+5°», y el tope (el del backend). */
+export const PASO_AJUSTE = 5;
+export const AJUSTE_MAX = 90;
 
 /** Lo que se ve tras el giro D8 (tumbado → de pie): el lado largo, vertical. */
 export function visibleDe(recorte: Dimensiones): Dimensiones {
@@ -82,11 +88,24 @@ export function colocarEnLineaBase(recorte: Dimensiones, cuerpo: Caja, escala: n
 /** La orientación guardada en `measures.orientacion`, o la neutra. */
 export function orientacionDe(measures: unknown): Orientacion {
   const o = (measures as { orientacion?: Partial<Orientacion> } | null)?.orientacion;
-  return { giro: o?.giro === 180 ? 180 : 0, volteo: o?.volteo === true };
+  const ajuste = o?.ajuste;
+  return {
+    giro: o?.giro === 180 ? 180 : 0,
+    volteo: o?.volteo === true,
+    // Lo guardado antes de DD-KARYO-008 no lo trae, y lo que no sea un entero del rango no se pinta.
+    ajuste: Number.isInteger(ajuste) && Math.abs(ajuste as number) <= AJUSTE_MAX ? (ajuste as number) : 0,
+  };
 }
 
 export const girar = (o: Orientacion): Orientacion => ({ ...o, giro: o.giro === 180 ? 0 : 180 });
 export const voltear = (o: Orientacion): Orientacion => ({ ...o, volteo: !o.volteo });
+
+/** El ajuste movido `delta` grados, sin pasar de ±AJUSTE_MAX (D3). */
+export const ajustar = (o: Orientacion, delta: number): Orientacion => ({
+  ...o, ajuste: Math.max(-AJUSTE_MAX, Math.min(AJUSTE_MAX, o.ajuste + delta)),
+});
+/** «Restablecer»: queda solo el enderezado automático. */
+export const restablecer = (o: Orientacion): Orientacion => ({ ...o, ajuste: 0 });
 
 /**
  * Giro y espejo con los que Konva pinta la imagen. El giro D8 (tumbado → de
@@ -147,6 +166,14 @@ export interface Silueta {
   giroAuto: number;
   /** true si `giroAuto` sale del eje; false si es la regla de la caja. */
   enderezado: boolean;
+}
+
+/**
+ * ¿Se pinta por su silueta? Solo entonces tiene sentido el ajuste fino: el
+ * recorte por la caja solo sabe girar 0, 90 o 180, y uno de 5° se saldría del hueco.
+ */
+export function tieneSilueta(contour: Poligono | null | undefined): boolean {
+  return ejeDe(contour) !== null;
 }
 
 /** La silueta de un cromosoma, o `null` si no la tiene o no tiene eje (se pinta su caja). */
@@ -221,7 +248,8 @@ export interface ColocacionSilueta {
 export function colocarSilueta(
   s: Silueta, o: Orientacion, cuerpo: Caja, escala: number, margen = 2,
 ): ColocacionSilueta | null {
-  const base = s.giroAuto + o.giro;
+  // D3: lo automático, la corrección manual y el giro de 180° de D7.
+  const base = s.giroAuto + o.ajuste + o.giro;
   const c = cajaGirada(s, base, o.volteo);
   if (!(c.w > 0) || !(c.h > 0) || !(escala > 0)) return null;
   const k = Math.min(escala, cuerpo.w / c.w, cuerpo.h / c.h);

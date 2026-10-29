@@ -89,4 +89,29 @@ test('un cromosoma en diagonal se ve de pie en el cariograma', async ({ page, re
     + `${inclinadoEnMetafase.toFixed(1)}° en la metafase, ${medida.grados.toFixed(1)}° en el cariograma, ${medida.oscuros} px oscuros`);
   // En la metafase está a `inclinadoEnMetafase` grados; en el cariograma, casi vertical.
   expect(medida.grados, `inclinado ${inclinadoEnMetafase.toFixed(0)}° en la metafase`).toBeLessThan(12);
+  const dePie = medida.grados;
+
+  // DD-KARYO-008 T4: «+5°» dos veces lo inclina 10° y deja dos ORIENT con el ajuste.
+  const lienzo = page.getByTestId('karyotype-viewer').locator('canvas').first();
+  const caja = (await lienzo.boundingBox())!;
+  const k = caja.width / STAGE_WIDTH;
+  await page.mouse.click(caja.x + (pos.x + 13) * k, caja.y + (pos.y + 60) * k);
+  await expect(page.getByTestId('ajuste-giro')).toBeVisible();
+  await page.getByTestId('action-ajuste-mas').click();
+  await expect(page.getByTestId('ajuste-valor')).toHaveText('Ajuste +5°');
+  await page.getByTestId('action-ajuste-mas').click();
+  await expect(page.getByTestId('ajuste-valor')).toHaveText('Ajuste +10°');
+  if (process.env.E2E_CAPTURAS) {
+    await page.getByTestId('chromosome-props').screenshot({ path: `${process.env.E2E_CAPTURAS}/panel-ajuste.png` });
+  }
+  await expect.poll(async () => (await inclinacionEnCariograma(page, pos)).grados, { timeout: 15_000 })
+    .toBeGreaterThan(dePie + 5);
+  const inclinado = (await inclinacionEnCariograma(page, pos)).grados;
+  console.log(`[enderezado] con +10° de ajuste: ${inclinado.toFixed(1)}° en el cariograma`);
+  expect(Math.abs(inclinado - 10)).toBeLessThan(5);
+
+  const orient = ((await json(request, `/samples/${id}/audit/`, cab)) as any[])
+    .filter((e) => e.event_type === 'ORIENT')
+    .map((e) => [e.payload.previa.ajuste, e.payload.nueva.ajuste]);
+  expect(orient.sort()).toEqual([[0, 5], [5, 10]]);
 });
