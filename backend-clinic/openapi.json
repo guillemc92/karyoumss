@@ -361,6 +361,16 @@
                             }
                         },
                         "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "AUDIT_UNAVAILABLE: la bitácora no responde; reintentar tras Retry-After (RN-07)."
                     }
                 }
             }
