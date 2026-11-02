@@ -126,6 +126,13 @@ de 503** después de quitar la falla.
 
 No se midió el instante exacto en que vuelve a 0 %, solo el total de la fase.
 
+**La H4 estaba mal planteada, y no por el sistema.** Con un reset de 2 s, un
+breaker abierto al terminar la falla puede rechazar hasta 2 s de los 10 de la
+fase. Eso es hasta un 20 %, y el ≤ 1 % de la H4 no cabía en esos parámetros
+desde antes de medir. Se deja la hipótesis tal como se commiteó (`3526e3e`) y
+el error se declara aquí. La condición de reversión R2 del ADR-0038 tiene esto
+en cuenta.
+
 ### Tiempos de seed, arranque y build
 
 | Qué | En proceso | Extraída |
@@ -151,7 +158,7 @@ El seed es el mismo trabajo en las dos formas: se cuenta aparte del `up`.
 | H1 | Sin falla, extraer sube el p95 de `…/audit/` en ≤ 20 ms | +14,6 ms (179,5 → 194,1); el p50 sube +13 ms | **Sí**, pero el rango de cada forma (100–255 ms en proceso) es mucho mayor que la diferencia: el efecto existe, aunque cabe dentro del ruido |
 | H2 | Control: p95 ±10 % entre formas y 0 % de errores durante cualquier falla | 0 % de errores, sí. Pero su p95 durante la falla sube de 53,7 ms a 145–177 ms (×2,7–3,3). Su p50 no se mueve (≈ 30 ms) | **No**: la falla no tumba la ruta de control, pero sí le alarga la cola |
 | H3 | Con `colgado`, p95 de `…/audit/` ≤ 900 ms durante la falla | 757 ms (722–1.032) | **Sí** por la mediana; 1 de 5 corridas pasa de 900 |
-| H4 | Después de la falla, ≤ 1 % de errores en `…/audit/` | 10,9 / 12,0 / 13,0 % | **No**: el breaker tarda en cerrarse, como se explica en «Recuperación» |
+| H4 | Después de la falla, ≤ 1 % de errores en `…/audit/` | 10,9 / 12,0 / 13,0 % | **No**: el breaker tarda en cerrarse, como se explica en «Recuperación». Con un reset de 2 s, el ≤ 1 % era inalcanzable desde antes de medir |
 | H5 | `up` ≥ 5 s más lento en la forma extraída; `build` ±10 % | `up` +6,2 s (5,6 → 11,8); build 110,6 → 110,2 s (−0,4 %) | **Sí**, en las dos partes |
 
 **Un resultado que ninguna hipótesis preveía:** sin ninguna falla, la forma

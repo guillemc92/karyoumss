@@ -139,11 +139,30 @@ revisión empieza por repetir el E3 (`bench/e3/correr.sh corridas 5`):
   exija que la bitácora viva en una base con credenciales que `backend-clinic`
   no tenga. Ese requisito pesa más que los números de este ADR.
 - **R2 · Las protecciones dejan de costar.** Que, repetido el E3 en el
-  hardware de producción, la forma extraída cumpla las tres cosas en 5 de 5
-  corridas:
+  hardware de producción **y con la configuración que se vaya a desplegar**, la
+  forma extraída cumpla las tres cosas en 5 de 5 corridas:
   - 0 % de errores sin falla;
   - ≤ 1 % de errores en la fase *después*;
   - un p95 de control durante la falla dentro de ±10 % del de en proceso.
+
+  **El hardware solo no basta.** El segundo punto depende del breaker. Con el
+  de este ADR (reset de 2 s, uno por proceso), cada worker puede seguir
+  rechazando hasta 2 s después de quitar la falla. En la fase *después*, que
+  dura 10 s, eso es hasta un 20 %, en cualquier máquina. La H4 (≤ 1 %) ya era
+  incompatible con esos parámetros antes de medir.
+
+  Para que R2 pueda cumplirse, el banco tiene que repetirse antes con uno de
+  estos cambios:
+  - un reset ≤ 100 ms, que a 10 pet/s equivale al 1 % de la fase;
+  - un breaker que se cierre en cuanto una llamada real tenga éxito, sin
+    esperar al reset;
+  - o un límite de llamadas simultáneas (*bulkhead*) en lugar del breaker.
+
+  Ese mismo límite es también la prueba directa para el tercer punto. Si el
+  p95 de control se triplica porque las llamadas a la bitácora ocupan los hilos
+  de gunicorn, un bulkhead lo corrige. Si se triplica igual con «caído», que
+  falla al instante sin retener hilos, la causa es la CPU compartida y la
+  corrige el hardware.
 - **R3 · La lectura pesa en la clínica.** Que en producción el p95 de
   `GET /samples/{id}/audit/` en proceso pase de **500 ms durante 7 días
   seguidos**, o que la tabla pase de **10 millones de eventos**. Sería la
