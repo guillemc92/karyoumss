@@ -15,7 +15,6 @@ from .tools import catalogo_publicado
 from .permissions import CanRegisterSample, HasOpcion, IsOwnerOrStaff, tiene_opcion
 from .pipeline_client import MLDegradedError, pipeline_client
 from .serializers import (
-    AuditEventSerializer,
     AuditReviewSerializer,
     ChromosomeSerializer,
     KaryotypeSerializer,
@@ -26,6 +25,7 @@ from .serializers import (
     SampleUpdateSerializer,
 )
 from .admin_client import MfaServiceError
+from .bitacora import BitacoraNoDisponible, bitacora
 from .services import (
     AuditIncompleteError,
     CaseBlockedError,
@@ -604,6 +604,10 @@ class CaseValidateView(APIView):
         return Response({'sample_id': str(sample.id), 'status': sample.status}, status=status.HTTP_200_OK)
 
 
+# Lo que tarda el breaker de la bitácora en volver a probar (DD-E3-001 D4).
+BITACORA_REINTENTO_S = 2
+
+
 class AuditTrailView(APIView):
     """GET /samples/{id}/audit/ — bitácora append-only del caso (ADR-0022)."""
 
@@ -614,8 +618,17 @@ class AuditTrailView(APIView):
         sample, error = _get_owned_sample_or_none(pk, request.user)
         if error:
             return error
-        events = sample.audit_events.all()
-        return Response(AuditEventSerializer(events, many=True).data, status=status.HTTP_200_OK)
+        # DD-E3-001: la bitácora se lee por su interfaz; puede estar en otro servicio.
+        try:
+            eventos = bitacora().listar(sample.id)
+        except BitacoraNoDisponible:
+            return Response(
+                {'code': 'AUDIT_UNAVAILABLE', 'detail': 'La bitácora no está disponible. Reintente en unos segundos.',
+                 'retry_after_seconds': BITACORA_REINTENTO_S},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                headers={'Retry-After': str(BITACORA_REINTENTO_S)},
+            )
+        return Response(eventos, status=status.HTTP_200_OK)
 
 
 class AuditReviewListView(APIView):
