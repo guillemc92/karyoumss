@@ -2,7 +2,7 @@
 id: ADR-0038
 title: La bitácora de auditoría se queda en el monolito — medido, extraerla añade fallos sin ganar nada medible
 date: 2026-11-02
-status: proposed
+status: accepted
 related: [ADR-0008, ADR-0020, ADR-0022, ADR-0015]
 ---
 
@@ -13,6 +13,7 @@ related: [ADR-0008, ADR-0020, ADR-0022, ADR-0015]
   extraído»
 - **Diseño:** [DD-E3-001](../design/DD-E3-001.md)
 - **Evidencia:** [`bench/e3/INFORME.md`](../../bench/e3/INFORME.md)
+- **Aceptado:** 2026-11-04, por el autor
 
 ## Contexto
 

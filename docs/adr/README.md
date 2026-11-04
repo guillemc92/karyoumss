@@ -13,7 +13,7 @@ Alternativas descartadas → Consecuencias.
 
 <!-- INDICE:INICIO -->
 
-**37 ADRs**: 27 aceptada, 8 propuesta, 1 sin estado, 1 rechazada.
+**37 ADRs**: 28 aceptada, 7 propuesta, 1 sin estado, 1 rechazada.
 
 | ADR | Título | Estado | Fecha |
 |-----|--------|--------|-------|
@@ -53,7 +53,7 @@ Alternativas descartadas → Consecuencias.
 | [0034](0034-segmentacion-interactiva-sam2.md) | Segmentación interactiva asistida (SAM 2) — y la anotación como producto secundario | **Propuesta** | 2026-08-31 |
 | [0035](0035-detector-instancias-cromosomas.md) | Detector de instancias de cromosomas — decisión diferida, con protocolo de evaluación y derogación de AGENTS §11 | **Propuesta** | 2026-08-31 |
 | [0036](0036-multimetafase-consenso.md) | El consenso multi-metáfase se difiere — medido, hoy no hay nada sobre lo que votar | **Propuesta** | 2026-09-08 |
-| [0038](0038-no-extraer-bitacora-auditoria.md) | La bitácora de auditoría se queda en el monolito — medido, extraerla añade fallos sin ganar nada medible | **Propuesta** | 2026-11-02 |
+| [0038](0038-no-extraer-bitacora-auditoria.md) | La bitácora de auditoría se queda en el monolito — medido, extraerla añade fallos sin ganar nada medible | Aceptada | 2026-11-02 |
 
 <!-- INDICE:FIN -->
 
