@@ -1,0 +1,80 @@
+# Imágenes y stack de producción (DD-OPS-001 D8). En cada PR y en cada push a una
+# release:
+#   1. hadolint sobre cada Dockerfile;
+#   2. trivy config sobre los Dockerfiles;
+#   3. trivy image sobre cada imagen construida, sin HIGH ni CRITICAL que tengan
+#      parche (los que no lo tienen están justificados en ADR-0039);
+#   4. el stack entero desde el checkout, que es un clon limpio:
+#      `docker compose up -d --wait` y la prueba de humo (deploy/humo.sh).
+# Las herramientas corren desde sus imágenes oficiales, fijadas por digest.
+name: Imágenes y stack
+
+on:
+  pull_request:
+  push:
+    branches: ['release/**']
+
+permissions:
+  contents: read
+
+env:
+  HADOLINT: hadolint/hadolint:v2.15.1@sha256:32dac94127fd60b7b7e3fbfc65e1383b9b5e25c9bfd7b8536de7a539fe68a12d
+  TRIVY: aquasec/trivy:0.75.0@sha256:af6acf9a6b85dfe389a1941505c0ce9efef52a4719635e1a962f022a3d855daa
+  DOCKERFILES: backend-clinic/Dockerfile backend-admin/Dockerfile backend-ml/Dockerfile deploy/web/Dockerfile
+
+jobs:
+  revision:
+    name: hadolint y trivy config
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 1 · hadolint
+        run: |
+          for f in $DOCKERFILES; do
+            echo "== $f"
+            docker run --rm -i "$HADOLINT" < "$f"
+          done
+
+      - name: 2 · trivy config (HIGH y CRITICAL)
+        run: |
+          for f in $DOCKERFILES; do
+            docker run --rm -v "$PWD:/repo:ro" "$TRIVY" config --quiet \
+              --severity HIGH,CRITICAL --exit-code 1 "/repo/$f"
+          done
+
+  stack:
+    name: imágenes, trivy image y stack
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir las cuatro imágenes
+        run: docker compose build
+
+      - name: 3 · trivy image (HIGH y CRITICAL con parche)
+        run: |
+          for img in backend-clinic backend-admin backend-ml web; do
+            echo "== biomed/$img:8.3.0"
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+              -v "$PWD/.trivyignore:/.trivyignore:ro" "$TRIVY" image --quiet \
+              --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
+              --ignorefile /.trivyignore --exit-code 1 "biomed/$img:8.3.0"
+          done
+
+      - name: 4 · docker compose up -d --wait
+        run: docker compose up -d --wait --wait-timeout 600
+
+      - name: Prueba de humo
+        run: deploy/humo.sh
+
+      - name: Estado y registros si algo falló
+        if: failure()
+        run: |
+          docker compose ps -a
+          docker compose logs --tail 80
+
+      - name: Bajar el stack
+        if: always()
+        run: docker compose down -v
