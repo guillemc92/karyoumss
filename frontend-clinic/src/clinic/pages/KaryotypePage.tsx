@@ -273,7 +273,7 @@ export function KaryotypePage() {
   }
 
   // D7: girar 180° / voltear en el cariograma.
-  function handleOrient(c: Chromosome, o: { giro: 0 | 180; volteo: boolean }) {
+  function handleOrient(c: Chromosome, o: { giro: 0 | 180; volteo: boolean; ajuste: number }) {
     void runP3('Error al orientar', () => orient.mutateAsync({ chromosomeId: c.id, ...o }));
   }
 
@@ -381,6 +381,7 @@ export function KaryotypePage() {
             onRehacer={() => dispatchViewport({ type: 'rehacer' })}
             hayQueDeshacer={puedeDeshacer(histViewport)}
             hayQueRehacer={puedeRehacer(histViewport)}
+            cromosomaSeleccionado={selected !== null}
           />
           {/* DD-KARYO-007 F1: la metafase es el lienzo donde se corrige la
               segmentación; el cariograma, debajo, es donde se ordena. */}

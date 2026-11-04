@@ -19,6 +19,8 @@ interface Props {
   onRehacer?: () => void;
   hayQueDeshacer?: boolean;
   hayQueRehacer?: boolean;
+  /** DD-KARYO-008 D5: con un cromosoma seleccionado, avisa de que ↺ ↻ giran todo el lienzo. */
+  cromosomaSeleccionado?: boolean;
 }
 
 export function KaryoImageToolbar({
@@ -29,6 +31,7 @@ export function KaryoImageToolbar({
   onRehacer,
   hayQueDeshacer = false,
   hayQueRehacer = false,
+  cromosomaSeleccionado = false,
 }: Props) {
   return (
     <div className="karyo-imagebar" data-testid="karyo-imagebar" role="toolbar" aria-label="Herramientas de imagen">
@@ -46,10 +49,15 @@ export function KaryoImageToolbar({
         <button type="button" className={`tool-icon${viewport.panMode ? ' tool-icon--active' : ''}`} data-testid="viewport-pan"
           onClick={() => dispatch({ type: 'togglePan' })} disabled={disabled}
           aria-pressed={viewport.panMode} title="Mover (arrastrar el lienzo)" aria-label="Mover">✥</button>
+        {/* DD-KARYO-008 D5: giran TODO el lienzo, como girar la cabeza. El
+            analista que quería girar un cromosoma pulsaba estos; el nombre y
+            el aviso lo dicen. Un cromosoma se gira en el panel. */}
         <button type="button" className="tool-icon" data-testid="viewport-rotate-left"
-          onClick={() => dispatch({ type: 'rotateLeft' })} disabled={disabled} title="Rotar izquierda" aria-label="Rotar izquierda">↺</button>
+          onClick={() => dispatch({ type: 'rotateLeft' })} disabled={disabled}
+          title="Rotar vista a la izquierda (gira todo el lienzo)" aria-label="Rotar vista a la izquierda">↺</button>
         <button type="button" className="tool-icon" data-testid="viewport-rotate-right"
-          onClick={() => dispatch({ type: 'rotateRight' })} disabled={disabled} title="Rotar derecha" aria-label="Rotar derecha">↻</button>
+          onClick={() => dispatch({ type: 'rotateRight' })} disabled={disabled}
+          title="Rotar vista a la derecha (gira todo el lienzo)" aria-label="Rotar vista a la derecha">↻</button>
         {/* Voltear es transformación de VISTA: no altera la orientación
             guardada de ningún cromosoma. Por convención ISCN el brazo corto (p)
             se dibuja arriba, y comparar un cromosoma capturado al revés es más
@@ -61,6 +69,11 @@ export function KaryoImageToolbar({
           onClick={() => dispatch({ type: 'flipVertical' })} disabled={disabled}
           aria-pressed={viewport.flipY} title="Voltear vertical (solo la vista)" aria-label="Voltear vertical">⇅</button>
       </div>
+      {cromosomaSeleccionado && (
+        <span className="karyo-imagebar__aviso" role="note" data-testid="viewport-rotate-aviso">
+          ↺ ↻ giran toda la vista; el cromosoma se gira en su panel
+        </span>
+      )}
 
       <label className="karyo-imagebar__slider">
         ☀ <input type="range" min={50} max={150} value={viewport.brightness} data-testid="viewport-brightness"

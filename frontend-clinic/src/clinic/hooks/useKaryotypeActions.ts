@@ -72,8 +72,8 @@ export function useKaryotypeActions(sampleId: string | undefined) {
   });
 
   const orient = useMutation({
-    mutationFn: (v: { chromosomeId: string; giro: 0 | 180; volteo: boolean }) =>
-      karyotypeClient.orient(sampleId as string, v.chromosomeId, v.giro, v.volteo),
+    mutationFn: (v: { chromosomeId: string; giro: 0 | 180; volteo: boolean; ajuste: number }) =>
+      karyotypeClient.orient(sampleId as string, v.chromosomeId, v.giro, v.volteo, v.ajuste),
     onSuccess: invalidate,
   });
   const undo = useMutation({

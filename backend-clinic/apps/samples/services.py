@@ -1465,12 +1465,21 @@ def undo_last_edit(sample, actor, mode='auto') -> AuditEvent:
 # DD-KARYO-007 D7 — girar 180° y voltear en el cariograma (T7)
 # ============================================================================
 
-def orient_chromosome(sample, chromosome, giro, volteo, actor, mode='auto') -> Chromosome:
+#: DD-KARYO-008 D3: el ajuste fino del giro, en grados enteros.
+AJUSTE_MAX = 90
+
+
+def orient_chromosome(sample, chromosome, giro, volteo, actor, mode='auto', ajuste=None) -> Chromosome:
     """Guarda la orientación de presentación de un cromosoma (DD-KARYO-007 D7).
 
     Girar 180° y voltear es lo que hace MetaClass para poner el brazo p arriba.
     Va a `measures['orientacion']`; no toca `bbox` ni `contour`, que siguen en
     píxeles de la metafase. Emite ORIENT con la de antes y la de después.
+
+    DD-KARYO-008 D3/D4: `ajuste` (entero, −90..90) corrige a mano el enderezado
+    automático del cariograma. Sin `ajuste` se conserva el guardado: un cliente
+    que solo envía giro y volteo no lo borra. Siempre se guarda, aunque valga 0,
+    y una orientación anterior sin él se lee como 0.
 
     No es una edición deshacible (D6): orientar otra vez ya la revierte, y
     dejar que «Deshacer» se la salte permite seguir deshaciendo el último corte.
@@ -1480,11 +1489,16 @@ def orient_chromosome(sample, chromosome, giro, volteo, actor, mode='auto') -> C
         raise ValueError('giro debe ser 0 o 180')
     if not isinstance(volteo, bool):
         raise ValueError('volteo debe ser true o false')
+    if ajuste is not None and (not isinstance(ajuste, int) or isinstance(ajuste, bool)
+                               or not -AJUSTE_MAX <= ajuste <= AJUSTE_MAX):
+        raise ValueError(f'ajuste debe ser un entero entre -{AJUSTE_MAX} y {AJUSTE_MAX}')
     if not chromosome.is_active:
         raise ObjetoInactivoError('El objeto ya no forma parte del cariotipo.')
     medidas = dict(chromosome.measures or {})
-    previa = medidas.get('orientacion') or {'giro': 0, 'volteo': False}
-    nueva = {'giro': giro, 'volteo': volteo}
+    guardada = medidas.get('orientacion') or {}
+    previa = {'giro': guardada.get('giro', 0), 'volteo': guardada.get('volteo', False),
+              'ajuste': guardada.get('ajuste', 0)}
+    nueva = {'giro': giro, 'volteo': volteo, 'ajuste': previa['ajuste'] if ajuste is None else ajuste}
     with transaction.atomic():
         medidas['orientacion'] = nueva
         chromosome.measures = medidas

@@ -700,11 +700,17 @@ export const handlers = [
     if (sampleLocked(sid)) return HttpResponse.json({ code: 'CASE_LOCKED', detail: 'Caso validado' }, { status: 409 });
     const chromo = getOrBuildKaryotype(sid).chromosomes.find((c) => c.id === params.cid);
     if (!chromo) return HttpResponse.json({ code: 'CHROMOSOME_NOT_FOUND' }, { status: 404 });
-    const { giro, volteo } = (await request.json()) as { giro?: number; volteo?: unknown };
+    const { giro, volteo, ajuste } = (await request.json()) as { giro?: number; volteo?: unknown; ajuste?: unknown };
     if ((giro !== 0 && giro !== 180) || typeof volteo !== 'boolean') {
       return HttpResponse.json({ code: 'VALIDATION_ERROR', detail: 'giro 0|180 y volteo booleano' }, { status: 400 });
     }
-    chromo.measures = { ...chromo.measures, orientacion: { giro, volteo } };
+    // DD-KARYO-008 D4, como el backend: entero −90..90; sin él se conserva el guardado.
+    if (ajuste !== undefined && !(Number.isInteger(ajuste) && Math.abs(ajuste as number) <= 90)) {
+      return HttpResponse.json({ code: 'VALIDATION_ERROR', detail: 'ajuste entero entre -90 y 90' }, { status: 400 });
+    }
+    const guardada = (chromo.measures as { orientacion?: { ajuste?: number } } | null)?.orientacion;
+    const nuevoAjuste = ajuste === undefined ? (guardada?.ajuste ?? 0) : (ajuste as number);
+    chromo.measures = { ...chromo.measures, orientacion: { giro, volteo, ajuste: nuevoAjuste } };
     pushAudit(sid, 'ORIENT', chromo.id, modeOf(request));
     return HttpResponse.json(chromo);
   }),

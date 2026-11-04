@@ -8,7 +8,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Route, Routes } from 'react-router-dom';
 import { KaryotypePage } from '../../src/clinic/pages/KaryotypePage';
-import { setSampleStatus } from '../../src/clinic/msw/handlers';
+import { fijarBboxMock, fijarContornoMock, setSampleStatus } from '../../src/clinic/msw/handlers';
 import { renderWithProviders } from '../testUtils';
 
 const metafase = vi.hoisted(() => ({
@@ -61,6 +61,35 @@ describe('KaryotypePage — girar y voltear (DD-KARYO-007 T7)', () => {
     await user.click(await screen.findByTestId(`chromosome-${CROMOSOMA}`));
     await screen.findByTestId('chromosome-props');
     expect(screen.queryByTestId('action-girar')).toBeNull();
+  });
+
+  it('ajuste fino (DD-KARYO-008 T4): +5° dos veces gira el cromosoma 10° y deja dos ORIENT', async () => {
+    // Un 10 × 100 inclinado 30°, centrado en (300, 200), con su caja: se endereza girándolo −30°.
+    const a = Math.PI / 6;
+    const contour = [[-5, -50], [5, -50], [5, 50], [-5, 50]].map(([x, y]) => [
+      300 + x * Math.cos(a) - y * Math.sin(a), 200 + x * Math.sin(a) + y * Math.cos(a),
+    ]);
+    fijarBboxMock(SAMPLE, CROMOSOMA, { x: 270, y: 152, w: 60, h: 96 });
+    fijarContornoMock(SAMPLE, CROMOSOMA, contour);
+    const user = userEvent.setup();
+    renderPage();
+    const silueta = () => screen.getByTestId(`chromosome-silueta-${CROMOSOMA}`);
+    await waitFor(() => expect(silueta()).toHaveAttribute('data-giro-final', '330'));
+    await user.click(screen.getByTestId(`chromosome-${CROMOSOMA}`));
+
+    await user.click(await screen.findByTestId('action-ajuste-mas'));
+    await waitFor(() => expect(screen.getByTestId('ajuste-valor')).toHaveTextContent('Ajuste +5°'));
+    await user.click(screen.getByTestId('action-ajuste-mas'));
+    await waitFor(() => expect(silueta()).toHaveAttribute('data-giro-final', '340'));
+    expect(screen.getByTestId('ajuste-valor')).toHaveTextContent('Ajuste +10°');
+
+    // Girar 180° conserva el ajuste: 330 + 10 + 180 = 520 → 160.
+    await user.click(screen.getByTestId('action-girar'));
+    await waitFor(() => expect(silueta()).toHaveAttribute('data-giro-final', '160'));
+    expect(screen.getByTestId('ajuste-valor')).toHaveTextContent('Ajuste +10°');
+
+    await user.click(screen.getByTestId('toggle-audit'));
+    expect(await screen.findAllByText(/Giró o volteó un cromosoma/)).toHaveLength(3);
   });
 
   it('sin metafase no hay nada que orientar', async () => {
