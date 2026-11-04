@@ -15,11 +15,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 
-def env(key: str, default=None, required=False):
-    val = os.environ.get(key, default)
-    if required and val is None:
-        raise RuntimeError(f"Missing required env var: {key}")
-    return val
+# Variable de entorno, después el archivo de BIOMED_SECRETS_DIR (DD-OPS-001 D3).
+from admin_backend.entorno import env  # noqa: E402
 
 
 # ============================================================================
