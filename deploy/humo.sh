@@ -8,34 +8,52 @@
 #   1. que se sirven las dos aplicaciones;
 #   2. que el analista de la demo entra (backend-admin emite el JWT);
 #   3. que con ese JWT backend-clinic responde (el secreto compartido coincide);
-#   4. que backend-ml responde desde dentro de la red.
-# Nunca imprime una contraseña ni un token.
+#   4. que backend-ml responde desde dentro de la red;
+#   5. que solo `web` publica un puerto.
+# El primer paso que falla termina el script con 1. Nunca imprime una contraseña
+# ni un token.
 set -euo pipefail
+export MSYS_NO_PATHCONV=1   # sin esto Git Bash reescribe /secretos/... como ruta de Windows
 BASE="${BASE:-http://127.0.0.1:8080}"
 PY="${PY:-python3}"   # en Git Bash de Windows: PY="py -3"
 
-paso() { printf '%-58s' "$1"; }
-ok() { echo "ok"; }
+paso() {
+  printf '%-60s' "$1"
+  shift
+  if "$@"; then echo ok; else echo FALLA; exit 1; fi
+}
 
-paso "1. / sirve la administración"
-curl -fsS "$BASE/" | grep -q '<div id="root">' && ok
-paso "1. /clinic/ sirve la clínica"
-curl -fsS "$BASE/clinic/" | grep -q '/clinic/assets/' && ok
+sirve() { curl -fsS "$BASE$1" | grep -q "$2"; }
 
-paso "2. el analista de la demo entra"
-clave="$(docker compose run --rm --no-deps -T secretos cat /secretos/admin/DEMO_PASSWORD_ANALISTA)"
-cuerpo="$(printf '{"email":"analista@biomed.local","password":"%s"}' "$clave")"
-token="$(curl -fsS -H 'Content-Type: application/json' -d "$cuerpo" "$BASE/api/auth/login/" \
-  | $PY -c 'import sys,json; print(json.load(sys.stdin)["access"])')"
-[ -n "$token" ] && ok
+# El código HTTP, sin archivo temporal: va en la última línea de la salida.
+estado() { curl -sS -w '\n%{http_code}' "$@" | tail -n 1; }
 
-paso "3. con ese token, backend-clinic lista las muestras"
-curl -fsS -o /dev/null -H "Authorization: Bearer $token" "$BASE/api/clinic/samples/" && ok
+entra_el_analista() {
+  local clave cuerpo
+  clave="$(docker compose run --rm --no-deps -T secretos cat /secretos/admin/DEMO_PASSWORD_ANALISTA)"
+  cuerpo="$(printf '{"email":"analista@biomed.local","password":"%s"}' "$clave")"
+  TOKEN="$(curl -fsS -H 'Content-Type: application/json' -d "$cuerpo" "$BASE/api/auth/login/" \
+    | $PY -c 'import sys,json; print(json.load(sys.stdin)["access"])')"
+  [ -n "$TOKEN" ]
+}
 
-paso "4. backend-ml responde dentro de la red"
-docker compose exec -T clinic python -c \
-  "import urllib.request; urllib.request.urlopen('http://ml:8000/health/', timeout=5)" && ok
+clinic_responde() { [ "$(estado -H "Authorization: Bearer $TOKEN" "$BASE/api/clinic/samples/")" = 200 ]; }
 
-paso "5. backend-ml, Postgres y los backends no están publicados"
-publicados="$(docker compose ps --format '{{.Service}} {{.Publishers}}' | grep -c '0.0.0.0\|127.0.0.1' || true)"
-[ "$publicados" = "1" ] && ok
+sin_token_no() { [ "$(estado "$BASE/api/clinic/samples/")" = 401 ]; }
+
+ml_responde() {
+  docker compose exec -T clinic python -c \
+    "import urllib.request; urllib.request.urlopen('http://ml:8000/health/', timeout=5)"
+}
+
+solo_web_publica() {
+  [ "$(docker compose ps --format '{{.Service}} {{.Publishers}}' | grep -c '0\.0\.0\.0\|127\.0\.0\.1')" = 1 ]
+}
+
+paso "1. / sirve la administración" sirve / '<div id="root">'
+paso "1. /clinic/ sirve la clínica" sirve /clinic/ '/clinic/assets/'
+paso "2. el analista de la demo entra" entra_el_analista
+paso "3. con ese token, backend-clinic lista las muestras (200)" clinic_responde
+paso "3. sin token, backend-clinic responde 401" sin_token_no
+paso "4. backend-ml responde dentro de la red" ml_responde
+paso "5. solo web publica un puerto" solo_web_publica

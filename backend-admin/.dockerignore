@@ -1,0 +1,18 @@
+# DD-OPS-001 D7. Lo que NUNCA entra en la imagen:
+# - secretos: .env (settings.py lo cargaría con load_dotenv);
+# - datos: las bases SQLite y media/ (metafases de casos);
+# - el entorno local y los restos de pruebas.
+.env
+.env.*
+!.env.example
+*.sqlite3
+media/
+.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+cov_*.json
+apps/*/tests/
+htmlcov/
+coverage.xml

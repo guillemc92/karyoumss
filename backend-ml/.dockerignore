@@ -1,0 +1,6 @@
+# Solo entran app/ y models/ (DD-OPS-001 D7).
+*
+!app/
+!models/
+!requirements-imagen.txt
+**/__pycache__/
