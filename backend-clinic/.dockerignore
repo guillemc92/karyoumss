@@ -1,0 +1,16 @@
+# DD-E3-001 T3. Lo que NUNCA entra en la imagen:
+# - secretos: .env (settings.py lo cargaría con load_dotenv);
+# - datos: las bases SQLite y media/ (metafases de casos);
+# - el entorno local y los restos de pruebas.
+.env
+.env.*
+!.env.example
+*.sqlite3
+media/
+.venv/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+cov_*.json
+apps/samples/tests/

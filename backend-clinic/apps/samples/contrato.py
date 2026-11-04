@@ -229,10 +229,16 @@ for _nombre in dir(views):
             and _vista.__module__ == views.__name__ and _vista not in DESCRITAS):
         continue
     if getattr(_vista, 'serializer_class', None) is None:
+        _respuestas = {200: OpenApiResponse(OpenApiTypes.OBJECT, description=SIN_DESCRIBIR)}
+        if _vista is views.AuditTrailView:
+            # DD-E3-001 D4: con la bitácora extraída, la lectura puede fallar.
+            # Se añade solo el 503 (cambio no rompiente); el 200 sigue siendo
+            # deuda de DD-API-001 D2.
+            _respuestas[503] = _error('AUDIT_UNAVAILABLE: la bitácora no responde; reintentar tras Retry-After (RN-07).')
         extend_schema(
             tags=['Sin describir'],
             request=OpenApiTypes.OBJECT,
-            responses={200: OpenApiResponse(OpenApiTypes.OBJECT, description=SIN_DESCRIBIR)},
+            responses=_respuestas,
         )(_vista)
     else:
         # Vistas genéricas con serializer: el generador ya las describe bien.

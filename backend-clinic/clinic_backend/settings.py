@@ -199,6 +199,19 @@ ADMIN_INTERNAL_URL = env('ADMIN_INTERNAL_URL', 'http://localhost:8001')
 INTERNAL_SERVICE_SECRET = env('INTERNAL_SERVICE_SECRET', required=True)   # DD-AUD-001 F3
 
 # ============================================================================
+# Bitácora de auditoría (DD-E3-001, experimento E3)
+# ============================================================================
+
+# 'proceso' (la de siempre) o 'http' (servicio aparte, detrás de Toxiproxy).
+BITACORA_MODO = env('BITACORA_MODO', 'proceso')
+BITACORA_URL = env('BITACORA_URL', 'http://localhost:8003')
+BITACORA_PLAZO_INTENTO_MS = int(env('BITACORA_PLAZO_INTENTO_MS', '300'))
+BITACORA_INTENTOS = int(env('BITACORA_INTENTOS', '2'))
+BITACORA_PLAZO_TOTAL_MS = int(env('BITACORA_PLAZO_TOTAL_MS', '800'))
+BITACORA_BREAKER_FALLOS = int(env('BITACORA_BREAKER_FALLOS', '3'))
+BITACORA_BREAKER_RESET_MS = int(env('BITACORA_BREAKER_RESET_MS', '2000'))
+
+# ============================================================================
 # LLM local para la narrativa del informe (ADR-0024 — IA generativa vía SDK)
 # ============================================================================
 

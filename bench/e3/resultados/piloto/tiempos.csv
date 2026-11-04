@@ -1,0 +1,5 @@
+fecha,que,forma,falla,corrida,segundos
+2026-11-02T04:36:58-04:00,seed,http,caido,0,23.5
+2026-11-02T04:36:59-04:00,up,http,caido,0,24.7
+2026-11-02T04:47:04-04:00,seed,http,colgado,0,15.1
+2026-11-02T04:47:04-04:00,up,http,colgado,0,10.6

@@ -1,0 +1,105 @@
+# Experimento E3 (DD-E3-001): la bitácora de auditoría en sus dos formas.
+# Adaptado de la plantilla del docente (eterceros/mae-ds-ai, m8/demo-e3-nest).
+# Solo escucha en 127.0.0.1, puertos 18400-18499.
+#
+# No se arranca a mano: correr.sh genera los secretos (al azar, en cada corrida)
+# y elige la forma con --env-file:
+#   formas/proceso.env   monolito modular: solo "api"
+#   formas/http.env      extraída: api -> toxiproxy -> bitacora
+name: e3-bitacora
+
+x-clinica: &clinica
+  image: e3-bitacora/clinic:local
+  environment: &entorno
+    # Secretos de usar y tirar: correr.sh los genera al azar y mueren con down -v.
+    DJANGO_SECRET_KEY: ${E3_DJANGO_SECRET_KEY:?arranque con bench/e3/correr.sh}
+    AUTH_ADMIN_JWT_SECRET: ${E3_JWT_SECRET:?arranque con bench/e3/correr.sh}
+    PATIENT_VAULT_KEY: ${E3_VAULT_KEY:?arranque con bench/e3/correr.sh}
+    INTERNAL_SERVICE_SECRET: ${E3_INTERNAL_SECRET:?arranque con bench/e3/correr.sh}
+    DJANGO_DEBUG: "false"
+    DJANGO_ALLOWED_HOSTS: api,bitacora,toxiproxy,localhost,127.0.0.1
+
+services:
+  seed:
+    # Un solo trabajo de seed para las dos formas: migra y siembra la base de la
+    # API y la COPIA a la de la bitácora. Así las dos parten de los mismos datos.
+    <<: *clinica
+    build: ../../backend-clinic
+    profiles: ["seed"]
+    environment:
+      <<: *entorno
+      CLINIC_DB_NAME: /datos/api/clinic.sqlite3
+    command:
+      - sh
+      - -c
+      - >-
+        python manage.py migrate --noinput -v 0 &&
+        python manage.py sembrar_bench --semilla 42 --muestras ${E3_MUESTRAS:-1000} --salida /k6data &&
+        python manage.py token_bench --salida /k6data/token.txt &&
+        cp /datos/api/clinic.sqlite3 /datos/bitacora/clinic.sqlite3
+    volumes:
+      - datos-api:/datos/api
+      - datos-bitacora:/datos/bitacora
+      - k6data:/k6data
+
+  api:
+    <<: *clinica
+    environment:
+      <<: *entorno
+      CLINIC_DB_NAME: /datos/api/clinic.sqlite3
+      # proceso = BitacoraEnProceso; http = BitacoraHttp (por la red)
+      BITACORA_MODO: ${BITACORA_MODO:-proceso}
+      # La API llama al proxy, no a la bitácora: así Toxiproxy le puede romper la red.
+      BITACORA_URL: http://toxiproxy:8666
+    volumes: ["datos-api:/datos/api"]
+    ports: ["127.0.0.1:18400:8000"]
+    depends_on:
+      # required: false -> en la forma "proceso" no existen y Compose no los espera.
+      bitacora: { condition: service_healthy, required: false }
+      toxiproxy: { condition: service_started, required: false }
+    healthcheck:
+      # Cualquier respuesta HTTP (aquí un 401) significa que gunicorn atiende.
+      test: ["CMD", "python", "-c", "import urllib.request as u, urllib.error as e, sys\ntry: u.urlopen('http://127.0.0.1:8000/api/clinic/samples/', timeout=2)\nexcept e.HTTPError: sys.exit(0)\nexcept Exception: sys.exit(1)"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  bitacora:
+    # La misma imagen que la API, con el otro punto de entrada: solo la bitácora.
+    <<: *clinica
+    profiles: ["extraido"]
+    environment:
+      <<: *entorno
+      CLINIC_DB_NAME: /datos/bitacora/clinic.sqlite3
+      DJANGO_SETTINGS_MODULE: clinic_backend.settings_bitacora
+    volumes: ["datos-bitacora:/datos/bitacora"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://127.0.0.1:8000/salud/', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  toxiproxy:
+    # Proxy TCP que se controla por su API: cuelga, hace lentas o corta las conexiones.
+    image: ghcr.io/shopify/toxiproxy:2.13.0@sha256:5d3dae09bc185dcc5ff6cf43abf6062a4a720aff0c4306a471e773acdcd107aa
+    profiles: ["extraido"]
+    command: ["-host=0.0.0.0", "-config=/config/toxiproxy.json"]
+    environment: { LOG_LEVEL: error }
+    volumes: ["./toxiproxy.json:/config/toxiproxy.json:ro"]
+    ports: ["127.0.0.1:18410:8474"]
+    depends_on:
+      bitacora: { condition: service_healthy }
+
+  k6:
+    # Solo con "docker compose run --rm k6 run ..." (perfil "carga").
+    image: grafana/k6:2.3.0@sha256:2dd4756ec6e14e62778916e1eb850108e4b499304c02df56760fa0bdb0fba0b8
+    profiles: ["carga"]
+    volumes:
+      - ./carga.js:/k6/carga.js:ro
+      - k6data:/datos:ro        # ids.json y token.txt que deja el seed
+      - ./resultados:/out       # el resumen JSON de cada corrida
+
+volumes:
+  datos-api:
+  datos-bitacora:
+  k6data:
