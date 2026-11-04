@@ -1,0 +1,4 @@
+# Trivy (ADR-0039 D1): aquí NO se tapa ningún HIGH ni CRITICAL que tenga parche.
+# Los que no tienen parche publicado los deja fuera --ignore-unfixed, y el riesgo
+# está aceptado en ADR-0039 D2. Si algún día hace falta una entrada, va con su
+# CVE, su motivo y la fecha en que se revisa.

@@ -1,0 +1,13 @@
+# Solo entran los dos frontends y el Caddyfile (DD-OPS-001 D4). Ni un .env local
+# (Vite lo leería al compilar), ni node_modules, ni dist/ previos.
+*
+!frontend-admin/
+!frontend-clinic/
+!deploy/web/Caddyfile
+**/.env
+**/.env.*
+**/node_modules/
+**/dist/
+**/coverage/
+**/test-results/
+**/playwright-report/

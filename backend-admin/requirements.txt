@@ -2,22 +2,22 @@
 # Bootstrap del bounded context admin. Stack separado del clínico (FastAPI).
 
 # Core
-Django==5.0.6
-djangorestframework==3.15.2
+Django==5.2.18
+djangorestframework==3.18.2
 
 # Auth & RBAC
 django-guardian==2.4.0                    # RBAC per-object permissions
-djangorestframework-simplejwt==5.3.1      # Login unificado (ADR-0017)
+djangorestframework-simplejwt==5.5.1      # Login unificado (ADR-0017)
 pyotp==2.10.0                             # TOTP RFC 6238 (2FA, ADR-0014 P2)
 qrcode==8.2                               # QR base64 para setup de 2FA
-Pillow==12.3.0                            # backend de imagen requerido por qrcode
-cryptography==49.0.0                      # Fernet cifrado reversible del secret TOTP
+Pillow==13.0.0                            # backend de imagen requerido por qrcode
+cryptography==50.0.2                      # Fernet cifrado reversible del secret TOTP
 
 # Audit Append-Only
 django-auditlog==3.0.0                    # Signals Django → LogEntry
 
 # JWT validation (F0 auth bridge)
-PyJWT==2.9.0                              # HS256 validation de FastAPI JWT
+PyJWT==2.15.1                              # HS256 validation de FastAPI JWT
 
 # PostgreSQL driver
 psycopg[binary]==3.2.1                    # psycopg3 (recomendado Django 5)

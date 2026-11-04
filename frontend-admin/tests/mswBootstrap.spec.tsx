@@ -17,7 +17,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import { readFileSync, existsSync } from 'node:fs';
-import { resolve, join } from 'node:path';
+import { resolve } from 'node:path';
 import { MswBootstrapError } from '../src/admin/components/MswBootstrapError';
 
 describe('SPEC-007 — MSW bootstrap (mock no intercepta)', () => {

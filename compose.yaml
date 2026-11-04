@@ -1,0 +1,179 @@
+# Stack de producción de BIOMED UMSS (DD-OPS-001). Desde un clon limpio:
+#
+#   docker compose up -d --wait                  todo, sin el LLM
+#   BIOMED_LLM=true docker compose --profile ia up -d --wait
+#                                                con Ollama y llama3.2:3b (~2 GB la 1.ª vez)
+#
+# Entrada: http://localhost:8080/ (administración) y http://localhost:8080/clinic/.
+# Usuarios de la demo: admin@, analista@ y supervisor@biomed.local. Su contraseña:
+#
+#   docker compose run --rm --no-deps secretos cat /secretos/admin/DEMO_PASSWORD_ANALISTA
+#
+# Los secretos se generan al primer arranque en el volumen `secretos` (D3): no
+# están en git ni en ninguna imagen. Sobreviven a `down`; `down -v` los borra.
+name: biomed
+
+# Los jobs usan la imagen que construyen `clinic` y `admin`: una sola compilación
+# por imagen, y ninguna descarga de una imagen que no existe en un registro.
+x-clinic-imagen: &clinic-imagen
+  image: biomed/backend-clinic:8.3.0
+  pull_policy: never
+
+x-admin-imagen: &admin-imagen
+  image: biomed/backend-admin:8.3.0
+  pull_policy: never
+
+x-clinic-entorno: &clinic-entorno
+  BIOMED_SECRETS_DIR: /secretos/clinic
+  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,clinic
+  CLINIC_DB_NAME: /datos/clinic/clinic.sqlite3
+  CLINIC_MEDIA_DIR: /datos/clinic/media
+  CLINIC_FASTAPI_URL: http://ml:8000
+  # Segmentar una metafase tarda ~19 s en CPU: el plazo de desarrollo (2 s) la cortaría.
+  CLINIC_FASTAPI_TIMEOUT: "120"
+  ADMIN_INTERNAL_URL: http://admin:8000
+  CLINIC_LLM_ENABLED: ${BIOMED_LLM:-false}
+  CLINIC_LLM_URL: http://ollama:11434/v1
+
+x-admin-entorno: &admin-entorno
+  BIOMED_SECRETS_DIR: /secretos/admin
+  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,admin
+  DB_ENGINE: postgres
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: biomed
+  POSTGRES_USER: biomed_admin_service
+
+services:
+  # --- Jobs de un solo uso: terminan con 0 antes de que arranque lo demás ---
+
+  secretos:
+    <<: *clinic-imagen
+    # Es el único que corre como root: tiene que dar cada carpeta al usuario que
+    # la lee (10001 para las apps, 70 para postgres). Termina en segundos.
+    user: "0"
+    command: ["python", "scripts/generar_secretos.py", "/secretos"]
+    volumes:
+      - secretos:/secretos
+    restart: "no"
+
+  migrar-admin:
+    <<: *admin-imagen
+    command: ["sh", "-c", "python manage.py migrate --noinput && python manage.py sembrar_stack"]
+    environment: *admin-entorno
+    volumes:
+      - secretos:/secretos:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  migrar-clinic:
+    <<: *clinic-imagen
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    environment: *clinic-entorno
+    volumes:
+      - secretos:/secretos:ro
+      - clinic-datos:/datos/clinic
+    depends_on:
+      secretos:
+        condition: service_completed_successfully
+    restart: "no"
+
+  # --- Servicios ---
+
+  postgres:
+    image: postgres:17.6-alpine@sha256:ef257d85f76e48da1c64832459b59fcaba1a4dac97bf5d7450c77753542eee94
+    environment:
+      POSTGRES_DB: biomed
+      POSTGRES_PASSWORD_FILE: /secretos/postgres/POSTGRES_PASSWORD
+    volumes:
+      - secretos:/secretos:ro
+      - pg-datos:/var/lib/postgresql/data
+      - ./deploy/postgres/10-rol-admin.sh:/docker-entrypoint-initdb.d/10-rol-admin.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d biomed"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      secretos:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  admin:
+    image: biomed/backend-admin:8.3.0
+    build: ./backend-admin
+    environment: *admin-entorno
+    volumes:
+      - secretos:/secretos:ro
+    depends_on:
+      migrar-admin:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  clinic:
+    image: biomed/backend-clinic:8.3.0
+    build: ./backend-clinic
+    environment:
+      <<: *clinic-entorno
+      GUNICORN_CMD_ARGS: --timeout 180
+    volumes:
+      - secretos:/secretos:ro
+      - clinic-datos:/datos/clinic
+    depends_on:
+      migrar-clinic:
+        condition: service_completed_successfully
+      ml:
+        condition: service_healthy
+    restart: unless-stopped
+
+  ml:
+    image: biomed/backend-ml:8.3.0
+    build: ./backend-ml
+    restart: unless-stopped
+
+  web:
+    image: biomed/web:8.3.0
+    build:
+      context: .
+      dockerfile: deploy/web/Dockerfile
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      admin:
+        condition: service_healthy
+      clinic:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # --- El LLM local (ADR-0024), solo con --profile ia (D5) ---
+
+  ollama:
+    image: ollama/ollama:0.12.10@sha256:e8c3d1f6ad16323bc40dc63eff0701d4fc32113f75a86b54b3e836eef8290de6
+    profiles: ["ia"]
+    volumes:
+      - ollama-modelos:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+  ollama-modelo:
+    image: ollama/ollama:0.12.10@sha256:e8c3d1f6ad16323bc40dc63eff0701d4fc32113f75a86b54b3e836eef8290de6
+    profiles: ["ia"]
+    environment:
+      OLLAMA_HOST: ollama:11434
+    command: ["pull", "llama3.2:3b"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  secretos:
+  pg-datos:
+  clinic-datos:
+  ollama-modelos:

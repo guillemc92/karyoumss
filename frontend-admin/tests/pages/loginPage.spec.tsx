@@ -35,6 +35,7 @@ describe('LoginPage (ADR-0017, replica index.html #loginModal)', () => {
 
   afterEach(() => {
     authClient.clearTokens();
+    // @ts-expect-error -- se restaura el objeto original que el stub sustituyó
     window.location = originalLocation;
   });
 

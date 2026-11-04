@@ -1,0 +1,11 @@
+# Versiones fijas de la imagen de producción (DD-OPS-001 D7). Son las que el CI
+# instaló y probó con Schemathesis en el run 41769224760; torch, el CPU oficial.
+--extra-index-url https://download.pytorch.org/whl/cpu
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.33
+opencv-python-headless==5.0.0.93
+numpy==2.5.4
+pydantic==2.14.2
+torch==2.14.1+cpu
+torchvision==0.29.1+cpu

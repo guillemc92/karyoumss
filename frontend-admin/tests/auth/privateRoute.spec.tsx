@@ -51,6 +51,7 @@ describe('PrivateRoute (ADR-0017)', () => {
 
   afterEach(() => {
     authClient.clearTokens();
+    // @ts-expect-error -- se restaura el objeto original que el stub sustituyó
     window.location = originalLocation;
   });
 
