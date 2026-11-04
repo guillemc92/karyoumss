@@ -184,6 +184,11 @@ CLINIC_FASTAPI_URL = env('CLINIC_FASTAPI_URL', 'http://127.0.0.1:8000')
 # Almacenamiento de imágenes de metafase reales (DD-ML-002 §2.1).
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / env('CLINIC_MEDIA_DIR', 'media')
+# El registro manda las metafases en base64 dentro del JSON (ADR-0036: tres como
+# mínimo). Tres BMP reales de MetaClass son ~13 MB, y el límite por defecto de
+# Django (2,5 MB) las rechazaba con un 400 genérico. Lo destapó el stack
+# (DD-OPS-001).
+DATA_UPLOAD_MAX_MEMORY_SIZE = int(env('CLINIC_MAX_PETICION_MB', '32')) * 1024 * 1024
 CLINIC_FASTAPI_TIMEOUT = float(env('CLINIC_FASTAPI_TIMEOUT', '2.0'))
 CLINIC_FASTAPI_CIRCUIT_THRESHOLD = int(env('CLINIC_FASTAPI_CIRCUIT_THRESHOLD', '3'))
 CLINIC_FASTAPI_CIRCUIT_COOLDOWN = int(env('CLINIC_FASTAPI_CIRCUIT_COOLDOWN', '60'))
