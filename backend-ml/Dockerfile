@@ -8,6 +8,18 @@ WORKDIR /w
 COPY requirements-imagen.txt .
 RUN python -m venv /opt/venv \
  && /opt/venv/bin/pip install --no-cache-dir -r requirements-imagen.txt
+# Laboratorio S08: lo que el venv trae y el servicio no usa para ejecutar. Va en
+# su propia capa de esta etapa, así la de pip sigue en caché y la etapa final
+# copia el venv ya limpio (medidas en docs/laboratorios/imagen-o-podman.md).
+#   - torch/include y torch/share: headers C++ y CMake, solo para compilar extensiones;
+#   - carpetas tests/test de cada paquete;
+#   - pip y setuptools: nadie instala nada en la imagen que corre.
+# Los .pyc se quedan: quitarlos ahorraba 150 MB pero el arranque pasaba de ~20 s
+# a ~40 s, porque sin root Python los recompila en cada arranque (medido).
+WORKDIR /opt/venv/lib/python3.12/site-packages
+RUN rm -rf torch/include torch/share \
+ && find . -depth -type d \( -name tests -o -name test \) -prune -exec rm -rf {} + \
+ && /opt/venv/bin/python -m pip uninstall -y -q pip setuptools
 
 # --- Etapa 2: la imagen que corre ---
 FROM python:3.12.15-slim@sha256:a0f57064cbdcd6285fa45f51237ab0b35ea8ebaed06a1f5973e89e19dfb86704

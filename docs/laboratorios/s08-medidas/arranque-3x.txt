@@ -1,0 +1,11 @@
+# Segundos desde docker run hasta GET /health/ 200, tres arranques por variante.
+# antes = release/8.3.0; sin-pyc = limpieza + sin .pyc (descartada); con-pyc = limpieza, .pyc conservados (la final)
+antes 1 19.3
+antes 2 19.4
+antes 3 20.3
+sin-pyc 1 38.5
+sin-pyc 2 40.5
+sin-pyc 3 44.3
+con-pyc 1 20.6
+con-pyc 2 24.3
+con-pyc 3 30.3

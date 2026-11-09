@@ -1,0 +1,5 @@
+imagen: lab-ml:antes
+arranque hasta /health/ 200: 20.7 s
+health: {"status":"ok","service":"ai-inference","model_version":"opencv-watershed-v0+efficientnet-b3-metaclass-v3","trained_model":true}
+segment: HTTP ok, 38 cromosomas; modelo: opencv-watershed-v0+efficientnet-b3-metaclass-v3 en 44.5 s
+estado docker: healthy
