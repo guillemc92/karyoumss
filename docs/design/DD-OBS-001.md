@@ -177,3 +177,37 @@ Las pruebas usan un exportador en memoria; ninguna necesita Tempo.
 | T4 | Siembra sintética y `bench/demo4/carga.js` (perfil `carga`) | p95 de las dos peticiones |
 | T5 | Medir: p95, la traza lenta, H1 y H2, y el coste de las trazas | `bench/demo4/INFORME.md` con una captura de la traza |
 | T6 | CI: hadolint, Trivy y humo en verde con las dependencias nuevas | El workflow pasa |
+
+## 8. Lo que cambió al implementar
+
+Se anota aquí en vez de reescribir las decisiones, para que se vea qué se
+supuso y qué resultó.
+
+- **Los tramos manuales son tres, no cuatro** (D3). Los contornos no son una etapa
+  aparte: `segmentar` ya los devuelve. Quedan `esperar_turno`, `segmentar` y
+  `clasificar`.
+- **La variable del stack es `BIOMED_TRAZAS`** (D2 y D5). Compose no puede poner
+  una variable solo cuando un perfil está activo, así que el stack pasa
+  `OTEL_EXPORTER_OTLP_ENDPOINT: ${BIOMED_TRAZAS:-}`; vacío significa apagado. Se
+  enciende así:
+
+      BIOMED_TRAZAS=http://tempo:4318 docker compose --profile obs up -d --wait
+
+- **La URL se guarda sin su cadena de consulta** (D4). La instrumentación de
+  Django guarda la URL completa, y la búsqueda de muestras viaja ahí
+  (`?search=…`). Un gancho al abrir el tramo la recorta. No estaba previsto en el
+  diseño: lo destapó la prueba de PII.
+- **`backend-ml` se instrumenta una sola vez por proceso.** La librería no deja
+  instrumentar dos veces la misma app de FastAPI, y además hay que hacerlo antes
+  de la primera petición, porque Starlette guarda la cadena de middlewares ya
+  armada. `configurar()` la obliga a rearmarse.
+- **Los tramos de SQL solo aparecen en conexiones abiertas después de encender
+  las trazas.** En producción es siempre así (se enciende en `wsgi.py`, antes de
+  la primera consulta). En las pruebas la conexión ya existe y se envuelve a
+  mano con el mismo instrumentador.
+- **«Procesar» llega en parejas** (D6), no «1 cada 10 s». Dos peticiones a la vez
+  en cada ciclo: una entra y la otra espera su turno. Es lo que H2 necesita ver,
+  y a un ritmo fijo de 1 cada 10 s la cola solo crecería.
+- **Un job más, `tempo-volumen`** (D5). Tempo corre como el usuario 10001 y el
+  volumen nace de root. El job le da la carpeta antes de arrancar, con la misma
+  imagen que ya usa el job `secretos`.

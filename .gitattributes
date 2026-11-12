@@ -1,0 +1,4 @@
+# Los guiones de shell se ejecutan dentro de contenedores Linux: con CRLF el
+# kernel no encuentra el interprete («required file not found»). Un clon en
+# Windows los convertia y Postgres no ejecutaba su guion de inicio (Demo 3).
+*.sh text eol=lf
