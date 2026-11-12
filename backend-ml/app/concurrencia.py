@@ -22,6 +22,8 @@ from typing import Iterator
 
 from fastapi import HTTPException
 
+from .observabilidad import tramo
+
 MAXIMO_POR_DEFECTO = 1
 ESPERA_POR_DEFECTO_S = 25.0
 
@@ -46,7 +48,13 @@ class LimiteInferencias:
     @contextmanager
     def turno(self) -> Iterator[None]:
         """Ocupa un hueco mientras dura la inferencia; 503 si no llega a tiempo."""
-        if not self._semaforo.acquire(timeout=self.espera_s):
+        # DD-OBS-001: la espera es un tramo aparte, para que la traza distinga
+        # «esperó su turno» de «tardó la inferencia».
+        with tramo('esperar_turno', maximo=self.maximo) as span:
+            conseguido = self._semaforo.acquire(timeout=self.espera_s)
+            if span is not None:
+                span.set_attribute('turno_conseguido', conseguido)
+        if not conseguido:
             raise HTTPException(
                 status_code=503,
                 detail='backend-ml ocupado: hay demasiadas inferencias en curso',

@@ -14,6 +14,7 @@ import json
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 
+from . import observabilidad
 from .concurrencia import LimiteInferencias
 from .pipeline import get_classifier, run_pipeline
 from .edicion import CorteInvalidoError, cortar, unir
@@ -48,6 +49,9 @@ _ERROR_422 = {'description': 'La imagen no se puede leer, el corte no separa el 
 # event loop y nada más se atendía, ni `/health/`. Con `def` FastAPI los corre
 # en su threadpool, y `limite` decide cuántas inferencias van a la vez.
 limite = LimiteInferencias.desde_entorno()
+
+# DD-OBS-001: trazas, solo si OTEL_EXPORTER_OTLP_ENDPOINT está definida.
+observabilidad.configurar('backend-ml', app)
 
 
 @app.get('/health/', response_model=HealthOut, tags=['Salud'])
