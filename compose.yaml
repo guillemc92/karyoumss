@@ -20,16 +20,16 @@ name: biomed
 # Los jobs usan la imagen que construyen `clinic` y `admin`: una sola compilación
 # por imagen, y ninguna descarga de una imagen que no existe en un registro.
 x-clinic-imagen: &clinic-imagen
-  image: biomed/backend-clinic:8.3.0
+  image: biomed/backend-clinic:8.4.0
   pull_policy: never
 
 x-admin-imagen: &admin-imagen
-  image: biomed/backend-admin:8.3.0
+  image: biomed/backend-admin:8.4.0
   pull_policy: never
 
 x-clinic-entorno: &clinic-entorno
   BIOMED_SECRETS_DIR: /secretos/clinic
-  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,clinic
+  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,clinic,web
   CLINIC_DB_NAME: /datos/clinic/clinic.sqlite3
   CLINIC_MEDIA_DIR: /datos/clinic/media
   CLINIC_FASTAPI_URL: http://ml:8000
@@ -43,7 +43,7 @@ x-clinic-entorno: &clinic-entorno
 
 x-admin-entorno: &admin-entorno
   BIOMED_SECRETS_DIR: /secretos/admin
-  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,admin
+  DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1,admin,web
   DB_ENGINE: postgres
   POSTGRES_HOST: postgres
   POSTGRES_PORT: "5432"
@@ -108,7 +108,7 @@ services:
     restart: unless-stopped
 
   admin:
-    image: biomed/backend-admin:8.3.0
+    image: biomed/backend-admin:8.4.0
     build: ./backend-admin
     environment: *admin-entorno
     volumes:
@@ -119,7 +119,7 @@ services:
     restart: unless-stopped
 
   clinic:
-    image: biomed/backend-clinic:8.3.0
+    image: biomed/backend-clinic:8.4.0
     build: ./backend-clinic
     environment:
       <<: *clinic-entorno
@@ -135,7 +135,7 @@ services:
     restart: unless-stopped
 
   ml:
-    image: biomed/backend-ml:8.3.0
+    image: biomed/backend-ml:8.4.0
     build: ./backend-ml
     environment:
       # Solo lee INTERNAL_SERVICE_SECRET, para GET /api/v1/inferencias/.
@@ -149,7 +149,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: biomed/web:8.3.0
+    image: biomed/web:8.4.0
     build:
       context: .
       dockerfile: deploy/web/Dockerfile

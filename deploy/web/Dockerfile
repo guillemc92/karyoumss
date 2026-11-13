@@ -22,12 +22,13 @@ RUN VITE_BASE_PATH=/clinic/ npm run build \
 # --- Etapa 2: Caddy compilado con un Go y unas dependencias sin CVE altos ---
 # La imagen oficial de Caddy 2.11.7 trae Go 1.26.8, x/net 0.59 y go-jose 4.1.5,
 # con HIGH que ya tienen parche (ADR-0039 D1). Misma versión de Caddy, recompilada.
+# x/net se subió de 0.60 a 0.62 el 13/11: Trivy encontró otro HIGH (CVE-2026-78661).
 FROM golang:1.26.10-alpine@sha256:a2012b4a1d1f9f7e9f44e0d39b805a901e856b1dd80b4e6ee4338db547050308 AS caddy
 WORKDIR /w
 ENV CGO_ENABLED=0
 RUN go install github.com/caddyserver/xcaddy/cmd/xcaddy@v0.4.7 \
  && xcaddy build v2.11.7 --output /w/caddy \
-      --replace golang.org/x/net=golang.org/x/net@v0.60.0 \
+      --replace golang.org/x/net=golang.org/x/net@v0.62.0 \
       --replace github.com/go-jose/go-jose/v4=github.com/go-jose/go-jose/v4@v4.1.6
 
 # --- Etapa 3: solo los dist/ y Caddy ---

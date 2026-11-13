@@ -56,11 +56,11 @@ jobs:
       - name: 3 · trivy image (HIGH y CRITICAL con parche)
         run: |
           for img in backend-clinic backend-admin backend-ml web; do
-            echo "== biomed/$img:8.3.0"
+            echo "== biomed/$img:8.4.0"
             docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
               -v "$PWD/.trivyignore:/.trivyignore:ro" "$TRIVY" image --quiet \
               --scanners vuln --severity HIGH,CRITICAL --ignore-unfixed \
-              --ignorefile /.trivyignore --exit-code 1 "biomed/$img:8.3.0"
+              --ignorefile /.trivyignore --exit-code 1 "biomed/$img:8.4.0"
           done
 
       - name: 4 · docker compose up -d --wait
@@ -68,6 +68,18 @@ jobs:
 
       - name: Prueba de humo
         run: deploy/humo.sh
+
+      # DD-OBS-001: el mismo stack, ahora con Tempo y Grafana. Un «procesar» tiene
+      # que dejar una traza que cruce backend-clinic y backend-ml.
+      - name: 5 · el stack con trazas (perfil obs)
+        run: docker compose --profile obs up -d --wait --wait-timeout 600
+        env:
+          BIOMED_TRAZAS: http://tempo:4318
+
+      - name: Prueba de humo de las trazas
+        run: deploy/humo-trazas.sh
+        env:
+          BIOMED_TRAZAS: http://tempo:4318
 
       - name: Estado y registros si algo falló
         if: failure()
