@@ -25,3 +25,11 @@ openai>=1.0
 langgraph>=1.0
 langgraph-checkpoint-sqlite>=3.0
 langchain-openai>=1.0
+
+# DD-OBS-001: trazas. Apagadas sin OTEL_EXPORTER_OTLP_ENDPOINT; opcionales: sin
+# estos paquetes el sistema corre igual (RN-07).
+opentelemetry-sdk==1.45.2
+opentelemetry-exporter-otlp-proto-http==1.45.2
+opentelemetry-instrumentation-django==0.66b2
+opentelemetry-instrumentation-httpx==0.66b2
+opentelemetry-instrumentation-sqlite3==0.66b2
