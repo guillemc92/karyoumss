@@ -36,19 +36,24 @@ for (const tipo of TIPOS) {
   thresholds[`http_req_failed{tipo:${tipo}}`] = ['rate>=0'];
 }
 
+const scenarios = {
+  lectura: {
+    executor: 'constant-arrival-rate', rate: RPS, timeUnit: '1s', duration: `${DURACION}s`,
+    preAllocatedVUs: 20, maxVUs: 200, exec: 'lectura',
+  },
+};
+// PAREJA=0 deja solo las lecturas: sirve para medir cuánto cuestan las trazas.
+if (PAREJA > 0) {
+  scenarios.procesar = {
+    executor: 'per-vu-iterations', vus: PAREJA, iterations: Math.max(1, Math.floor(DURACION / CICLO)),
+    maxDuration: `${DURACION + 120}s`, exec: 'procesar',
+  };
+}
+
 export const options = {
   summaryTrendStats: ['med', 'p(95)', 'p(99)', 'max', 'avg', 'count'],
   thresholds,
-  scenarios: {
-    lectura: {
-      executor: 'constant-arrival-rate', rate: RPS, timeUnit: '1s', duration: `${DURACION}s`,
-      preAllocatedVUs: 20, maxVUs: 200, exec: 'lectura',
-    },
-    procesar: {
-      executor: 'per-vu-iterations', vus: PAREJA, iterations: Math.max(1, Math.floor(DURACION / CICLO)),
-      maxDuration: `${DURACION + 120}s`, exec: 'procesar',
-    },
-  },
+  scenarios,
 };
 
 export function setup() {

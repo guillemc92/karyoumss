@@ -211,3 +211,38 @@ supuso y qué resultó.
 - **Un job más, `tempo-volumen`** (D5). Tempo corre como el usuario 10001 y el
   volumen nace de root. El job le da la carpeta antes de arrancar, con la misma
   imagen que ya usa el job `secretos`.
+- **`web` entra en `DJANGO_ALLOWED_HOSTS`.** k6 llama a `http://web:8080` desde la
+  red de Docker y Django rechazaba ese nombre de host con un 400. Desde un
+  navegador, que usa `localhost`, no se veía.
+- **Parches del sistema en las tres imágenes de Python.** Al pasar Trivy
+  aparecieron 4 HIGH con parche en `apt` y `zlib1g`, publicados después de la
+  Demo 3. No vienen de las dependencias de este diseño: están en la imagen base,
+  que no se reconstruye desde el 21/10. Se añadió `apt-get upgrade` a la etapa
+  final, como ya hacía la imagen de `web` con `apk upgrade` (ADR-0039 D1).
+- **Una prueba de humo propia, `deploy/humo-trazas.sh`,** que el CI corre con el
+  perfil `obs`: hace un «procesar» y le pregunta a Tempo si la traza cruza los dos
+  servicios, si tiene los tres tramos y si no guarda el texto de búsqueda.
+
+## 9. Resultados (2026-11-12)
+
+El detalle, con las capturas de Grafana, está en
+[`bench/demo4/INFORME.md`](../../bench/demo4/INFORME.md).
+
+| Criterio (§3) | Resultado |
+|---|---|
+| 1 · Levanta con y sin el perfil `obs` | Sí. Con el perfil, todo `healthy` en 77 s |
+| 2 · Una sola traza con los dos servicios | Sí: 68 tramos con el mismo `trace_id` |
+| 3 · Los tramos manuales, con su duración | Sí: `esperar_turno`, `segmentar` y `clasificar` |
+| 4 · Sin la variable no cambia nada | Sí. backend-clinic: 1.217 pruebas en verde, 91,60 % |
+| 5 · Sin PII, con pruebas | Sí: URL sin consulta, SQL sin parámetros, sin token |
+| 6 · p95 con k6 y la traza en Grafana | Lectura: p95 de 431 ms. Procesar: 53,8 s, con 50 % de errores que la traza explica |
+| 8 · Cobertura de los módulos nuevos | 100 % en los dos `observabilidad.py` y en `sembrar_carga.py` |
+
+**Las hipótesis:**
+- **H1 se cumple.** `clasificar` es el 98,5 % de la petición; `segmentar`, el 0,9 %.
+- **H2 no se cumple.** El segundo «procesar» no espera lo que tarda el primero:
+  espera 25 s (`ML_ESPERA_MAX_S`) y falla con 503, porque la inferencia tarda de 46
+  a 54 s. Dos analistas a la vez no caben en esta máquina.
+
+**El coste de las trazas:** el p50 de lectura sube unos 6 ms (de ~46 a ~52 ms). En
+el p95 los rangos se solapan y no se puede afirmar una diferencia.
