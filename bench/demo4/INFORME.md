@@ -152,6 +152,13 @@ que permiten afirmar que la base no es el problema (33 ms de 55 s).
 - **Todo en una máquina de 2 núcleos:** k6, los tres servicios, Tempo y Grafana
   compiten por la CPU. Los tiempos absolutos no valen para otra máquina; las
   proporciones entre tramos, sí.
+- **El tiempo de una inferencia varía mucho en esta máquina.** La misma petición,
+  sola y sin k6, tardó 47,8 s a las 22:30 y 90 s y 105 s una hora después, tras
+  reconstruir las imágenes. No se encontró la causa: los contenedores estaban en
+  reposo y la CPU es un i5-3317U de bajo consumo (2 núcleos, 1,7 GHz), que llevaba
+  horas al 100 %. Por eso lo que este informe afirma son las **proporciones**
+  (`clasificar` frente a lo demás), que se mantuvieron, y no los segundos.
+  A 105 s, la inferencia queda cerca del plazo de `backend-clinic` (120 s).
 - **Metafases sintéticas:** 46 manchas separadas. Una metafase real tiene
   cromosomas que se tocan, y `segmentar` podría tardar más. `clasificar` depende
   del número de recortes, que es el mismo.
