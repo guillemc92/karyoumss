@@ -16,7 +16,7 @@
  *   403 → NOT_OWNER / ADMIN_ONLY
  *   404 → muestra no existe / soft-deleted
  *   409 → CHN_DUPLICATE / ALREADY_PROCESSING / IMMUTABLE_AFTER_VALIDATED
- *   503 → ML_DEGRADED (RN-07)
+ *   503 → ML_DEGRADED (RN-07) o ML_BUSY (motor ocupado, DD-OBS-001 D8)
  */
 import { getAccessToken } from './authClient';
 import { textoDeDetalle } from './detalleError';
@@ -105,7 +105,14 @@ function errorDe(res: Response, payload: unknown): ClinicApiException {
     typeof payload === 'object' && payload !== null && 'code' in payload
       ? String((payload as { code: unknown }).code)
       : undefined;
-  return new ClinicApiException(detail, res.status, code);
+  return new ClinicApiException(detail, res.status, code, segundosDeEspera(payload));
+}
+
+/** `retry_after_seconds` del cuerpo, solo si es un número positivo. */
+function segundosDeEspera(payload: unknown): number | undefined {
+  if (typeof payload !== 'object' || payload === null) return undefined;
+  const valor = (payload as { retry_after_seconds?: unknown }).retry_after_seconds;
+  return typeof valor === 'number' && Number.isFinite(valor) && valor > 0 ? valor : undefined;
 }
 
 async function request<T>(base: string, path: string, opts: RequestOptions = {}): Promise<T> {

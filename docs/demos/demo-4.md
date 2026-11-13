@@ -10,14 +10,18 @@
 
 ## Integrantes y funcionalidades
 
-Una funcionalidad mediana y dos pequeñas. Las tres funcionan sobre el stack de
+Una funcionalidad mediana y tres pequeñas. Las cuatro funcionan sobre el stack de
 producción de la release (`compose.yaml`).
+
+El alcance sigue lo pedido en clase para esta demo: la base de siempre y una
+pequeña más. La cuarta se añadió el 13/11 y sale de lo que midió la primera.
 
 | Integrante | Funcionalidad | Tamaño | Caso de uso (FSD) | Diseño |
 |---|---|---|---|---|
 | Guillermo Mamani Chambi ([`guillemc92`](https://github.com/guillemc92)) | 1 · Trazas distribuidas y prueba de carga | Mediana | FSD-UC-002 (segmentación y clasificación) y FSD-UC-007 (modo degradado); NFR-001 y NFR-004 | [DD-OBS-001](../design/DD-OBS-001.md) |
 | Guillermo Mamani Chambi | 2 · Ocupación del motor de IA | Pequeña | FSD-UC-007 (modo degradado) | Práctica AI-DLC (rama `feature-con-aidlc`) y DD-OBS-001 §9 |
 | Guillermo Mamani Chambi | 3 · El analista llega a su lista de muestras al entrar | Pequeña | FSD-UC-002, precondición: el analista autenticado abre sus casos ([ADR-0017](../adr/0017-sistema-autenticacion-login.md) D7) | Corrección de un fallo visto en la Demo 3 |
+| Guillermo Mamani Chambi | 4 · El visor dice «motor ocupado», no «pipeline no disponible» | Pequeña | FSD-UC-007 (modo degradado): distinguir el motor caído del motor ocupado | [DD-OBS-001](../design/DD-OBS-001.md) §10 (D8) |
 
 ## Funcionalidad 1 — Trazas distribuidas y prueba de carga
 
@@ -72,8 +76,8 @@ estaba libre, ocupado o con cola.
    `en_curso: 1, libres: 0, en_espera: 1, ocupado: true`, y vuelve a `libres: 1` al
    terminar (INFORME §3).
 
-**Lo que queda fuera:** no hay pantalla. El dato está en la API; mostrarlo en el
-visor es el siguiente paso (INFORME §3, «decir ocupado y no degradado»).
+**Lo que queda fuera:** el endpoint no tiene pantalla propia. Lo que el analista
+ve de la ocupación es el aviso de la funcionalidad 4.
 
 ## Funcionalidad 3 — El analista llega a su lista de muestras al entrar
 
@@ -93,6 +97,30 @@ iba a `/clinic//clinic/samples` y mostraba una página en blanco.
    Windows ya no los convierte a CRLF. Ese era el segundo fallo de la Demo 3:
    Postgres no ejecutaba su guion de inicio.
 
+## Funcionalidad 4 — El visor dice «motor ocupado», no «pipeline no disponible»
+
+**Qué resuelve.** La traza de la funcionalidad 1 mostró que el segundo analista
+recibía «Pipeline de IA no disponible» con el motor sano: solo estaba ocupado.
+Además, cada uno de esos rechazos contaba para el circuit breaker, y unos pocos
+seguidos dejaban a todos en modo manual.
+
+**Criterios de aceptación** (DD-OBS-001 §10):
+
+1. **`POST /api/clinic/samples/{id}/process/` responde `503 ML_BUSY`** cuando el
+   motor no tiene turno, con `retry_after_seconds` y la cabecera `Retry-After`.
+   `ML_DEGRADED` queda para el motor caído.
+2. **«Ocupado» no abre el circuit breaker.** Cinco seguidos, con el umbral en 2, y
+   el circuito sigue cerrado. Una caída de verdad lo sigue abriendo.
+3. **La muestra no cambia** tras un `ML_BUSY`.
+4. **El visor muestra un aviso con la cuenta atrás** y un botón para reintentar.
+   No muestra el banner de modo degradado ni ofrece el modo manual.
+5. **En el contrato.** `process` estaba sin describir; ahora tiene sus respuestas,
+   con los dos códigos del 503.
+
+**Lo que queda fuera:** no acorta la inferencia. El segundo analista sigue
+esperando a que termine el primero; ahora sabe por qué y cuánto. Procesar en
+segundo plano con una cola es lo que prevé ADR-0031.
+
 ## El contrato
 
 Los endpoints que se presentan están en el `openapi.json` de su servicio, generado
@@ -102,6 +130,7 @@ desde el código:
 |---|---|---|
 | `GET /api/v1/inferencias/` | `backend-ml/openapi.json` | `python -m app.exportar_openapi` |
 | `GET /api/clinic/pipeline/inferencias/` | `backend-clinic/openapi.json` | `python manage.py spectacular --file openapi.json --validate` |
+| `POST /api/clinic/samples/{id}/process/` | `backend-clinic/openapi.json` | Ídem |
 
 El workflow `contrato-openapi.yml` falla si el archivo del repositorio no es
 exactamente el que genera el código. Una prueba local hace el mismo control antes
@@ -135,12 +164,15 @@ por EfficientNet-B3 en CPU, sin GPU. La red entre servicios cuesta 11 ms y la ba
 (`ML_ESPERA_MAX_S`, 25 s) mientras el motor clasificaba la primera, que tarda de 46
 a 54 s. El motor no estaba caído: estaba ocupado.
 
+**Lo que se hizo con eso.** La funcionalidad 4: ese rechazo ya no se presenta como
+una caída ni suma al circuit breaker. No lo evita: para eso hace falta la cola.
+
 **Lo que dice el FSD.** FSD-UC-002 (excepción A2) pone el umbral de timeout del
 modelo en 30 s, y NFR-001 pide menos de 15 s por imagen **con GPU**. En esta
 máquina, sin GPU, la inferencia tarda de 46 a 54 s. La traza convierte ese
 incumplimiento en un dato: dónde está y cuánto es.
 
-## Guion del video (≈ 8 min)
+## Guion del video (≈ 9 min)
 
 ### Antes de grabar
 
@@ -166,8 +198,9 @@ incumplimiento en un dato: dónde está y cuánto es.
 | 3:30 | El resumen de k6 | La pregunta fija: p95 de lectura y de procesar, y el 50 % de errores |
 | 4:15 | Grafana → Explore → Tempo → la consulta TraceQL; abrir la traza de ~50 s | `clasificar` es el 98,5 %; segmentar, la red y la base no pesan. Por qué: EfficientNet en CPU |
 | 5:45 | Abrir la traza de 25 s con 503 | Solo `esperar_turno`: nunca se ejecutó. El motor estaba ocupado, no caído |
-| 6:30 | `backend-ml/openapi.json` y `backend-clinic/openapi.json`, y el run del CI | El contrato, generado desde el código y con control de deriva |
-| 7:15 | `bench/demo4/INFORME.md`: hipótesis y amenazas a la validez | H1 se cumple, H2 no. Lo que no se midió |
+| 6:10 | En el visor, dos pestañas con dos muestras sintéticas: «Procesar» en las dos | F4: la segunda dice «El motor de IA está procesando otro caso», con la cuenta atrás. Antes decía «Pipeline no disponible» |
+| 7:00 | `backend-ml/openapi.json` y `backend-clinic/openapi.json`, y el run del CI | El contrato, generado desde el código y con control de deriva |
+| 7:45 | `bench/demo4/INFORME.md`: hipótesis y amenazas a la validez | H1 se cumple, H2 no. Lo que no se midió |
 
 ## Preguntas probables
 
@@ -179,8 +212,13 @@ incumplimiento en un dato: dónde está y cuánto es.
   URL completa por omisión.
 - **¿Cuánto cuestan?** Unos 6 ms en el p50 de lectura. En el p95 no se puede afirmar
   una diferencia con tres corridas. Están apagadas por omisión.
-- **¿Qué harías con el 50 % de errores?** No subir el límite a ciegas. Las opciones
-  están en el INFORME §3: subir la espera, decir «ocupado» en vez de «degradado», o
-  procesar en segundo plano con una cola (ADR-0031).
+- **¿Qué harías con el 50 % de errores?** No subir el límite a ciegas. De las tres
+  opciones del INFORME §3 se hizo la segunda (funcionalidad 4): decir «ocupado» en
+  vez de «degradado». La de fondo es procesar en segundo plano con una cola
+  (ADR-0031).
+- **Un «procesar» de 55 s es demasiado.** Sí. La traza dice dónde está (clasificar
+  en CPU) y el visor ya no lo confunde con una caída, pero el tiempo no bajó. Las
+  salidas son GPU (NFR-001 la supone) o la cola, para no tener al analista
+  esperando una respuesta HTTP.
 - **¿Es representativo el p95 de procesar?** No: son 4 peticiones. Sirve para
   explicar una traza, no como cifra estable. Está entre las amenazas a la validez.

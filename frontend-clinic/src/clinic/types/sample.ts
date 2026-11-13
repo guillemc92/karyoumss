@@ -95,6 +95,8 @@ export class ClinicApiException extends Error {
     message: string,
     public readonly status: number,
     public readonly code?: string,
+    /** Segundos que el backend pide esperar (`retry_after_seconds`), si los manda. */
+    public readonly retryAfterSeconds?: number,
   ) {
     super(message);
     this.name = 'ClinicApiException';

@@ -156,6 +156,10 @@ body {
 .modal-actions button[type="submit"]:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* Degraded banner (RN-07) */
+.busy-banner { background: var(--blue-light); border: 1px solid var(--umss-blue); border-radius: var(--radius-lg); padding: 1rem 1.2rem; margin: 1rem 0; }
+.busy-banner strong { color: var(--umss-blue); }
+.busy-banner-actions { display: flex; gap: 1rem; margin-top: 0.75rem; align-items: center; }
+.busy-banner-actions button { background: var(--umss-blue); color: white; border: none; padding: 0.4rem 1rem; border-radius: 20px; cursor: pointer; font-size: 0.75rem; }
 .degraded-banner { background: var(--orange-light); border: 1px solid var(--orange-warning); border-radius: var(--radius-lg); padding: 1rem 1.2rem; margin: 1rem 0; }
 .degraded-banner strong, .degraded-banner h1 { color: var(--orange-warning); }
 .degraded-banner-actions { display: flex; gap: 1rem; margin-top: 0.75rem; align-items: center; }

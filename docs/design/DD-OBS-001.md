@@ -246,3 +246,58 @@ El detalle, con las capturas de Grafana, está en
 
 **El coste de las trazas:** el p50 de lectura sube unos 6 ms (de ~46 a ~52 ms). En
 el p95 los rangos se solapan y no se puede afirmar una diferencia.
+
+## 10. Ampliación (2026-11-13) — D8 · «Ocupado» no es «degradado»
+
+Aprobada por el autor el 13/11. Nace del hallazgo de H2 (§9).
+
+**El problema.** `backend-ml` atiende una inferencia por vez. A quien espera turno
+más de `ML_ESPERA_MAX_S` le responde 503 con `Retry-After`. `backend-clinic`
+trataba ese 503 igual que una caída, con dos consecuencias:
+
+- **El analista veía «Pipeline de IA no disponible»** y un enlace al modo manual,
+  con el motor sano y trabajando.
+- **Cada «ocupado» contaba para el circuit breaker.** Con el umbral del stack,
+  unos pocos analistas sin turno abrían el circuito y dejaban a todos en modo
+  manual durante el enfriamiento. No se había visto: lo destapó leer el código
+  para esta ampliación.
+
+**La decisión.**
+
+- **La señal es el par 503 + `Retry-After`.** Los demás 503 de `backend-ml` (modelo
+  sin cargar, clasificador sin resultado) no llevan esa cabecera. No se cambia
+  `backend-ml` ni su contrato.
+- **`PipelineClient` lanza `MLBusyError`,** que hereda de `MLDegradedError` y lleva
+  los segundos. No cuenta como fallo del circuito y borra los fallos anteriores:
+  el motor contestó. Vale para `segment`, `xai` y `classify`.
+- **`POST …/process/` responde `503 ML_BUSY`,** con `retry_after_seconds` y la
+  cabecera `Retry-After`. La muestra no cambia. `ML_DEGRADED` queda para la caída.
+- **El visor muestra un aviso, no una alerta:** «El motor de IA está procesando
+  otro caso», con la cuenta atrás y un botón para reintentar. No ofrece el modo
+  manual.
+- **El endpoint entra en el contrato.** `process` estaba entre los «sin describir»
+  (deuda de DD-API-001 D2); ahora tiene sus respuestas, con los dos códigos del 503.
+
+**Criterios de aceptación.**
+
+1. Un 503 con `Retry-After` de `backend-ml` llega al analista como `503 ML_BUSY`
+   con los mismos segundos, en el cuerpo y en la cabecera.
+2. Cinco «ocupado» seguidos no abren el circuito, con el umbral en 2.
+3. Un 503 sin `Retry-After`, un timeout o un fallo de conexión siguen siendo
+   `ML_DEGRADED` y siguen abriendo el circuito.
+4. Tras un `ML_BUSY` la muestra conserva su estado y no tiene cariotipo nuevo.
+5. El visor muestra el aviso con los segundos del backend, sin el banner de modo
+   degradado ni el enlace al modo manual; «Reintentar» procesa si ya hay turno.
+6. `backend-clinic/openapi.json` describe `process` con `ML_BUSY` y `ML_DEGRADED`.
+
+**Fuera de alcance.**
+
+- **No acorta la inferencia.** El segundo analista sigue sin poder procesar hasta
+  que termine el primero; ahora lo sabe. Procesar en segundo plano con una cola es
+  lo que prevé ADR-0031, y es otro trabajo.
+- **Los demás endpoints que llaman a `backend-ml`** (separar, recortar, mapa de
+  calor) siguen respondiendo `ML_DEGRADED` cuando no hay turno. Dejan de sumar al
+  circuito, que era lo dañino; su mensaje se cambia aparte.
+- **El visor no reintenta solo.** Lo decide el analista.
+
+**Resultados (13/11).** Ver `docs/demos/demo-4.md`, funcionalidad 4.

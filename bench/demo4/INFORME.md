@@ -120,7 +120,9 @@ una cambia el comportamiento que ve el analista:
   qué.
 - **Decir «ocupado» y no «degradado».** El 503 por turno agotado es distinto de un
   motor caído; el visor podría mostrar «el motor está procesando otro caso» con
-  el `Retry-After` que ya viene en la respuesta.
+  el `Retry-After` que ya viene en la respuesta. **Hecha el 13/11** (DD-OBS-001
+  §10): `503 ML_BUSY`, y ese rechazo dejó de contar para el circuit breaker. Los
+  números de este informe son anteriores a ese cambio.
 - **Procesar en segundo plano**, con una cola, que es lo que ya prevé ADR-0031.
 
 ## 4. Lo que cuestan las trazas

@@ -1943,7 +1943,8 @@
         "/api/clinic/samples/{id}/process/": {
             "post": {
                 "operationId": "samples_process_create",
-                "description": "POST /api/clinic/samples/{id}/process/ — encola el pipeline FastAPI (SPEC-008 UC-S-006).\n\nRN-06: analista solo puede procesar sus propias muestras (403 NOT_OWNER).\nRN-07: si el FastAPI clínico está degradado, retorna 503 ML_DEGRADED sin\nromper el flujo (la muestra sigue existiendo, se puede reintentar).",
+                "description": "Segmenta y clasifica la metafase con el motor de IA y guarda el cariotipo. Es síncrono: responde cuando la inferencia termina. Un 503 no cambia la muestra y distingue dos casos por su `code`: ML_BUSY (motor ocupado; lleva la cabecera Retry-After y no abre el circuit breaker) y ML_DEGRADED (motor caído).",
+                "summary": "Procesar la metafase de una muestra",
                 "parameters": [
                     {
                         "in": "path",
@@ -1956,7 +1957,7 @@
                     }
                 ],
                 "tags": [
-                    "Sin describir"
+                    "Pipeline de IA"
                 ],
                 "requestBody": {
                     "content": {
@@ -1978,12 +1979,61 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "additionalProperties": {}
+                                    "$ref": "#/components/schemas/ProcesoHecho"
                                 }
                             }
                         },
-                        "description": "Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON."
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.process."
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "NOT_FOUND: la muestra no existe."
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "ALREADY_PROCESSING: la muestra ya está en procesamiento."
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorConEspera"
+                                }
+                            }
+                        },
+                        "description": "ML_BUSY o ML_DEGRADED; la muestra no cambia."
                     }
                 }
             }
@@ -2360,6 +2410,14 @@
                 "type": "string",
                 "description": "* `1` - 1\n* `2` - 2\n* `3` - 3\n* `4` - 4\n* `5` - 5\n* `6` - 6\n* `7` - 7\n* `8` - 8\n* `9` - 9\n* `10` - 10\n* `11` - 11\n* `12` - 12\n* `13` - 13\n* `14` - 14\n* `15` - 15\n* `16` - 16\n* `17` - 17\n* `18` - 18\n* `19` - 19\n* `20` - 20\n* `21` - 21\n* `22` - 22\n* `X` - X\n* `Y` - Y"
             },
+            "CodeEnum": {
+                "enum": [
+                    "ML_BUSY",
+                    "ML_DEGRADED"
+                ],
+                "type": "string",
+                "description": "* `ML_BUSY` - ML_BUSY\n* `ML_DEGRADED` - ML_DEGRADED"
+            },
             "ContornosCompletados": {
                 "type": "object",
                 "properties": {
@@ -2419,6 +2477,33 @@
                 "required": [
                     "code",
                     "detail"
+                ]
+            },
+            "ErrorConEspera": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "allOf": [
+                            {
+                                "$ref": "#/components/schemas/CodeEnum"
+                            }
+                        ],
+                        "description": "ML_BUSY: el motor está sano y ocupado con otro caso; reintentar. ML_DEGRADED: el motor no responde; pasar al modo manual (RN-07).\n\n* `ML_BUSY` - ML_BUSY\n* `ML_DEGRADED` - ML_DEGRADED"
+                    },
+                    "detail": {
+                        "type": "string",
+                        "description": "Motivo legible, para mostrar al analista."
+                    },
+                    "retry_after_seconds": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Segundos que conviene esperar antes de reintentar."
+                    }
+                },
+                "required": [
+                    "code",
+                    "detail",
+                    "retry_after_seconds"
                 ]
             },
             "EstadoInferencias": {
@@ -2555,6 +2640,28 @@
                 "required": [
                     "giro",
                     "volteo"
+                ]
+            },
+            "ProcesoHecho": {
+                "type": "object",
+                "properties": {
+                    "sample_id": {
+                        "type": "string",
+                        "format": "uuid"
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "READY cuando el cariotipo quedó guardado."
+                    },
+                    "chromosome_count": {
+                        "type": "integer",
+                        "minimum": 0
+                    }
+                },
+                "required": [
+                    "chromosome_count",
+                    "sample_id",
+                    "status"
                 ]
             },
             "RecortarRequest": {
