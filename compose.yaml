@@ -138,7 +138,14 @@ services:
     image: biomed/backend-ml:8.3.0
     build: ./backend-ml
     environment:
+      # Solo lee INTERNAL_SERVICE_SECRET, para GET /api/v1/inferencias/.
+      BIOMED_SECRETS_DIR: /secretos/ml
       OTEL_EXPORTER_OTLP_ENDPOINT: ${BIOMED_TRAZAS:-}
+    volumes:
+      - secretos:/secretos:ro
+    depends_on:
+      secretos:
+        condition: service_completed_successfully
     restart: unless-stopped
 
   web:

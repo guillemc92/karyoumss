@@ -269,6 +269,26 @@ class PipelineClient:
         self._record_success()
         return unido
 
+    #: Los cinco números que devuelve backend-ml en /api/v1/inferencias/.
+    CAMPOS_ESTADO = ('maximo', 'en_curso', 'libres', 'espera_max_s', 'en_espera')
+
+    def estado_inferencias(self, secreto: str) -> dict:
+        """Cuántas inferencias caben, cuántas corren y cuántas esperan
+        (/api/v1/inferencias/). Es una consulta de estado: tiene un plazo corto y
+        un fallo suyo NO cuenta para el circuit breaker, para que mirar el estado
+        no pueda dejar al pipeline en modo degradado."""
+        try:
+            with self._sesion(min(self.timeout, 3.0)) as client:
+                resp = client.get(f'{self.base_url}/api/v1/inferencias/',
+                                  headers={'X-Internal-Secret': secreto})
+                resp.raise_for_status()
+                estado = resp.json()
+        except (httpx.TimeoutException, httpx.HTTPError, ValueError) as exc:
+            raise MLDegradedError(str(exc)) from exc
+        if not isinstance(estado, dict) or any(c not in estado for c in self.CAMPOS_ESTADO):
+            raise MLDegradedError('estado de inferencias incompleto')
+        return {c: estado[c] for c in self.CAMPOS_ESTADO}
+
 
 pipeline_client = PipelineClient(
     base_url=settings.CLINIC_FASTAPI_URL,

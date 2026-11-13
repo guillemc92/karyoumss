@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.http import FileResponse
 from django.utils import timezone
 from rest_framework import generics, status
@@ -735,6 +736,31 @@ class PipelineHealthView(APIView):
             {'available': available, 'mode': 'auto' if available else 'degradado'},
             status=status.HTTP_200_OK,
         )
+
+
+class PipelineInferenciasView(APIView):
+    """GET /api/clinic/pipeline/inferencias/ — ocupación del motor de IA.
+
+    FSD-UC-007: dice si el motor está libre u ocupado, cuántas inferencias
+    corren y cuántas esperan turno. Sirve para explicar por qué «procesar»
+    tarda: el motor atiende de una en una (`ML_MAX_INFERENCIAS`).
+
+    RN-07: si backend-ml no responde, devuelve 503 ML_DEGRADED; consultar el
+    estado no abre el circuit breaker ni cambia el modo del visor.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.view')]
+
+    def get(self, request):
+        try:
+            estado = pipeline_client.estado_inferencias(settings.INTERNAL_SERVICE_SECRET)
+        except MLDegradedError:
+            return Response(
+                {'code': 'ML_DEGRADED', 'detail': 'El motor de IA no responde.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response({**estado, 'ocupado': estado['libres'] <= 0}, status=status.HTTP_200_OK)
 
 
 class CaseNarrativeView(APIView):

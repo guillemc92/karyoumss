@@ -211,6 +211,29 @@ views.KaryotypeUndoView.post = extend_schema(
 
 
 # ---------------------------------------------------------------------------
+# Ocupación del motor de IA (FSD-UC-007)
+# ---------------------------------------------------------------------------
+
+extend_schema(
+    tags=['Pipeline de IA'],
+    summary='Ocupación del motor de IA',
+    description=('Cuántas inferencias caben a la vez, cuántas corren y cuántas esperan turno. '
+                 'No ocupa turno ni abre el circuit breaker.'),
+    request=None,
+    responses={200: inline_serializer('EstadoInferencias', {
+                   'maximo': serializers.IntegerField(min_value=1, help_text='Inferencias que caben a la vez.'),
+                   'en_curso': serializers.IntegerField(min_value=0),
+                   'libres': serializers.IntegerField(min_value=0, help_text='maximo − en_curso.'),
+                   'espera_max_s': serializers.FloatField(min_value=0, help_text='Segundos que una petición espera turno antes del 503.'),
+                   'en_espera': serializers.IntegerField(min_value=0),
+                   'ocupado': serializers.BooleanField(help_text='No queda ningún hueco libre.')}),
+               401: SIN_SESION,
+               403: _error('Falta el permiso sample.view.'),
+               503: _error('ML_DEGRADED: el motor de IA no responde (RN-07).')},
+)(views.PipelineInferenciasView)
+
+
+# ---------------------------------------------------------------------------
 # El resto: respuesta genérica, deuda declarada (DD-API-001 D2)
 # ---------------------------------------------------------------------------
 
@@ -218,7 +241,7 @@ DESCRITAS = {
     views.KaryotypeView, views.MetaphaseImageView, views.KaryotypeContoursView,
     views.KaryotypeObjectsView, views.ChromosomeRejectView, views.ChromosomeSplitView,
     views.ChromosomeJoinView, views.ChromosomeRecropView, views.ChromosomeOrientView,
-    views.KaryotypeUndoView,
+    views.KaryotypeUndoView, views.PipelineInferenciasView,
 }
 
 SIN_DESCRIBIR = 'Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON.'

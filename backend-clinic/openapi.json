@@ -99,6 +99,63 @@
                 }
             }
         },
+        "/api/clinic/pipeline/inferencias/": {
+            "get": {
+                "operationId": "pipeline_inferencias_retrieve",
+                "description": "Cuántas inferencias caben a la vez, cuántas corren y cuántas esperan turno. No ocupa turno ni abre el circuit breaker.",
+                "summary": "Ocupación del motor de IA",
+                "tags": [
+                    "Pipeline de IA"
+                ],
+                "security": [
+                    {
+                        "jwtBackendAdmin": []
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/EstadoInferencias"
+                                }
+                            }
+                        },
+                        "description": ""
+                    },
+                    "401": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Sin JWT o JWT caducado."
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "Falta el permiso sample.view."
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorApi"
+                                }
+                            }
+                        },
+                        "description": "ML_DEGRADED: el motor de IA no responde (RN-07)."
+                    }
+                }
+            }
+        },
         "/api/clinic/samples/": {
             "get": {
                 "operationId": "samples_list",
@@ -2364,6 +2421,47 @@
                     "detail"
                 ]
             },
+            "EstadoInferencias": {
+                "type": "object",
+                "properties": {
+                    "maximo": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Inferencias que caben a la vez."
+                    },
+                    "en_curso": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "libres": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "description": "maximo − en_curso."
+                    },
+                    "espera_max_s": {
+                        "type": "number",
+                        "format": "double",
+                        "minimum": 0,
+                        "description": "Segundos que una petición espera turno antes del 503."
+                    },
+                    "en_espera": {
+                        "type": "integer",
+                        "minimum": 0
+                    },
+                    "ocupado": {
+                        "type": "boolean",
+                        "description": "No queda ningún hueco libre."
+                    }
+                },
+                "required": [
+                    "en_curso",
+                    "en_espera",
+                    "espera_max_s",
+                    "libres",
+                    "maximo",
+                    "ocupado"
+                ]
+            },
             "GiroEnum": {
                 "enum": [
                     0,
@@ -2631,6 +2729,10 @@
         {
             "name": "Muestras",
             "description": "Alta, consulta y edición de muestras."
+        },
+        {
+            "name": "Pipeline de IA",
+            "description": "Estado del motor de inferencia (FSD-UC-007)."
         },
         {
             "name": "Sin describir",

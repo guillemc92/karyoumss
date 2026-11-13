@@ -80,3 +80,10 @@ def test_main_nombra_los_secretos_pero_nunca_imprime_un_valor(tmp_path, capsys, 
 def test_main_sin_carpeta_explica_el_uso(capsys):
     assert gs.main(['x']) == 2
     assert 'generar_secretos.py' in capsys.readouterr().err
+
+
+def test_backend_ml_recibe_solo_el_secreto_interno(tmp_path):
+    """Lo necesita para GET /api/v1/inferencias/, y nada más: ni el JWT ni claves."""
+    gs.generar(tmp_path, cambiar_dueno=False)
+    assert sorted(p.name for p in (tmp_path / 'ml').iterdir()) == ['INTERNAL_SERVICE_SECRET']
+    assert _leer(tmp_path, 'ml', 'INTERNAL_SERVICE_SECRET') == _leer(tmp_path, 'clinic', 'INTERNAL_SERVICE_SECRET')
