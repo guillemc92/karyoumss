@@ -153,6 +153,10 @@ jobs:
 
       - name: 4 · Schemathesis — la API viva cumple su contrato
         run: |
+          # Un secreto de un solo uso: sin él, GET /api/v1/inferencias/ responde
+          # 503 «no configurado», que Schemathesis cuenta como error del servidor.
+          # Con él, las peticiones generadas reciben el 403 del contrato.
+          export INTERNAL_SERVICE_SECRET="$(openssl rand -hex 32)"
           python -m uvicorn app.main:app --port 8000 > "$RUNNER_TEMP/uvicorn.log" 2>&1 &
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:8000/health/ > /dev/null && break; sleep 1; done
           st run openapi.json --url http://127.0.0.1:8000 \
