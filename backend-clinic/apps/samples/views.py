@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.http import FileResponse
 from django.utils import timezone
 from rest_framework import generics, status
@@ -13,7 +14,7 @@ from .alcance import Alcance
 from .tool_router import responder
 from .tools import catalogo_publicado
 from .permissions import CanRegisterSample, HasOpcion, IsOwnerOrStaff, tiene_opcion
-from .pipeline_client import MLDegradedError, pipeline_client
+from .pipeline_client import MLBusyError, MLDegradedError, pipeline_client
 from .serializers import (
     AuditReviewSerializer,
     ChromosomeSerializer,
@@ -210,6 +211,8 @@ class SampleProcessView(APIView):
     RN-06: analista solo puede procesar sus propias muestras (403 NOT_OWNER).
     RN-07: si el FastAPI clínico está degradado, retorna 503 ML_DEGRADED sin
     romper el flujo (la muestra sigue existiendo, se puede reintentar).
+    DD-OBS-001 D8: si el motor está sano pero sin turno libre, 503 ML_BUSY con
+    `Retry-After`; la muestra tampoco cambia.
     """
 
     def get_permissions(self):
@@ -227,6 +230,16 @@ class SampleProcessView(APIView):
         # cariotipo de forma síncrona (baseline). RN-07: 503 si backend-ml cae.
         try:
             karyotype = reprocess_sample(sample)
+        except MLBusyError as exc:
+            # DD-OBS-001 D8: el motor está sano y ocupado con otro caso. No es
+            # el modo degradado: el analista espera y reintenta.
+            return Response(
+                {'code': 'ML_BUSY',
+                 'detail': 'El motor de IA está procesando otro caso. Reintente en unos segundos.',
+                 'retry_after_seconds': exc.retry_after},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                headers={'Retry-After': str(exc.retry_after)},
+            )
         except MLDegradedError:
             return Response(
                 {'code': 'ML_DEGRADED', 'detail': 'Pipeline de IA no disponible. Use el modo manual.', 'retry_after_seconds': 60},
@@ -735,6 +748,31 @@ class PipelineHealthView(APIView):
             {'available': available, 'mode': 'auto' if available else 'degradado'},
             status=status.HTTP_200_OK,
         )
+
+
+class PipelineInferenciasView(APIView):
+    """GET /api/clinic/pipeline/inferencias/ — ocupación del motor de IA.
+
+    FSD-UC-007: dice si el motor está libre u ocupado, cuántas inferencias
+    corren y cuántas esperan turno. Sirve para explicar por qué «procesar»
+    tarda: el motor atiende de una en una (`ML_MAX_INFERENCIAS`).
+
+    RN-07: si backend-ml no responde, devuelve 503 ML_DEGRADED; consultar el
+    estado no abre el circuit breaker ni cambia el modo del visor.
+    """
+
+    def get_permissions(self):
+        return [HasOpcion('sample.view')]
+
+    def get(self, request):
+        try:
+            estado = pipeline_client.estado_inferencias(settings.INTERNAL_SERVICE_SECRET)
+        except MLDegradedError:
+            return Response(
+                {'code': 'ML_DEGRADED', 'detail': 'El motor de IA no responde.'},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        return Response({**estado, 'ocupado': estado['libres'] <= 0}, status=status.HTTP_200_OK)
 
 
 class CaseNarrativeView(APIView):

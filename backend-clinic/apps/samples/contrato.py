@@ -211,6 +211,58 @@ views.KaryotypeUndoView.post = extend_schema(
 
 
 # ---------------------------------------------------------------------------
+# Ocupación del motor de IA (FSD-UC-007)
+# ---------------------------------------------------------------------------
+
+extend_schema(
+    tags=['Pipeline de IA'],
+    summary='Ocupación del motor de IA',
+    description=('Cuántas inferencias caben a la vez, cuántas corren y cuántas esperan turno. '
+                 'No ocupa turno ni abre el circuit breaker.'),
+    request=None,
+    responses={200: inline_serializer('EstadoInferencias', {
+                   'maximo': serializers.IntegerField(min_value=1, help_text='Inferencias que caben a la vez.'),
+                   'en_curso': serializers.IntegerField(min_value=0),
+                   'libres': serializers.IntegerField(min_value=0, help_text='maximo − en_curso.'),
+                   'espera_max_s': serializers.FloatField(min_value=0, help_text='Segundos que una petición espera turno antes del 503.'),
+                   'en_espera': serializers.IntegerField(min_value=0),
+                   'ocupado': serializers.BooleanField(help_text='No queda ningún hueco libre.')}),
+               401: SIN_SESION,
+               403: _error('Falta el permiso sample.view.'),
+               503: _error('ML_DEGRADED: el motor de IA no responde (RN-07).')},
+)(views.PipelineInferenciasView)
+
+
+ErrorConEspera = inline_serializer('ErrorConEspera', {
+    'code': serializers.ChoiceField(choices=['ML_BUSY', 'ML_DEGRADED'], help_text=(
+        'ML_BUSY: el motor está sano y ocupado con otro caso; reintentar. '
+        'ML_DEGRADED: el motor no responde; pasar al modo manual (RN-07).')),
+    'detail': serializers.CharField(help_text='Motivo legible, para mostrar al analista.'),
+    'retry_after_seconds': serializers.IntegerField(
+        min_value=1, help_text='Segundos que conviene esperar antes de reintentar.'),
+})
+
+extend_schema(
+    tags=['Pipeline de IA'],
+    summary='Procesar la metafase de una muestra',
+    description=('Segmenta y clasifica la metafase con el motor de IA y guarda el cariotipo. Es síncrono: '
+                 'responde cuando la inferencia termina. Un 503 no cambia la muestra y distingue dos casos '
+                 'por su `code`: ML_BUSY (motor ocupado; lleva la cabecera Retry-After y no abre el circuit '
+                 'breaker) y ML_DEGRADED (motor caído).'),
+    request=OpenApiTypes.OBJECT,
+    responses={200: inline_serializer('ProcesoHecho', {
+                   'sample_id': serializers.UUIDField(),
+                   'status': serializers.CharField(help_text='READY cuando el cariotipo quedó guardado.'),
+                   'chromosome_count': serializers.IntegerField(min_value=0)}),
+               401: SIN_SESION,
+               403: _error('NOT_OWNER: la muestra es de otro analista (RN-06), o falta el permiso sample.process.'),
+               404: _error('NOT_FOUND: la muestra no existe.'),
+               409: _error('ALREADY_PROCESSING: la muestra ya está en procesamiento.'),
+               503: OpenApiResponse(ErrorConEspera, description='ML_BUSY o ML_DEGRADED; la muestra no cambia.')},
+)(views.SampleProcessView)
+
+
+# ---------------------------------------------------------------------------
 # El resto: respuesta genérica, deuda declarada (DD-API-001 D2)
 # ---------------------------------------------------------------------------
 
@@ -218,7 +270,7 @@ DESCRITAS = {
     views.KaryotypeView, views.MetaphaseImageView, views.KaryotypeContoursView,
     views.KaryotypeObjectsView, views.ChromosomeRejectView, views.ChromosomeSplitView,
     views.ChromosomeJoinView, views.ChromosomeRecropView, views.ChromosomeOrientView,
-    views.KaryotypeUndoView,
+    views.KaryotypeUndoView, views.PipelineInferenciasView, views.SampleProcessView,
 }
 
 SIN_DESCRIBIR = 'Sin describir todavía en el contrato (DD-API-001 D2): objeto JSON.'

@@ -11,3 +11,8 @@ httpx>=0.27
 # Fase C3: torch para el clasificador entrenado (CPU). Sin torch -> placeholder.
 torch>=2.2
 torchvision>=0.17
+
+# DD-OBS-001: trazas (opcionales: sin estos paquetes el servicio corre igual, RN-07).
+opentelemetry-sdk==1.45.2
+opentelemetry-exporter-otlp-proto-http==1.45.2
+opentelemetry-instrumentation-fastapi==0.66b2

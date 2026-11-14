@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getRedirectForRole } from '../../src/admin/auth/roleRedirect';
+import { getRedirectForRole, urlMuestrasClinica } from '../../src/admin/auth/roleRedirect';
 
 /** El destino del supervisor es CONFIGURACION, no comportamiento: lo fija
  * `VITE_SUPERVISOR_LEGACY_URL`, y en el despliegue detras de Caddy apunta a la
@@ -17,7 +17,10 @@ describe('getRedirectForRole (ADR-0017 D7)', () => {
 
   it('analista devuelve la URL de frontend-clinic /clinic/samples', () => {
     const target = getRedirectForRole('analista');
-    expect(target).toContain('/clinic/samples');
+    // `toContain('/clinic/samples')` pasaba tambien con `/clinic//clinic/samples`,
+    // que es el fallo que se vio en la Demo 3: se exige el final exacto.
+    expect(target).toMatch(/(^|[^/])\/clinic\/samples$/);
+    expect(target).not.toContain('//clinic');
   });
 
   it('supervisor devuelve el destino externo configurado', () => {
@@ -32,5 +35,27 @@ describe('getRedirectForRole (ADR-0017 D7)', () => {
     // trabajan en la app clinica, y el visor decide que panel ve cada uno.
     // Una primera version de esta prueba lo afirmaba y fallo -- afirmaba una
     // suposicion, no el contrato.
+  });
+});
+
+describe('urlMuestrasClinica', () => {
+  it.each([
+    ['http://localhost:5174', 'http://localhost:5174/clinic/samples'], // desarrollo: el origen
+    ['http://localhost:5174/', 'http://localhost:5174/clinic/samples'],
+    ['/clinic/', '/clinic/samples'], // el stack: la ruta detras del proxy
+    ['/clinic', '/clinic/samples'],
+    ['', '/clinic/samples'], // mismo origen, sin base
+    ['/', '/clinic/samples'],
+    ['https://biomed.example/clinic//', 'https://biomed.example/clinic/samples'],
+  ])('con la base %j da %j', (base, esperado) => {
+    expect(urlMuestrasClinica(base)).toBe(esperado);
+  });
+
+  it('nunca repite /clinic ni deja una barra doble en la ruta', () => {
+    for (const base of ['/clinic/', '/clinic', '', 'http://h:1', 'http://h:1/clinic/']) {
+      const ruta = urlMuestrasClinica(base).replace(/^https?:\/\//, '');
+      expect(ruta).not.toContain('//');
+      expect(ruta.match(/\/clinic/g)).toHaveLength(1);
+    }
   });
 });

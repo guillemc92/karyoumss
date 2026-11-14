@@ -138,6 +138,7 @@ SPECTACULAR_SETTINGS = {
         {'name': 'Cariotipo', 'description': 'Lectura del cariotipo y de su metafase.'},
         {'name': 'Corrección manual', 'description': 'Corrección de la segmentación sobre la metafase (DD-KARYO-007, FSD-UC-003).'},
         {'name': 'Muestras', 'description': 'Alta, consulta y edición de muestras.'},
+        {'name': 'Pipeline de IA', 'description': 'Estado del motor de inferencia (FSD-UC-007).'},
         {'name': 'Sin describir', 'description': 'Endpoints que el contrato todavía declara como objeto JSON genérico (DD-API-001 D2).'},
     ],
     # El contrato describe la API, no a sí mismo.

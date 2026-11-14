@@ -60,6 +60,10 @@ CARPETAS = {
         'DEMO_PASSWORD_ANALISTA': _clave_demo,
         'DEMO_PASSWORD_SUPERVISOR': _clave_demo,
     }),
+    # backend-ml solo necesita el secreto interno, para GET /api/v1/inferencias/.
+    'ml': (USUARIO_APP, {
+        'INTERNAL_SERVICE_SECRET': 'INTERNAL_SERVICE_SECRET',
+    }),
     'postgres': (USUARIO_POSTGRES, {
         'POSTGRES_PASSWORD': _hex,
         'ADMIN_DB_PASSWORD': 'ADMIN_DB_PASSWORD',

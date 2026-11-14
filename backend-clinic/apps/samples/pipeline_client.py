@@ -16,6 +16,40 @@ class MLDegradedError(Exception):
     muestra igual y degradar la UI (DegradedBanner), no bloquear."""
 
 
+class MLBusyError(MLDegradedError):
+    """El motor responde, pero no le queda turno libre (DD-OBS-001 D8).
+
+    backend-ml atiende `ML_MAX_INFERENCIAS` a la vez; quien espera más de
+    `ML_ESPERA_MAX_S` recibe 503 con `Retry-After`. No es una caída: hereda de
+    `MLDegradedError` para que quien no lo distinga siga funcionando igual, y
+    lleva los segundos que backend-ml pide esperar."""
+
+    def __init__(self, retry_after: int):
+        super().__init__('ml_ocupado')
+        self.retry_after = retry_after
+
+
+#: Tope de lo que se le cree a un `Retry-After`: no se hace esperar al analista
+#: más de cinco minutos por una cabecera.
+REINTENTO_MAX_S = 300
+
+
+def _reintento(exc: Exception) -> int | None:
+    """Segundos de `Retry-After` si `exc` es el 503 de «sin turno»; si no, None.
+
+    La señal es el par 503 + `Retry-After`: los demás 503 de backend-ml (modelo
+    sin cargar, clasificador sin resultado) no llevan esa cabecera."""
+    respuesta = getattr(exc, 'response', None)
+    if not isinstance(exc, httpx.HTTPStatusError) or getattr(respuesta, 'status_code', None) != 503:
+        return None
+    valor = (getattr(respuesta, 'headers', None) or {}).get('Retry-After')
+    try:
+        segundos = int(valor)
+    except (TypeError, ValueError):
+        return None
+    return min(max(1, segundos), REINTENTO_MAX_S)
+
+
 class CorteInvalidoError(ValueError):
     """La línea trazada no separa el objeto (422 de backend-ml)."""
 
@@ -88,6 +122,19 @@ class PipelineClient:
     def _record_success(self):
         self._failures = 0
 
+    def _fallo(self, exc: Exception) -> MLDegradedError:
+        """La excepción que corresponde a un fallo de la llamada a backend-ml.
+
+        «Sin turno» no cuenta para el circuit breaker: el motor contestó, así
+        que está sano. Antes sí contaba, y tres analistas con mala suerte
+        dejaban el visor en modo manual durante todo el enfriamiento."""
+        espera = _reintento(exc)
+        if espera is not None:
+            self._record_success()
+            return MLBusyError(espera)
+        self._record_failure()
+        return MLDegradedError(str(exc))
+
     def trigger_processing(self, sample_id: str, force_reprocess: bool = False) -> dict:
         if self._circuit_open():
             raise MLDegradedError('circuit_open')
@@ -101,8 +148,7 @@ class PipelineClient:
                 self._record_success()
                 return resp.json()
         except (httpx.TimeoutException, httpx.HTTPError) as exc:
-            self._record_failure()
-            raise MLDegradedError(str(exc)) from exc
+            raise self._fallo(exc) from exc
 
     def get_status(self, sample_id: str) -> dict:
         try:
@@ -128,8 +174,7 @@ class PipelineClient:
                 self._record_success()
                 return resp.json()
         except (httpx.TimeoutException, httpx.HTTPError) as exc:
-            self._record_failure()
-            raise MLDegradedError(str(exc)) from exc
+            raise self._fallo(exc) from exc
 
 
     def xai_heatmap(self, image_bytes: bytes, bbox: dict,
@@ -154,8 +199,7 @@ class PipelineClient:
                 self._record_success()
                 return resp.json()
         except (httpx.TimeoutException, httpx.HTTPError) as exc:
-            self._record_failure()
-            raise MLDegradedError(str(exc)) from exc
+            raise self._fallo(exc) from exc
 
 
     def classify_crop(self, image_bytes: bytes, bbox: dict,
@@ -178,8 +222,7 @@ class PipelineClient:
                 self._record_success()
                 return resp.json()
         except (httpx.TimeoutException, httpx.HTTPError) as exc:
-            self._record_failure()
-            raise MLDegradedError(str(exc)) from exc
+            raise self._fallo(exc) from exc
 
 
     def contours(self, image_bytes: bytes, bboxes: list[dict],
@@ -268,6 +311,26 @@ class PipelineClient:
             raise MLDegradedError('respuesta de unión incompleta')
         self._record_success()
         return unido
+
+    #: Los cinco números que devuelve backend-ml en /api/v1/inferencias/.
+    CAMPOS_ESTADO = ('maximo', 'en_curso', 'libres', 'espera_max_s', 'en_espera')
+
+    def estado_inferencias(self, secreto: str) -> dict:
+        """Cuántas inferencias caben, cuántas corren y cuántas esperan
+        (/api/v1/inferencias/). Es una consulta de estado: tiene un plazo corto y
+        un fallo suyo NO cuenta para el circuit breaker, para que mirar el estado
+        no pueda dejar al pipeline en modo degradado."""
+        try:
+            with self._sesion(min(self.timeout, 3.0)) as client:
+                resp = client.get(f'{self.base_url}/api/v1/inferencias/',
+                                  headers={'X-Internal-Secret': secreto})
+                resp.raise_for_status()
+                estado = resp.json()
+        except (httpx.TimeoutException, httpx.HTTPError, ValueError) as exc:
+            raise MLDegradedError(str(exc)) from exc
+        if not isinstance(estado, dict) or any(c not in estado for c in self.CAMPOS_ESTADO):
+            raise MLDegradedError('estado de inferencias incompleto')
+        return {c: estado[c] for c in self.CAMPOS_ESTADO}
 
 
 pipeline_client = PipelineClient(

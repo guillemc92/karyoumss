@@ -29,6 +29,7 @@ from .views import (
     KaryotypeView,
     MetaphaseImageView,
     PipelineHealthView,
+    PipelineInferenciasView,
     SampleDetailView,
     SampleListCreateView,
     SampleProcessView,
@@ -80,6 +81,7 @@ urlpatterns = [
 
     # Cariotipo P4 (ADR-0021 P4, DD-KARYO-004) — salud del pipeline (modo degradado).
     path('pipeline/health/', PipelineHealthView.as_view(), name='pipeline-health'),
+    path('pipeline/inferencias/', PipelineInferenciasView.as_view(), name='pipeline-inferencias'),
 
     # Flujo del Supervisor S1 (ADR-0023, DD-SUP-001) — auditoría del 5%.
     path('samples/<uuid:pk>/audit-review/', AuditReviewListView.as_view(), name='audit-review'),

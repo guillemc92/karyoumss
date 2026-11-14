@@ -257,6 +257,53 @@
         "title": "ContornosOut",
         "type": "object"
       },
+      "EstadoInferenciasOut": {
+        "description": "Estado del límite de inferencias (FR1.1–FR1.5).",
+        "properties": {
+          "en_curso": {
+            "title": "En Curso",
+            "type": "integer"
+          },
+          "en_espera": {
+            "title": "En Espera",
+            "type": "integer"
+          },
+          "espera_max_s": {
+            "title": "Espera Max S",
+            "type": "number"
+          },
+          "libres": {
+            "title": "Libres",
+            "type": "integer"
+          },
+          "maximo": {
+            "title": "Maximo",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "maximo",
+          "en_curso",
+          "libres",
+          "espera_max_s",
+          "en_espera"
+        ],
+        "title": "EstadoInferenciasOut",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
       "HealthOut": {
         "properties": {
           "model_version": {
@@ -412,6 +459,46 @@
           "area"
         ],
         "title": "TrozoOut",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
         "type": "object"
       }
     }
@@ -570,6 +657,86 @@
         "summary": "Contours Endpoint",
         "tags": [
           "Edición de la metafase"
+        ]
+      }
+    },
+    "/api/v1/inferencias/": {
+      "get": {
+        "description": "Estado del límite de inferencias: plazas, ocupadas y en espera (FR1).\n\nNo llama a `limite.turno()`: responde aunque no quede ninguna plaza y no\nocupa ninguna (FR2, NFR1). Exige el secreto interno con la convención de\nbackend-admin (FR4): 503 si backend-ml no lo tiene configurado (FR4.3),\n403 si la cabecera falta o no coincide (FR4.2). La comparación es de tiempo\nconstante y el valor del secreto no sale en ninguna respuesta (NFR2).",
+        "operationId": "estado_inferencias_api_v1_inferencias__get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Internal-Secret",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Internal-Secret"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstadoInferenciasOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Falta la cabecera `X-Internal-Secret` o no coincide."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "detail": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "backend-ml no tiene configurado el secreto interno."
+          }
+        },
+        "summary": "Estado Inferencias",
+        "tags": [
+          "Salud"
         ]
       }
     },

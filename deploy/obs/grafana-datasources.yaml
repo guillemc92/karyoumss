@@ -1,0 +1,11 @@
+# La fuente de datos Tempo ya configurada al arrancar Grafana (DD-OBS-001 D5).
+apiVersion: 1
+
+datasources:
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    isDefault: true
+    editable: false

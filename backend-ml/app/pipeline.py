@@ -11,6 +11,7 @@ import threading
 import numpy as np
 
 from .classifier import PlaceholderClassifier
+from .observabilidad import tramo
 from .ports import ClassifierPort, SegmenterPort
 from .schemas import BBox, ChromosomeOut, SegmentResult
 from .segmentation import Detection
@@ -52,8 +53,13 @@ def run_pipeline(
     classifier = classifier or get_classifier()
 
     h, w = gray.shape[:2]
-    detections = segmenter.segment(gray)
-    preds = classifier.classify_all(gray, detections)
+    # DD-OBS-001: un tramo por etapa. Solo números del proceso, nunca del paciente.
+    with tramo('segmentar', ancho=w, alto=h) as span:
+        detections = segmenter.segment(gray)
+        if span is not None:
+            span.set_attribute('cromosomas', len(detections))
+    with tramo('clasificar', cromosomas=len(detections), clasificador=classifier.name):
+        preds = classifier.classify_all(gray, detections)
 
     chromosomes: list[ChromosomeOut] = []
     confs: list[float] = []

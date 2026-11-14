@@ -7,17 +7,23 @@ adaptadores de los puertos hexagonales (ADR-0007), sin tocar esta API.
 
 Ejecutar:  uvicorn app.main:app --reload --port 8000
 Límites:   ML_MAX_INFERENCIAS (1) y ML_ESPERA_MAX_S (25) — DD-AUD-001 F1.
+Estado:    GET /api/v1/inferencias/ con X-Internal-Secret (INTERNAL_SERVICE_SECRET).
 """
 from __future__ import annotations
 
+import hmac
 import json
+import os
+from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 
+from . import observabilidad
 from .concurrencia import LimiteInferencias
 from .pipeline import get_classifier, run_pipeline
 from .edicion import CorteInvalidoError, cortar, unir
-from .schemas import ContornosOut, HealthOut, JoinOut, SegmentResult, SplitOut, TrozoOut
+from .schemas import (ContornosOut, EstadoInferenciasOut, HealthOut, JoinOut, SegmentResult, SplitOut,
+                      TrozoOut)
 from .segmentation import contorno_en_caja, load_gray
 
 app = FastAPI(
@@ -49,6 +55,9 @@ _ERROR_422 = {'description': 'La imagen no se puede leer, el corte no separa el 
 # en su threadpool, y `limite` decide cuántas inferencias van a la vez.
 limite = LimiteInferencias.desde_entorno()
 
+# DD-OBS-001: trazas, solo si OTEL_EXPORTER_OTLP_ENDPOINT está definida.
+observabilidad.configurar('backend-ml', app)
+
 
 @app.get('/health/', response_model=HealthOut, tags=['Salud'])
 def health() -> HealthOut:
@@ -60,6 +69,48 @@ def health() -> HealthOut:
         model_version=f'opencv-watershed-v0+{clf.name}',
         trained_model=clf.is_trained,  # True si cargó el EfficientNet-B3 entrenado
     )
+
+
+def secreto_interno() -> str:
+    """El secreto compartido entre servicios: de la variable de entorno o, en el
+    stack, del archivo que deja el job `secretos` (DD-OPS-001 D3). Se lee en cada
+    petición: sin secreto el servicio arranca igual (FR4.3)."""
+    valor = os.environ.get('INTERNAL_SERVICE_SECRET', '')
+    carpeta = os.environ.get('BIOMED_SECRETS_DIR')
+    if not valor and carpeta:
+        ruta = Path(carpeta) / 'INTERNAL_SERVICE_SECRET'
+        if ruta.is_file():
+            valor = ruta.read_text(encoding='utf-8').strip()
+    return valor
+
+
+_ERROR_SECRETO = {'description': 'Falta la cabecera `X-Internal-Secret` o no coincide.', **{
+    k: v for k, v in _ERROR.items() if k != 'description'}}
+_ERROR_SIN_CONFIGURAR = {'description': 'backend-ml no tiene configurado el secreto interno.', **{
+    k: v for k, v in _ERROR.items() if k != 'description'}}
+
+
+@app.get('/api/v1/inferencias/', response_model=EstadoInferenciasOut, tags=['Salud'],
+         responses={403: _ERROR_SECRETO, 503: _ERROR_SIN_CONFIGURAR})
+def estado_inferencias(
+    x_internal_secret: str | None = Header(default=None, alias='X-Internal-Secret'),
+) -> EstadoInferenciasOut:
+    """Estado del límite de inferencias: plazas, ocupadas y en espera (FR1).
+
+    No llama a `limite.turno()`: responde aunque no quede ninguna plaza y no
+    ocupa ninguna (FR2, NFR1). Exige el secreto interno con la convención de
+    backend-admin (FR4): 503 si backend-ml no lo tiene configurado (FR4.3),
+    403 si la cabecera falta o no coincide (FR4.2). La comparación es de tiempo
+    constante y el valor del secreto no sale en ninguna respuesta (NFR2).
+    """
+    secreto = secreto_interno()
+    if not secreto:
+        raise HTTPException(status_code=503,
+                            detail='Estado de inferencias no configurado')
+    if x_internal_secret is None or not hmac.compare_digest(
+            x_internal_secret.encode(), secreto.encode()):
+        raise HTTPException(status_code=403, detail='Secreto de servicio inválido')
+    return EstadoInferenciasOut(**limite.estado())
 
 
 @app.post('/api/v1/segment/', response_model=SegmentResult, tags=['Inferencia'],

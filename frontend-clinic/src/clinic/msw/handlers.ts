@@ -12,6 +12,8 @@ import { CHROMOSOME_SLOTS } from '../types/karyotype';
 
 let samples: SampleRead[] = [...initialSamples];
 let forceDegraded = false;
+// DD-OBS-001 D8: segundos de espera con el motor ocupado; null = hay turno.
+let busySeconds: number | null = null;
 // DD-KARYO-006: con `false` el endpoint de la metafase responde 404
 // NO_METAPHASE_IMAGE, el caso de un cariotipo sin imagen utilizable.
 let metaphaseImageAvailable = true;
@@ -163,6 +165,7 @@ export function resetMockData(): void {
   // filtraría estado entre tests (aislamiento roto).
   samples = initialSamples.map((s) => ({ ...s }));
   forceDegraded = false;
+  busySeconds = null;
   metaphaseImageAvailable = true;
   anadirSinIa = false;
   cortarSinIa = false;
@@ -210,6 +213,11 @@ function degradedFlag(): boolean {
   } catch {
     return false;
   }
+}
+
+/** El motor de IA responde «ocupado» a `process` (null lo libera). */
+export function setBusyMode(seconds: number | null): void {
+  busySeconds = seconds;
 }
 
 export function setDegradedMode(value: boolean): void {
@@ -390,6 +398,12 @@ export const handlers = [
   }),
 
   http.post(`${API}/samples/:id/process/`, ({ params }) => {
+    if (busySeconds !== null) {
+      return HttpResponse.json(
+        { code: 'ML_BUSY', detail: 'El motor de IA está procesando otro caso. Reintente en unos segundos.', retry_after_seconds: busySeconds },
+        { status: 503, headers: { 'Retry-After': String(busySeconds) } },
+      );
+    }
     if (forceDegraded) {
       return HttpResponse.json(
         { code: 'ML_DEGRADED', detail: 'Pipeline no disponible', retry_after_seconds: 60 },
