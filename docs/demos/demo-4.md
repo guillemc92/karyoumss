@@ -117,6 +117,24 @@ seguidos dejaban a todos en modo manual.
 5. **En el contrato.** `process` estaba sin describir; ahora tiene sus respuestas,
    con los dos códigos del 503.
 
+**Comprobado sobre el stack** (imágenes 8.4.0 reconstruidas, dos «procesar» a la
+vez con muestras sintéticas):
+
+| Petición | Respuesta | Tiempo |
+|---|---|---|
+| La primera | `200`, 46 cromosomas | 42,5 s |
+| La segunda | `503 ML_BUSY`, `retry_after_seconds: 25`, cabecera `Retry-After: 25` | 25,2 s |
+| Una tercera, ya con el motor libre | `200`: el circuito no se abrió | 36,3 s |
+
+Mientras tanto, `GET /api/clinic/pipeline/inferencias/` respondía
+`en_curso: 1, libres: 0, en_espera: 1, ocupado: true`.
+
+En Chromium, con dos pestañas: la segunda muestra el aviso, sin el banner de
+modo degradado; la cuenta baja de 25 a 22 s en tres segundos; y «Reintentar», con
+el motor ya libre, procesa y quita el aviso.
+
+![El aviso de motor ocupado en el visor](../../bench/demo4/capturas/aviso-motor-ocupado.png)
+
 **Lo que queda fuera:** no acorta la inferencia. El segundo analista sigue
 esperando a que termine el primero; ahora sabe por qué y cuánto. Procesar en
 segundo plano con una cola es lo que prevé ADR-0031.

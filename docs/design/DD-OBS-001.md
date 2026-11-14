@@ -300,4 +300,7 @@ trataba ese 503 igual que una caída, con dos consecuencias:
   circuito, que era lo dañino; su mensaje se cambia aparte.
 - **El visor no reintenta solo.** Lo decide el analista.
 
-**Resultados (13/11).** Ver `docs/demos/demo-4.md`, funcionalidad 4.
+**Resultados (13 y 14/11).** Los seis criterios se cumplen. 1 a 4 y 6, con
+pruebas (`test_motor_ocupado.py`, 23) y sobre el stack; 5, con pruebas del visor
+y en Chromium con dos pestañas. El detalle está en `docs/demos/demo-4.md`,
+funcionalidad 4.
