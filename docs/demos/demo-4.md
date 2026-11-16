@@ -190,6 +190,42 @@ modelo en 30 s, y NFR-001 pide menos de 15 s por imagen **con GPU**. En esta
 máquina, sin GPU, la inferencia tarda de 46 a 54 s. La traza convierte ese
 incumplimiento en un dato: dónde está y cuánto es.
 
+### La respuesta en cinco partes (≈ 1 min)
+
+Con la forma que pide la S09 (diapositiva 53): la cifra, cómo se encontró la traza,
+el camino crítico, el mecanismo y la comprobación. Datos de `bench/demo4/INFORME.md`.
+
+1. **La cifra, con su contexto.** El p95 de `POST /samples/{id}/process/` es
+   **53,8 s**, en una corrida de 120 s con 5 lecturas por segundo y dos «procesar»
+   a la vez cada 60 s (4 peticiones). El de lectura (`GET …/karyotype/`, 601
+   peticiones) es de 431 ms.
+2. **Cómo se encontró.** Grafana → Explore → Tempo, con el rango de Grafana igual a
+   la ventana de la corrida y el p95 como umbral:
+
+       { resource.service.name = "backend-clinic" && name =~ "POST.*process.*" && duration >= 53.8s }
+
+   Con 4 peticiones, sobre el p95 queda una sola (55,08 s). Por eso se abre también
+   la otra que terminó con 200 (46,57 s): la más lenta sola puede ser un caso raro.
+3. **El camino crítico.** Desde la raíz, siempre por el hijo que termina último:
+   `POST …/process/` 55.075 ms → la llamada a backend-ml 54.819 ms →
+   `POST /api/v1/segment/` 54.807 ms → **`clasificar` 54.266 ms (98,5 %)**, que no
+   tiene hijos. `esperar_turno` (0 ms) y `segmentar` (505 ms) van antes, en serie.
+4. **El mecanismo.** `clasificar` pasa los 46 recortes por EfficientNet-B3 (300 px)
+   en CPU, sin GPU: es cálculo puro.
+5. **La comprobación.** En la otra traza con 200, `clasificar` es 45.931 de
+   46.571 ms (98,6 %): el patrón se repite en las dos lentas. Lo demás no pesa:
+   la red entre servicios 11 ms, la base 33 ms en 62 consultas. La traza del 503
+   (25,49 s) no tiene `clasificar`: solo `esperar_turno` con
+   `turno_conseguido = false`, porque esa petición no llegó a ejecutarse.
+
+**Lo que no se puede comprobar aquí:** la S09 compara con una traza rápida de la
+misma ruta. En «procesar» no la hay: todas pasan por `clasificar`, y una lectura es
+otra ruta. Se compara entre las lentas y con la del 503.
+
+**Al buscar en Grafana:** el rango va en la hora del navegador; la corrida se
+anotó en la hora local de la máquina. Una traza recién terminada tarda unos 30 s en
+aparecer en la búsqueda.
+
 ## Guion del video (≈ 9 min)
 
 ### Antes de grabar
@@ -214,7 +250,7 @@ incumplimiento en un dato: dónde está y cuánto es.
 | 1:15 | Entrar por http://localhost:8080 como `analista@biomed.local`. Queda en `/clinic/samples` | F3: en la Demo 3 esto era una página en blanco. Enseñar la prueba con los siete casos |
 | 2:15 | `docker compose --profile carga run --rm k6 run /k6/carga.js`, y mientras corre, `GET /api/clinic/pipeline/inferencias/` | F2: `en_curso: 1, en_espera: 1, ocupado: true` |
 | 3:30 | El resumen de k6 | La pregunta fija: p95 de lectura y de procesar, y el 50 % de errores |
-| 4:15 | Grafana → Explore → Tempo → la consulta TraceQL; abrir la traza de ~50 s | `clasificar` es el 98,5 %; segmentar, la red y la base no pesan. Por qué: EfficientNet en CPU |
+| 4:15 | Grafana → Explore → Tempo → la consulta TraceQL con el p95 como umbral; abrir la traza de 55 s y después la de 46 s | La respuesta en cinco partes (sección anterior): cifra, cómo se encontró, camino crítico, mecanismo y comprobación |
 | 5:45 | Abrir la traza de 25 s con 503 | Solo `esperar_turno`: nunca se ejecutó. El motor estaba ocupado, no caído |
 | 6:10 | En el visor, dos pestañas con dos muestras sintéticas: «Procesar» en las dos | F4: la segunda dice «El motor de IA está procesando otro caso», con la cuenta atrás. Antes decía «Pipeline no disponible» |
 | 7:00 | `backend-ml/openapi.json` y `backend-clinic/openapi.json`, y el run del CI | El contrato, generado desde el código y con control de deriva |
