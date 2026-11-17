@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 |---|---|
-| **Demo** | 4 · última del Módulo 8. Modalidad: **video** (plazo: lunes 16 de noviembre de 2026, 23:59) |
+| **Demo** | 4 · última del Módulo 8. Modalidad: **video** |
 | **Release** | `release/8.4.0` |
 | **Repositorio** | https://github.com/guillemc92/karyoumss |
 | **Integrantes** | 1 (grupo individual) |
