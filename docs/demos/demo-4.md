@@ -190,10 +190,8 @@ modelo en 30 s, y NFR-001 pide menos de 15 s por imagen **con GPU**. En esta
 máquina, sin GPU, la inferencia tarda de 46 a 54 s. La traza convierte ese
 incumplimiento en un dato: dónde está y cuánto es.
 
-### La respuesta en cinco partes (≈ 1 min)
-
-Con la forma que pide la S09 (diapositiva 53): la cifra, cómo se encontró la traza,
-el camino crítico, el mecanismo y la comprobación. Datos de `bench/demo4/INFORME.md`.
+### respuesta en cinco partes
+ 
 
 1. **La cifra, con su contexto.** El p95 de `POST /samples/{id}/process/` es
    **53,8 s**, en una corrida de 120 s con 5 lecturas por segundo y dos «procesar»
@@ -226,53 +224,3 @@ otra ruta. Se compara entre las lentas y con la del 503.
 anotó en la hora local de la máquina. Una traza recién terminada tarda unos 30 s en
 aparecer en la búsqueda.
 
-## Guion del video (≈ 9 min)
-
-### Antes de grabar
-
-1. Construir y levantar. La primera construcción tarda unos 50 min en esta máquina:
-
-       git clone --branch release/8.4.0 https://github.com/guillemc92/karyoumss C:\demo4\karyoumss
-       cd C:\demo4\karyoumss
-       $env:BIOMED_TRAZAS = "http://tempo:4318"
-       docker compose --profile obs --profile carga build
-       docker compose --profile obs up -d --wait
-       docker compose --profile carga run --rm carga-semilla
-
-2. Cerrar lo que compita por la CPU. Abrir Grafana en http://localhost:3000.
-
-### En el video
-
-| Min | Qué se muestra | Qué se dice |
-|---|---|---|
-| 0:00 | `docs/demos/demo-4.md`, la tabla de funcionalidades | Las tres funcionalidades, su tamaño y su caso de uso del FSD |
-| 0:45 | `docker compose ps`: Tempo y Grafana `healthy` | F1, criterio 1: el mismo stack, con un perfil más |
-| 1:15 | Entrar por http://localhost:8080 como `analista@biomed.local`. Queda en `/clinic/samples` | F3: en la Demo 3 esto era una página en blanco. Enseñar la prueba con los siete casos |
-| 2:15 | `docker compose --profile carga run --rm k6 run /k6/carga.js`, y mientras corre, `GET /api/clinic/pipeline/inferencias/` | F2: `en_curso: 1, en_espera: 1, ocupado: true` |
-| 3:30 | El resumen de k6 | La pregunta fija: p95 de lectura y de procesar, y el 50 % de errores |
-| 4:15 | Grafana → Explore → Tempo → la consulta TraceQL con el p95 como umbral; abrir la traza de 55 s y después la de 46 s | La respuesta en cinco partes (sección anterior): cifra, cómo se encontró, camino crítico, mecanismo y comprobación |
-| 5:45 | Abrir la traza de 25 s con 503 | Solo `esperar_turno`: nunca se ejecutó. El motor estaba ocupado, no caído |
-| 6:10 | En el visor, dos pestañas con dos muestras sintéticas: «Procesar» en las dos | F4: la segunda dice «El motor de IA está procesando otro caso», con la cuenta atrás. Antes decía «Pipeline no disponible» |
-| 7:00 | `backend-ml/openapi.json` y `backend-clinic/openapi.json`, y el run del CI | El contrato, generado desde el código y con control de deriva |
-| 7:45 | `bench/demo4/INFORME.md`: hipótesis y amenazas a la validez | H1 se cumple, H2 no. Lo que no se midió |
-
-## Preguntas probables
-
-- **¿Por qué sin Collector de OpenTelemetry?** Son dos servicios y un destino. El
-  Collector hace falta con más destinos o con muestreo; se declara en DD-OBS-001 D1.
-- **¿Las trazas guardan datos de pacientes?** No. La ruta lleva el id interno de la
-  muestra; no se guardan cabeceras, cuerpos ni parámetros de SQL, y la URL va sin su
-  texto de búsqueda. Lo destapó una prueba: la instrumentación de Django guarda la
-  URL completa por omisión.
-- **¿Cuánto cuestan?** Unos 6 ms en el p50 de lectura. En el p95 no se puede afirmar
-  una diferencia con tres corridas. Están apagadas por omisión.
-- **¿Qué harías con el 50 % de errores?** No subir el límite a ciegas. De las tres
-  opciones del INFORME §3 se hizo la segunda (funcionalidad 4): decir «ocupado» en
-  vez de «degradado». La de fondo es procesar en segundo plano con una cola
-  (ADR-0031).
-- **Un «procesar» de 55 s es demasiado.** Sí. La traza dice dónde está (clasificar
-  en CPU) y el visor ya no lo confunde con una caída, pero el tiempo no bajó. Las
-  salidas son GPU (NFR-001 la supone) o la cola, para no tener al analista
-  esperando una respuesta HTTP.
-- **¿Es representativo el p95 de procesar?** No: son 4 peticiones. Sirve para
-  explicar una traza, no como cifra estable. Está entre las amenazas a la validez.
